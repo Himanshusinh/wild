@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCurrentView } from '@/store/slices/uiSlice';
+import { setSelectedModel, setFrameSize, setStyle } from '@/store/slices/generationSlice';
 import Nav from '../../Core/Nav';
 import SidePannelFeatures from '../../Core/SidePannelFeatures';
 import TextToVideoComponent from './compo/TextToVideo';
@@ -15,6 +16,13 @@ const TextToVideo = () => {
   const handleViewChange = (view: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'history' | 'bookmarks') => {
     dispatch(setCurrentView(view));
   };
+
+  // Ensure sensible defaults for video generation models/settings on mount
+  useEffect(() => {
+    dispatch(setSelectedModel('MiniMax-Hailuo-02'));
+    dispatch(setFrameSize('1080p'));
+    dispatch(setStyle('6s'));
+  }, [dispatch]);
 
   return (
     <div className="min-h-screen bg-black">

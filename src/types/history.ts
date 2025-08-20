@@ -10,7 +10,10 @@ export interface HistoryEntry {
   prompt: string;
   model: string;
   images: GeneratedImage[];
-  timestamp: Date;
+  // Optional URL for a generated video (used by video generation flows)
+  videoUrl?: string;
+  // Store as ISO string to keep Redux state serializable
+  timestamp: string;
   createdAt: string; // ISO string for Firestore
   imageCount: number;
   status: 'generating' | 'completed' | 'failed';

@@ -40,7 +40,7 @@ const StickerCountDropdown = () => {
         <span>Number of Stickers</span>
       </button>
       {activeDropdown === 'stickerCount' && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/90 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/40 pb-2 pt-2 shadow-2xl">
           {stickerCounts.map((option) => (
             <button
               key={option.value}
@@ -48,11 +48,11 @@ const StickerCountDropdown = () => {
                 e.stopPropagation();
                 handleStickerCountSelect(option.value);
               }}
-              className="w-full px-4 py-3 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
+              className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition text-[13px] flex items-center justify-between"
             >
               <div className="flex flex-col">
-                <span className="font-medium">{option.label}</span>
-                <span className="text-xs text-white/60 mt-0.5">{option.description}</span>
+                <span className="font-medium text-white">{option.label}</span>
+                <span className="text-xs text-white/85 mt-0.5">{option.description}</span>
               </div>
               {imageCount === Number(option.value) && (
                 <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>

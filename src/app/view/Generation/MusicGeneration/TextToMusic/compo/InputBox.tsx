@@ -18,12 +18,17 @@ import {
   loadHistory
 } from '@/store/slices/historySlice';
 
+// Import the music-specific components
+import ModelsDropdown from './ModelsDropdown';
+import AudioSettingsDropdown from './AudioSettingsDropdown';
+
 const InputBox = () => {
   const dispatch = useAppDispatch();
   
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'music-model-default');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'speech-2.5-hd-preview');
+  const style = useAppSelector((state: any) => state.generation?.style || 'english-neutral');
   const isGenerating = useAppSelector((state: any) => state.generation?.isGenerating || false);
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
@@ -242,9 +247,10 @@ const InputBox = () => {
           </div>
         </div>
 
-        {/* Bottom row: empty space as requested */}
+        {/* Bottom row: audio-specific options */}
         <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
-          {/* Empty space - no dropdowns as requested */}
+          <ModelsDropdown />
+          <AudioSettingsDropdown />
         </div>
       </div>
       </div>

@@ -1,199 +1,50 @@
-import { db } from './firebase';
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  query, 
-  orderBy, 
-  limit, 
-  where,
-  Timestamp 
-} from 'firebase/firestore';
-import { HistoryEntry, HistoryEntryFirestore, HistoryFilters } from '@/types/history';
+import { HistoryEntry, HistoryFilters } from '@/types/history';
+import { db, storage } from '@/lib/firebase';
+import { addDoc, collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-const HISTORY_COLLECTION = 'generationHistory';
+const HISTORY_COLLECTION = 'history';
 
-/**
- * Converts Firestore document to HistoryEntry
- */
-function convertFirestoreToHistoryEntry(doc: any): HistoryEntry {
-  const data = doc.data() as HistoryEntryFirestore;
-  return {
-    ...data,
-    id: doc.id,
-    timestamp: data.timestamp?.toDate() || new Date(data.createdAt),
-  };
-}
-
-/**
- * Converts HistoryEntry to Firestore format
- */
-function convertHistoryEntryToFirestore(entry: Omit<HistoryEntry, 'id'>): Omit<HistoryEntryFirestore, 'id'> {
-  return {
-    ...entry,
-    timestamp: Timestamp.fromDate(entry.timestamp),
-  };
-}
-
-/**
- * Saves a new history entry to Firestore
- */
-export async function saveHistoryEntry(entry: Omit<HistoryEntry, 'id'>): Promise<string> {
-  try {
-    const firestoreEntry = convertHistoryEntryToFirestore(entry);
-    const docRef = await addDoc(collection(db, HISTORY_COLLECTION), firestoreEntry);
-    return docRef.id;
-  } catch (error) {
-    console.error('Error saving history entry:', error);
-    throw new Error('Failed to save history entry');
+export async function uploadFromUrlToStorage(assetUrl: string, storagePath: string): Promise<string> {
+  const response = await fetch(assetUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch asset: ${response.status}`);
   }
+  const blob = await response.blob();
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, blob);
+  return await getDownloadURL(storageRef);
 }
 
-/**
- * Updates an existing history entry
- */
-export async function updateHistoryEntry(id: string, updates: Partial<HistoryEntry>): Promise<void> {
-  try {
-    const docRef = doc(db, HISTORY_COLLECTION, id);
-    const firestoreUpdates: any = { ...updates };
-    
-    if (updates.timestamp) {
-      firestoreUpdates.timestamp = Timestamp.fromDate(updates.timestamp);
-    }
-    
-    await updateDoc(docRef, firestoreUpdates);
-  } catch (error) {
-    console.error('Error updating history entry:', error);
-    throw new Error('Failed to update history entry');
-  }
+export async function saveHistoryEntry(entry: HistoryEntry): Promise<string> {
+  const docRef = await addDoc(collection(db, HISTORY_COLLECTION), entry);
+  return docRef.id;
 }
 
-/**
- * Retrieves all history entries with optional filters
- */
-export async function getHistoryEntries(filters?: HistoryFilters, limitCount: number = 50): Promise<HistoryEntry[]> {
-  try {
-    let q = query(
-      collection(db, HISTORY_COLLECTION),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    );
-
-    // Apply filters
-    if (filters?.model) {
-      q = query(q, where('model', '==', filters.model));
-    }
-    
-    if (filters?.status) {
-      q = query(q, where('status', '==', filters.status));
-    }
-
-    const querySnapshot = await getDocs(q);
-    const entries = querySnapshot.docs.map(convertFirestoreToHistoryEntry);
-
-    // Apply date range filter (client-side since Firestore has limitations)
-    if (filters?.dateRange) {
-      return entries.filter(entry => 
-        entry.timestamp >= filters.dateRange!.start && 
-        entry.timestamp <= filters.dateRange!.end
-      );
-    }
-
-    return entries;
-  } catch (error) {
-    console.error('Error retrieving history entries:', error);
-    throw new Error('Failed to retrieve history entries');
-  }
-}
-
-/**
- * Gets recent history entries (last 20)
- */
 export async function getRecentHistory(): Promise<HistoryEntry[]> {
-  try {
-    const entries = await getHistoryEntries(undefined, 20);
+  const q = query(collection(db, HISTORY_COLLECTION), orderBy('createdAt', 'desc'), limit(20));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+}
 
-    // If no entries found, return sample data for demonstration
-    if (entries.length === 0) {
-      return getSampleHistoryData();
-    }
-
-    return entries;
-  } catch (error) {
-    console.error('Error loading recent history, returning sample data:', error);
-    return getSampleHistoryData();
+export async function getHistoryEntries(
+  filters?: HistoryFilters,
+  fetchLimit: number = 20
+): Promise<HistoryEntry[]> {
+  let qRef: any = collection(db, HISTORY_COLLECTION);
+  const constraints: any[] = [];
+  if (filters?.model) constraints.push(where('model', '==', filters.model));
+  if (filters?.status) constraints.push(where('status', '==', filters.status));
+  // Date range filter is optional; using string ISO timestamps
+  if (filters?.dateRange) {
+    constraints.push(where('createdAt', '>=', filters.dateRange.start.toISOString()));
+    constraints.push(where('createdAt', '<=', filters.dateRange.end.toISOString()));
   }
+  constraints.push(orderBy('createdAt', 'desc'));
+  constraints.push(limit(fetchLimit));
+  const q = query(qRef, ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 }
 
-/**
- * Returns sample history data for demonstration
- */
-function getSampleHistoryData(): HistoryEntry[] {
-  return [
-    {
-      id: 'sample-1',
-      prompt: 'A beautiful sunset over mountains with vibrant colors',
-      model: 'flux-kontext-pro',
-      images: [
-        {
-          id: 'img-1',
-          url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop',
-          originalUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop'
-        },
-        {
-          id: 'img-2',
-          url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=400&fit=crop',
-          originalUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&h=800&fit=crop'
-        }
-      ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      imageCount: 2,
-      status: 'completed'
-    },
-    {
-      id: 'sample-2',
-      prompt: 'Futuristic city with neon lights and flying cars',
-      model: 'flux-pro-1.1',
-      images: [
-        {
-          id: 'img-3',
-          url: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop',
-          originalUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=800&fit=crop'
-        }
-      ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      imageCount: 1,
-      status: 'completed'
-    },
-    {
-      id: 'sample-3',
-      prompt: 'Cute cartoon cat playing with yarn ball',
-      model: 'flux-kontext-pro',
-      images: [
-        {
-          id: 'img-4',
-          url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop',
-          originalUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&h=800&fit=crop'
-        },
-        {
-          id: 'img-5',
-          url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',
-          originalUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=800&h=800&fit=crop'
-        },
-        {
-          id: 'img-6',
-          url: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=400&h=400&fit=crop',
-          originalUrl: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=800&h=800&fit=crop'
-        }
-      ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      imageCount: 3,
-      status: 'completed'
-    }
-  ];
-}
+

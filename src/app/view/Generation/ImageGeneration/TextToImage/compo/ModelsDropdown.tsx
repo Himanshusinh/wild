@@ -34,7 +34,7 @@ const ModelsDropdown = () => {
         Models
       </button>
       {activeDropdown === 'models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/90 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/40 pb-2 pt-2 shadow-2xl">
           {models.map((model) => (
             <button
               key={model.value}
@@ -42,9 +42,9 @@ const ModelsDropdown = () => {
                 e.stopPropagation();
                 handleModelSelect(model.value);
               }}
-              className="w-full px-4 py-2 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
+              className="w-full px-4 py-2 text-left text-white hover:bg-white/20 transition text-[13px] flex items-center justify-between"
             >
-              <span>{model.name}</span>
+              <span className="font-medium text-white">{model.name}</span>
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               )}
