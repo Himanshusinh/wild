@@ -5,21 +5,23 @@ import Image from 'next/image';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadHistory } from '@/store/slices/historySlice';
+import { setCurrentView } from '@/store/slices/uiSlice';
 
-interface HistoryProps {
-  onBack?: () => void;
-}
-
-const History = ({ onBack }: HistoryProps) => {
+const History = () => {
   const dispatch = useAppDispatch();
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const error = useAppSelector((state: any) => state.history?.error);
+  const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
 
   useEffect(() => {
     // Load history when component mounts
     dispatch(loadHistory({}));
   }, [dispatch]);
+
+  const handleBackToGeneration = () => {
+    dispatch(setCurrentView('generation'));
+  };
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -49,19 +51,31 @@ const History = ({ onBack }: HistoryProps) => {
   return (
     <div className="min-h-screen bg-transparent text-white p-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="text-white/60 hover:text-white transition-colors"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-              </svg>
-            </button>
-          )}
-          <h1 className="text-2xl font-semibold">History</h1>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleBackToGeneration}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/>
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold">Generation History</h1>
+            <p className="text-sm opacity-70">All your generated images and prompts</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm opacity-70">{historyEntries.length} generations</span>
+          </div>
+          <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+          </button>
         </div>
       </div>
 

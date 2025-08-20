@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import uiReducer from './slices/uiSlice';
 import generationReducer from './slices/generationSlice';
 import historyReducer from './slices/historySlice';
+import bookmarksReducer from './slices/bookmarksSlice';
 
 export const store = configureStore({
   reducer: {
     ui: uiReducer,
     generation: generationReducer,
     history: historyReducer,
+    bookmarks: bookmarksReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

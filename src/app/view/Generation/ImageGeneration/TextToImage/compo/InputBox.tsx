@@ -6,8 +6,6 @@ import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import {
   setPrompt,
-  setSelectedModel,
-  setImageCount,
   generateImages
 } from '@/store/slices/generationSlice';
 import {
@@ -19,6 +17,12 @@ import {
   updateHistoryEntry
 } from '@/store/slices/historySlice';
 
+// Import the new components
+import ModelsDropdown from './ModelsDropdown';
+import ImageCountDropdown from './ImageCountDropdown';
+import FrameSizeDropdown from './FrameSizeDropdown';
+import StyleSelector from './StyleSelector';
+
 const InputBox = () => {
   const dispatch = useAppDispatch();
 
@@ -26,10 +30,13 @@ const InputBox = () => {
   const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
   const imageCount = useAppSelector((state: any) => state.generation?.imageCount || 1);
+  const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
+  const style = useAppSelector((state: any) => state.generation?.style || 'realistic');
   const isGenerating = useAppSelector((state: any) => state.generation?.isGenerating || false);
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
+  const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -56,9 +63,11 @@ const InputBox = () => {
     try {
       // Use Redux async thunk for generation
       const result = await dispatch(generateImages({
-        prompt,
+        prompt: `${prompt} [Style: ${style}]`,
         model: selectedModel,
-        imageCount
+        imageCount,
+        frameSize,
+        style
       })).unwrap();
 
       // Create the completed entry
@@ -103,10 +112,6 @@ const InputBox = () => {
         message: error instanceof Error ? error.message : 'Failed to generate images'
       }));
     }
-  };
-
-  const handleDropdownClick = (dropdownName: string) => {
-    dispatch(toggleDropdown(dropdownName));
   };
 
   // Close dropdown when clicking outside
@@ -247,67 +252,10 @@ const InputBox = () => {
 
         {/* Bottom row: pill options */}
         <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
-          <div className="relative dropdown-container">
-            <button
-              onClick={() => handleDropdownClick('models')}
-              className="h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-1"
-            >
-              Models
-            </button>
-            {activeDropdown === 'models' && (
-              <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-                {[
-                  { name: 'Flux Kontext Pro', value: 'flux-kontext-pro' },
-                  { name: 'Flux Pro 1.1', value: 'flux-pro-1.1' },
-                  { name: 'Flux Pro 1.1 Ultra', value: 'flux-pro-1.1-ultra' }
-                ].map((model) => (
-                  <button
-                    key={model.value}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dispatch(setSelectedModel(model.value));
-                      dispatch(toggleDropdown(''));
-                    }}
-                    className="w-full px-4 py-2 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
-                  >
-                    <span>{model.name}</span>
-                    {selectedModel === model.value && (
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="relative dropdown-container">
-            <button
-              onClick={() => handleDropdownClick('images')}
-              className="h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-1"
-            >
-              number of image
-            </button>
-            {activeDropdown === 'images' && (
-              <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-                {['1', '2', '3', '4'].map((number) => (
-                  <button
-                    key={number}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dispatch(setImageCount(Number(number)));
-                      dispatch(toggleDropdown(''));
-                    }}
-                    className="w-full px-4 py-2 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
-                  >
-                    <span>{number}</span>
-                    {imageCount === Number(number) && (
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <ModelsDropdown />
+          <ImageCountDropdown />
+          <FrameSizeDropdown />
+          <StyleSelector />
         </div>
       </div>
       </div>

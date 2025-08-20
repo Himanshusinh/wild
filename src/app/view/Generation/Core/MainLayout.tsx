@@ -3,8 +3,7 @@
 import React from 'react';
 import Nav from './Nav';
 import SidePannelFeatures from './SidePannelFeatures';
-import History from './History';
-import InputBox from '../ImageGeneration/TextToImage/compo/InputBox';
+import PageRouter from './PageRouter';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCurrentView } from '@/store/slices/uiSlice';
 import NotificationToast from '@/components/ui/NotificationToast';
@@ -18,18 +17,8 @@ const MainLayout = () => {
     console.log('Redux state initialized:', { currentView });
   }, [currentView]);
 
-  const handleViewChange = (view: 'generation' | 'history') => {
+  const handleViewChange = (view: 'generation' | 'history' | 'bookmarks') => {
     dispatch(setCurrentView(view));
-  };
-
-  const renderContent = () => {
-    switch (currentView) {
-      case 'history':
-        return <History onBack={() => handleViewChange('generation')} />;
-      case 'generation':
-      default:
-        return <InputBox />;
-    }
   };
 
   return (
@@ -40,7 +29,7 @@ const MainLayout = () => {
         onViewChange={handleViewChange}
       />
       <div className="ml-[68px] pt-[62px]">
-        {renderContent()}
+        <PageRouter />
       </div>
       <NotificationToast />
     </div>

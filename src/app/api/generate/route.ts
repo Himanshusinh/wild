@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   let historyId: string | null = null;
 
   try {
-    const { prompt, model, n = 1 } = await request.json();
+    const { prompt, model, n = 1, frameSize = '1:1', style = 'realistic' } = await request.json();
     const apiKey = process.env.BFL_API_KEY;
 
     if (!prompt) {
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           prompt,
-          aspect_ratio: "1:1",
+          aspect_ratio: frameSize,
         }),
       });
 

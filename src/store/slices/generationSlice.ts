@@ -5,6 +5,8 @@ interface GenerationState {
   prompt: string;
   selectedModel: string;
   imageCount: number;
+  frameSize: string;
+  style: string;
   isGenerating: boolean;
   error: string | null;
   lastGeneratedImages: GeneratedImage[];
@@ -19,6 +21,8 @@ const initialState: GenerationState = {
   prompt: '',
   selectedModel: 'flux-kontext-pro',
   imageCount: 1,
+  frameSize: '1:1',
+  style: 'realistic',
   isGenerating: false,
   error: null,
   lastGeneratedImages: [],
@@ -29,7 +33,13 @@ const initialState: GenerationState = {
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount }: { prompt: string; model: string; imageCount: number },
+    { prompt, model, imageCount, frameSize, style }: {
+      prompt: string;
+      model: string;
+      imageCount: number;
+      frameSize?: string;
+      style?: string;
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -42,6 +52,8 @@ export const generateImages = createAsyncThunk(
           prompt,
           model,
           n: imageCount,
+          frameSize,
+          style,
         }),
       });
 
@@ -73,6 +85,12 @@ const generationSlice = createSlice({
     },
     setImageCount: (state, action: PayloadAction<number>) => {
       state.imageCount = action.payload;
+    },
+    setFrameSize: (state, action: PayloadAction<string>) => {
+      state.frameSize = action.payload;
+    },
+    setStyle: (state, action: PayloadAction<string>) => {
+      state.style = action.payload;
     },
     clearError: (state) => {
       state.error = null;
@@ -117,6 +135,8 @@ export const {
   setPrompt,
   setSelectedModel,
   setImageCount,
+  setFrameSize,
+  setStyle,
   clearError,
   clearLastGeneratedImages,
   setGenerationProgress,

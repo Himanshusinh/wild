@@ -1,11 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type ViewType = 'generation' | 'history';
+export type ViewType = 'generation' | 'history' | 'bookmarks';
 
 interface UIState {
   currentView: ViewType;
   activeDropdown: string | null;
   sidebarExpanded: boolean;
+  theme: 'light' | 'dark';
   notifications: Array<{
     id: string;
     type: 'success' | 'error' | 'info' | 'warning';
@@ -18,6 +19,7 @@ const initialState: UIState = {
   currentView: 'generation',
   activeDropdown: null,
   sidebarExpanded: false,
+  theme: 'dark',
   notifications: [],
 };
 
