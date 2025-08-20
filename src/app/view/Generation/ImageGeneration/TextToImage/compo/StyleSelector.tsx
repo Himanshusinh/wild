@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAppSelector } from '@/store/hooks';
-import StylePopup from '@/components/ui/StylePopup';
+import StylePopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup';
 
 const StyleSelector = () => {
   const style = useAppSelector((state: any) => state.generation?.style || 'realistic');
