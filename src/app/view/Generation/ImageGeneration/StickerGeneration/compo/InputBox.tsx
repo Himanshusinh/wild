@@ -48,7 +48,7 @@ const InputBox = () => {
         url: '',
         originalUrl: ''
       })),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: imageCount,
       status: 'generating'
@@ -62,7 +62,8 @@ const InputBox = () => {
       const result = await dispatch(generateImages({ 
         prompt: `Create a fun sticker design of: ${prompt}`, 
         model: selectedModel, 
-        imageCount
+        imageCount,
+        generationType: 'sticker-generation'
       })).unwrap();
 
       // Create the completed entry
@@ -72,7 +73,7 @@ const InputBox = () => {
         model: selectedModel,
         generationType: 'sticker-generation',
         images: result.images,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: imageCount,
         status: 'completed'
@@ -146,7 +147,7 @@ const InputBox = () => {
                     <div className="flex-1">
                       <p className="text-white/90 text-sm leading-relaxed">{entry.prompt}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                        <span>{entry.timestamp.toLocaleDateString()}</span>
+                        <span>{new Date(entry.timestamp).toLocaleDateString()}</span>
                         <span>{entry.model}</span>
                         <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
                         {entry.status === 'generating' && (

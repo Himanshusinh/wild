@@ -89,6 +89,15 @@ const historySlice = createSlice({
       state.hasMore = true;
       state.lastLoadedCount = 0;
     },
+    clearHistoryByType: (state, action: PayloadAction<string>) => {
+      // Clear only entries for a specific generation type
+      state.entries = state.entries.filter(entry => entry.generationType !== action.payload);
+      // Reset pagination if we cleared all entries
+      if (state.entries.length === 0) {
+        state.hasMore = true;
+        state.lastLoadedCount = 0;
+      }
+    },
     clearError: (state) => {
       state.error = null;
     },
@@ -102,7 +111,46 @@ const historySlice = createSlice({
       })
       .addCase(loadHistory.fulfilled, (state, action) => {
         state.loading = false;
-        state.entries = action.payload.entries;
+        
+        console.log('=== HISTORY LOADING DEBUG ===');
+        console.log('Action payload entries count:', action.payload.entries.length);
+        console.log('Current filters:', state.filters);
+        console.log('Payload entries types:', action.payload.entries.map((e: any) => e.generationType));
+        
+        // If we're loading with filters, replace entries to show only filtered results
+        if (state.filters && Object.keys(state.filters).length > 0) {
+          console.log('Loading with filters - replacing entries');
+          // Replace entries with filtered results to ensure proper separation by generation type
+          state.entries = action.payload.entries;
+          
+          // Additional safety: double-check that all entries match the current filters
+          if (state.filters.generationType) {
+            const beforeCount = state.entries.length;
+            state.entries = state.entries.filter(entry => entry.generationType === state.filters.generationType);
+            const afterCount = state.entries.length;
+            console.log(`Filtered by generationType ${state.filters.generationType}: ${beforeCount} -> ${afterCount}`);
+          }
+          if (state.filters.model) {
+            const beforeCount = state.entries.length;
+            state.entries = state.entries.filter(entry => entry.model === state.filters.model);
+            const afterCount = state.entries.length;
+            console.log(`Filtered by model ${state.filters.model}: ${beforeCount} -> ${afterCount}`);
+          }
+          if (state.filters.status) {
+            const beforeCount = state.entries.length;
+            state.entries = state.entries.filter(entry => entry.status === state.filters.status);
+            const afterCount = state.entries.length;
+            console.log(`Filtered by status ${state.filters.status}: ${beforeCount} -> ${afterCount}`);
+          }
+          
+          console.log('Final filtered entries count:', state.entries.length);
+          console.log('Final entries types:', state.entries.map((e: any) => e.generationType));
+        } else {
+          console.log('Loading without filters - replacing all entries');
+          // If no filters, replace the entire array (for initial load or clear filters)
+          state.entries = action.payload.entries;
+        }
+        
         state.hasMore = action.payload.hasMore;
         state.lastLoadedCount = action.payload.entries.length;
         state.error = null;
@@ -135,6 +183,7 @@ export const {
   setFilters,
   clearFilters,
   clearHistory,
+  clearHistoryByType,
   clearError,
 } = historySlice.actions;
 

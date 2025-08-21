@@ -3,12 +3,10 @@
 import React from 'react';
 import MainLayout from './view/Generation/Core/MainLayout';
 
-const page = () => {
+export default function HomePage() {
   return (
-    <div>
+    <main className="min-h-screen">
       <MainLayout />
-    </div>
+    </main>
   );
-};
-
-export default page
+}

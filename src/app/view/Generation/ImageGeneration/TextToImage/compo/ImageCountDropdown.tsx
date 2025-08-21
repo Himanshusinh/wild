@@ -25,9 +25,13 @@ const ImageCountDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-1"
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          imageCount !== 1 
+            ? 'bg-white text-black' 
+            : 'bg-transparent text-white/90 hover:bg-white/5'
+        }`}
       >
-        number of image
+        {imageCount} Image{imageCount > 1 ? 's' : ''}
       </button>
       {activeDropdown === 'images' && (
         <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
@@ -38,11 +42,15 @@ const ImageCountDropdown = () => {
                 e.stopPropagation();
                 handleImageCountSelect(number);
               }}
-              className="w-full px-4 py-2 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                imageCount === Number(number)
+                  ? 'bg-white text-black'
+                  : 'text-white/90 hover:bg-white/10'
+              }`}
             >
               <span>{number}</span>
               {imageCount === Number(number) && (
-                <div className="w-2 h-2 bg-white rounded-full"></div>
+                <div className="w-2 h-2 bg-black rounded-full"></div>
               )}
             </button>
           ))}

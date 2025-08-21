@@ -1,19 +1,9 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useAppDispatch } from '@/store/hooks';
-import { loadHistory } from '@/store/slices/historySlice';
+import React from 'react';
 import InputBox from './compo/InputBox';
 
 const TextToImage = () => {
-  const dispatch = useAppDispatch();
-
-  // Load history when component mounts
-  useEffect(() => {
-    console.log('TextToImage: Loading history...');
-    dispatch(loadHistory({}));
-  }, [dispatch]);
-
   return (
     <div className="relative min-h-screen">
       <InputBox />

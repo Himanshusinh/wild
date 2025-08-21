@@ -23,7 +23,7 @@ function convertFirestoreToHistoryEntry(doc: any): HistoryEntry {
   return {
     ...data,
     id: doc.id,
-    timestamp: data.timestamp?.toDate() || new Date(data.createdAt),
+    timestamp: (data.timestamp?.toDate?.() ? data.timestamp.toDate().toISOString() : data.createdAt),
   };
 }
 
@@ -33,7 +33,7 @@ function convertFirestoreToHistoryEntry(doc: any): HistoryEntry {
 function convertHistoryEntryToFirestore(entry: Omit<HistoryEntry, 'id'>): Omit<HistoryEntryFirestore, 'id'> {
   return {
     ...entry,
-    timestamp: Timestamp.fromDate(entry.timestamp),
+    timestamp: Timestamp.fromDate(new Date(entry.timestamp)),
   };
 }
 
@@ -60,7 +60,7 @@ export async function updateHistoryEntry(id: string, updates: Partial<HistoryEnt
     const firestoreUpdates: any = { ...updates };
     
     if (updates.timestamp) {
-      firestoreUpdates.timestamp = Timestamp.fromDate(updates.timestamp);
+      firestoreUpdates.timestamp = Timestamp.fromDate(new Date(updates.timestamp as unknown as string));
     }
     
     await updateDoc(docRef, firestoreUpdates);
@@ -75,33 +75,43 @@ export async function updateHistoryEntry(id: string, updates: Partial<HistoryEnt
  */
 export async function getHistoryEntries(filters?: HistoryFilters, limitCount: number = 50): Promise<HistoryEntry[]> {
   try {
-    let q = query(
-      collection(db, HISTORY_COLLECTION),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    );
-
-    // Apply filters
-    if (filters?.model) {
-      q = query(q, where('model', '==', filters.model));
-    }
-    
+    const baseRef = collection(db, HISTORY_COLLECTION);
+    let q;
     if (filters?.generationType) {
-      q = query(q, where('generationType', '==', filters.generationType));
-    }
-    
-    if (filters?.status) {
-      q = query(q, where('status', '==', filters.status));
+      // Avoid composite index requirement by not ordering in Firestore
+      q = query(
+        baseRef,
+        where('generationType', '==', filters.generationType),
+        limit(limitCount)
+      );
+    } else {
+      q = query(
+        baseRef,
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
+      );
     }
 
     const querySnapshot = await getDocs(q);
-    const entries = querySnapshot.docs.map(convertFirestoreToHistoryEntry);
+    let entries = querySnapshot.docs.map(convertFirestoreToHistoryEntry);
+
+    // Apply additional client-side filters to avoid composite indexes
+    if (filters?.model) {
+      entries = entries.filter(e => e.model === filters.model);
+    }
+    if (filters?.status) {
+      entries = entries.filter(e => e.status === filters.status);
+    }
+    if (filters?.generationType) {
+      // Ensure consistent desc ordering client-side
+      entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }
 
     // Apply date range filter (client-side since Firestore has limitations)
     if (filters?.dateRange) {
       return entries.filter(entry => 
-        entry.timestamp >= filters.dateRange!.start && 
-        entry.timestamp <= filters.dateRange!.end
+        new Date(entry.timestamp) >= filters.dateRange!.start && 
+        new Date(entry.timestamp) <= filters.dateRange!.end
       );
     }
 
@@ -153,7 +163,7 @@ function getSampleHistoryData(): HistoryEntry[] {
           originalUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&h=800&fit=crop'
         }
       ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
       imageCount: 2,
       status: 'completed'
@@ -170,7 +180,7 @@ function getSampleHistoryData(): HistoryEntry[] {
           originalUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=800&fit=crop'
         }
       ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
       imageCount: 1,
       status: 'completed'
@@ -197,7 +207,7 @@ function getSampleHistoryData(): HistoryEntry[] {
           originalUrl: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=800&h=800&fit=crop'
         }
       ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
       imageCount: 3,
       status: 'completed'
@@ -214,7 +224,7 @@ function getSampleHistoryData(): HistoryEntry[] {
           originalUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=800&fit=crop'
         }
       ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
       imageCount: 1,
       status: 'completed'
@@ -231,7 +241,7 @@ function getSampleHistoryData(): HistoryEntry[] {
           originalUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=800&fit=crop'
         }
       ],
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72), // 3 days ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 days ago
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
       imageCount: 1,
       status: 'completed'

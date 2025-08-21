@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadHistory, setFilters } from '@/store/slices/historySlice';
@@ -14,16 +15,57 @@ const History = () => {
   const error = useAppSelector((state: any) => state.history?.error);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
-  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(true);
+  const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null);
+
+  console.log('=== HISTORY COMPONENT RENDER ===');
+  console.log('Initial historyEntries:', historyEntries);
+  console.log('Initial currentGenerationType:', currentGenerationType);
+  console.log('Initial showAllHistory:', showAllHistory);
+
+  // Load all history on mount to ensure we have data
+  useEffect(() => {
+    console.log('=== HISTORY COMPONENT MOUNT ===');
+    console.log('Loading all history on mount...');
+    dispatch(loadHistory({ filters: {}, limit: 50 }));
+  }, [dispatch]); // Only run on mount
 
   useEffect(() => {
-    // Load history when component mounts
+    console.log('=== HISTORY COMPONENT useEffect ===');
+    console.log('showAllHistory:', showAllHistory);
+    console.log('currentGenerationType:', currentGenerationType);
+    console.log('historyEntries.length:', historyEntries.length);
+    console.log('historyEntries types:', historyEntries.map((entry: HistoryEntry) => ({ id: entry.id, type: entry.generationType, model: entry.model })));
+    
+    // Only load history if it's not already loaded or if we're switching between views
+    // This prevents conflicts with PageRouter which also loads history
     if (showAllHistory) {
-      dispatch(loadHistory({ filters: {} }));
+      // For "Show All" - only load if we don't have any entries or if we have filtered entries
+      const hasEntries = historyEntries.length > 0;
+      const hasFilteredEntries = historyEntries.some((entry: HistoryEntry) => entry.generationType === currentGenerationType);
+      
+      console.log('Show All mode - hasEntries:', hasEntries, 'hasFilteredEntries:', hasFilteredEntries);
+      
+      if (!hasEntries || hasFilteredEntries) {
+        console.log('Loading all history entries...');
+        dispatch(loadHistory({ filters: {}, limit: 50 }));
+      } else {
+        console.log('Using existing all history entries:', historyEntries.length);
+      }
     } else {
-      dispatch(loadHistory({ filters: { generationType: currentGenerationType } }));
+      // For "Show Current Type" - only load if we don't have entries for this type
+      const hasCurrentTypeEntries = historyEntries.some((entry: HistoryEntry) => entry.generationType === currentGenerationType);
+      
+      console.log('Show Current Type mode - hasCurrentTypeEntries:', hasCurrentTypeEntries);
+      
+      if (!hasCurrentTypeEntries) {
+        console.log('Loading filtered history for:', currentGenerationType);
+        dispatch(loadHistory({ filters: { generationType: currentGenerationType }, limit: 30 }));
+      } else {
+        console.log('Using existing filtered history entries for:', currentGenerationType);
+      }
     }
-  }, [dispatch, currentGenerationType, showAllHistory]);
+  }, [dispatch, currentGenerationType, showAllHistory, historyEntries.length]);
 
   const handleBackToGeneration = () => {
     dispatch(setCurrentView('generation'));
@@ -102,86 +144,99 @@ const History = () => {
           >
             {showAllHistory ? 'Show Current Type' : 'Show All'}
           </button>
-          <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-            </svg>
-          </button>
         </div>
       </div>
 
       {/* History Entries */}
       <div className="space-y-8">
-        {historyEntries.length === 0 ? (
-          <div className="text-center text-white/60 py-12">
-            <p>No generation history yet.</p>
-            <p className="text-sm mt-2">
-              {showAllHistory 
-                ? 'Your generated content will appear here.' 
-                : `Your ${getGenerationTypeLabel(currentGenerationType).toLowerCase()} generations will appear here.`
-              }
-            </p>
-          </div>
-        ) : (
-          historyEntries.map((entry: HistoryEntry) => (
-            <div key={entry.id} className="space-y-4">
-              {/* Prompt and Metadata */}
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
+        {historyEntries.map((entry: HistoryEntry) => (
+          <div key={entry.id} className="space-y-4">
+            {/* Prompt Text in Left Corner */}
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <div className="flex flex-row-reverse items-center gap-2">
+                  <p className="text-white/90 text-sm leading-relaxed flex-1 max-w-[500px] break-words">
+                    {entry.prompt.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim()}
+                  </p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(entry.prompt.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim());
+                      // Add toast here if available
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
+                    title="Copy prompt"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <p className="text-white/90 text-sm leading-relaxed">{entry.prompt}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                    <span>{formatDate(entry.timestamp)}</span>
-                    <span>{entry.model}</span>
-                    {showAllHistory && (
-                      <span className="text-blue-400">{getGenerationTypeLabel(entry.generationType)}</span>
-                    )}
-                    <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
-                    {entry.status === 'generating' && (
-                      <span className="text-yellow-400">Generating...</span>
-                    )}
-                    {entry.status === 'failed' && (
-                      <span className="text-red-400">Failed</span>
-                    )}
-                  </div>
+                <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
+                  <span>{formatDate(new Date(entry.timestamp))}</span>
+                  <span>{entry.model}</span>
+                  <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
+                  {entry.style && (
+                    <span className="text-blue-400">Style: {entry.style}</span>
+                  )}
+                  {entry.status === 'generating' && (
+                    <span className="text-yellow-400 flex items-center gap-1">
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                      Generating...
+                    </span>
+                  )}
+                  {entry.status === 'failed' && (
+                    <span className="text-red-400">Failed</span>
+                  )}
                 </div>
               </div>
-
-              {/* Images Grid - Smaller Size */}
-              {entry.images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
-                  {entry.images.map((image: any, index: number) => (
-                    <div
-                      key={image.id || index}
-                      className="relative aspect-square rounded-lg overflow-hidden bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
-                    >
-                      <Image
-                        src={image.url}
-                        alt={`Generated image ${index + 1}`}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-200"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Error Message */}
-              {entry.status === 'failed' && entry.error && (
-                <div className="ml-9 text-red-400 text-sm bg-red-400/10 rounded-lg p-3">
-                  {entry.error}
-                </div>
-              )}
             </div>
-          ))
-        )}
+
+            {/* Images Grid - Same Size as Text-to-Image History */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
+              {entry.images.map((image: any) => (
+                <div key={image.id} onClick={() => setPreview({ entry, image })} className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group">
+                  {entry.status === 'generating' ? (
+                    // Loading frame
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                        <div className="text-xs text-white/60">Generating...</div>
+                      </div>
+                    </div>
+                  ) : entry.status === 'failed' ? (
+                    // Error frame
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                      <div className="flex flex-col items-center gap-2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <div className="text-xs text-red-400">Failed</div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Completed image
+                    <Image
+                      src={image.url}
+                      alt={entry.prompt}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-200"
+                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
+      <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
     </div>
   );
 };

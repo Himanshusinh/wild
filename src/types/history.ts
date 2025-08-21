@@ -11,11 +11,18 @@ export interface HistoryEntry {
   model: string;
   generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
   images: GeneratedImage[];
-  timestamp: Date;
+  timestamp: string; // ISO string for Redux serializability
   createdAt: string; // ISO string for Firestore
   imageCount: number;
   status: 'generating' | 'completed' | 'failed';
   error?: string;
+  frameSize?: string;
+  style?: string;
+  generationProgress?: {
+    current: number;
+    total: number;
+    status: string;
+  };
 }
 
 export interface HistoryEntryFirestore {
@@ -29,6 +36,13 @@ export interface HistoryEntryFirestore {
   imageCount: number;
   status: 'generating' | 'completed' | 'failed';
   error?: string;
+  frameSize?: string;
+  style?: string;
+  generationProgress?: {
+    current: number;
+    total: number;
+    status: string;
+  };
 }
 
 export interface HistoryFilters {

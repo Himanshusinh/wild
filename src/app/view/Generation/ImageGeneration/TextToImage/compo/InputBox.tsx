@@ -1,42 +1,138 @@
-'use client';
+"use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { HistoryEntry } from '@/types/history';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { HistoryEntry } from "@/types/history";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import {
   setPrompt,
-  generateImages
-} from '@/store/slices/generationSlice';
-import {
-  toggleDropdown,
-  addNotification
-} from '@/store/slices/uiSlice';
+  generateImages,
+  generateRunwayImages,
+  generateMiniMaxImages,
+  setUploadedImages,
+  setSelectedModel,
+} from "@/store/slices/generationSlice";
+import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   addHistoryEntry,
-  updateHistoryEntry
-} from '@/store/slices/historySlice';
+  updateHistoryEntry,
+} from "@/store/slices/historySlice";
+import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
 
 // Import the new components
-import ModelsDropdown from './ModelsDropdown';
-import ImageCountDropdown from './ImageCountDropdown';
-import FrameSizeDropdown from './FrameSizeDropdown';
-import StyleSelector from './StyleSelector';
+import ModelsDropdown from "./ModelsDropdown";
+import ImageCountDropdown from "./ImageCountDropdown";
+import FrameSizeDropdown from "./FrameSizeDropdown";
+import StyleSelector from "./StyleSelector";
+import ImagePreviewModal from "./ImagePreviewModal";
+import { waitForRunwayCompletion } from "@/lib/runwayService";
+import { uploadGeneratedImage } from "@/lib/imageUpload";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const [preview, setPreview] = useState<{
+    entry: HistoryEntry;
+    image: any;
+  } | null>(null);
+  const inputEl = useRef<HTMLTextAreaElement>(null);
+
+  // Helper function to get clean prompt without style
+  const getCleanPrompt = (promptText: string): string => {
+    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
+  };
+
+  // Helper function to convert frameSize to Runway ratio format
+  const convertFrameSizeToRunwayRatio = (frameSize: string): string => {
+    const ratioMap: { [key: string]: string } = {
+      "1:1": "1024:1024",
+      "16:9": "1920:1080",
+      "9:16": "1080:1920",
+      "4:3": "1360:768",
+      "3:4": "768:1360",
+      "3:2": "1440:1080",
+      "2:3": "1080:1440",
+      "21:9": "1808:768",
+      "9:21": "768:1808",
+      "16:10": "1680:720",
+      "10:16": "720:1680",
+    };
+
+    return ratioMap[frameSize] || "1024:1024"; // Default to square if no match
+  };
+  const downloadImage = async (url: string) => {
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = "generated-image.jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      // Fallback to direct download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "generated-image.jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
 
   // Redux state
-  const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
-  const imageCount = useAppSelector((state: any) => state.generation?.imageCount || 1);
-  const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
-  const style = useAppSelector((state: any) => state.generation?.style || 'realistic');
-  const isGenerating = useAppSelector((state: any) => state.generation?.isGenerating || false);
+  const prompt = useAppSelector((state: any) => state.generation?.prompt || "");
+  const selectedModel = useAppSelector(
+    (state: any) => state.generation?.selectedModel || "flux-dev"
+  );
+  const imageCount = useAppSelector(
+    (state: any) => state.generation?.imageCount || 1
+  );
+  const frameSize = useAppSelector(
+    (state: any) => state.generation?.frameSize || "1:1"
+  );
+  const style = useAppSelector(
+    (state: any) => state.generation?.style || "realistic"
+  );
+  const isGenerating = useAppSelector(
+    (state: any) => state.generation?.isGenerating || false
+  );
   const error = useAppSelector((state: any) => state.generation?.error);
-  const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
-  const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
-  const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const activeDropdown = useAppSelector(
+    (state: any) => state.ui?.activeDropdown
+  );
+  const historyEntries = useAppSelector(
+    (state: any) => state.history?.entries || []
+  );
+  const theme = useAppSelector((state: any) => state.ui?.theme || "dark");
+  const uploadedImages = useAppSelector(
+    (state: any) => state.generation?.uploadedImages || []
+  );
+
+  // Function to clear input after successful generation
+  const clearInputs = () => {
+    dispatch(setPrompt(""));
+    setUploadedImages([]);
+    // Reset file input
+    if (inputEl.current) {
+      inputEl.current.value = "";
+    }
+  };
+
+  // Function to auto-adjust textarea height
+  const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
+    element.style.height = 'auto';
+    element.style.height = element.scrollHeight + 'px';
+  };
+
+  // Auto-adjust height when prompt changes
+  useEffect(() => {
+    if (inputEl.current) {
+      adjustTextareaHeight(inputEl.current);
+    }
+  }, [prompt]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -46,86 +142,610 @@ const InputBox = () => {
       id: `loading-${Date.now()}`,
       prompt: prompt,
       model: selectedModel,
-      generationType: 'text-to-image',
+      generationType: "text-to-image",
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
-        url: '',
-        originalUrl: ''
+        url: "",
+        originalUrl: "",
       })),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: imageCount,
-      status: 'generating'
+      status: "generating",
+      frameSize,
+      style,
     };
 
     // Add loading entry to show frames immediately
     dispatch(addHistoryEntry(loadingEntry));
 
+    // Declare firebaseHistoryId at function level for error handling
+    let firebaseHistoryId: string | undefined;
+
     try {
-      // Use Redux async thunk for generation
-      const result = await dispatch(generateImages({
+      // Check if it's a Runway model
+      const isRunwayModel = selectedModel.startsWith("gen4_image");
+      // Check if it's a MiniMax model
+      const isMiniMaxModel = selectedModel === "minimax-image-01";
+
+      if (isRunwayModel) {
+        console.log('🚀 ENTERING RUNWAY GENERATION SECTION');
+        console.log('=== STARTING RUNWAY GENERATION ===');
+        console.log('Selected model:', selectedModel);
+        console.log('Image count:', imageCount);
+        console.log('Frame size:', frameSize);
+        console.log('Style:', style);
+        console.log('Uploaded images count:', uploadedImages.length);
+        
+        // 🔥 FIREBASE SAVE FLOW FOR RUNWAY MODELS:
+        // 1. Create initial Firebase entry with 'generating' status
+        // 2. Update Firebase with progress as images complete
+        // 3. Update Firebase with final 'completed' or 'failed' status
+        // 4. All updates include images, metadata, and status
+        // 5. Error handling updates both Redux and Firebase
+        // 6. Firebase ID is used consistently throughout the process
+        
+        try {
+          firebaseHistoryId = await saveHistoryEntry({
+            prompt: prompt,
+            model: selectedModel,
+            generationType: "text-to-image",
+            images: [],
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount: imageCount,
+            status: 'generating',
+            frameSize,
+            style
+          });
+          console.log('✅ Firebase history entry created with ID:', firebaseHistoryId);
+          console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
+          
+          // Update the local entry with the Firebase ID
+          dispatch(updateHistoryEntry({
+            id: loadingEntry.id,
+            updates: { id: firebaseHistoryId }
+          }));
+          
+          // Don't modify the loadingEntry object - use firebaseHistoryId directly
+          console.log('Using Firebase ID for all operations:', firebaseHistoryId);
+        } catch (firebaseError) {
+          console.error('❌ Failed to save to Firebase:', firebaseError);
+          console.error('Firebase error details:', {
+            message: firebaseError instanceof Error ? firebaseError.message : 'Unknown error',
+            stack: firebaseError instanceof Error ? firebaseError.stack : 'No stack trace'
+          });
+          dispatch(
+            addNotification({
+              type: "error",
+              message: "Failed to save generation to history",
+            })
+          );
+          return;
+        }
+        
+        // Validate gen4_image_turbo requires at least one reference image
+        console.log('🔍 ABOUT TO START VALIDATION');
+        console.log('=== VALIDATING RUNWAY REQUIREMENTS ===');
+        console.log('Selected model:', selectedModel);
+        console.log('Uploaded images count:', uploadedImages.length);
+        console.log('Uploaded images:', uploadedImages);
+        console.log('Is gen4_image_turbo:', selectedModel === "gen4_image_turbo");
+        console.log('Has uploaded images:', uploadedImages.length > 0);
+        console.log('Validation condition:', selectedModel === "gen4_image_turbo" && uploadedImages.length === 0);
+        
+        if (
+          selectedModel === "gen4_image_turbo" &&
+          uploadedImages.length === 0
+        ) {
+          console.log('❌ VALIDATION FAILED: gen4_image_turbo requires reference image');
+          console.log('Stopping generation process...');
+          
+          // Update Firebase entry to failed status
+          try {
+            await updateFirebaseHistory(firebaseHistoryId!, {
+              status: "failed",
+              error: "gen4_image_turbo requires at least one reference image"
+            });
+            console.log('✅ Firebase entry updated to failed status');
+          } catch (firebaseError) {
+            console.error('❌ Failed to update Firebase entry:', firebaseError);
+          }
+          
+          // Remove the loading entry since validation failed
+          dispatch(
+            updateHistoryEntry({
+              id: firebaseHistoryId!,
+              updates: {
+                status: "failed",
+                error: "gen4_image_turbo requires at least one reference image"
+              },
+            })
+          );
+          
+          dispatch(
+            addNotification({
+              type: "error",
+              message: "gen4_image_turbo requires at least one reference image",
+            })
+          );
+          return;
+        }
+        
+        console.log('✅ VALIDATION PASSED: Proceeding with Runway generation');
+        console.log('🎯 VALIDATION COMPLETED - MOVING TO NEXT STEP');
+        
+        // Additional safety check
+        if (selectedModel === "gen4_image_turbo" && uploadedImages.length === 0) {
+          console.error('🚨 SAFETY CHECK FAILED: This should not happen!');
+          throw new Error('Validation bypassed unexpectedly');
+        }
+
+        // Convert frameSize to Runway ratio format
+        const ratio = convertFrameSizeToRunwayRatio(frameSize);
+        console.log('Converted frame size to Runway ratio:', ratio);
+
+        // For Runway, support multiple images by creating parallel tasks
+        const totalToGenerate = Math.min(imageCount, 4);
+        let currentImages = [...loadingEntry.images];
+        let completedCount = 0;
+        let anyFailures = false;
+
+        console.log('Total images to generate:', totalToGenerate);
+        console.log('Initial currentImages array:', currentImages);
+
+        // Update initial progress
+        dispatch(
+          updateHistoryEntry({
+            id: firebaseHistoryId!,
+            updates: {
+              generationProgress: {
+                current: 0,
+                total: totalToGenerate * 100,
+                status: `Starting Runway generation for ${totalToGenerate} image(s)...`,
+              },
+            },
+          })
+        );
+
+        // Create all generation tasks in parallel
+        const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+          try {
+            console.log(`Starting Runway generation for image ${index + 1}/${totalToGenerate}`);
+            
+            // Make direct API call to avoid creating multiple history entries
+            console.log(`=== MAKING RUNWAY API CALL FOR IMAGE ${index + 1} ===`);
+            console.log('API payload:', {
+              promptText: `${prompt} [Style: ${style}]`,
+              model: selectedModel,
+              ratio,
+              generationType: "text-to-image",
+              uploadedImagesCount: uploadedImages.length,
+              style,
+              existingHistoryId: firebaseHistoryId
+            });
+            
+            const runwayResponse = await fetch('/api/runway', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                promptText: `${prompt} [Style: ${style}]`,
+                model: selectedModel,
+                ratio,
+                generationType: "text-to-image",
+                uploadedImages,
+                style,
+                existingHistoryId: firebaseHistoryId // Pass existing history ID
+              }),
+            });
+
+            console.log(`Runway API response status: ${runwayResponse.status}`);
+            console.log(`Runway API response headers:`, Object.fromEntries(runwayResponse.headers.entries()));
+
+            if (!runwayResponse.ok) {
+              const errorData = await runwayResponse.json();
+              console.error(`Runway API error for image ${index + 1}:`, errorData);
+              throw new Error(errorData.error || 'Runway API request failed');
+            }
+
+            const result = await runwayResponse.json();
+            console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
+
+            // Poll for completion
+            const finalStatus = await waitForRunwayCompletion(
+              result.taskId,
+              (progress, status) => {
+                console.log(`Runway progress for image ${index + 1}:`, progress, status);
+                // Update progress for this specific image
+                const currentProgress = Math.round(progress * 100);
+                const totalProgress = completedCount * 100 + currentProgress;
+                
+                dispatch(
+                  updateHistoryEntry({
+                    id: firebaseHistoryId!,
+                    updates: {
+                      generationProgress: {
+                        current: totalProgress,
+                        total: totalToGenerate * 100,
+                        status: `Runway ${index + 1}/${totalToGenerate}: ${status}`,
+                      },
+                    },
+                  })
+                );
+                
+                // Note: Firebase progress updates will happen after image completion
+                // to avoid async issues in the progress callback
+              }
+            );
+
+            console.log(`Runway completion for image ${index + 1}:`, finalStatus);
+
+            // Process the completed image
+            const imageUrl = finalStatus.output && finalStatus.output.length > 0 ? finalStatus.output[0] : '';
+            if (imageUrl) {
+              console.log(`Image ${index + 1} completed with URL:`, imageUrl);
+              
+              // Create a new array copy instead of modifying the existing one
+              const newImages = [...currentImages];
+              newImages[index] = {
+                id: `${result.taskId}-${index}`,
+                url: imageUrl,
+                originalUrl: imageUrl
+              };
+              
+              // Update the reference to use the new array
+              currentImages = newImages;
+              completedCount++;
+              
+              console.log(`Updated currentImages array:`, currentImages);
+              console.log(`Completed count:`, completedCount);
+              
+              // Upload the image to Firebase Storage
+              console.log(`Uploading image ${index + 1} to Firebase Storage...`);
+              try {
+                const uploadedImage = await uploadGeneratedImage(newImages[index]);
+                console.log(`Image ${index + 1} uploaded to Firebase:`, uploadedImage);
+                
+                // Update the image with Firebase URL
+                newImages[index] = uploadedImage;
+                currentImages = newImages;
+                
+                // Update the history entry with the new image and Firebase URL
+                dispatch(
+                  updateHistoryEntry({
+                    id: firebaseHistoryId!,
+                    updates: {
+                      images: currentImages,
+                      frameSize: ratio,
+                      generationProgress: {
+                        current: completedCount * 100,
+                        total: totalToGenerate * 100,
+                        status: `Completed ${completedCount}/${totalToGenerate} images`,
+                      },
+                    },
+                  })
+                );
+                
+                // 🔥 CRITICAL FIX: Update Firebase with completed image
+                try {
+                  await updateFirebaseHistory(firebaseHistoryId!, {
+                    images: currentImages,
+                    frameSize: ratio,
+                    generationProgress: {
+                      current: completedCount * 100,
+                      total: totalToGenerate * 100,
+                      status: `Completed ${completedCount}/${totalToGenerate} images`,
+                    },
+                  });
+                  console.log(`✅ Firebase updated with image ${index + 1}`);
+                } catch (firebaseError) {
+                  console.error(`❌ Failed to update Firebase with image ${index + 1}:`, firebaseError);
+                }
+              } catch (uploadError) {
+                console.error(`Failed to upload image ${index + 1} to Firebase:`, uploadError);
+                // Continue with the original URL if upload fails
+                dispatch(
+                  updateHistoryEntry({
+                    id: firebaseHistoryId!,
+                    updates: {
+                      images: currentImages,
+                      frameSize: ratio,
+                      generationProgress: {
+                        current: completedCount * 100,
+                        total: totalToGenerate * 100,
+                        status: `Completed ${completedCount}/${totalToGenerate} images (Firebase upload failed)`,
+                      },
+                    },
+                  })
+                );
+              }
+            } else {
+              console.error(`No image URL returned for image ${index + 1}`);
+            }
+
+            return { success: true, index, imageUrl };
+          } catch (error) {
+            console.error(`Runway generation failed for image ${index + 1}:`, error);
+            anyFailures = true;
+            
+            dispatch(
+              addNotification({
+                type: "error",
+                message: `Failed to generate image ${index + 1} with Runway: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              })
+            );
+            
+            return { success: false, index, error };
+          }
+        });
+
+        // Wait for all generations to complete
+        console.log('Waiting for all Runway generations to complete...');
+        const results = await Promise.allSettled(generationPromises);
+        console.log('All Runway generations completed. Results:', results);
+        
+        // Count successful generations
+        const successfulResults = results.filter(
+          (result) => result.status === 'fulfilled' && result.value.success
+        );
+        console.log('Successful generations:', successfulResults.length);
+        console.log('Failed generations:', results.length - successfulResults.length);
+        
+        // Finalize entry
+        console.log('Finalizing history entry...');
+        console.log('Final currentImages:', currentImages);
+        console.log('Successful generations:', successfulResults.length);
+        
+        dispatch(
+          updateHistoryEntry({
+            id: firebaseHistoryId!,
+            updates: {
+              status: successfulResults.length > 0 ? "completed" : "failed",
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: successfulResults.length,
+              frameSize: ratio,
+              style,
+              generationProgress: {
+                current: successfulResults.length * 100,
+                total: totalToGenerate * 100,
+                status: `Completed ${successfulResults.length}/${totalToGenerate} images`,
+              },
+            },
+          })
+        );
+        
+        // 🔥 CRITICAL FIX: Update Firebase with final status
+        console.log('💾 UPDATING FIREBASE WITH FINAL STATUS...');
+        console.log('Final data to update:', {
+          status: successfulResults.length > 0 ? "completed" : "failed",
+          imageCount: successfulResults.length,
+          frameSize: ratio,
+          style,
+          firebaseHistoryId
+        });
+        
+        // 🔍 DEBUG: Check if firebaseHistoryId is valid
+        if (!firebaseHistoryId) {
+          console.error('❌ CRITICAL ERROR: firebaseHistoryId is undefined!');
+          console.error('This means the Firebase save failed at the beginning');
+          return;
+        }
+        
+        console.log('🔍 DEBUG: firebaseHistoryId is valid:', firebaseHistoryId);
+        console.log('🔍 DEBUG: successfulResults.length:', successfulResults.length);
+        console.log('🔍 DEBUG: totalToGenerate:', totalToGenerate);
+        
+        const finalStatus = successfulResults.length > 0 ? "completed" : "failed" as "completed" | "failed";
+        console.log('🔍 DEBUG: Final status to set:', finalStatus);
+        
+        const updateData = {
+          status: finalStatus,
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          imageCount: successfulResults.length,
+          frameSize: ratio,
+          style,
+          generationProgress: {
+            current: successfulResults.length * 100,
+            total: totalToGenerate * 100,
+            status: `Completed ${successfulResults.length}/${totalToGenerate} images`,
+          },
+        };
+        
+        console.log('🔍 DEBUG: Update data being sent to Firebase:', updateData);
+        
+        try {
+          console.log('🔍 DEBUG: About to call updateFirebaseHistory...');
+          console.log('🔍 DEBUG: Function parameters:', { firebaseHistoryId, updateData });
+          
+          await updateFirebaseHistory(firebaseHistoryId, updateData);
+          
+          console.log('✅ Firebase updated with final status:', finalStatus);
+          console.log('🔗 Firebase document updated: generationHistory/' + firebaseHistoryId);
+          
+          // 🔍 DEBUG: Verify the update worked by checking Firebase again
+          console.log('🔍 DEBUG: Firebase update completed successfully');
+          
+          // 🔍 DEBUG: Add a small delay to ensure Firebase has processed the update
+          console.log('🔍 DEBUG: Waiting 1 second for Firebase to process update...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('🔍 DEBUG: Delay completed, Firebase update should be persisted');
+          
+        } catch (firebaseError) {
+          console.error('❌ Failed to update Firebase with final status:', firebaseError);
+          console.error('Firebase update error details:', {
+            message: firebaseError instanceof Error ? firebaseError.message : 'Unknown error',
+            stack: firebaseError instanceof Error ? firebaseError.stack : 'No stack trace'
+          });
+          
+          // 🔍 DEBUG: Try to understand what went wrong
+          console.error('🔍 DEBUG: firebaseHistoryId that failed:', firebaseHistoryId);
+          console.error('🔍 DEBUG: Update data that failed:', updateData);
+        }
+
+        if (successfulResults.length > 0) {
+          console.log('Runway generation completed successfully!');
+          dispatch(
+            addNotification({
+              type: "success",
+              message: `Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`,
+            })
+          );
+          clearInputs(); // Clear inputs after successful generation
+        } else {
+          console.log('All Runway generations failed');
+        }
+        
+        console.log('=== RUNWAY GENERATION COMPLETED ===');
+      } else if (isMiniMaxModel) {
+        // Use MiniMax generation
+        const result = await dispatch(
+          generateMiniMaxImages({
+            prompt: `${prompt} [Style: ${style}]`,
+            model: selectedModel,
+            aspect_ratio: frameSize,
+            imageCount,
+            generationType: "text-to-image",
+            uploadedImages,
+            style
+          })
+        ).unwrap();
+
+        // MiniMax now returns images directly with Firebase URLs
+        // Update the loading entry with completed data
+        dispatch(
+          updateHistoryEntry({
+            id: loadingEntry.id,
+            updates: {
+              status: 'completed',
+              images: result.images,
+              imageCount: result.images.length,
+              frameSize: result.aspect_ratio || frameSize,
+              style,
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            },
+          })
+        );
+
+        // Show success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: `MiniMax generation completed! Generated ${result.images.length} image(s)`,
+          })
+        );
+        clearInputs(); // Clear inputs after successful generation
+      } else {
+        // Use regular BFL generation
+        const result = await dispatch(
+          generateImages({
         prompt: `${prompt} [Style: ${style}]`,
         model: selectedModel,
         imageCount,
         frameSize,
-        style
-      })).unwrap();
+            style,
+            generationType: "text-to-image",
+            uploadedImages,
+          })
+        ).unwrap();
 
       // Create the completed entry
       const completedEntry: HistoryEntry = {
         id: result.historyId || Date.now().toString(),
         prompt: prompt,
         model: selectedModel,
-        generationType: 'text-to-image',
+          generationType: "text-to-image",
         images: result.images,
-        timestamp: new Date(),
+          timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: result.images.length,
-        status: 'completed'
+          status: "completed",
+          frameSize,
+          style,
       };
 
       // Update the loading entry with completed data
-      dispatch(updateHistoryEntry({
+        dispatch(
+          updateHistoryEntry({
         id: loadingEntry.id,
-        updates: completedEntry
-      }));
+            updates: completedEntry,
+          })
+        );
 
       // Show success notification
-      dispatch(addNotification({
-        type: 'success',
-        message: `Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`
-      }));
-
+        dispatch(
+          addNotification({
+            type: "success",
+            message: `Generated ${result.images.length} image${
+              result.images.length > 1 ? "s" : ""
+            } successfully!`,
+          })
+        );
+        clearInputs(); // Clear inputs after successful generation
+      }
     } catch (error) {
-      console.error('Error generating images:', error);
+      console.error("Error generating images:", error);
 
       // Update loading entry to failed status
-      dispatch(updateHistoryEntry({
-        id: loadingEntry.id,
+      // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
+      const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
+      
+      dispatch(
+        updateHistoryEntry({
+          id: entryIdToUpdate,
         updates: {
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Failed to generate images'
+            status: "failed",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to generate images",
+          },
+        })
+      );
+
+      // If we have a Firebase ID, also update it there
+      if (firebaseHistoryId) {
+        try {
+          await updateFirebaseHistory(firebaseHistoryId, {
+            status: "failed",
+            error: error instanceof Error ? error.message : "Failed to generate images",
+          });
+          console.log('✅ Firebase entry updated to failed status due to error');
+        } catch (firebaseError) {
+          console.error('❌ Failed to update Firebase entry to failed status:', firebaseError);
         }
-      }));
+      }
 
       // Show error notification
-      dispatch(addNotification({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to generate images'
-      }));
+      dispatch(
+        addNotification({
+          type: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to generate images",
+        })
+      );
     }
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (activeDropdown && !(event.target as HTMLElement).closest('.dropdown-container')) {
-        dispatch(toggleDropdown(''));
+      if (
+        activeDropdown &&
+        !(event.target as HTMLElement).closest(".dropdown-container")
+      ) {
+        dispatch(toggleDropdown(""));
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeDropdown, dispatch]);
 
   return (
@@ -145,23 +765,78 @@ const InputBox = () => {
                   {/* Prompt Text in Left Corner */}
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-white/60"
+                      >
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-white/90 text-sm leading-relaxed">{entry.prompt}</p>
+                    <div className="flex flex-col">
+                      <div className="flex flex-row-reverse items-center gap-2">
+                        <p className="text-white/90 text-sm leading-relaxed flex-1 max-w-[500px] break-words">
+                          {getCleanPrompt(entry.prompt)}
+                        </p>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              getCleanPrompt(entry.prompt)
+                            );
+                            dispatch(
+                              addNotification({
+                                type: "success",
+                                message: "Prompt copied to clipboard!",
+                              })
+                            );
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
+                          title="Copy prompt"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-4 w-4"
+                          >
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                            <rect
+                              x="8"
+                              y="2"
+                              width="8"
+                              height="4"
+                              rx="1"
+                              ry="1"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                        <span>{entry.timestamp.toLocaleDateString()}</span>
+                        <span>
+                          {new Date(entry.timestamp).toLocaleDateString()}
+                        </span>
                         <span>{entry.model}</span>
-                        <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
-                        {entry.status === 'generating' && (
+                        <span>
+                          {entry.images.length} image
+                          {entry.images.length !== 1 ? "s" : ""}
+                        </span>
+                        {entry.style && (
+                          <span className="text-blue-400">
+                            Style: {entry.style}
+                          </span>
+                        )}
+                        {entry.status === "generating" && (
                           <span className="text-yellow-400 flex items-center gap-1">
                             <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
                             Generating...
                           </span>
                         )}
-                        {entry.status === 'failed' && (
+                        {entry.status === "failed" && (
                           <span className="text-red-400">Failed</span>
                         )}
                       </div>
@@ -171,21 +846,33 @@ const InputBox = () => {
                   {/* Images Grid - Smaller Size */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
                     {entry.images.map((image: any) => (
-                      <div key={image.id} className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group">
-                        {entry.status === 'generating' ? (
+                      <div
+                        key={image.id}
+                        onClick={() => setPreview({ entry, image })}
+                        className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
+                      >
+                        {entry.status === "generating" ? (
                           // Loading frame
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                             <div className="flex flex-col items-center gap-2">
                               <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">Generating...</div>
+                              <div className="text-xs text-white/60">
+                                Generating...
+                              </div>
                             </div>
                           </div>
-                        ) : entry.status === 'failed' ? (
+                        ) : entry.status === "failed" ? (
                           // Error frame
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
                             <div className="flex flex-col items-center gap-2">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                              <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="text-red-400"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                               </svg>
                               <div className="text-xs text-red-400">Failed</div>
                             </div>
@@ -210,22 +897,63 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[680px] z-[60]">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
         <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
         <div className="flex items-center gap-3 p-3">
           <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
-            <input
-              type="text"
+            <textarea
+              ref={inputEl}
               placeholder="Type your prompt..."
               value={prompt}
-              onChange={(e) => dispatch(setPrompt(e.target.value))}
-              className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
+              onChange={(e) => {
+                dispatch(setPrompt(e.target.value));
+                adjustTextareaHeight(e.target);
+              }}
+              className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
+                prompt ? 'text-white' : 'text-white/70'
+              }`}
+              rows={1}
+              style={{ 
+                minHeight: '24px', 
+                maxHeight: '96px',
+                lineHeight: '1.2',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+              }}
+            />
+              {/* Previews just to the left of upload */}
+              {uploadedImages.length > 0 && (
+                <div className="flex items-center gap-1.5 pr-1">
+                  {uploadedImages.map((u: string, i: number) => (
+                    <div
+                      key={i}
+                      className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={u}
+                        alt={`ref-${i}`}
+                        className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
             />
             <button
-              aria-label="Attach"
-              className="p-1.5 rounded-lg hover:bg-white/10 transition"
-            >
+                        aria-label="Remove reference"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = uploadedImages.filter(
+                            (_: string, idx: number) => idx !== i
+                          );
+                          dispatch(setUploadedImages(next));
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer">
               <Image
                 src="/icons/fileuploadwhite.svg"
                 alt="Attach"
@@ -233,34 +961,149 @@ const InputBox = () => {
                 height={18}
                 className="opacity-90"
               />
-            </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const inputEl = e.currentTarget as HTMLInputElement;
+                    const files = Array.from(inputEl.files || []).slice(0, 4);
+                    const urls: string[] = [];
+                    for (const file of files) {
+                      const reader = new FileReader();
+                      const asDataUrl: string = await new Promise((res) => {
+                        reader.onload = () => res(reader.result as string);
+                        reader.readAsDataURL(file);
+                      });
+                      urls.push(asDataUrl);
+                    }
+                    // append to existing stack (max 4)
+                    const next = [...uploadedImages, ...urls].slice(0, 4);
+                    dispatch(setUploadedImages(next));
+                    
+                    // Only auto-switch models if this is the first upload AND we're not using an image-to-image model
+                    if (uploadedImages.length === 0 && next.length > 0) {
+                      // Check if current model is an image-to-image model
+                      const isImageToImageModel = selectedModel === "gen4_image_turbo" || selectedModel === "gen4_image";
+                      
+                      if (!isImageToImageModel) {
+                        // Only auto-switch for text-to-image models
+                        console.log('Auto-switching model for text-to-image generation');
+                        if (next.length > 1) {
+                          dispatch(setSelectedModel("flux-kontext-pro"));
+                        } else {
+                          // Single image - could use MiniMax or Kontext Pro
+                          dispatch(setSelectedModel("flux-kontext-pro"));
+                        }
+                      } else {
+                        console.log('Keeping current image-to-image model:', selectedModel);
+                      }
+                    }
+                    // clear input so the same file can be reselected
+                    if (inputEl) inputEl.value = "";
+                  }}
+                />
+              </label>
           </div>
 
           {/* Small + button (between attach and Generate in the mock) */}
          
           <div className="flex flex-col items-end gap-2">
-            {error && (
-              <div className="text-red-500 text-sm">{error}</div>
-            )}
+              {error && <div className="text-red-500 text-sm">{error}</div>}
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
               className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
             >
-              {isGenerating ? 'Generating...' : 'Generate'}
+                {isGenerating ? "Generating..." : "Generate"}
             </button>
           </div>
         </div>
 
         {/* Bottom row: pill options */}
         <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+          {/* Selection Summary */}
+          {/* <div className="flex items-center gap-2 text-xs text-white/60 bg-white/5 px-3 py-1.5 rounded-lg transition-all duration-300">
+            <span>Selected:</span>
+            <span className="text-white/80 font-medium flex flex-wrap gap-1">
+              {selectedModel !== 'flux-dev' && (
+                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
+                  {selectedModel.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                </span>
+              )}
+              {imageCount !== 1 && (
+                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
+                  {imageCount} Image{imageCount > 1 ? 's' : ''}
+                </span>
+              )}
+              {frameSize !== '1:1' && (
+                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
+                  {frameSize}
+                </span>
+              )}
+              {style !== 'realistic' && (
+                <span className="bg-white/20 text-white px-2 py-0.5 rounded animate-pulse">
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </span>
+              )}
+              {(selectedModel === 'flux-dev' && imageCount === 1 && frameSize === '1:1' && style === 'realistic') && (
+                <span className="text-white/40">Default settings</span>
+              )}
+            </span>
+          </div> */}
+          
           <ModelsDropdown />
           <ImageCountDropdown />
           <FrameSizeDropdown />
           <StyleSelector />
+            {/* moved previews near upload above */}
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                aria-label="Upscale"
+                title="Upscale"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5 text-[#2F6BFF]"
+                >
+                  <path d="M7 17l-4 4" />
+                  <path d="M3 17h4v4" />
+                  <path d="M17 7l4-4" />
+                  <path d="M21 7h-4V3" />
+                </svg>
+                <span className="text-sm text-white">Upscale</span>
+              </button>
+              <button
+                aria-label="Remove background"
+                title="Remove background"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5 text-[#F97316]"
+                >
+                  <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
+                  <path d="M5 13l6 6" />
+                </svg>
+                <span className="text-sm text-white">Remove background</span>
+              </button>
+            </div>
         </div>
       </div>
       </div>
+      <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
     </>
   );
 };

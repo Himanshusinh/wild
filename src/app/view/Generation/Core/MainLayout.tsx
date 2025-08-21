@@ -1,91 +1,91 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
+import { clearGenerationState } from '@/store/slices/generationSlice';
 import Nav from './Nav';
 import SidePannelFeatures from './SidePannelFeatures';
 import PageRouter from './PageRouter';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import NotificationToast from '@/components/ui/NotificationToast';
-import { usePathname, useRouter } from 'next/navigation';
+import { ViewType, GenerationType } from '@/types/generation';
 
-const MainLayout = () => {
+export default function MainLayout() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state.ui?.currentView || 'generation');
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
 
-  // Debug: Log Redux state (remove in production)
-  React.useEffect(() => {
-    console.log('Redux state initialized:', { currentView });
+  // Sync URL with state on initial load and route changes
+  useEffect(() => {
+    if (!pathname) return;
+
+    if (pathname.includes('/history')) {
+      dispatch(setCurrentView('history'));
+    } else if (pathname.includes('/bookmarks')) {
+      dispatch(setCurrentView('bookmarks'));
+    } else {
+      dispatch(setCurrentView('generation'));
+      // Extract generation type from URL
+      const type = pathname.split('/').pop();
+      if (type && type !== 'generation') {
+        const newType = type as GenerationType;
+        // Only clear generation state if switching to a DIFFERENT generation type
+        if (newType !== currentGenerationType) {
+          dispatch(clearGenerationState());
+        }
+        dispatch(setCurrentGenerationType(newType));
+      }
+    }
+  }, [pathname, dispatch, currentGenerationType]);
+
+  // Debug: log current view when it changes
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('currentView:', currentView);
   }, [currentView]);
 
-  const handleViewChange = (view: 'generation' | 'history' | 'bookmarks') => {
+  const handleViewChange = (view: ViewType) => {
+    if (view === currentView) return; // Prevent unnecessary updates
+    
+    // Clear generation state when switching away from generation view
+    if (currentView === 'generation') {
+      dispatch(clearGenerationState());
+    }
+    
     dispatch(setCurrentView(view));
-    if (view === 'history') {
-      router.push('/history');
-      return;
+    switch (view) {
+      case 'history':
+        router.push('/history');
+        break;
+      case 'bookmarks':
+        router.push('/bookmarks');
+        break;
+      default:
+        router.push(`/${currentGenerationType}`);
     }
-    if (view === 'bookmarks') {
-      router.push('/bookmarks');
-      return;
-    }
-    // For generation view, route to the current generation type
-    const typeToPath: Record<string, string> = {
-      'text-to-image': '/text-to-image',
-      'logo-generation': '/logo-generation',
-      'sticker-generation': '/sticker-generation',
-      'text-to-video': '/text-to-video',
-      'text-to-music': '/text-to-music',
-    };
-    router.push(typeToPath[currentGenerationType] || '/text-to-image');
   };
 
-  // Handle generation type changes directly
-  const handleGenerationTypeChange = (type: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music') => {
+  const handleGenerationTypeChange = (type: GenerationType) => {
+    if (type === currentGenerationType && currentView === 'generation') return;
+    
+    // Only clear generation state when switching to a DIFFERENT generation type
+    if (type !== currentGenerationType) {
+      dispatch(clearGenerationState());
+    }
+    
     dispatch(setCurrentGenerationType(type));
     dispatch(setCurrentView('generation'));
-    
-    const typeToPath: Record<string, string> = {
-      'text-to-image': '/text-to-image',
-      'logo-generation': '/logo-generation',
-      'sticker-generation': '/sticker-generation',
-      'text-to-video': '/text-to-video',
-      'text-to-music': '/text-to-music',
-    };
-    router.push(typeToPath[type]);
+    router.push(`/${type}`);
   };
-
-  // Sync URL -> Redux on initial mount and on route changes
-  React.useEffect(() => {
-    const path = pathname || '/';
-    if (path === '/history') {
-      dispatch(setCurrentView('history'));
-      return;
-    }
-    if (path === '/bookmarks') {
-      dispatch(setCurrentView('bookmarks'));
-      return;
-    }
-    dispatch(setCurrentView('generation'));
-    const pathToType: Record<string, any> = {
-      '/': 'text-to-image',
-      '/text-to-image': 'text-to-image',
-      '/logo-generation': 'logo-generation',
-      '/sticker-generation': 'sticker-generation',
-      '/text-to-video': 'text-to-video',
-      '/text-to-music': 'text-to-music',
-    };
-    const nextType = pathToType[path] || 'text-to-image';
-    dispatch(setCurrentGenerationType(nextType));
-  }, [pathname, dispatch]);
 
   return (
     <div className="min-h-screen bg-black">
       <Nav />
       <SidePannelFeatures
-        currentView={currentView}
+        currentView={currentView as ViewType}
         onViewChange={handleViewChange}
         onGenerationTypeChange={handleGenerationTypeChange}
       />
@@ -95,6 +95,4 @@ const MainLayout = () => {
       <NotificationToast />
     </div>
   );
-};
-
-export default MainLayout;
+}

@@ -14,8 +14,7 @@ import {
 } from '@/store/slices/uiSlice';
 import {
   addHistoryEntry,
-  updateHistoryEntry,
-  loadHistory
+  updateHistoryEntry
 } from '@/store/slices/historySlice';
 
 const InputBox = () => {
@@ -33,11 +32,7 @@ const InputBox = () => {
   // Debug logging
   console.log('TextToMusic InputBox - History entries:', historyEntries.length);
 
-  // Load history when component mounts
-  useEffect(() => {
-    console.log('TextToMusic InputBox: Loading history...');
-    dispatch(loadHistory({}));
-  }, [dispatch]);
+  // History loading is handled centrally in PageRouter based on current generation type
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -53,7 +48,7 @@ const InputBox = () => {
         url: '',
         originalUrl: ''
       }],
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
       status: 'generating'
@@ -67,7 +62,8 @@ const InputBox = () => {
       const result = await dispatch(generateImages({ 
         prompt: `Create music for: ${prompt}`, 
         model: selectedModel, 
-        imageCount: 1
+        imageCount: 1,
+        generationType: 'text-to-music'
       })).unwrap();
 
       // Create the completed entry
@@ -77,7 +73,7 @@ const InputBox = () => {
         model: selectedModel,
         generationType: 'text-to-music',
         images: result.images,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: 1,
         status: 'completed'
@@ -151,7 +147,7 @@ const InputBox = () => {
                     <div className="flex-1">
                       <p className="text-white/90 text-sm leading-relaxed">{entry.prompt}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                        <span>{entry.timestamp.toLocaleDateString()}</span>
+                        <span>{new Date(entry.timestamp).toLocaleDateString()}</span>
                         <span>{entry.model}</span>
                         <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
                         {entry.status === 'generating' && (

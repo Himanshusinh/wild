@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   let historyId: string | null = null;
 
   try {
-    const { prompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image' } = await request.json();
+    const { prompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image', uploadedImages = [] } = await request.json();
     const apiKey = process.env.BFL_API_KEY;
 
     if (!prompt) {
@@ -46,25 +46,69 @@ export async function POST(request: Request) {
       model,
       generationType,
       images: [],
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: n,
-      status: 'generating'
+      status: 'generating',
+      frameSize,
+      style
     });
+
+    // Helper: map frame size to pixel dimensions (multiples of 32)
+    const getDimensions = (ratio: string): { width: number; height: number } => {
+      switch (ratio) {
+        case '1:1':
+          return { width: 1024, height: 1024 };
+        case '3:4': // portrait
+          return { width: 1024, height: 1344 };
+        case '4:3': // landscape
+          return { width: 1344, height: 1024 };
+        case '16:9':
+          return { width: 1280, height: 720 };
+        case '21:9':
+          return { width: 1344, height: 576 };
+        default:
+          return { width: 1024, height: 768 };
+      }
+    };
 
     // Generate multiple images if requested
     const imagePromises = Array.from({ length: n }, async () => {
-      const response = await fetch(`https://api.bfl.ai/v1/${model.toLowerCase().replace(' ', '-')}`, {
+      const normalizedModel = (model as string).toLowerCase().replace(/\s+/g, '-');
+      const endpoint = `https://api.bfl.ai/v1/${normalizedModel}`;
+
+      // Build payload per model
+      let body: any = { prompt };
+      if (normalizedModel.includes('kontext')) {
+        // Kontext models accept aspect_ratio
+        body.aspect_ratio = frameSize;
+        body.output_format = 'jpeg';
+        if (Array.isArray(uploadedImages) && uploadedImages.length > 0) {
+          const [img1, img2, img3, img4] = uploadedImages;
+          if (img1) body.input_image = img1;
+          if (img2) body.input_image_2 = img2;
+          if (img3) body.input_image_3 = img3;
+          if (img4) body.input_image_4 = img4;
+        }
+      } else if (normalizedModel === 'flux-pro' || normalizedModel === 'flux-dev') {
+        const { width, height } = getDimensions(frameSize);
+        body.width = width;
+        body.height = height;
+        body.output_format = 'jpeg';
+      } else {
+        // Fallback to aspect_ratio for other variants
+        body.aspect_ratio = frameSize;
+        body.output_format = 'jpeg';
+      }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
           'x-key': apiKey,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt,
-          aspect_ratio: frameSize,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -91,19 +135,21 @@ export async function POST(request: Request) {
     const images = await Promise.all(imagePromises);
 
     // Upload images to Firebase Storage
-    const uploadedImages = await uploadGeneratedImages(images);
+    const uploadedImagesResult = await uploadGeneratedImages(images);
 
-    // Update history entry with completed images
+    // Update history entry with completed images and persist frameSize/style
     if (historyId) {
       await updateHistoryEntry(historyId, {
-        images: uploadedImages,
-        status: 'completed'
+        images: uploadedImagesResult,
+        status: 'completed',
+        frameSize,
+        style
       });
     }
 
     // Return the image URLs to the client
     return NextResponse.json({
-      images: uploadedImages,
+      images: uploadedImagesResult,
       historyId
     });
 
