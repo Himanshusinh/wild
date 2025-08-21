@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import TextToImageInputBox from '../ImageGeneration/TextToImage/compo/InputBox';
 import LogoGenerationInputBox from '../ImageGeneration/LogoGeneration/compo/InputBox';
@@ -14,8 +13,8 @@ import Bookmarks from './Bookmarks';
 type PageType = 'generation' | 'history' | 'bookmarks';
 
 const PageRouter = () => {
-  const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state.ui?.currentView || 'generation');
+  const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
 
   const renderPage = () => {
     // If we're on history or bookmarks page, show those
@@ -26,34 +25,33 @@ const PageRouter = () => {
       return <Bookmarks />;
     }
 
-    // Otherwise, show the appropriate InputBox based on URL
-    switch (pathname) {
-      case '/logo-generation':
+    // Otherwise, show the appropriate InputBox based on currentGenerationType
+    switch (currentGenerationType) {
+      case 'logo-generation':
         return (
           <div className="relative min-h-screen">
             <LogoGenerationInputBox />
           </div>
         );
-      case '/sticker-generation':
+      case 'sticker-generation':
         return (
           <div className="relative min-h-screen">
             <StickerGenerationInputBox />
           </div>
         );
-      case '/text-to-video':
+      case 'text-to-video':
         return (
           <div className="relative min-h-screen">
             <TextToVideoInputBox />
           </div>
         );
-      case '/text-to-music':
+      case 'text-to-music':
         return (
           <div className="relative min-h-screen">
             <TextToMusicInputBox />
           </div>
         );
-      case '/text-to-image':
-      case '/':
+      case 'text-to-image':
       default:
         return (
           <div className="relative min-h-screen">

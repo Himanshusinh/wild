@@ -86,6 +86,10 @@ export async function getHistoryEntries(filters?: HistoryFilters, limitCount: nu
       q = query(q, where('model', '==', filters.model));
     }
     
+    if (filters?.generationType) {
+      q = query(q, where('generationType', '==', filters.generationType));
+    }
+    
     if (filters?.status) {
       q = query(q, where('status', '==', filters.status));
     }
@@ -136,6 +140,7 @@ function getSampleHistoryData(): HistoryEntry[] {
       id: 'sample-1',
       prompt: 'A beautiful sunset over mountains with vibrant colors',
       model: 'flux-kontext-pro',
+      generationType: 'text-to-image',
       images: [
         {
           id: 'img-1',
@@ -149,7 +154,7 @@ function getSampleHistoryData(): HistoryEntry[] {
         }
       ],
       timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
       imageCount: 2,
       status: 'completed'
     },
@@ -157,6 +162,7 @@ function getSampleHistoryData(): HistoryEntry[] {
       id: 'sample-2',
       prompt: 'Futuristic city with neon lights and flying cars',
       model: 'flux-pro-1.1',
+      generationType: 'text-to-image',
       images: [
         {
           id: 'img-3',
@@ -173,6 +179,7 @@ function getSampleHistoryData(): HistoryEntry[] {
       id: 'sample-3',
       prompt: 'Cute cartoon cat playing with yarn ball',
       model: 'flux-kontext-pro',
+      generationType: 'logo-generation',
       images: [
         {
           id: 'img-4',
@@ -193,6 +200,40 @@ function getSampleHistoryData(): HistoryEntry[] {
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
       imageCount: 3,
+      status: 'completed'
+    },
+    {
+      id: 'sample-4',
+      prompt: 'Epic battle scene with dragons and knights',
+      model: 'flux-pro-1.1',
+      generationType: 'text-to-video',
+      images: [
+        {
+          id: 'img-7',
+          url: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop',
+          originalUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=800&fit=crop'
+        }
+      ],
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+      imageCount: 1,
+      status: 'completed'
+    },
+    {
+      id: 'sample-5',
+      prompt: 'Ambient electronic music with nature sounds',
+      model: 'flux-kontext-pro',
+      generationType: 'text-to-music',
+      images: [
+        {
+          id: 'img-8',
+          url: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop',
+          originalUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=800&fit=crop'
+        }
+      ],
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72), // 3 days ago
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
+      imageCount: 1,
       status: 'completed'
     }
   ];

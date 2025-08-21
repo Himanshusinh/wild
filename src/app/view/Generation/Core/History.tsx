@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { loadHistory } from '@/store/slices/historySlice';
+import { loadHistory, setFilters } from '@/store/slices/historySlice';
 import { setCurrentView } from '@/store/slices/uiSlice';
 
 const History = () => {
@@ -13,14 +13,24 @@ const History = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const error = useAppSelector((state: any) => state.history?.error);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     // Load history when component mounts
-    dispatch(loadHistory({}));
-  }, [dispatch]);
+    if (showAllHistory) {
+      dispatch(loadHistory({ filters: {} }));
+    } else {
+      dispatch(loadHistory({ filters: { generationType: currentGenerationType } }));
+    }
+  }, [dispatch, currentGenerationType, showAllHistory]);
 
   const handleBackToGeneration = () => {
     dispatch(setCurrentView('generation'));
+  };
+
+  const toggleHistoryView = () => {
+    setShowAllHistory(!showAllHistory);
   };
 
   const formatDate = (date: Date) => {
@@ -30,6 +40,17 @@ const History = () => {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  const getGenerationTypeLabel = (type: string) => {
+    switch (type) {
+      case 'text-to-image': return 'Text to Image';
+      case 'logo-generation': return 'Logo Generation';
+      case 'sticker-generation': return 'Sticker Generation';
+      case 'text-to-video': return 'Text to Video';
+      case 'text-to-music': return 'Text to Music';
+      default: return type;
+    }
   };
 
   if (loading) {
@@ -62,8 +83,12 @@ const History = () => {
             </svg>
           </button>
           <div>
-            <h1 className="text-2xl font-bold">Generation History</h1>
-            <p className="text-sm opacity-70">All your generated images and prompts</p>
+            <h1 className="text-2xl font-bold">
+              {showAllHistory ? 'All Generation History' : `${getGenerationTypeLabel(currentGenerationType)} History`}
+            </h1>
+            <p className="text-sm opacity-70">
+              {showAllHistory ? 'All your generated content' : `Your ${getGenerationTypeLabel(currentGenerationType).toLowerCase()} generations`}
+            </p>
           </div>
         </div>
 
@@ -71,6 +96,12 @@ const History = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm opacity-70">{historyEntries.length} generations</span>
           </div>
+          <button 
+            onClick={toggleHistoryView}
+            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm"
+          >
+            {showAllHistory ? 'Show Current Type' : 'Show All'}
+          </button>
           <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
@@ -84,7 +115,12 @@ const History = () => {
         {historyEntries.length === 0 ? (
           <div className="text-center text-white/60 py-12">
             <p>No generation history yet.</p>
-            <p className="text-sm mt-2">Your generated images will appear here.</p>
+            <p className="text-sm mt-2">
+              {showAllHistory 
+                ? 'Your generated content will appear here.' 
+                : `Your ${getGenerationTypeLabel(currentGenerationType).toLowerCase()} generations will appear here.`
+              }
+            </p>
           </div>
         ) : (
           historyEntries.map((entry: HistoryEntry) => (
@@ -101,6 +137,9 @@ const History = () => {
                   <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
                     <span>{formatDate(entry.timestamp)}</span>
                     <span>{entry.model}</span>
+                    {showAllHistory && (
+                      <span className="text-blue-400">{getGenerationTypeLabel(entry.generationType)}</span>
+                    )}
                     <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
                     {entry.status === 'generating' && (
                       <span className="text-yellow-400">Generating...</span>

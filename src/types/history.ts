@@ -9,6 +9,7 @@ export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
   images: GeneratedImage[];
   timestamp: Date;
   createdAt: string; // ISO string for Firestore
@@ -21,6 +22,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
   images: GeneratedImage[];
   timestamp: any; // Firestore Timestamp
   createdAt: string;
@@ -31,6 +33,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
+  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
   dateRange?: {
     start: Date;
     end: Date;

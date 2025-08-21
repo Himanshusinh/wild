@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import AppRouter from '../view/Generation/Core/AppRouter';
+import MainLayout from '../view/Generation/Core/MainLayout';
 
 const BookmarksPage = () => {
-  return <AppRouter />;
+  return <MainLayout />;
 };
 
 export default BookmarksPage;

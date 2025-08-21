@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   let historyId: string | null = null;
 
   try {
-    const { prompt, model, n = 1, frameSize = '1:1', style = 'realistic' } = await request.json();
+    const { prompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image' } = await request.json();
     const apiKey = process.env.BFL_API_KEY;
 
     if (!prompt) {
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     historyId = await saveHistoryEntry({
       prompt,
       model,
+      generationType,
       images: [],
       timestamp: new Date(),
       createdAt: new Date().toISOString(),

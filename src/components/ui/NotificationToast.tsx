@@ -10,7 +10,7 @@ const NotificationToast = () => {
 
   useEffect(() => {
     // Auto-remove notifications after 5 seconds
-    notifications.forEach((notification) => {
+    notifications.forEach((notification: { id: string }) => {
       const timer = setTimeout(() => {
         dispatch(removeNotification(notification.id));
       }, 5000);
@@ -23,7 +23,7 @@ const NotificationToast = () => {
 
   return (
     <div className="fixed top-4 right-4 z-50 space-y-2">
-      {notifications.map((notification) => (
+      {notifications.map((notification: { id: string; type: 'success' | 'error' | 'info' | 'warning'; message: string }) => (
         <div
           key={notification.id}
           className={`

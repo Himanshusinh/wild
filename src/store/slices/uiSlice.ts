@@ -1,9 +1,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export type ViewType = 'generation' | 'history' | 'bookmarks';
+export type GenerationType = 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
 
 interface UIState {
   currentView: ViewType;
+  currentGenerationType: GenerationType;
   activeDropdown: string | null;
   sidebarExpanded: boolean;
   theme: 'light' | 'dark';
@@ -17,6 +19,7 @@ interface UIState {
 
 const initialState: UIState = {
   currentView: 'generation',
+  currentGenerationType: 'text-to-image',
   activeDropdown: null,
   sidebarExpanded: false,
   theme: 'dark',
@@ -29,6 +32,9 @@ const uiSlice = createSlice({
   reducers: {
     setCurrentView: (state, action: PayloadAction<ViewType>) => {
       state.currentView = action.payload;
+    },
+    setCurrentGenerationType: (state, action: PayloadAction<GenerationType>) => {
+      state.currentGenerationType = action.payload;
     },
     setActiveDropdown: (state, action: PayloadAction<string | null>) => {
       state.activeDropdown = action.payload;
@@ -63,6 +69,7 @@ const uiSlice = createSlice({
 
 export const {
   setCurrentView,
+  setCurrentGenerationType,
   setActiveDropdown,
   toggleDropdown,
   setSidebarExpanded,

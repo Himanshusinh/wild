@@ -46,6 +46,7 @@ const InputBox = () => {
       id: `loading-${Date.now()}`,
       prompt: prompt,
       model: selectedModel,
+      generationType: 'text-to-image',
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
         url: '',
@@ -75,6 +76,7 @@ const InputBox = () => {
         id: result.historyId || Date.now().toString(),
         prompt: prompt,
         model: selectedModel,
+        generationType: 'text-to-image',
         images: result.images,
         timestamp: new Date(),
         createdAt: new Date().toISOString(),

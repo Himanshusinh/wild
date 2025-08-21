@@ -42,6 +42,7 @@ const InputBox = () => {
       id: `loading-${Date.now()}`,
       prompt: `Sticker: ${prompt}`,
       model: selectedModel,
+      generationType: 'sticker-generation',
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
         url: '',
@@ -69,6 +70,7 @@ const InputBox = () => {
         id: result.historyId || Date.now().toString(),
         prompt: `Sticker: ${prompt}`,
         model: selectedModel,
+        generationType: 'sticker-generation',
         images: result.images,
         timestamp: new Date(),
         createdAt: new Date().toISOString(),
@@ -200,12 +202,9 @@ const InputBox = () => {
               placeholder="Describe your sticker idea..."
               value={prompt}
               onChange={(e) => dispatch(setPrompt(e.target.value))}
-              className="flex-1 bg-transparent text-theme-primary outline-none text-[15px] leading-none"
+              className="flex-1 bg-transparent text-theme-primary outline-none text-[15px] leading-none placeholder:text-white/50 dark:placeholder:text-black/50"
               style={{
-                color: theme === 'dark' ? '#ffffff' : '#000000',
-                '::placeholder': {
-                  color: theme === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'
-                }
+                color: theme === 'dark' ? '#ffffff' : '#000000'
               }}
             />
             <button
