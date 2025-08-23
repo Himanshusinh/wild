@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Crop } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setFrameSize } from '@/store/slices/generationSlice';
 import { toggleDropdown } from '@/store/slices/uiSlice';
@@ -65,6 +66,7 @@ const FrameSizeDropdown = () => {
             : 'bg-transparent text-white/90 hover:bg-white/5'
         }`}
       >
+        <Crop className="w-4 h-4 mr-1" />
         {frameSizes.find(s => s.value === frameSize)?.name || 'Frame Size'}
       </button>
       {activeDropdown === 'frameSize' && (

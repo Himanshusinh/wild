@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Crop } from "lucide-react";
 
 interface VideoFrameSizeDropdownProps {
   selectedFrameSize: string;
@@ -33,18 +33,18 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   const getAvailableFrameSizes = () => {
     if (selectedModel === "gen3a_turbo") {
       return [
-        { value: "16:10", label: "16:10", description: "Widescreen landscape" },
-        { value: "10:16", label: "10:16", description: "Portrait mobile" }
+        { value: "16:10", label: "16:10", description: "1280×768 landscape", icon: "landscape" },
+        { value: "10:16", label: "10:16", description: "768×1280 portrait", icon: "portrait" }
       ];
     } else {
       // gen4_turbo and gen4_aleph support more ratios
       return [
-        { value: "16:9", label: "16:9", description: "Widescreen landscape" },
-        { value: "9:16", label: "9:16", description: "Portrait mobile" },
-        { value: "4:3", label: "4:3", description: "Standard landscape" },
-        { value: "3:4", label: "3:4", description: "Portrait standard" },
-        { value: "1:1", label: "1:1", description: "Square format" },
-        { value: "21:9", label: "21:9", description: "Ultra-wide cinematic" }
+        { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+        { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
+        { value: "4:3", label: "4:3", description: "1104×832 landscape", icon: "landscape" },
+        { value: "3:4", label: "3:4", description: "832×1104 portrait", icon: "portrait" },
+        { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" },
+        { value: "21:9", label: "21:9", description: "1584×672 ultra-wide", icon: "ultrawide" }
       ];
     }
   };
@@ -61,56 +61,65 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   }, [selectedModel, selectedFrameSize, onFrameSizeChange]);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative dropdown-container">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 transition-all duration-200"
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          selectedFrameSize !== '16:9' 
+            ? 'bg-white text-black' 
+            : 'bg-transparent text-white/90 hover:bg-white/5'
+        }`}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-white font-medium">
-            {selectedFrameSizeInfo?.label || selectedFrameSize}
-          </span>
-        </div>
-        <ChevronDown 
-          className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`} 
-        />
+        <Crop className="w-4 h-4 mr-1" />
+        {selectedFrameSizeInfo?.label || selectedFrameSize}
       </button>
-
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50">
-          <div className="p-2">
-            {availableFrameSizes.map((size) => (
-              <button
-                key={size.value}
-                onClick={() => {
-                  onFrameSizeChange(size.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                  selectedFrameSize === size.value
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    selectedFrameSize === size.value ? 'bg-white/20' : 'bg-white/10'
-                  }`}>
-                    <span className="text-xs font-mono text-white/80">{size.value}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{size.label}</div>
-                    <div className="text-xs text-white/60 mt-1">{size.description}</div>
-                  </div>
-                  {selectedFrameSize === size.value && (
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
+        <div className="absolute bottom-full left-0 mb-2 w-44 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+          {availableFrameSizes.map((size) => (
+            <button
+              key={size.value}
+              onClick={() => {
+                onFrameSizeChange(size.value);
+                setIsOpen(false);
+              }}
+              className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between gap-3 ${
+                selectedFrameSize === size.value
+                  ? 'bg-white text-black'
+                  : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {/* Icon */}
+                {size.icon === 'square' && (
+                  <span className={`inline-block w-4 h-4 border ${
+                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                  }`}></span>
+                )}
+                {size.icon === 'portrait' && (
+                  <span className={`inline-block w-3 h-4 border ${
+                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                  }`}></span>
+                )}
+                {size.icon === 'landscape' && (
+                  <span className={`inline-block w-4 h-3 border ${
+                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                  }`}></span>
+                )}
+                {size.icon === 'ultrawide' && (
+                  <span className={`inline-block w-5 h-2 border ${
+                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                  }`}></span>
+                )}
+                <span>{size.label}</span>
+                <span className={`text-[12px] ${
+                  selectedFrameSize === size.value ? 'text-black/70' : 'text-white/50'
+                }`}>{size.value}</span>
+              </span>
+              {selectedFrameSize === size.value && (
+                <div className="w-2 h-2 bg-black rounded-full"></div>
+              )}
+            </button>
+          ))}
         </div>
       )}
     </div>

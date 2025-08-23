@@ -9,9 +9,11 @@ import {
   orderBy, 
   limit, 
   where,
-  Timestamp 
+  startAfter,
+  Timestamp
 } from 'firebase/firestore';
 import { HistoryEntry, HistoryEntryFirestore, HistoryFilters } from '@/types/history';
+import { PaginationParams, PaginationResult } from './paginationUtils';
 
 const HISTORY_COLLECTION = 'generationHistory';
 
@@ -71,53 +73,161 @@ export async function updateHistoryEntry(id: string, updates: Partial<HistoryEnt
 }
 
 /**
- * Retrieves all history entries with optional filters
+ * Retrieves history entries with proper database pagination
  */
-export async function getHistoryEntries(filters?: HistoryFilters, limitCount: number = 50): Promise<HistoryEntry[]> {
+export async function getHistoryEntries(
+  filters?: HistoryFilters, 
+  paginationParams?: PaginationParams
+): Promise<PaginationResult<HistoryEntry>> {
   try {
-    const baseRef = collection(db, HISTORY_COLLECTION);
-    let q;
+    console.log('🔥 FIREBASE PAGINATION DEBUG 🔥');
+    console.log('Filters:', filters);
+    console.log('Pagination params:', paginationParams);
+    
+    // Build the query step by step
+    let baseQuery: any = collection(db, HISTORY_COLLECTION);
+    
+    // Apply filters
     if (filters?.generationType) {
-      // Avoid composite index requirement by not ordering in Firestore
-      q = query(
-        baseRef,
-        where('generationType', '==', filters.generationType),
-        limit(limitCount)
-      );
-    } else {
-      q = query(
-        baseRef,
-        orderBy('timestamp', 'desc'),
-        limit(limitCount)
-      );
+      baseQuery = query(baseQuery, where('generationType', '==', filters.generationType));
+      console.log('✅ Applied generationType filter:', filters.generationType);
     }
-
-    const querySnapshot = await getDocs(q);
-    let entries = querySnapshot.docs.map(convertFirestoreToHistoryEntry);
-
-    // Apply additional client-side filters to avoid composite indexes
     if (filters?.model) {
-      entries = entries.filter(e => e.model === filters.model);
+      baseQuery = query(baseQuery, where('model', '==', filters.model));
+      console.log('✅ Applied model filter:', filters.model);
     }
     if (filters?.status) {
-      entries = entries.filter(e => e.status === filters.status);
+      baseQuery = query(baseQuery, where('status', '==', filters.status));
+      console.log('✅ Applied status filter:', filters.status);
     }
-    if (filters?.generationType) {
-      // Ensure consistent desc ordering client-side
-      entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    }
+
+         // Add ordering - we need both timestamp and document ID for proper pagination
+     // Check if sort order is specified in filters
+     const sortDirection = (filters as any)?.sortOrder || 'desc';
+     let finalQuery = query(baseQuery, orderBy('timestamp', sortDirection), orderBy('__name__', 'asc'));
+     console.log(`✅ Applied ordering: timestamp ${sortDirection}, __name__ asc`);
+    
+         // Add cursor-based pagination if cursor is provided
+     if (paginationParams?.cursor) {
+       console.log('🔄 Using cursor for pagination:', paginationParams.cursor);
+       
+       // The cursor should contain the timestamp and document ID for proper pagination
+       if (typeof paginationParams.cursor === 'object' && paginationParams.cursor.timestamp && paginationParams.cursor.id) {
+         // For reliable pagination, we need to fetch the cursor document first
+         // This ensures we get the exact document snapshot for startAfter
+         try {
+           const cursorDocRef = doc(db, HISTORY_COLLECTION, paginationParams.cursor.id);
+           const cursorDoc = await getDocs(query(collection(db, HISTORY_COLLECTION), where('__name__', '==', paginationParams.cursor.id)));
+           
+           if (!cursorDoc.empty) {
+             const cursorSnapshot = cursorDoc.docs[0];
+             console.log('🔍 Found cursor document:', {
+               id: cursorSnapshot.id,
+               timestamp: cursorSnapshot.data().timestamp?.toDate?.()?.toISOString()
+             });
+             
+             // Use the document snapshot for startAfter - this is the most reliable method
+             finalQuery = query(finalQuery, startAfter(cursorSnapshot));
+             console.log('✅ Applied startAfter with document snapshot cursor');
+           } else {
+             console.log('⚠️ Cursor document not found, falling back to beginning');
+           }
+         } catch (cursorError) {
+           console.log('⚠️ Error fetching cursor document, falling back to beginning:', cursorError);
+         }
+       } else {
+         console.log('⚠️ Invalid cursor format, falling back to beginning');
+       }
+     } else {
+       console.log('🆕 No cursor provided, starting from beginning');
+     }
+    
+    // Add limit (request +1 to check if there are more results)
+    const requestLimit = (paginationParams?.limit || 20) + 1;
+    finalQuery = query(finalQuery, limit(requestLimit));
+    console.log('✅ Applied limit:', requestLimit);
+
+         console.log('🚀 Executing Firestore query...');
+     const querySnapshot = await getDocs(finalQuery);
+     console.log('📊 Query result - Total docs:', querySnapshot.docs.length);
+     
+     // Debug: Show the first few documents to verify we're getting new content
+     if (querySnapshot.docs.length > 0) {
+       const firstDocData = querySnapshot.docs[0].data() as HistoryEntryFirestore;
+       console.log('🔍 First document in result:', {
+         id: querySnapshot.docs[0].id,
+         timestamp: firstDocData.timestamp?.toDate?.()?.toISOString()
+       });
+       if (querySnapshot.docs.length > 1) {
+         const lastDocData = querySnapshot.docs[querySnapshot.docs.length - 1].data() as HistoryEntryFirestore;
+         console.log('🔍 Last document in result:', {
+           id: querySnapshot.docs[querySnapshot.docs.length - 1].id,
+           timestamp: lastDocData.timestamp?.toDate?.()?.toISOString()
+         });
+       }
+     }
+    
+    const entries = querySnapshot.docs.map(convertFirestoreToHistoryEntry);
+    console.log('🔄 Converted entries:', entries.length);
+
+    // Remove duplicate entries based on ID
+    const uniqueEntries = entries.filter((entry, index, self) => 
+      index === self.findIndex(e => e.id === entry.id)
+    );
+    console.log('✨ Unique entries after deduplication:', uniqueEntries.length);
+
+         // Process pagination results
+     const limitCount = paginationParams?.limit || 20;
+     const hasMore = uniqueEntries.length > limitCount;
+     const resultData = hasMore ? uniqueEntries.slice(0, limitCount) : uniqueEntries;
+     
+     // For cursor, use the last document from the FULL query result (before slicing)
+     // This ensures we get the actual next document for pagination
+     const lastFullDocument = uniqueEntries[uniqueEntries.length - 1];
+     const firstFullDocument = uniqueEntries[0];
+     
+     console.log('📈 Pagination results:');
+     console.log('  - Requested limit:', limitCount);
+     console.log('  - Actual returned:', resultData.length);
+     console.log('  - Has more:', hasMore);
+     console.log('  - Full query result count:', uniqueEntries.length);
+     console.log('  - Last full document:', lastFullDocument ? `ID: ${lastFullDocument.id}, Time: ${lastFullDocument.timestamp}` : 'none');
+     console.log('  - Next cursor:', hasMore ? 
+       `{timestamp: ${lastFullDocument?.timestamp}, id: ${lastFullDocument?.id}}` : 'none');
+     
+     const result = {
+       data: resultData,
+       hasMore,
+       nextCursor: hasMore ? { 
+         timestamp: lastFullDocument?.timestamp, 
+         id: lastFullDocument?.id 
+       } : undefined,
+       prevCursor: firstFullDocument ? { 
+         timestamp: firstFullDocument?.timestamp, 
+         id: firstFullDocument?.id 
+       } : undefined
+     };
 
     // Apply date range filter (client-side since Firestore has limitations)
     if (filters?.dateRange) {
-      return entries.filter(entry => 
+      const filteredData = result.data.filter(entry => 
         new Date(entry.timestamp) >= filters.dateRange!.start && 
         new Date(entry.timestamp) <= filters.dateRange!.end
       );
+      
+      console.log('📅 Date range filter applied:', filteredData.length, 'entries match');
+      
+      return {
+        ...result,
+        data: filteredData,
+        hasMore: filteredData.length === (paginationParams?.limit || 20)
+      };
     }
 
-    return entries;
+    console.log('✅ Returning pagination result');
+    return result;
   } catch (error) {
-    console.error('Error retrieving history entries:', error);
+    console.error('❌ Error retrieving history entries:', error);
     throw new Error('Failed to retrieve history entries');
   }
 }
@@ -127,14 +237,14 @@ export async function getHistoryEntries(filters?: HistoryFilters, limitCount: nu
  */
 export async function getRecentHistory(): Promise<HistoryEntry[]> {
   try {
-    const entries = await getHistoryEntries(undefined, 20);
+    const result = await getHistoryEntries(undefined, { limit: 20 });
 
     // If no entries found, return sample data for demonstration
-    if (entries.length === 0) {
+    if (result.data.length === 0) {
       return getSampleHistoryData();
     }
 
-    return entries;
+    return result.data;
   } catch (error) {
     console.error('Error loading recent history, returning sample data:', error);
     return getSampleHistoryData();

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Cpu } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
@@ -65,6 +66,7 @@ const ModelsDropdown = () => {
             : 'bg-transparent text-white/90 hover:bg-white/5'
         }`}
       >
+        <Cpu className="w-4 h-4 mr-1" />
         {models.find(m => m.value === selectedModel)?.name || 'Models'}
       </button>
       {activeDropdown === 'models' && (
@@ -76,6 +78,7 @@ const ModelsDropdown = () => {
                 e.stopPropagation();
                 handleModelSelect(model.value);
               }}
+              
               className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                 selectedModel === model.value
                   ? 'bg-white text-black'

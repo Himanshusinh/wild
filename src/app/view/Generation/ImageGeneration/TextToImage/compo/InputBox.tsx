@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { shallowEqual } from "react-redux";
 import {
   setPrompt,
   generateImages,
@@ -16,6 +17,8 @@ import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   addHistoryEntry,
   updateHistoryEntry,
+  loadMoreHistory,
+  loadHistory,
 } from "@/store/slices/historySlice";
 import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
 
@@ -27,6 +30,7 @@ import StyleSelector from "./StyleSelector";
 import ImagePreviewModal from "./ImagePreviewModal";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
+import { Button } from "@/components/ui/Button";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -103,8 +107,24 @@ const InputBox = () => {
   const activeDropdown = useAppSelector(
     (state: any) => state.ui?.activeDropdown
   );
+  const loading = useAppSelector((state: any) => state.history?.loading || false);
+  const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
+  const [page, setPage] = useState(1);
+
+  // Memoize the filtered entries to prevent unnecessary rerenders
   const historyEntries = useAppSelector(
-    (state: any) => state.history?.entries || []
+    (state: any) => {
+      const allEntries = state.history?.entries || [];
+      // Filter for text-to-image only - same as global history
+      const filteredEntries = allEntries.filter((entry: any) => entry.generationType === 'text-to-image');
+      console.log('🖼️ Image Generation - All entries:', allEntries.length);
+      console.log('🖼️ Image Generation - Filtered entries:', filteredEntries.length);
+      console.log('🖼️ Image Generation - Current page:', page);
+      console.log('🖼️ Image Generation - Has more:', hasMore);
+      return filteredEntries;
+    },
+    // Use shallowEqual to prevent unnecessary rerenders
+    shallowEqual
   );
   const theme = useAppSelector((state: any) => state.ui?.theme || "dark");
   const uploadedImages = useAppSelector(
@@ -133,6 +153,67 @@ const InputBox = () => {
       adjustTextareaHeight(inputEl.current);
     }
   }, [prompt]);
+
+  // PageRouter already loads initial history, so we just set up pagination state
+  useEffect(() => {
+    console.log('🖼️ Image Generation - Component mounted, setting up pagination state');
+    setPage(1);
+    console.log('🖼️ Image Generation - Pagination state initialized');
+  }, []);
+
+  // Handle scroll to load more history
+  useEffect(() => {
+    const handleScroll = () => {
+      // Check if we're near the bottom of the history container
+      const historyContainer = document.querySelector('.overflow-y-auto');
+      if (historyContainer) {
+        const scrollTop = historyContainer.scrollTop;
+        const scrollHeight = historyContainer.scrollHeight;
+        const clientHeight = historyContainer.clientHeight;
+        const threshold = scrollHeight - clientHeight - 100;
+        
+        console.log('🖼️ Image Generation - Scroll Debug:', {
+          scrollTop,
+          scrollHeight,
+          clientHeight,
+          threshold,
+          hasMore,
+          loading,
+          page
+        });
+        
+        if (scrollTop >= threshold) {
+          if (hasMore && !loading) {
+            console.log('🖼️ Image Generation - Scroll threshold reached, loading more...');
+            const nextPage = page + 1;
+            setPage(nextPage);
+            console.log('🖼️ Image Generation - Loading page:', nextPage);
+            dispatch(loadMoreHistory({ 
+              filters: { generationType: 'text-to-image' }, 
+              paginationParams: { limit: 10 } 
+            }));
+          } else {
+            console.log('🖼️ Image Generation - Scroll threshold reached but:', {
+              hasMore,
+              loading,
+              reason: !hasMore ? 'No more entries' : 'Currently loading'
+            });
+          }
+        }
+      }
+    };
+
+    console.log('🖼️ Image Generation - Scroll event listener added');
+    // Listen for scroll on the history container specifically
+    const historyContainer = document.querySelector('.overflow-y-auto');
+    if (historyContainer) {
+      historyContainer.addEventListener('scroll', handleScroll);
+      return () => {
+        console.log('🖼️ Image Generation - Scroll event listener removed');
+        historyContainer.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [hasMore, loading, page, dispatch]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -753,10 +834,20 @@ const InputBox = () => {
       {historyEntries.length > 0 && (
         <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
           <div className="p-6">
-            {/* History Header */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-white mb-4">History</h2>
+            {/* History Header - Fixed during scroll */}
+            <div className="sticky top-0 z-10 mb-6 bg-black/80 backdrop-blur-sm py-4 -mx-6 px-6 border-b border-white/10">
+              <h2 className="text-xl font-semibold text-white">History</h2>
             </div>
+
+            {/* Main Loader */}
+            {loading && historyEntries.length === 0 && (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-white text-lg">Loading your generation history...</div>
+                </div>
+              </div>
+            )}
 
             {/* History Entries */}
             <div className="space-y-8">
@@ -893,6 +984,16 @@ const InputBox = () => {
                   </div>
                 </div>
               ))}
+
+              {/* Loader for scroll loading */}
+              {hasMore && loading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                    <div className="text-sm text-white/60">Loading more generations...</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1058,47 +1159,60 @@ const InputBox = () => {
           <FrameSizeDropdown />
           <StyleSelector />
             {/* moved previews near upload above */}
-            <div className="ml-auto flex items-center gap-2">
-              <button
+            <div className="absolute right-2 bottom-32 ml-auto flex items-center gap-2">
+              
+
+              <Button
                 aria-label="Upscale"
                 title="Upscale"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10"
+                borderRadius="1.5rem"
+                containerClassName="h-10 w-auto"
+                
+                className="bg-black  text-white px-4 py-2"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5 text-[#2F6BFF]"
-                >
-                  <path d="M7 17l-4 4" />
-                  <path d="M3 17h4v4" />
-                  <path d="M17 7l4-4" />
-                  <path d="M21 7h-4V3" />
-                </svg>
-                <span className="text-sm text-white">Upscale</span>
-              </button>
-              <button
+                <div className="flex items-center gap-2">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 text-[#2F6BFF]"
+                  >
+                    <path d="M7 17l-4 4" />
+                    <path d="M3 17h4v4" />
+                    <path d="M17 7l4-4" />
+                    <path d="M21 7h-4V3" />
+                  </svg>
+                  <span className="text-sm text-white">Upscale</span>
+                </div>
+              </Button>
+              <Button
                 aria-label="Remove background"
                 title="Remove background"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10"
+                borderRadius="1.5rem"
+                containerClassName="h-10 w-auto"
+               
+                
+                className="bg-black text-white px-4 py-2"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5 text-[#F97316]"
-                >
-                  <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
-                  <path d="M5 13l6 6" />
-                </svg>
-                <span className="text-sm text-white">Remove background</span>
-              </button>
+                <div className="flex items-center gap-2">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 text-[#F97316]"
+                  >
+                    <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
+                    <path d="M5 13l6 6" />
+                  </svg>
+                  <span className="text-sm text-white">Remove background</span>
+                </div>
+              </Button>
             </div>
         </div>
       </div>

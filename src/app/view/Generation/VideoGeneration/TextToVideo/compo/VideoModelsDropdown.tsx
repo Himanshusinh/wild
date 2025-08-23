@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Play, Image as ImageIcon } from "lucide-react";
+import { ChevronDown, Play, Image as ImageIcon, Cpu, Sparkles } from "lucide-react";
 
 interface VideoModelsDropdownProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
-  generationMode: "image_to_video" | "video_to_video";
+  generationMode: "text_to_video" | "image_to_video" | "video_to_video";
 }
 
 const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
@@ -31,14 +31,23 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
 
   // Get available models based on generation mode
   const getAvailableModels = () => {
-    if (generationMode === "image_to_video") {
+    if (generationMode === "text_to_video") {
       return [
-        { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation" },
-        { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support" }
+        { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
+        { value: "T2V-01-Director", label: "T2V-01-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" }
+      ];
+    } else if (generationMode === "image_to_video") {
+      return [
+        { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
+        { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
+        { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
+        { value: "I2V-01-Director", label: "I2V-01-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },
+        { value: "S2V-01", label: "S2V-01", description: "Subject→Video (character reference), 6s, 720P", provider: "minimax" }
       ];
     } else {
+      // video_to_video - only Runway models support this
       return [
-        { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement" }
+        { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
       ];
     }
   };
@@ -46,66 +55,61 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const availableModels = getAvailableModels();
   const selectedModelInfo = availableModels.find(model => model.value === selectedModel);
 
+  // Auto-select first available model if current selection is invalid
+  useEffect(() => {
+    if (availableModels.length > 0 && !availableModels.find(model => model.value === selectedModel)) {
+      onModelChange(availableModels[0].value);
+    }
+  }, [generationMode, availableModels, selectedModel, onModelChange]);
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative dropdown-container">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 transition-all duration-200"
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax')
+            ? 'bg-white text-black' 
+            : 'bg-transparent text-white/90 hover:bg-white/5'
+        }`}
       >
-        <div className="flex items-center gap-2">
-          {generationMode === "image_to_video" ? (
-            <ImageIcon className="w-4 h-4 text-blue-400" />
-          ) : (
-            <Play className="w-4 h-4 text-green-400" />
-          )}
-          <span className="text-sm text-white font-medium">
-            {selectedModelInfo?.label || selectedModel}
-          </span>
-        </div>
-        <ChevronDown 
-          className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`} 
-        />
+        <Cpu className="w-4 h-4 mr-1" />
+        {selectedModelInfo?.label || selectedModel}
       </button>
-
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-64 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50">
-          <div className="p-2">
-            {availableModels.map((model) => (
-              <button
-                key={model.value}
-                onClick={() => {
-                  onModelChange(model.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                  selectedModel === model.value
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    selectedModel === model.value ? 'bg-white/20' : 'bg-white/10'
-                  }`}>
-                    {generationMode === "image_to_video" ? (
-                      <ImageIcon className="w-4 h-4 text-blue-400" />
-                    ) : (
-                      <Play className="w-4 h-4 text-green-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{model.label}</div>
-                    <div className="text-xs text-white/60 mt-1">{model.description}</div>
-                  </div>
-                  {selectedModel === model.value && (
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+        <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+          {/* Mode indicator */}
+          <div className="px-4 py-2 text-xs text-white/60 border-b border-white/10">
+            {generationMode === "text_to_video" ? "Text → Video Models" : 
+             generationMode === "image_to_video" ? "Image → Video Models" : "Video → Video Models"}
+          </div>
+          
+          {availableModels.map((model) => (
+            <button
+              key={model.value}
+              onClick={() => {
+                onModelChange(model.value);
+                setIsOpen(false);
+              }}
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                selectedModel === model.value
+                  ? 'bg-white text-black'
+                  : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <div className="flex flex-col items-start">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{model.label}</span>
+                  {model.provider === "minimax" && (
+                    <Sparkles className="w-3 h-3 text-yellow-400" />
                   )}
                 </div>
-              </button>
-            ))}
-          </div>
+                <span className="text-xs opacity-70">{model.description}</span>
+              </div>
+              {selectedModel === model.value && (
+                <div className="w-2 h-2 bg-black rounded-full"></div>
+              )}
+            </button>
+          ))}
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Image } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setImageCount } from '@/store/slices/generationSlice';
 import { toggleDropdown } from '@/store/slices/uiSlice';
@@ -31,6 +32,7 @@ const ImageCountDropdown = () => {
             : 'bg-transparent text-white/90 hover:bg-white/5'
         }`}
       >
+        <Image className="w-4 h-4 mr-1" />
         {imageCount} Image{imageCount > 1 ? 's' : ''}
       </button>
       {activeDropdown === 'images' && (

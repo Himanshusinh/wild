@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import { getHistoryEntries, getRecentHistory } from '@/lib/historyService';
+import { PaginationParams, PaginationResult } from '@/lib/paginationUtils';
 
 interface HistoryState {
   entries: HistoryEntry[];
@@ -24,12 +25,18 @@ const initialState: HistoryState = {
 export const loadHistory = createAsyncThunk(
   'history/loadHistory',
   async (
-    { filters, limit = 20 }: { filters?: HistoryFilters; limit?: number } = {},
+    { filters, paginationParams }: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
     { rejectWithValue }
   ) => {
     try {
-      const entries = filters ? await getHistoryEntries(filters, limit) : await getRecentHistory();
-      return { entries, hasMore: entries.length === limit };
+      const result = filters ? await getHistoryEntries(filters, paginationParams) : await getRecentHistory();
+      
+      // Handle both old array format and new pagination format
+      if (Array.isArray(result)) {
+        return { entries: result, hasMore: result.length === (paginationParams?.limit || 20) };
+      } else {
+        return { entries: result.data, hasMore: result.hasMore, nextCursor: result.nextCursor };
+      }
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load history');
     }
@@ -40,21 +47,55 @@ export const loadHistory = createAsyncThunk(
 export const loadMoreHistory = createAsyncThunk(
   'history/loadMoreHistory',
   async (
-    { filters, limit = 20 }: { filters?: HistoryFilters; limit?: number } = {},
+    { filters, paginationParams }: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
     { getState, rejectWithValue }
   ) => {
     try {
       const state = getState() as { history: HistoryState };
-      const currentCount = state.history.entries.length;
+      const currentEntries = state.history.entries;
       
-      const entries = filters 
-        ? await getHistoryEntries(filters, currentCount + limit)
-        : await getHistoryEntries(undefined, currentCount + limit);
+      console.log('🔄 LOAD MORE HISTORY DEBUG 🔄');
+      console.log('Current entries count:', currentEntries.length);
+      console.log('Filters:', filters);
+      console.log('Pagination params:', paginationParams);
       
-      // Return only new entries
-      const newEntries = entries.slice(currentCount);
-      return { entries: newEntries, hasMore: entries.length === currentCount + limit };
+      // Get the last entry's timestamp and ID to use as cursor for next page
+      let cursor: { timestamp: string; id: string } | undefined;
+      if (currentEntries.length > 0) {
+        const lastEntry = currentEntries[currentEntries.length - 1];
+        cursor = { 
+          timestamp: lastEntry.timestamp, 
+          id: lastEntry.id 
+        };
+        console.log('📌 Using cursor from last entry:', cursor);
+      }
+      
+      // Create pagination params with cursor
+      const nextPageParams = {
+        limit: paginationParams?.limit || 10,
+        cursor: cursor
+      };
+      
+      console.log('📤 Requesting next page with params:', nextPageParams);
+      
+      const result = filters 
+        ? await getHistoryEntries(filters, nextPageParams)
+        : await getHistoryEntries(undefined, nextPageParams);
+      
+      // Handle both old array format and new pagination format
+      if (Array.isArray(result)) {
+        console.log('⚠️ Received array format, slicing...');
+        const newEntries = result.slice(currentEntries.length);
+        return { entries: newEntries, hasMore: result.length === currentEntries.length + (paginationParams?.limit || 20) };
+      } else {
+        console.log('✅ Received pagination format');
+        console.log('  - New entries:', result.data.length);
+        console.log('  - Has more:', result.hasMore);
+        console.log('  - Next cursor:', result.nextCursor);
+        return { entries: result.data, hasMore: result.hasMore, nextCursor: result.nextCursor };
+      }
     } catch (error) {
+      console.error('❌ Load more history failed:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load more history');
     }
   }
@@ -112,41 +153,27 @@ const historySlice = createSlice({
       .addCase(loadHistory.fulfilled, (state, action) => {
         state.loading = false;
         
-        console.log('=== HISTORY LOADING DEBUG ===');
-        console.log('Action payload entries count:', action.payload.entries.length);
-        console.log('Current filters:', state.filters);
-        console.log('Payload entries types:', action.payload.entries.map((e: any) => e.generationType));
+        // Debug logs removed for cleaner console
         
         // If we're loading with filters, replace entries to show only filtered results
         if (state.filters && Object.keys(state.filters).length > 0) {
-          console.log('Loading with filters - replacing entries');
+          // Loading with filters - replacing entries
           // Replace entries with filtered results to ensure proper separation by generation type
           state.entries = action.payload.entries;
           
           // Additional safety: double-check that all entries match the current filters
           if (state.filters.generationType) {
-            const beforeCount = state.entries.length;
             state.entries = state.entries.filter(entry => entry.generationType === state.filters.generationType);
-            const afterCount = state.entries.length;
-            console.log(`Filtered by generationType ${state.filters.generationType}: ${beforeCount} -> ${afterCount}`);
           }
           if (state.filters.model) {
-            const beforeCount = state.entries.length;
             state.entries = state.entries.filter(entry => entry.model === state.filters.model);
-            const afterCount = state.entries.length;
-            console.log(`Filtered by model ${state.filters.model}: ${beforeCount} -> ${afterCount}`);
           }
           if (state.filters.status) {
-            const beforeCount = state.entries.length;
             state.entries = state.entries.filter(entry => entry.status === state.filters.status);
-            const afterCount = state.entries.length;
-            console.log(`Filtered by status ${state.filters.status}: ${beforeCount} -> ${afterCount}`);
           }
           
-          console.log('Final filtered entries count:', state.entries.length);
-          console.log('Final entries types:', state.entries.map((e: any) => e.generationType));
+          // Final filtered entries count and types logged above
         } else {
-          console.log('Loading without filters - replacing all entries');
           // If no filters, replace the entire array (for initial load or clear filters)
           state.entries = action.payload.entries;
         }
@@ -163,12 +190,18 @@ const historySlice = createSlice({
       .addCase(loadMoreHistory.pending, (state) => {
         state.loading = true;
       })
-      .addCase(loadMoreHistory.fulfilled, (state, action) => {
-        state.loading = false;
-        state.entries.push(...action.payload.entries);
-        state.hasMore = action.payload.hasMore;
-        state.lastLoadedCount = action.payload.entries.length;
-      })
+             .addCase(loadMoreHistory.fulfilled, (state, action) => {
+         state.loading = false;
+         
+         // Filter out duplicate entries before adding
+         const newEntries = action.payload.entries.filter(newEntry => 
+           !state.entries.some(existingEntry => existingEntry.id === newEntry.id)
+         );
+         
+         state.entries.push(...newEntries);
+         state.hasMore = action.payload.hasMore;
+         state.lastLoadedCount = newEntries.length;
+       })
       .addCase(loadMoreHistory.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;

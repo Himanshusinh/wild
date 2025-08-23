@@ -117,7 +117,10 @@ export default function PageRouter() {
           console.log('Loading history for new generation type:', currentGenerationType);
           isLoadingRef.current = true;
           dispatch(setFilters({ generationType: currentGenerationType }));
-          dispatch(loadHistory({ filters: { generationType: currentGenerationType }, limit: 20 }))
+          dispatch(loadHistory({ 
+            filters: { generationType: currentGenerationType }, 
+            paginationParams: { limit: 10 } 
+          }))
             .finally(() => {
               isLoadingRef.current = false;
               console.log('History loading completed for:', currentGenerationType);
@@ -128,7 +131,10 @@ export default function PageRouter() {
           console.log('Reloading history for type:', currentGenerationType);
           isLoadingRef.current = true;
           dispatch(setFilters({ generationType: currentGenerationType }));
-          dispatch(loadHistory({ filters: { generationType: currentGenerationType }, limit: 20 }))
+          dispatch(loadHistory({ 
+            filters: { generationType: currentGenerationType }, 
+            paginationParams: { limit: 10 } 
+          }))
             .finally(() => {
               isLoadingRef.current = false;
               console.log('History reloading completed for:', currentGenerationType);

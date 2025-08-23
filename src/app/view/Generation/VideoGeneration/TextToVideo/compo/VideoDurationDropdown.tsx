@@ -35,57 +35,39 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
   const selectedDurationInfo = availableDurations.find(duration => duration.value === selectedDuration);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative dropdown-container">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 transition-all duration-200"
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          selectedDuration !== 5 
+            ? 'bg-white text-black' 
+            : 'bg-transparent text-white/90 hover:bg-white/5'
+        }`}
       >
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-yellow-400" />
-          <span className="text-sm text-white font-medium">
-            {selectedDurationInfo?.label || `${selectedDuration}s`}
-          </span>
-        </div>
-        <ChevronDown 
-          className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`} 
-        />
+        <Clock className="w-4 h-4 mr-1" />
+        {selectedDurationInfo?.label || `${selectedDuration}s`}
       </button>
-
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50">
-          <div className="p-2">
-            {availableDurations.map((duration) => (
-              <button
-                key={duration.value}
-                onClick={() => {
-                  onDurationChange(duration.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                  selectedDuration === duration.value
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    selectedDuration === duration.value ? 'bg-white/20' : 'bg-white/10'
-                  }`}>
-                    <Clock className="w-4 h-4 text-yellow-400" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{duration.label}</div>
-                    <div className="text-xs text-white/60 mt-1">{duration.description}</div>
-                  </div>
-                  {selectedDuration === duration.value && (
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
+        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+          {availableDurations.map((duration) => (
+            <button
+              key={duration.value}
+              onClick={() => {
+                onDurationChange(duration.value);
+                setIsOpen(false);
+              }}
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                selectedDuration === duration.value
+                  ? 'bg-white text-black'
+                  : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <span>{duration.label}</span>
+              {selectedDuration === duration.value && (
+                <div className="w-2 h-2 bg-black rounded-full"></div>
+              )}
+            </button>
+          ))}
         </div>
       )}
     </div>
