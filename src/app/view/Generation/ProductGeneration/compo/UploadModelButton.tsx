@@ -2,6 +2,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useAppSelector } from '@/store/hooks';
+
+interface UploadModelButtonProps {
+  onImageUpload: (imageData: string | null) => void;
+}
 
 type PresetImage = {
   id: string;
@@ -16,7 +21,8 @@ const presetImages: PresetImage[] = [
   { id: 'm3', src: '/vercel.svg', alt: 'Model 3' },
 ];
 
-const UploadModelButton = () => {
+const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload }) => {
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-dev');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -24,14 +30,50 @@ const UploadModelButton = () => {
   const [uploadedName, setUploadedName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const toggle = () => setIsOpen((v) => !v);
+  // Disable model image upload for local model
+  const isLocalModel = selectedModel === 'flux-kontext-dev';
+  const isDisabled = isLocalModel;
+
+  const toggle = () => {
+    if (isDisabled) return;
+    setIsOpen((v) => !v);
+  };
+
+  const handlePresetSelect = (img: PresetImage) => {
+    setSelectedId(img.id);
+    onImageUpload(img.src);
+    setIsOpen(false);
+  };
+
+  const handleFileUpload = (file: File) => {
+    setUploadedName(file.name);
+    setSelectedId(null);
+    
+    // Convert file to base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        onImageUpload(result);
+      }
+    };
+    reader.readAsDataURL(file);
+    setIsOpen(false);
+  };
+
+  const clearModel = () => {
+    setSelectedId(null);
+    setUploadedName('');
+    onImageUpload(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
     const onOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setSelectedId(null);
-        setUploadedName('');
         setIsOpen(false);
       }
     };
@@ -39,19 +81,37 @@ const UploadModelButton = () => {
     return () => document.removeEventListener('mousedown', onOutside);
   }, [isOpen]);
 
+  const hasModel = selectedId || uploadedName;
+
   return (
     <div ref={containerRef} className="relative inline-block">
       <button
         onClick={toggle}
-        className="h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-2"
+        disabled={isDisabled}
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium transition flex items-center gap-2 ${
+          isDisabled 
+            ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
+            : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
+        }`}
         aria-label="Upload model"
+        title={isDisabled ? "Model image not needed for local model" : "Upload model"}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
           <path d="M12 5v14" />
           <path d="M5 12h14" />
         </svg>
-        <span>Upload Model</span>
+        <span>{hasModel ? 'Model Selected' : 'Upload Model'}</span>
       </button>
+
+      {hasModel && (
+        <button
+          onClick={clearModel}
+          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-600 transition-colors"
+          title="Remove model"
+        >
+          ×
+        </button>
+      )}
 
       {isOpen && (
         <div ref={panelRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[90] w-[420px] max-w-[85vw]">
@@ -65,7 +125,7 @@ const UploadModelButton = () => {
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) setUploadedName(file.name);
+                    if (file) handleFileUpload(file);
                   }}
                 />
                 <button
@@ -86,7 +146,7 @@ const UploadModelButton = () => {
               {presetImages.map((img) => (
                 <div key={img.id} className="space-y-2">
                   <button
-                    onClick={() => setSelectedId(img.id)}
+                    onClick={() => handlePresetSelect(img)}
                     className={`relative aspect-square w-[90px] rounded-xl overflow-hidden ring-2 transition ${selectedId === img.id ? 'ring-[#2F6BFF]' : 'ring-white/20 hover:ring-white/30'}`}
                     aria-label={`Choose ${img.alt || 'model'}`}
                   >
@@ -99,22 +159,10 @@ const UploadModelButton = () => {
                       </span>
                     )}
                   </button>
-                  <div className="text-white/90 text-sm truncate w-[90px] text-center">{img.alt || 'Model'}</div>
+                  <div className="text-white/90 text-sm">{img.alt || 'Model'}</div>
                 </div>
               ))}
             </div>
-
-            <button
-              className="absolute bottom-3 right-3 p-2 rounded-lg transition group text-[#2F6BFF] hover:text-[#60A5FA]"
-              onClick={() => setIsOpen(false)}
-              aria-label="Save"
-              title="Save"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14" />
-                <path d="M13 5l7 7-7 7" />
-              </svg>
-            </button>
           </div>
         </div>
       )}

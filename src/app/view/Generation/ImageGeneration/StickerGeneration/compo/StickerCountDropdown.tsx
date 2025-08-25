@@ -14,9 +14,7 @@ const StickerCountDropdown = () => {
     { value: '1', label: '1 Sticker', description: 'Single sticker design' },
     { value: '2', label: '2 Stickers', description: 'Two variations' },
     { value: '3', label: '3 Stickers', description: 'Three options' },
-    { value: '4', label: '4 Stickers', description: 'Multiple choices' },
-    { value: '6', label: '6 Stickers', description: 'Sticker pack' },
-    { value: '8', label: '8 Stickers', description: 'Large sticker set' }
+    { value: '4', label: '4 Stickers', description: 'Multiple choices' }
   ];
 
   const handleDropdownClick = () => {

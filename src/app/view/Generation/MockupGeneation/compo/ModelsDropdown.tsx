@@ -11,9 +11,10 @@ const ModelsDropdown = () => {
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
 
   const models = [
-    { name: 'Flux Kontext Pro', value: 'flux Kontext dev' },
-    { name: 'flux Kontext pro', value: 'flux Kontext pro' },
-    { name: 'flux Kontext max', value: 'flux Kontext max' }
+    { name: 'Flux Kontext [DEV]', value: 'flux-kontext-dev', description: 'Fast local generation via ngrok' },
+    { name: 'Flux Kontext [PRO]', value: 'flux-kontext-pro', description: 'Best for professional stickers' },
+    { name: 'Flux Kontext [MAX]', value: 'flux-kontext-max', description: 'High-quality sticker designs' },
+    { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'Ultra-detailed stickers' }
   ];
 
   const handleDropdownClick = () => {

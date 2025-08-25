@@ -62,28 +62,61 @@ const InputBox = () => {
     dispatch(addHistoryEntry(loadingEntry));
 
     try {
-      // Call local logo generation API
-      const response = await fetch('/api/local/logo-generation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          model: selectedModel,
-          imageCount: imageCount,
-          generationType: 'logo-generation'
-        })
-      });
+      let result;
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
+      // Check if using local model or Flux models
+      if (selectedModel === 'flux-kontext-dev') {
+        // Use local logo generation API
+        const response = await fetch('/api/local/logo-generation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            model: selectedModel,
+            imageCount: imageCount,
+            generationType: 'logo-generation'
+          })
+        });
 
-      const result = await response.json();
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Generation failed');
+        result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'Generation failed');
+        }
+      } else {
+        // Use existing Flux API for Kontext models
+        const backendPrompt = `Create a professional logo for: ${prompt}. The logo should be clean, modern, and suitable for business use.`;
+        
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: backendPrompt,
+            model: selectedModel,
+            n: imageCount,
+            frameSize: '1:1', // Logo generation typically uses square aspect ratio
+            style: 'logo',
+            generationType: 'logo-generation'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        result = await response.json();
+
+        if (!result.images) {
+          throw new Error('No images received from Flux API');
+        }
       }
 
       // Create the completed entry

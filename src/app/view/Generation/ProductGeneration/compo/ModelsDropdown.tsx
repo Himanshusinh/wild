@@ -7,13 +7,13 @@ import { toggleDropdown } from '@/store/slices/uiSlice';
 
 const ModelsDropdown = () => {
   const dispatch = useAppDispatch();
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-dev');
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
 
   const models = [
-    { name: 'Flux Kontext Pro', value: 'flux-kontext-pro' },
-    { name: 'Flux Pro 1.1', value: 'flux-pro-1.1' },
-    { name: 'Flux Pro 1.1 Ultra', value: 'flux-pro-1.1-ultra' }
+    { name: 'Flux Kontext [DEV]', value: 'flux-kontext-dev', description: 'Generate from description only (no image upload)' },
+    { name: 'Flux Kontext [PRO]', value: 'flux-kontext-pro', description: 'Best for professional products' },
+    { name: 'Flux Kontext [MAX]', value: 'flux-kontext-max', description: 'High-quality product designs' }
   ];
 
   const handleDropdownClick = () => {
@@ -34,7 +34,7 @@ const ModelsDropdown = () => {
         Models
       </button>
       {activeDropdown === 'product-models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
           {models.map((model) => (
             <button
               key={model.value}
@@ -42,11 +42,14 @@ const ModelsDropdown = () => {
                 e.stopPropagation();
                 handleModelSelect(model.value);
               }}
-              className="w-full px-4 py-2 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
+              className="w-full px-4 py-3 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
             >
-              <span>{model.name}</span>
+              <div className="flex flex-col">
+                <span className="font-medium">{model.name}</span>
+                <span className="text-xs text-white/60 mt-0.5">{model.description}</span>
+              </div>
               {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-white rounded-full"></div>
+                <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
               )}
             </button>
           ))}

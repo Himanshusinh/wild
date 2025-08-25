@@ -22,12 +22,18 @@ const FRAME_OPTIONS: FrameOption[] = [
 const FrameSizeButton = () => {
   const dispatch = useAppDispatch();
   const saved = useAppSelector((s: any) => s.generation?.frameSize || '1:1');
+  const selectedModel = useAppSelector((s: any) => s.generation?.selectedModel || 'flux-kontext-dev');
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [draft, setDraft] = useState<string>(saved);
 
+  // Disable frame size selection for local model
+  const isLocalModel = selectedModel === 'flux-kontext-dev';
+  const isDisabled = isLocalModel;
+
   const open = () => {
+    if (isDisabled) return;
     if (isOpen) {
       setIsOpen(false);
     } else {
@@ -69,9 +75,14 @@ const FrameSizeButton = () => {
     <div ref={containerRef} className="relative inline-block">
       <button
         onClick={open}
-        className="h-[32px] px-3 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-2"
+        className={`h-[32px] px-3 rounded-full text-[13px] font-medium transition flex items-center gap-2 ${
+          isDisabled 
+            ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
+            : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
+        }`}
         aria-label="Frame size"
-        title="Frame size"
+        title={isDisabled ? "Frame size not available for local model" : "Frame size"}
+        disabled={isDisabled}
       >
         <div className="relative rounded-[4px] bg-white/10 ring-1 ring-white/30"
              style={renderPreviewStyle(FRAME_OPTIONS.find(o => o.id === saved) || FRAME_OPTIONS[0], 22)}>

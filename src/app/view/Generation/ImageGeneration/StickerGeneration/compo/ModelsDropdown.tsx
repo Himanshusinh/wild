@@ -7,14 +7,14 @@ import { toggleDropdown } from '@/store/slices/uiSlice';
 
 const ModelsDropdown = () => {
   const dispatch = useAppDispatch();
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'local-sticker-model');
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
 
   const models = [
-    { name: 'Flux Kontext Pro', value: 'flux-kontext-pro', description: 'Best for fun stickers' },
-    { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'High-quality sticker designs' },
-    { name: 'Flux Pro 1.1 Ultra', value: 'flux-pro-1.1-ultra', description: 'Ultra-detailed stickers' },
-    { name: 'Sticker Master', value: 'sticker-master', description: 'Specialized for cute stickers' }
+    { name: 'Flux Kontext [DEV]', value: 'flux-kontext-dev', description: 'Fast local generation via ngrok' },
+    { name: 'Flux Kontext [PRO]', value: 'flux-kontext-pro', description: 'Best for professional stickers' },
+    { name: 'Flux Kontext [MAX]', value: 'flux-kontext-max', description: 'High-quality sticker designs' },
+    { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'Ultra-detailed stickers' }
   ];
 
   const handleDropdownClick = () => {
