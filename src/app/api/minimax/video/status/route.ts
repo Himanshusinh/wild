@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 === MINIMAX STATUS CHECK API CALLED ===');
+    console.log('📥 Request URL:', request.url);
+    
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get('task_id');
+    console.log('🔍 Task ID from query params:', taskId);
+    console.log('🔍 Task ID type:', typeof taskId);
+    console.log('🔍 Task ID length:', taskId ? taskId.length : 'undefined');
 
     if (!taskId) {
+      console.error('❌ Task ID validation failed: task_id is missing');
       return NextResponse.json({ error: 'Task ID is required' }, { status: 400 });
     }
 

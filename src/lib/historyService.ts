@@ -89,8 +89,10 @@ export async function getHistoryEntries(
     
     // Apply filters
     if (filters?.generationType) {
-      baseQuery = query(baseQuery, where('generationType', '==', filters.generationType));
-      console.log('✅ Applied generationType filter:', filters.generationType);
+      // Normalize to Firestore stored format (underscored)
+      const firestoreGenType = (filters.generationType as string).replace(/-/g, '_');
+      baseQuery = query(baseQuery, where('generationType', '==', firestoreGenType));
+      console.log('✅ Applied generationType filter (normalized):', firestoreGenType);
     }
     if (filters?.model) {
       baseQuery = query(baseQuery, where('model', '==', filters.model));

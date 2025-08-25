@@ -188,6 +188,11 @@ const History = () => {
     }
   };
 
+  const isVideoUrl = (url: string | undefined) => {
+    if (!url) return false;
+    return url.startsWith('data:video') || /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+  };
+
   if (loading && historyEntries.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -395,12 +400,13 @@ const History = () => {
               </div>
             </div>
 
-            {/* Content Grid - Images for image generation, Videos for video generation */}
+            {/* Content Grid - Detect media type per item */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
-              {entry.generationType === 'text-to-video' ? (
-                // Video entries - show video thumbnails
-                                 entry.images.map((video: any, videoIndex: number) => (
-                   <div key={`${entry.id}-video-${videoIndex}`} onClick={() => setVideoPreview({ entry, video })} className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group">
+              {entry.images.map((media: any, mediaIndex: number) => {
+                const mediaUrl = media.firebaseUrl || media.url;
+                const video = isVideoUrl(mediaUrl);
+                return (
+                  <div key={`${entry.id}-${video ? 'video' : 'image'}-${mediaIndex}`} onClick={() => video ? setVideoPreview({ entry, video: media }) : setPreview({ entry, image: media })} className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group">
                     {entry.status === 'generating' ? (
                       // Loading frame
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
@@ -419,25 +425,14 @@ const History = () => {
                           <div className="text-xs text-red-400">Failed</div>
                         </div>
                       </div>
-                    ) : (
+                    ) : video ? (
                       // Completed video thumbnail
                       <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
                         <video 
-                          src={video.url} 
+                          src={mediaUrl}
                           className="w-full h-full object-cover"
                           muted
-                          onLoadedData={(e) => {
-                            // Create thumbnail from video
-                            const video = e.target as HTMLVideoElement;
-                            const canvas = document.createElement('canvas');
-                            canvas.width = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                              ctx.drawImage(video, 0, 0);
-                              // You could use this canvas as thumbnail if needed
-                            }
-                          }}
+                          preload="metadata"
                         />
                         {/* Video play icon overlay */}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -452,36 +447,10 @@ const History = () => {
                           <span className="text-xs text-white">Video</span>
                         </div>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                  </div>
-                ))
-              ) : (
-                // Image entries - show images as before
-                                 entry.images.map((image: any, imageIndex: number) => (
-                   <div key={`${entry.id}-image-${imageIndex}`} onClick={() => setPreview({ entry, image })} className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group">
-                    {entry.status === 'generating' ? (
-                      // Loading frame
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                          <div className="text-xs text-white/60">Generating...</div>
-                        </div>
-                      </div>
-                    ) : entry.status === 'failed' ? (
-                      // Error frame
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                        <div className="flex flex-col items-center gap-2">
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                          </svg>
-                          <div className="text-xs text-red-400">Failed</div>
-                        </div>
-                      </div>
                     ) : (
                       // Completed image
                       <Image
-                        src={image.url}
+                        src={mediaUrl}
                         alt={entry.prompt}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-200"
@@ -490,8 +459,8 @@ const History = () => {
                     )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                   </div>
-                ))
-              )}
+                );
+              })}
             </div>
           </div>
         ))}

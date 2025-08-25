@@ -163,7 +163,9 @@ const historySlice = createSlice({
           
           // Additional safety: double-check that all entries match the current filters
           if (state.filters.generationType) {
-            state.entries = state.entries.filter(entry => entry.generationType === state.filters.generationType);
+            const normalize = (t?: string) => (t ? t.replace(/_/g, '-').replace(/\s+/g, '') : '');
+            const wanted = normalize(state.filters.generationType as string);
+            state.entries = state.entries.filter(entry => normalize(entry.generationType) === wanted);
           }
           if (state.filters.model) {
             state.entries = state.entries.filter(entry => entry.model === state.filters.model);

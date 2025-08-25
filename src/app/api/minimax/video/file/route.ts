@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('📁 === MINIMAX FILE RETRIEVAL API CALLED ===');
+    console.log('📥 Request URL:', request.url);
+    
     const { searchParams } = new URL(request.url);
     const fileId = searchParams.get('file_id');
+    console.log('📁 File ID from query params:', fileId);
+    console.log('📁 File ID type:', typeof fileId);
+    console.log('📁 File ID length:', fileId ? fileId.length : 'undefined');
 
     if (!fileId) {
+      console.error('❌ File ID validation failed: file_id is missing');
       return NextResponse.json({ error: 'File ID is required' }, { status: 400 });
     }
 

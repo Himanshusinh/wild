@@ -19,6 +19,10 @@ export class MiniMaxService {
   // Create video generation task
   async createVideoGeneration(request: MiniMaxVideoGenerationRequest): Promise<MiniMaxVideoGenerationResponse> {
     try {
+      console.log('🌐 Calling MiniMax API endpoint:', `${MINIMAX_API_BASE}/video_generation`);
+      console.log('🔑 Using API key length:', this.apiKey.length);
+      console.log('👥 Using group ID:', this.groupId);
+      
       const response = await fetch(`${MINIMAX_API_BASE}/video_generation`, {
         method: 'POST',
         headers: {
@@ -28,11 +32,17 @@ export class MiniMaxService {
         body: JSON.stringify(request),
       });
 
+      console.log('📡 MiniMax API response status:', response.status);
+      console.log('📡 MiniMax API response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ MiniMax API error response:', errorText);
         throw new Error(`MiniMax API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📥 MiniMax API raw response data:', JSON.stringify(data, null, 2));
       return data;
     } catch (error) {
       console.error('❌ MiniMax createVideoGeneration failed:', error);
@@ -128,11 +138,22 @@ export class MiniMaxService {
   }> {
     try {
       console.log('🚀 Creating MiniMax video generation task...');
+      console.log('📤 Request being sent to MiniMax:', JSON.stringify(request, null, 2));
       
       // 1. Create video generation task only
       const createResponse = await this.createVideoGeneration(request);
+      console.log('📥 Raw MiniMax API response:', JSON.stringify(createResponse, null, 2));
+      console.log('📥 Response keys:', Object.keys(createResponse));
+      console.log('📥 task_id field:', createResponse.task_id);
+      console.log('📥 task_id type:', typeof createResponse.task_id);
+      
       const taskId = createResponse.task_id;
       console.log('✅ MiniMax task created:', taskId);
+      
+      if (!taskId) {
+        console.error('❌ No task_id found in MiniMax response');
+        throw new Error('MiniMax API response missing task_id');
+      }
       
       return { taskId };
       
