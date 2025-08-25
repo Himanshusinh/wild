@@ -5,6 +5,8 @@ export type GenerationType =
   | 'logo-generation'
   | 'sticker-generation'
   | 'text-to-video'
-  | 'text-to-music';
+  | 'text-to-music'
+  | 'mockup-generation'
+  | 'product-generation';
 
 

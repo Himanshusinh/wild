@@ -7,12 +7,14 @@ import LogoGenerationInputBox from '../ImageGeneration/LogoGeneration/compo/Inpu
 import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/compo/InputBox';
 import TextToMusicInputBox from '../MusicGeneration/TextToMusic/compo/InputBox';
+import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';
+import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithModelPoseInputBox';
 import History from './History';
 import Bookmarks from './Bookmarks';
 import { loadHistory, setFilters, clearHistoryByType } from '@/store/slices/historySlice';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+type GenerationType = 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -24,6 +26,8 @@ const generators: GeneratorComponentMap = {
   'sticker-generation': StickerGenerationInputBox,
   'text-to-video': TextToVideoInputBox,
   'text-to-music': TextToMusicInputBox,
+  'mockup-generation': MockupGenerationInputBox,
+  'product-generation': ProductGenerationInputBox,
 };
 
 export default function PageRouter() {

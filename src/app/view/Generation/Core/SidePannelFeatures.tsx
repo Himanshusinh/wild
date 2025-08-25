@@ -113,6 +113,22 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
             >
               <span className='text-sm text-white'>Sticker Generation</span>
             </div>
+            <div
+              onClick={() => handleGenerationTypeChange('mockup-generation')}
+              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
+                currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
+              }`}
+            >
+              <span className='text-sm text-white'>Mockup Generation</span>
+            </div>
+            <div
+              onClick={() => handleGenerationTypeChange('product-generation')}
+              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
+                currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
+              }`}
+            >
+              <span className='text-sm text-white'>Product Generation</span>
+            </div>
           </div>
         )}
 
@@ -146,7 +162,7 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
                 ref={brandingRef}
                 onMouseEnter={handleBrandingMouseEnter}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/5 group/item ${
-                  (pathname?.includes('/logo-generation') || pathname?.includes('/sticker-generation')) ? 'bg-white/10' : ''
+                  (pathname?.includes('/logo-generation') || pathname?.includes('/sticker-generation') || pathname?.includes('/mockup-generation') || pathname?.includes('/product-generation')) ? 'bg-white/10' : ''
                 }`}
             >
                 <Image src="/icons/brandingkitwhite.svg" alt="Branding Kit" width={25} height={25} />

@@ -130,9 +130,19 @@ const historySlice = createSlice({
       state.hasMore = true;
       state.lastLoadedCount = 0;
     },
-    clearHistoryByType: (state, action: PayloadAction<string>) => {
+    clearHistoryByType: (state, action) => {
       // Clear only entries for a specific generation type
-      state.entries = state.entries.filter(entry => entry.generationType !== action.payload);
+      // Normalize both the action payload and entry generationType for comparison
+      const normalizeGenerationType = (type: string): string => {
+        return type.replace(/[_-]/g, '-').toLowerCase();
+      };
+      
+      const normalizedPayload = normalizeGenerationType(action.payload);
+      state.entries = state.entries.filter(entry => {
+        const normalizedEntryType = normalizeGenerationType(entry.generationType);
+        return normalizedEntryType !== normalizedPayload;
+      });
+      
       // Reset pagination if we cleared all entries
       if (state.entries.length === 0) {
         state.hasMore = true;
@@ -163,9 +173,16 @@ const historySlice = createSlice({
           
           // Additional safety: double-check that all entries match the current filters
           if (state.filters.generationType) {
-            const normalize = (t?: string) => (t ? t.replace(/_/g, '-').replace(/\s+/g, '') : '');
-            const wanted = normalize(state.filters.generationType as string);
-            state.entries = state.entries.filter(entry => normalize(entry.generationType) === wanted);
+            // Normalize both the filter and entry generationType for comparison
+            const normalizeGenerationType = (type: string): string => {
+              return type.replace(/[_-]/g, '-').toLowerCase();
+            };
+            
+            const normalizedFilter = normalizeGenerationType(state.filters.generationType);
+            state.entries = state.entries.filter(entry => {
+              const normalizedEntryType = normalizeGenerationType(entry.generationType);
+              return normalizedEntryType === normalizedFilter;
+            });
           }
           if (state.filters.model) {
             state.entries = state.entries.filter(entry => entry.model === state.filters.model);

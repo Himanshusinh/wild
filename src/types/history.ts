@@ -9,7 +9,7 @@ export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation';
   images: GeneratedImage[];
   timestamp: string; // ISO string for Redux serializability
   createdAt: string; // ISO string for Firestore
@@ -29,7 +29,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation';
   images: GeneratedImage[];
   timestamp: any; // Firestore Timestamp
   createdAt: string;
@@ -47,7 +47,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'text_to_image' | 'image_to_video' | 'video_to_video';
   dateRange?: {
     start: Date;
     end: Date;

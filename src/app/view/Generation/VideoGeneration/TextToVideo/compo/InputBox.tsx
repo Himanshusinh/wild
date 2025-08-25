@@ -172,21 +172,54 @@ const InputBox = () => {
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
-    const normalize = (t: string | undefined) => (t ? t.replace(/_/g, '-') : '');
-    const isVideoUrl = (url: string | undefined) => !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-    const declaredVideoType = (entry: any) => {
-      const n = normalize(entry?.generationType);
-      return n === 'text-to-video' || n === 'image-to-video' || n === 'video-to-video';
+    
+    // Helper function to normalize generationType (handle both underscore and hyphen patterns)
+    const normalizeGenerationType = (generationType: string | undefined): string => {
+      if (!generationType) return '';
+      // Convert both underscore and hyphen to a standard format for comparison
+      return generationType.replace(/[_-]/g, '-').toLowerCase();
     };
-    const urlCandidates = allEntries.filter((entry: any) => Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url)));
-    const typeCandidates = allEntries.filter((entry: any) => declaredVideoType(entry));
+    
+    // Helper function to check if an entry is a video type
+    const isVideoType = (entry: any): boolean => {
+      const normalizedType = normalizeGenerationType(entry?.generationType);
+      return normalizedType === 'text-to-video' || 
+             normalizedType === 'image-to-video' || 
+             normalizedType === 'video-to-video';
+    };
+    
+    // Helper function to check if an entry has video URLs
+    const isVideoUrl = (url: string | undefined): boolean => {
+      return !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+    };
+    
+    // Get entries that are explicitly declared as video types
+    const declaredVideoTypes = allEntries.filter(isVideoType);
+    
+    // Get entries that have video URLs (fallback for entries that might not have correct generationType)
+    const urlVideoTypes = allEntries.filter((entry: any) => 
+      Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
+    );
+    
+    // Merge both sets, removing duplicates by ID
     const byId: Record<string, any> = {};
-    [...urlCandidates, ...typeCandidates].forEach((e: any) => { byId[e.id] = e; });
+    [...declaredVideoTypes, ...urlVideoTypes].forEach((e: any) => { 
+      byId[e.id] = e; 
+    });
+    
     const mergedEntries = Object.values(byId);
 
+    // Count entries by normalized generationType for debugging
     const countsAll = allEntries.reduce((acc: any, e: any) => {
-      const n = normalize(e.generationType);
-      acc[n] = (acc[n] || 0) + 1;
+      const normalized = normalizeGenerationType(e.generationType);
+      acc[normalized] = (acc[normalized] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Debug: Show raw generationType values to identify any inconsistencies
+    const rawGenerationTypes = allEntries.reduce((acc: any, e: any) => {
+      const rawType = e.generationType || 'undefined';
+      acc[rawType] = (acc[rawType] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -195,9 +228,44 @@ const InputBox = () => {
       textToVideo: countsAll['text-to-video'] || 0,
       imageToVideo: countsAll['image-to-video'] || 0,
       videoToVideo: countsAll['video-to-video'] || 0,
-      filtered: (mergedEntries as any[]).length,
+      filtered: mergedEntries.length,
+      declaredVideoTypes: declaredVideoTypes.length,
+      urlVideoTypes: urlVideoTypes.length,
+      rawGenerationTypes,
+      normalizedCounts: countsAll,
     });
-    return mergedEntries;
+    
+    // Debug: Show which entries are being filtered and why
+    if (mergedEntries.length < allEntries.length) {
+      const filteredOut = allEntries.filter((entry: any) => !mergedEntries.some((merged: any) => merged.id === entry.id));
+      console.log('[VideoPage] Filtered out entries:', filteredOut.map((entry: any) => ({
+        id: entry.id,
+        generationType: entry.generationType,
+        normalizedType: normalizeGenerationType(entry.generationType),
+        hasVideoUrls: Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url)),
+        prompt: entry.prompt?.substring(0, 50) + '...'
+      })));
+    }
+    
+    // Sort by timestamp (newest first) to ensure consistent ordering
+    const sortedMergedEntries = mergedEntries.sort((a: any, b: any) => {
+      const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
+      const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
+      return timestampB - timestampA; // Descending order (newest first)
+    });
+    
+    // Debug: Show the order of entries after sorting
+    if (sortedMergedEntries.length > 0) {
+      console.log('[VideoPage] Entry order after sorting:', sortedMergedEntries.slice(0, 3).map((entry: any, index: number) => ({
+        position: index + 1,
+        id: entry.id,
+        timestamp: entry.timestamp,
+        generationType: entry.generationType,
+        prompt: entry.prompt?.substring(0, 30) + '...'
+      })));
+    }
+    
+    return sortedMergedEntries;
   }, shallowEqual);
 
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
@@ -205,14 +273,49 @@ const InputBox = () => {
     let isMounted = true;
     (async () => {
       try {
-        const [imageToVideo, videoToVideo] = await Promise.all([
+        // Fetch entries with both underscore and hyphen patterns to ensure we get all video types
+        const [imageToVideoHyphen, imageToVideoUnderscore, videoToVideoHyphen, videoToVideoUnderscore] = await Promise.all([
           getHistoryEntries({ generationType: 'image-to-video' as any }, { limit: 20 }),
-          getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 })
+          getHistoryEntries({ generationType: 'image_to_video' as any }, { limit: 20 }),
+          getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
+          getHistoryEntries({ generationType: 'video_to_video' as any }, { limit: 20 })
         ]);
+        
         if (!isMounted) return;
-        const combined = [...(imageToVideo.data || []), ...(videoToVideo.data || [])];
-        setExtraVideoEntries(combined);
-        console.log('[VideoPage] fetched extra video entries:', combined.length);
+        
+        // Combine all results and remove duplicates by ID
+        const allResults = [
+          ...(imageToVideoHyphen.data || []),
+          ...(imageToVideoUnderscore.data || []),
+          ...(videoToVideoHyphen.data || []),
+          ...(videoToVideoUnderscore.data || [])
+        ];
+        
+        const byId: Record<string, any> = {};
+        allResults.forEach((entry: any) => {
+          byId[entry.id] = entry;
+        });
+        
+        const combined = Object.values(byId);
+        
+        // Sort by timestamp (newest first) to ensure proper ordering
+        const sortedCombined = combined.sort((a: any, b: any) => {
+          const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
+          const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
+          return timestampB - timestampA; // Descending order (newest first)
+        });
+        
+        setExtraVideoEntries(sortedCombined);
+        console.log('[VideoPage] fetched extra video entries:', {
+          total: sortedCombined.length,
+          imageToVideoHyphen: imageToVideoHyphen.data?.length || 0,
+          imageToVideoUnderscore: imageToVideoUnderscore.data?.length || 0,
+          videoToVideoHyphen: videoToVideoHyphen.data?.length || 0,
+          videoToVideoUnderscore: videoToVideoUnderscore.data?.length || 0,
+          unique: sortedCombined.length,
+          firstTimestamp: sortedCombined[0]?.timestamp || 'none',
+          lastTimestamp: sortedCombined[sortedCombined.length - 1]?.timestamp || 'none'
+        });
       } catch (e) {
         console.error('[VideoPage] extra fetch failed:', e);
       }
@@ -226,19 +329,47 @@ const InputBox = () => {
     historyEntries.forEach((e: any) => { byId[e.id] = e; });
     extraVideoEntries.forEach((e: any) => { byId[e.id] = e; });
     const list = Object.values(byId);
-    console.log('[VideoPage] display entries count:', list.length);
-    return list as any[];
+    
+    // Sort by timestamp (newest first) to match global history behavior
+    const sortedList = list.sort((a: any, b: any) => {
+      const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
+      const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
+      return timestampB - timestampA; // Descending order (newest first)
+    });
+    
+    console.log('[VideoPage] display entries count:', sortedList.length);
+    console.log('[VideoPage] first entry timestamp:', sortedList[0]?.timestamp || 'none');
+    console.log('[VideoPage] last entry timestamp:', sortedList[sortedList.length - 1]?.timestamp || 'none');
+    
+    // Debug: Show the complete order of display entries
+    if (sortedList.length > 0) {
+      console.log('[VideoPage] Complete display order:', sortedList.map((entry: any, index: number) => ({
+        position: index + 1,
+        id: entry.id,
+        timestamp: entry.timestamp,
+        generationType: entry.generationType,
+        source: historyEntries.some(h => h.id === entry.id) ? 'Redux' : 'Extra',
+        prompt: entry.prompt?.substring(0, 30) + '...'
+      })));
+    }
+    
+    return sortedList as any[];
   }, [historyEntries, extraVideoEntries]);
 
   // Auto-load more history pages until we find non-text video types (bounded attempts)
   const autoLoadAttemptsRef = useRef(0);
   useEffect(() => {
-    const normalize = (t: string | undefined) => (t ? t.replace(/_/g, '-') : '');
+    const normalizeGenerationType = (generationType: string | undefined): string => {
+      if (!generationType) return '';
+      return generationType.replace(/[_-]/g, '-').toLowerCase();
+    };
+    
     const counts = (historyEntries || []).reduce((acc: any, e: any) => {
-      const n = normalize(e.generationType);
-      acc[n] = (acc[n] || 0) + 1;
+      const normalized = normalizeGenerationType(e.generationType);
+      acc[normalized] = (acc[normalized] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+    
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;

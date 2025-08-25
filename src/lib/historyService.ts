@@ -90,9 +90,18 @@ export async function getHistoryEntries(
     // Apply filters
     if (filters?.generationType) {
       // Normalize to Firestore stored format (underscored)
-      const firestoreGenType = (filters.generationType as string).replace(/-/g, '_');
-      baseQuery = query(baseQuery, where('generationType', '==', firestoreGenType));
-      console.log('✅ Applied generationType filter (normalized):', firestoreGenType);
+      baseQuery = query(baseQuery, where('generationType', '==', filters.generationType));
+      console.log('✅ Applied generationType filter:', filters.generationType);
+      
+      // Also check for alternative format (if user passes hyphen, also check underscore, and vice versa)
+      const alternativeFormat = filters.generationType.includes('-') 
+        ? filters.generationType.replace(/-/g, '_')
+        : filters.generationType.replace(/_/g, '-');
+      
+      if (alternativeFormat !== filters.generationType) {
+        console.log('🔄 Also checking alternative format:', alternativeFormat);
+        // Note: Firestore doesn't support OR queries easily, so we'll handle this in the client-side filtering
+      }
     }
     if (filters?.model) {
       baseQuery = query(baseQuery, where('model', '==', filters.model));
