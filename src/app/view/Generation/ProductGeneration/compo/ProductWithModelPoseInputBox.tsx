@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
   setPrompt, 
-  generateImages
+  generateImages,
+  setIsGenerating
 } from '@/store/slices/generationSlice';
 import { 
   toggleDropdown, 
@@ -14,8 +15,11 @@ import {
 } from '@/store/slices/uiSlice';
 import { 
   addHistoryEntry, 
-  updateHistoryEntry 
+  updateHistoryEntry,
+  loadHistory,
+  loadMoreHistory
 } from '@/store/slices/historySlice';
+import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
 
 // Import the product-specific components
 import ModelsDropdown from './ModelsDropdown';
@@ -24,11 +28,15 @@ import UploadModelButton from './UploadModelButton';
 import FrameSizeButton from './FrameSizeButton';
 import ImageCountButton from './ImageCountButton';
 import ProductImagePreview from './ProductImagePreview';
+import GenerationModeDropdown from './GenerationModeDropdown';
 
 const ProductWithModelPoseInputBox = () => {
   const dispatch = useAppDispatch();
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(new Set());
+  const [overflowPromptIds, setOverflowPromptIds] = useState<Set<string>>(new Set());
+  const promptRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
@@ -39,22 +47,32 @@ const ProductWithModelPoseInputBox = () => {
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
+  const historyLoading = useAppSelector((state: any) => state.history?.loading || false);
+  const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
 
   // Product and model image states
   const [productImage, setProductImage] = useState<string | null>(null);
   const [modelImage, setModelImage] = useState<string | null>(null);
+  const [generationMode, setGenerationMode] = useState<string>('product-only');
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     
+    console.log('🚀 Starting product generation...');
+    console.log('📝 Prompt:', prompt);
+    console.log('🤖 Model:', selectedModel);
+    console.log('🎯 Generation Mode:', generationMode);
+    console.log('🖼️ Product Image:', !!productImage);
+    console.log('👤 Model Image:', !!modelImage);
+    
     // For Flux models, product image is required
-    if (selectedModel !== 'flux-kontext-dev' && !productImage) return;
+    if (selectedModel !== 'flux-krea' && !productImage) return;
 
     // Create a loading entry immediately to show loading frames
     const loadingEntry: HistoryEntry = {
-      id: `loading-${Date.now()}`,
-      prompt: `Product: ${prompt}`,
+      id: `loading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      prompt: `${prompt}`,
       model: selectedModel,
       generationType: 'product-generation',
       images: Array.from({ length: imageCount }, (_, index) => ({
@@ -71,29 +89,76 @@ const ProductWithModelPoseInputBox = () => {
     // Add loading entry to show frames immediately
     dispatch(addHistoryEntry(loadingEntry));
 
+    // Save to Firebase and get the real Firebase ID
+    let firebaseHistoryId: string;
+    try {
+      const { id, ...loadingEntryWithoutId } = loadingEntry;
+      firebaseHistoryId = await saveHistoryEntry(loadingEntryWithoutId);
+      console.log('🔥 Firebase history entry created with ID:', firebaseHistoryId);
+    } catch (error) {
+      console.error('❌ Failed to save to Firebase:', error);
+      dispatch(addNotification({ type: 'error', message: 'Failed to save to history' }));
+      dispatch(setIsGenerating(false));
+      return;
+    }
+
     try {
       let result;
       
       // Check if using local model or Flux model
-      if (selectedModel === 'flux-kontext-dev') {
-        // Call local product generation API - only needs prompt and image count
-        const localResponse = await fetch('/api/local/product-generation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt,
-            imageCount
-          })
-        });
+      if (selectedModel === 'flux-krea') {
+        let result;
+        
+        if (generationMode === 'product-only') {
+          // Call local product generation API - only needs prompt and image count
+          const localResponse = await fetch('/api/local/product-generation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              prompt,
+              imageCount
+            })
+          });
 
-        if (!localResponse.ok) {
-          throw new Error(`Local API failed: ${localResponse.status}`);
+          if (!localResponse.ok) {
+            throw new Error(`Local API failed: ${localResponse.status}`);
+          }
+
+          result = await localResponse.json();
+        } else if (generationMode === 'product-with-model') {
+          // Call local product with model pose API
+          if (!productImage || !modelImage) {
+            throw new Error('Both product image and model image are required for product with model pose generation');
+          }
+
+          const formData = new FormData();
+          formData.append('product_image', await fetch(productImage).then(r => r.blob()), 'product.png');
+          formData.append('model_image', await fetch(modelImage).then(r => r.blob()), 'model.png');
+          formData.append('scene_desc', prompt);
+          formData.append('width', '768');
+          formData.append('height', '768');
+
+          const localResponse = await fetch('/api/local/product-pose-generation', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!localResponse.ok) {
+            throw new Error(`Local pose API failed: ${localResponse.status}`);
+          }
+
+          result = await localResponse.json();
         }
-
-        // The server route handles SSE and uploads to Firebase, returns final JSON with images
-        result = await localResponse.json();
+        
+        if (!result.images) {
+          console.error('❌ Local API response missing images:', result);
+          throw new Error('No images received from local API');
+        }
+        
+        console.log('✅ Local API response received:', result);
+        console.log('🖼️ Images from local API:', result.images);
       } else {
         // Use existing Flux API for Kontext models
         let backendPrompt;
@@ -187,9 +252,9 @@ const ProductWithModelPoseInputBox = () => {
 
       // Create the completed entry
       const completedEntry: HistoryEntry = {
-        id: result.historyId || Date.now().toString(),
-        prompt: `Product: ${prompt}`,
-        model: selectedModel === 'flux-kontext-dev' ? 'Flux Kontext [DEV]' : selectedModel,
+        id: selectedModel === 'flux-krea' ? loadingEntry.id : (result.historyId || Date.now().toString()),
+        prompt: `${prompt}`,
+        model: selectedModel === 'flux-krea' ? 'Flux Kontext [DEV]' : selectedModel,
         generationType: 'product-generation',
         images: result.images,
         timestamp: new Date().toISOString(),
@@ -200,24 +265,41 @@ const ProductWithModelPoseInputBox = () => {
         style: 'product'
       };
 
+      console.log('🔄 Updating history entry:', loadingEntry.id);
+      console.log('📝 Completed entry:', completedEntry);
+
       // Update the loading entry with completed data for both local and Flux models
       dispatch(updateHistoryEntry({
         id: loadingEntry.id,
         updates: completedEntry
       }));
 
-      // Clear the prompt and images (only clear images for Flux models)
-      dispatch(setPrompt(''));
-      if (selectedModel !== 'flux-kontext-dev') {
-        setProductImage(null);
-        setModelImage(null);
+      // Update Firebase history entry with completed status
+      try {
+        await updateFirebaseHistory(firebaseHistoryId, {
+          images: result.images,
+          imageCount: result.images.length,
+          status: 'completed',
+          style: 'product'
+        });
+        console.log('🔥 Firebase history updated with completed status');
+      } catch (error) {
+        console.error('❌ Failed to update Firebase history:', error);
       }
+
+      // Clear the prompt and images (clear images for all models after successful generation)
+      dispatch(setPrompt(''));
+      setProductImage(null);
+      setModelImage(null);
 
       // Show success notification for both local and Flux models
       dispatch(addNotification({
         type: 'success',
         message: `Successfully generated ${imageCount} product image${imageCount > 1 ? 's' : ''}!`
       }));
+
+      // Reset generating state
+      dispatch(setIsGenerating(false));
 
     } catch (error: any) {
       console.error('Product generation failed:', error);
@@ -231,11 +313,25 @@ const ProductWithModelPoseInputBox = () => {
         }
       }));
 
+      // Update Firebase history with failed status
+      try {
+        await updateFirebaseHistory(firebaseHistoryId, {
+          status: 'failed',
+          error: error.message || 'Failed to generate product images'
+        });
+        console.log('🔥 Firebase history updated with failed status');
+      } catch (firebaseError) {
+        console.error('❌ Failed to update Firebase history with error:', firebaseError);
+      }
+
       // Show error notification
       dispatch(addNotification({
         type: 'error',
         message: error.message || 'Failed to generate product images'
       }));
+
+      // Reset generating state
+      dispatch(setIsGenerating(false));
     }
   };
 
@@ -245,13 +341,54 @@ const ProductWithModelPoseInputBox = () => {
     setIsPreviewOpen(true);
   };
 
+  const getUserPrompt = (rawPrompt: string | undefined) => {
+    if (!rawPrompt) return '';
+    return rawPrompt.replace(/^Product:\s*/i, '').trim();
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedPromptIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // After render, measure overflow for prompts and set toggle visibility once
+  useEffect(() => {
+    const next = new Set<string>();
+    for (const id in promptRefs.current) {
+      const el = promptRefs.current[id];
+      if (!el) continue;
+      const isOverflowing = el.scrollWidth > el.clientWidth;
+      if (isOverflowing) next.add(id);
+    }
+    setOverflowPromptIds(next);
+  }, [historyEntries, expandedPromptIds]);
+
   // Close preview modal
   const closePreview = () => {
     setIsPreviewOpen(false);
     setSelectedEntry(null);
   };
 
-  // Filter product generation history entries
+  // Load product history with filters and enable infinite scroll pagination
+  // Initial history load is triggered centrally by PageRouter
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
+        if (hasMoreHistory && !historyLoading) {
+          dispatch(loadMoreHistory({ filters: { generationType: 'product-generation' }, paginationParams: { limit: 10 } }));
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [dispatch, hasMoreHistory, historyLoading]);
+
+  // Entries are already filtered in the store when filters are set
   const productHistoryEntries = historyEntries
     .filter((entry: HistoryEntry) => entry.generationType === 'product-generation')
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -259,11 +396,23 @@ const ProductWithModelPoseInputBox = () => {
   // Check if generation button should be enabled
   const canGenerate = (() => {
     const hasPrompt = prompt.trim().length > 0;
-    const isLocalModel = selectedModel === 'flux-kontext-dev';
-    const hasRequiredInputs = isLocalModel || productImage;
+    const isLocalModel = selectedModel === 'flux-krea';
     const notGenerating = !isGenerating;
     
-    return hasPrompt && hasRequiredInputs && notGenerating;
+    if (isLocalModel) {
+      if (generationMode === 'product-only') {
+        // For product-only mode, only prompt is required
+        return hasPrompt && notGenerating;
+      } else if (generationMode === 'product-with-model') {
+        // For product-with-model mode, prompt, product image, and model image are required
+        return hasPrompt && productImage && modelImage && notGenerating;
+      }
+    } else {
+      // For Flux models, prompt and product image are required
+      return hasPrompt && productImage && notGenerating;
+    }
+    
+    return false;
   })();
 
   useEffect(() => {
@@ -286,7 +435,13 @@ const ProductWithModelPoseInputBox = () => {
             <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
               <input
                 type="text"
-                placeholder={selectedModel === 'flux-kontext-dev' ? "Describe the product you want to generate..." : "Type your product prompt..."}
+                placeholder={
+                  selectedModel === 'flux-kontext-dev' 
+                    ? "Describe the product you want to generate..." 
+                    : selectedModel === 'flux-krea' && generationMode === 'product-with-model'
+                    ? "Describe the scene and pose for your product..."
+                    : "Type your product prompt..."
+                }
                 value={prompt}
                 onChange={(e) => dispatch(setPrompt(e.target.value))}
                 className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
@@ -301,14 +456,29 @@ const ProductWithModelPoseInputBox = () => {
                 disabled={!canGenerate}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition-colors"
               >
-                {isGenerating ? 'Generating...' : (selectedModel === 'flux-kontext-dev' ? 'Generate from Description' : 'Generate Product')}
+                {isGenerating ? 'Generating...' : (
+                  selectedModel === 'flux-krea' 
+                    ? (generationMode === 'product-only' ? 'Generate Product' : 'Generate with Model Pose')
+                    : 'Generate Product'
+                )}
               </button>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
             <ModelsDropdown />
-            <UploadProductButton onImageUpload={setProductImage} />
-            <UploadModelButton onImageUpload={setModelImage} />
+            <GenerationModeDropdown 
+              selectedMode={generationMode}
+              onModeSelect={setGenerationMode}
+              isVisible={selectedModel === 'flux-krea'}
+            />
+            <UploadProductButton 
+              onImageUpload={setProductImage} 
+              isDisabled={selectedModel === 'flux-krea' && generationMode === 'product-only'}
+            />
+            <UploadModelButton 
+              onImageUpload={setModelImage} 
+              isDisabled={selectedModel === 'flux-krea' && generationMode === 'product-only'}
+            />
             <FrameSizeButton />
             <ImageCountButton />
           </div>
@@ -322,7 +492,14 @@ const ProductWithModelPoseInputBox = () => {
           <p className="text-white/60">Your generated product images will appear here</p>
         </div>
 
-        {productHistoryEntries.length === 0 ? (
+        {productHistoryEntries.length === 0 && historyLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              <div className="text-white text-lg">Loading your product generations...</div>
+            </div>
+          </div>
+        ) : productHistoryEntries.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
               <Image
@@ -335,7 +512,7 @@ const ProductWithModelPoseInputBox = () => {
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">No products generated yet</h3>
             <p className="text-white/60">
-              {selectedModel === 'flux-kontext-dev' 
+              {selectedModel === 'flux-krea' 
                 ? 'Start by typing a product description above' 
                 : 'Start by uploading a product image and typing a prompt above'
               }
@@ -353,7 +530,44 @@ const ProductWithModelPoseInputBox = () => {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="text-white/90 text-sm leading-relaxed">{entry.prompt}</p>
+                    {(() => {
+                      const userPrompt = getUserPrompt(entry.prompt);
+                      const isExpanded = expandedPromptIds.has(entry.id);
+                      const showTruncate = !isExpanded;
+                      const shouldShowToggle = overflowPromptIds.has(entry.id) || userPrompt.includes('\n');
+                      return (
+                        <div className="flex items-start gap-2">
+                          <p
+                            className={`${showTruncate ? 'whitespace-nowrap overflow-hidden text-ellipsis' : 'whitespace-normal'} text-white/90 text-sm leading-relaxed max-w-[600px]`}
+                            ref={(el) => { promptRefs.current[entry.id] = el; }}
+                          >
+                            {userPrompt}
+                          </p>
+                          <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                            {userPrompt.length > 0 && (
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(userPrompt); }}
+                                className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                                title="Copy prompt"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                                </svg>
+                              </button>
+                            )}
+                            {shouldShowToggle && (
+                              <button
+                                onClick={() => toggleExpand(entry.id)}
+                                className="px-2 py-1 text-xs rounded-md bg-white/5 hover:bg-white/10 text-white/70"
+                              >
+                                {isExpanded ? 'Show less' : 'See more'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
                       <span>{new Date(entry.timestamp).toLocaleDateString()}</span>
                       <span>{entry.model}</span>
@@ -413,6 +627,15 @@ const ProductWithModelPoseInputBox = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {/* Pagination loader at bottom */}
+        {hasMoreHistory && historyLoading && productHistoryEntries.length > 0 && (
+          <div className="flex items-center justify-center py-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              <div className="text-sm text-white/60">Loading more products...</div>
+            </div>
           </div>
         )}
       </div>

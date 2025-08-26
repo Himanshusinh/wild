@@ -223,6 +223,7 @@ const InputBox = () => {
       return acc;
     }, {} as Record<string, number>);
 
+    /* Debug removed for cleanliness
     console.log('[VideoPage] history totals:', {
       all: allEntries.length,
       textToVideo: countsAll['text-to-video'] || 0,
@@ -233,18 +234,18 @@ const InputBox = () => {
       urlVideoTypes: urlVideoTypes.length,
       rawGenerationTypes,
       normalizedCounts: countsAll,
-    });
+    });*/
     
     // Debug: Show which entries are being filtered and why
     if (mergedEntries.length < allEntries.length) {
       const filteredOut = allEntries.filter((entry: any) => !mergedEntries.some((merged: any) => merged.id === entry.id));
-      console.log('[VideoPage] Filtered out entries:', filteredOut.map((entry: any) => ({
+      /*console.log('[VideoPage] Filtered out entries:', filteredOut.map((entry: any) => ({
         id: entry.id,
         generationType: entry.generationType,
         normalizedType: normalizeGenerationType(entry.generationType),
         hasVideoUrls: Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url)),
         prompt: entry.prompt?.substring(0, 50) + '...'
-      })));
+      })));*/
     }
     
     // Sort by timestamp (newest first) to ensure consistent ordering
@@ -256,13 +257,13 @@ const InputBox = () => {
     
     // Debug: Show the order of entries after sorting
     if (sortedMergedEntries.length > 0) {
-      console.log('[VideoPage] Entry order after sorting:', sortedMergedEntries.slice(0, 3).map((entry: any, index: number) => ({
+      /*console.log('[VideoPage] Entry order after sorting:', sortedMergedEntries.slice(0, 3).map((entry: any, index: number) => ({
         position: index + 1,
         id: entry.id,
         timestamp: entry.timestamp,
         generationType: entry.generationType,
         prompt: entry.prompt?.substring(0, 30) + '...'
-      })));
+      })));*/
     }
     
     return sortedMergedEntries;
@@ -337,9 +338,9 @@ const InputBox = () => {
       return timestampB - timestampA; // Descending order (newest first)
     });
     
-    console.log('[VideoPage] display entries count:', sortedList.length);
+    /*console.log('[VideoPage] display entries count:', sortedList.length);
     console.log('[VideoPage] first entry timestamp:', sortedList[0]?.timestamp || 'none');
-    console.log('[VideoPage] last entry timestamp:', sortedList[sortedList.length - 1]?.timestamp || 'none');
+    console.log('[VideoPage] last entry timestamp:', sortedList[sortedList.length - 1]?.timestamp || 'none');*/
     
     // Debug: Show the complete order of display entries
     if (sortedList.length > 0) {

@@ -54,10 +54,7 @@ export const loadMoreHistory = createAsyncThunk(
       const state = getState() as { history: HistoryState };
       const currentEntries = state.history.entries;
       
-      console.log('🔄 LOAD MORE HISTORY DEBUG 🔄');
-      console.log('Current entries count:', currentEntries.length);
-      console.log('Filters:', filters);
-      console.log('Pagination params:', paginationParams);
+      // Debug removed to reduce noise
       
       // Get the last entry's timestamp and ID to use as cursor for next page
       let cursor: { timestamp: string; id: string } | undefined;
@@ -67,7 +64,7 @@ export const loadMoreHistory = createAsyncThunk(
           timestamp: lastEntry.timestamp, 
           id: lastEntry.id 
         };
-        console.log('📌 Using cursor from last entry:', cursor);
+        // Debug removed to reduce noise
       }
       
       // Create pagination params with cursor
@@ -76,7 +73,7 @@ export const loadMoreHistory = createAsyncThunk(
         cursor: cursor
       };
       
-      console.log('📤 Requesting next page with params:', nextPageParams);
+      // Debug removed to reduce noise
       
       const result = filters 
         ? await getHistoryEntries(filters, nextPageParams)
@@ -84,17 +81,15 @@ export const loadMoreHistory = createAsyncThunk(
       
       // Handle both old array format and new pagination format
       if (Array.isArray(result)) {
-        console.log('⚠️ Received array format, slicing...');
+        // Debug removed to reduce noise
         const newEntries = result.slice(currentEntries.length);
         return { entries: newEntries, hasMore: result.length === currentEntries.length + (paginationParams?.limit || 20) };
       } else {
-        console.log('✅ Received pagination format');
-        console.log('  - New entries:', result.data.length);
-        console.log('  - Has more:', result.hasMore);
-        console.log('  - Next cursor:', result.nextCursor);
+        // Debug removed to reduce noise
         return { entries: result.data, hasMore: result.hasMore, nextCursor: result.nextCursor };
       }
     } catch (error) {
+      // Keep error for visibility
       console.error('❌ Load more history failed:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load more history');
     }
@@ -156,74 +151,87 @@ const historySlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Load history
-      .addCase(loadHistory.pending, (state) => {
+      .addCase(loadHistory.pending, (state, action) => {
         state.loading = true;
         state.error = null;
+        try {
+          const pendingArg = (action as any)?.meta?.arg;
+          console.log('[historySlice] loadHistory.pending', { currentFilters: state.filters, pendingArg });
+        } catch {}
       })
       .addCase(loadHistory.fulfilled, (state, action) => {
         state.loading = false;
         
-        // Debug logs removed for cleaner console
-        
-        // If we're loading with filters, replace entries to show only filtered results
-        if (state.filters && Object.keys(state.filters).length > 0) {
-          // Loading with filters - replacing entries
-          // Replace entries with filtered results to ensure proper separation by generation type
-          state.entries = action.payload.entries;
-          
-          // Additional safety: double-check that all entries match the current filters
-          if (state.filters.generationType) {
+        // Always sync slice filters with the filters used for this load
+        const usedFilters = (action.meta && action.meta.arg && action.meta.arg.filters) || {};
+        state.filters = usedFilters;
+
+        // If filters were provided for this load, enforce them on the results for safety
+        state.entries = action.payload.entries;
+        if (usedFilters && Object.keys(usedFilters).length > 0) {
+          if (usedFilters.generationType) {
             // Normalize both the filter and entry generationType for comparison
             const normalizeGenerationType = (type: string): string => {
               return type.replace(/[_-]/g, '-').toLowerCase();
             };
-            
-            const normalizedFilter = normalizeGenerationType(state.filters.generationType);
+            const normalizedFilter = normalizeGenerationType(usedFilters.generationType);
             state.entries = state.entries.filter(entry => {
               const normalizedEntryType = normalizeGenerationType(entry.generationType);
               return normalizedEntryType === normalizedFilter;
             });
           }
-          if (state.filters.model) {
-            state.entries = state.entries.filter(entry => entry.model === state.filters.model);
+          if (usedFilters.model) {
+            state.entries = state.entries.filter(entry => entry.model === usedFilters.model);
           }
-          if (state.filters.status) {
-            state.entries = state.entries.filter(entry => entry.status === state.filters.status);
+          if (usedFilters.status) {
+            state.entries = state.entries.filter(entry => entry.status === usedFilters.status);
           }
-          
-          // Final filtered entries count and types logged above
-        } else {
-          // If no filters, replace the entire array (for initial load or clear filters)
-          state.entries = action.payload.entries;
         }
         
         state.hasMore = action.payload.hasMore;
         state.lastLoadedCount = action.payload.entries.length;
         state.error = null;
+        try {
+          console.log('[historySlice] loadHistory.fulfilled', {
+            usedFilters,
+            received: action.payload.entries.length,
+            hasMore: state.hasMore
+          });
+        } catch {}
       })
       .addCase(loadHistory.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        try { console.warn('[historySlice] loadHistory.rejected', { error: state.error }); } catch {}
       })
       // Load more history
-      .addCase(loadMoreHistory.pending, (state) => {
+      .addCase(loadMoreHistory.pending, (state, action) => {
         state.loading = true;
+        try { console.log('[historySlice] loadMoreHistory.pending', { currentCount: state.entries.length, currentFilters: state.filters }); } catch {}
       })
-             .addCase(loadMoreHistory.fulfilled, (state, action) => {
-         state.loading = false;
-         
-         // Filter out duplicate entries before adding
-         const newEntries = action.payload.entries.filter(newEntry => 
-           !state.entries.some(existingEntry => existingEntry.id === newEntry.id)
-         );
-         
-         state.entries.push(...newEntries);
-         state.hasMore = action.payload.hasMore;
-         state.lastLoadedCount = newEntries.length;
-       })
+      .addCase(loadMoreHistory.fulfilled, (state, action) => {
+        state.loading = false;
+        
+        // Filter out duplicate entries before adding
+        const newEntries = action.payload.entries.filter(newEntry => 
+          !state.entries.some(existingEntry => existingEntry.id === newEntry.id)
+        );
+        
+        state.entries.push(...newEntries);
+        state.hasMore = action.payload.hasMore;
+        state.lastLoadedCount = newEntries.length;
+        try {
+          console.log('[historySlice] loadMoreHistory.fulfilled', {
+            added: newEntries.length,
+            total: state.entries.length,
+            hasMore: state.hasMore
+          });
+        } catch {}
+      })
       .addCase(loadMoreHistory.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        try { console.warn('[historySlice] loadMoreHistory.rejected', { error: state.error }); } catch {}
       });
   },
 });

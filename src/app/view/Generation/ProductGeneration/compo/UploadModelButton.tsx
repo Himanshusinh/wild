@@ -6,6 +6,7 @@ import { useAppSelector } from '@/store/hooks';
 
 interface UploadModelButtonProps {
   onImageUpload: (imageData: string | null) => void;
+  isDisabled?: boolean;
 }
 
 type PresetImage = {
@@ -21,7 +22,7 @@ const presetImages: PresetImage[] = [
   { id: 'm3', src: '/vercel.svg', alt: 'Model 3' },
 ];
 
-const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload }) => {
+const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, isDisabled: externalDisabled }) => {
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-dev');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -30,9 +31,9 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload }) 
   const [uploadedName, setUploadedName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Disable model image upload for local model
+  // Disable model image upload for local model or when externally disabled
   const isLocalModel = selectedModel === 'flux-kontext-dev';
-  const isDisabled = isLocalModel;
+  const isDisabled = externalDisabled || isLocalModel;
 
   const toggle = () => {
     if (isDisabled) return;

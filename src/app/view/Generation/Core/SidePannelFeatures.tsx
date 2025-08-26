@@ -44,8 +44,6 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
 
   // Close sub-options when clicking outside
   React.useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('SidePanel pathname:', pathname, 'currentView:', currentView, 'currentGenerationType:', currentGenerationType);
     const handleClickOutside = (event: MouseEvent) => {
       if (
         showBrandingOptions &&

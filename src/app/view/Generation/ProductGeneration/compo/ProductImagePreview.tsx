@@ -40,9 +40,14 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
     }
   };
 
+  const getUserPrompt = (rawPrompt: string | undefined) => {
+    if (!rawPrompt) return '';
+    return rawPrompt.replace(/^Product:\s*/i, '').trim();
+  };
+
   const handleCopyPrompt = async () => {
     try {
-      await navigator.clipboard.writeText(entry.prompt);
+      await navigator.clipboard.writeText(getUserPrompt(entry.prompt));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -109,7 +114,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10">
               <div className="flex items-start gap-2">
                 <div className="opacity-90 leading-relaxed flex-1 max-w-[280px] break-words">
-                  {entry.prompt}
+                  {getUserPrompt(entry.prompt)}
                 </div>
                 <button
                   onClick={handleCopyPrompt}

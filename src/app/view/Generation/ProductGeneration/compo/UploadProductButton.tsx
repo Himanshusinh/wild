@@ -5,16 +5,17 @@ import { useAppSelector } from '@/store/hooks';
 
 interface UploadProductButtonProps {
   onImageUpload: (imageData: string | null) => void;
+  isDisabled?: boolean;
 }
 
-const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload }) => {
+const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload, isDisabled: externalDisabled }) => {
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-dev');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
 
-  // Disable product image upload for local model
+  // Disable product image upload for local model or when externally disabled
   const isLocalModel = selectedModel === 'flux-kontext-dev';
-  const isDisabled = isLocalModel;
+  const isDisabled = externalDisabled || isLocalModel;
 
   const handleClick = () => {
     if (isDisabled) return;

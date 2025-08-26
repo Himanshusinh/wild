@@ -41,11 +41,7 @@ export default function MainLayout() {
     }
   }, [pathname, dispatch, currentGenerationType]);
 
-  // Debug: log current view when it changes
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('currentView:', currentView);
-  }, [currentView]);
+  // Removed debug logging for cleaner console
 
   const handleViewChange = (view: ViewType) => {
     if (view === currentView) return; // Prevent unnecessary updates

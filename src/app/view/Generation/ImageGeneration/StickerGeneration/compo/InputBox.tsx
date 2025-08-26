@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -14,7 +14,9 @@ import {
 } from '@/store/slices/uiSlice';
 import { 
   addHistoryEntry, 
-  updateHistoryEntry 
+  updateHistoryEntry,
+  loadHistory,
+  loadMoreHistory
 } from '@/store/slices/historySlice';
 
 // Import the sticker-specific components
@@ -35,7 +37,27 @@ const InputBox = () => {
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
+  const historyLoading = useAppSelector((state: any) => state.history?.loading || false);
+  const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+
+  // Prompt expand/collapse tracking
+  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(new Set());
+  const [overflowPromptIds, setOverflowPromptIds] = useState<Set<string>>(new Set());
+  const promptRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
+
+  const getUserPrompt = (rawPrompt: string | undefined) => {
+    if (!rawPrompt) return '';
+    return rawPrompt.replace(/^Sticker:\s*/i, '').trim();
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedPromptIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -64,7 +86,7 @@ const InputBox = () => {
       let result;
       
       // Check if using local model or Flux model
-      if (selectedModel === 'flux-kontext-dev') {
+      if (selectedModel === 'flux-krea') {
         // Call local sticker generation API
         const localResponse = await fetch('/api/local/sticker-generation', {
           method: 'POST',
@@ -174,10 +196,41 @@ const InputBox = () => {
     setSelectedEntry(null);
   };
 
+  // Load and paginate sticker history
+  // Initial history load is triggered centrally by PageRouter
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
+        if (hasMoreHistory && !historyLoading) {
+          dispatch(loadMoreHistory({ filters: { generationType: 'sticker-generation' }, paginationParams: { limit: 10 } }));
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [dispatch, hasMoreHistory, historyLoading]);
+
   // Filter sticker generation history entries
   const stickerHistoryEntries = historyEntries
     .filter((entry: HistoryEntry) => entry.generationType === 'sticker-generation')
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  // Measure overflow after render to decide when to show See more
+  useEffect(() => {
+    const next = new Set<string>();
+    for (const id in promptRefs.current) {
+      const el = promptRefs.current[id];
+      if (!el) continue;
+      if (el.scrollWidth > el.clientWidth) next.add(id);
+    }
+    // Only update state if changed to avoid render loops
+    const isSame = next.size === overflowPromptIds.size && Array.from(next).every(id => overflowPromptIds.has(id));
+    if (!isSame) {
+      setOverflowPromptIds(next);
+    }
+  }, [stickerHistoryEntries, expandedPromptIds]);
 
   return (
     <div className="min-h-screen p-6">
@@ -221,7 +274,14 @@ const InputBox = () => {
           <p className="text-white/60">Your generated stickers will appear here</p>
         </div>
 
-        {stickerHistoryEntries.length === 0 ? (
+        {stickerHistoryEntries.length === 0 && historyLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              <div className="text-white text-lg">Loading your sticker generations...</div>
+            </div>
+          </div>
+        ) : stickerHistoryEntries.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
               <Image
@@ -247,7 +307,44 @@ const InputBox = () => {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="text-white/90 text-sm leading-relaxed">{entry.prompt}</p>
+                    {(() => {
+                      const userPrompt = getUserPrompt(entry.prompt);
+                      const isExpanded = expandedPromptIds.has(entry.id);
+                      const showTruncate = !isExpanded;
+                      const shouldShowToggle = overflowPromptIds.has(entry.id) || userPrompt.includes('\n');
+                      return (
+                        <div className="flex items-start gap-2">
+                          <p
+                            className={`${showTruncate ? 'whitespace-nowrap overflow-hidden text-ellipsis' : 'whitespace-normal'} text-white/90 text-sm leading-relaxed max-w-[600px]`}
+                            ref={(el) => { promptRefs.current[entry.id] = el; }}
+                          >
+                            {userPrompt}
+                          </p>
+                          <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                            {userPrompt.length > 0 && (
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(userPrompt); }}
+                                className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                                title="Copy prompt"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                                </svg>
+                              </button>
+                            )}
+                            {shouldShowToggle && (
+                              <button
+                                onClick={() => toggleExpand(entry.id)}
+                                className="px-2 py-1 text-xs rounded-md bg-white/5 hover:bg-white/10 text-white/70"
+                              >
+                                {isExpanded ? 'Show less' : 'See more'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
                       <span>{new Date(entry.timestamp).toLocaleDateString()}</span>
                       <span>{entry.model}</span>
@@ -291,6 +388,14 @@ const InputBox = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {hasMoreHistory && historyLoading && stickerHistoryEntries.length > 0 && (
+          <div className="flex items-center justify-center py-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              <div className="text-sm text-white/60">Loading more stickers...</div>
+            </div>
           </div>
         )}
       </div>

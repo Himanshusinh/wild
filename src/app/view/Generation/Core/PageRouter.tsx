@@ -11,7 +11,7 @@ import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';
 import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithModelPoseInputBox';
 import History from './History';
 import Bookmarks from './Bookmarks';
-import { loadHistory, setFilters, clearHistoryByType } from '@/store/slices/historySlice';
+import { loadHistory, clearHistoryByType } from '@/store/slices/historySlice';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
 type GenerationType = 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation';
@@ -55,18 +55,8 @@ export default function PageRouter() {
     
     effectTimeoutRef.current = setTimeout(() => {
       if (currentView === 'generation') {
-        console.log('=== PAGEROUTER useEffect (DEBOUNCED) ===');
-        console.log('currentView:', currentView);
-        console.log('currentGenerationType:', currentGenerationType);
-        console.log('Current history entries count:', historyEntries.length);
-        console.log('Current filters:', currentFilters);
-        console.log('Already loaded types:', Array.from(loadedTypesRef.current));
-        console.log('Is initial load:', isInitialLoadRef.current);
-        console.log('Is currently loading:', isLoadingRef.current);
-        
         // Prevent multiple simultaneous loads
         if (isLoadingRef.current) {
-          console.log('Skipping - already loading history');
           return;
         }
         
@@ -77,14 +67,8 @@ export default function PageRouter() {
         const hasEntriesForType = historyEntries.some((entry: any) => entry.generationType === currentGenerationType);
         const alreadyLoaded = loadedTypesRef.current.has(currentGenerationType);
         
-        console.log('Has entries for current type:', hasEntriesForType);
-        console.log('Already loaded this type:', alreadyLoaded);
-        console.log('Generation type changed:', generationTypeChanged);
-        
         // Only clear history if this is NOT the initial load and generation type actually changed
         if (generationTypeChanged && !isInitialLoadRef.current) {
-          console.log('Generation type changed, scheduling history clear with debounce');
-          
           // Only clear if we actually have entries for the previous type
           const previousType = previousGenerationTypeRef.current;
           const hasPreviousEntries = historyEntries.some((entry: any) => entry.generationType === previousType);
@@ -98,12 +82,11 @@ export default function PageRouter() {
             // Debounce the history clearing to prevent rapid clearing
             clearTimeoutRef.current = setTimeout(() => {
               if (previousType && previousType !== currentGenerationType) {
-                console.log('Executing debounced history clear for:', previousType);
                 dispatch(clearHistoryByType(previousType));
               }
             }, 100); // 100ms debounce
           } else {
-            console.log('No entries for previous type, skipping clear');
+            // no-op
           }
           
           loadedTypesRef.current.clear();
@@ -113,38 +96,31 @@ export default function PageRouter() {
         // Mark that initial load is complete
         if (isInitialLoadRef.current) {
           isInitialLoadRef.current = false;
-          console.log('Initial load completed, setting up tracking');
         }
         
         // Only load history if we haven't loaded it for this type before
         if (!loadedTypesRef.current.has(currentGenerationType)) {
-          console.log('Loading history for new generation type:', currentGenerationType);
           isLoadingRef.current = true;
-          dispatch(setFilters({ generationType: currentGenerationType }));
           dispatch(loadHistory({ 
             filters: { generationType: currentGenerationType }, 
             paginationParams: { limit: 10 } 
           }))
             .finally(() => {
               isLoadingRef.current = false;
-              console.log('History loading completed for:', currentGenerationType);
             });
           loadedTypesRef.current.add(currentGenerationType);
         } else if (!hasEntriesForType && !isInitialLoadRef.current && !isHistoryLoading) {
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
-          console.log('Reloading history for type:', currentGenerationType);
           isLoadingRef.current = true;
-          dispatch(setFilters({ generationType: currentGenerationType }));
           dispatch(loadHistory({ 
             filters: { generationType: currentGenerationType }, 
             paginationParams: { limit: 10 } 
           }))
             .finally(() => {
               isLoadingRef.current = false;
-              console.log('History reloading completed for:', currentGenerationType);
             });
         } else {
-          console.log('Skipping history load - already have entries for this type, initial load, or currently loading');
+          // no-op
         }
       }
     }, 50); // 50ms debounce for the entire effect
