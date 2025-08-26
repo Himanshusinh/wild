@@ -1,30 +1,29 @@
 export interface GeneratedImage {
   id: string;
   url: string;
-  firebaseUrl?: string; // URL after uploading to Firebase Storage
-  originalUrl: string; // Original URL from BFL API
+  originalUrl: string;
 }
 
 export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation';
   images: GeneratedImage[];
   timestamp: Date;
-  createdAt: string; // ISO string for Firestore
+  createdAt: string; // ISO string for local storage
   imageCount: number;
   status: 'generating' | 'completed' | 'failed';
   error?: string;
 }
 
-export interface HistoryEntryFirestore {
+export interface HistoryEntryLocal {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation';
   images: GeneratedImage[];
-  timestamp: any; // Firestore Timestamp
+  timestamp: any; // Local timestamp
   createdAt: string;
   imageCount: number;
   status: 'generating' | 'completed' | 'failed';
@@ -33,7 +32,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music';
+  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation';
   dateRange?: {
     start: Date;
     end: Date;

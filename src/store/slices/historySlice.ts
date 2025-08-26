@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
-import { getHistoryEntries, getRecentHistory } from '@/lib/historyService';
 
 interface HistoryState {
   entries: HistoryEntry[];
@@ -20,16 +19,34 @@ const initialState: HistoryState = {
   lastLoadedCount: 0,
 };
 
-// Async thunk for loading history
+// Async thunk for loading history (now just returns existing entries from state)
 export const loadHistory = createAsyncThunk(
   'history/loadHistory',
   async (
     { filters, limit = 20 }: { filters?: HistoryFilters; limit?: number } = {},
-    { rejectWithValue }
+    { getState, rejectWithValue }
   ) => {
     try {
-      const entries = filters ? await getHistoryEntries(filters, limit) : await getRecentHistory();
-      return { entries, hasMore: entries.length === limit };
+      const state = getState() as { history: HistoryState };
+      let entries = state.history.entries;
+      
+      // Apply filters if provided
+      if (filters) {
+        entries = entries.filter(entry => {
+          if (filters.model && entry.model !== filters.model) return false;
+          if (filters.generationType && entry.generationType !== filters.generationType) return false;
+          if (filters.status && entry.status !== filters.status) return false;
+          if (filters.dateRange) {
+            const entryDate = new Date(entry.timestamp);
+            if (entryDate < filters.dateRange.start || entryDate > filters.dateRange.end) return false;
+          }
+          return true;
+        });
+      }
+      
+      // Apply limit
+      const limitedEntries = entries.slice(0, limit);
+      return { entries: limitedEntries, hasMore: entries.length > limit };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load history');
     }
@@ -45,15 +62,25 @@ export const loadMoreHistory = createAsyncThunk(
   ) => {
     try {
       const state = getState() as { history: HistoryState };
-      const currentCount = state.history.entries.length;
+      let entries = state.history.entries;
       
-      const entries = filters 
-        ? await getHistoryEntries(filters, currentCount + limit)
-        : await getHistoryEntries(undefined, currentCount + limit);
+      // Apply filters if provided
+      if (filters) {
+        entries = entries.filter(entry => {
+          if (filters.model && entry.model !== filters.model) return false;
+          if (filters.generationType && entry.generationType !== filters.generationType) return false;
+          if (filters.status && entry.status !== filters.status) return false;
+          if (filters.dateRange) {
+            const entryDate = new Date(entry.timestamp);
+            if (entryDate < filters.dateRange.start || entryDate > filters.dateRange.end) return false;
+          }
+          return true;
+        });
+      }
       
-      // Return only new entries
-      const newEntries = entries.slice(currentCount);
-      return { entries: newEntries, hasMore: entries.length === currentCount + limit };
+      const currentCount = state.history.lastLoadedCount;
+      const newEntries = entries.slice(currentCount, currentCount + limit);
+      return { entries: newEntries, hasMore: entries.length > currentCount + limit };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load more history');
     }
@@ -105,7 +132,6 @@ const historySlice = createSlice({
         state.entries = action.payload.entries;
         state.hasMore = action.payload.hasMore;
         state.lastLoadedCount = action.payload.entries.length;
-        state.error = null;
       })
       .addCase(loadHistory.rejected, (state, action) => {
         state.loading = false;
@@ -114,16 +140,16 @@ const historySlice = createSlice({
       // Load more history
       .addCase(loadMoreHistory.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(loadMoreHistory.fulfilled, (state, action) => {
         state.loading = false;
         state.entries.push(...action.payload.entries);
         state.hasMore = action.payload.hasMore;
-        state.lastLoadedCount = action.payload.entries.length;
+        state.lastLoadedCount += action.payload.entries.length;
       })
-      .addCase(loadMoreHistory.rejected, (state, action) => {
+      .addCase(loadMoreHistory.rejected, (state) => {
         state.loading = false;
-        state.error = action.payload as string;
       });
   },
 });
