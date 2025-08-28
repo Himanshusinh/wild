@@ -5,6 +5,7 @@ import {
   getDocs, 
   doc, 
   updateDoc, 
+  setDoc,
   query, 
   orderBy, 
   limit, 
@@ -50,6 +51,20 @@ export async function saveHistoryEntry(entry: Omit<HistoryEntry, 'id'>): Promise
   } catch (error) {
     console.error('Error saving history entry:', error);
     throw new Error('Failed to save history entry');
+  }
+}
+
+/**
+ * Saves a new history entry to Firestore with a custom ID
+ */
+export async function saveHistoryEntryWithId(id: string, entry: Omit<HistoryEntry, 'id'>): Promise<string> {
+  try {
+    const firestoreEntry = convertHistoryEntryToFirestore(entry);
+    await setDoc(doc(db, HISTORY_COLLECTION, id), firestoreEntry);
+    return id;
+  } catch (error) {
+    console.error('Error saving history entry with custom ID:', error);
+    throw new Error('Failed to save history entry with custom ID');
   }
 }
 

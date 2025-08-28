@@ -7,6 +7,7 @@ export type GenerationType =
   | 'text-to-video'
   | 'text-to-music'
   | 'mockup-generation'
-  | 'product-generation';
+  | 'product-generation'
+  | 'ad-generation';
 
 

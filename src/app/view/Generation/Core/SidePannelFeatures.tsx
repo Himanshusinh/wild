@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useAppSelector } from '@/store/hooks';
 import { ViewType, GenerationType } from '@/types/generation';
 import { usePathname } from 'next/navigation';
+import { Clapperboard } from 'lucide-react';
 
 interface SidePannelFeaturesProps {
   currentView: ViewType;
@@ -15,49 +16,50 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
-  const [showBrandingOptions, setShowBrandingOptions] = React.useState(false);
-  const [brandingOptionsPosition, setBrandingOptionsPosition] = React.useState({ top: 0 });
-  const imageGenerationRef = React.useRef<HTMLDivElement>(null);
+  const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
+  const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
-  const brandingOptionsRef = React.useRef<HTMLDivElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   const handleGenerationTypeChange = (type: GenerationType) => {
     onGenerationTypeChange(type);
-    setShowBrandingOptions(false);
+    setShowBrandingDropdown(false);
+    setHoveredItem(null);
   };
 
   const handleImageGenerationClick = () => {
     handleGenerationTypeChange('text-to-image');
   };
 
-  const handleBrandingMouseEnter = () => {
-    if (brandingRef.current) {
-      const rect = brandingRef.current.getBoundingClientRect();
-      setBrandingOptionsPosition({ top: rect.top });
-    }
-    setShowBrandingOptions(true);
+  const handleBrandingHover = () => {
+    setShowBrandingDropdown(true);
   };
 
-  const handleBrandingMouseLeave = () => {
-    setShowBrandingOptions(false);
+  const handleBrandingLeave = () => {
+    setShowBrandingDropdown(false);
   };
 
-  // Close sub-options when clicking outside
+  // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        showBrandingOptions &&
+        showBrandingDropdown &&
         brandingRef.current &&
         !brandingRef.current.contains(event.target as Node) &&
-        !(brandingOptionsRef.current && brandingOptionsRef.current.contains(event.target as Node))
+        !(dropdownRef.current && dropdownRef.current.contains(event.target as Node))
       ) {
-        setShowBrandingOptions(false);
+        setShowBrandingDropdown(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showBrandingOptions, pathname, currentView, currentGenerationType ]);
+  }, [showBrandingDropdown]);
+
+  const isBrandingActive = pathname?.includes('/logo-generation') || 
+                           pathname?.includes('/sticker-generation') || 
+                           pathname?.includes('/mockup-generation') || 
+                           pathname?.includes('/product-generation');
 
   return (
     <div className='fixed top-[62px] left-0 h-[calc(100vh-52px)] flex flex-col gap-3 py-6 px-3 group transition-all text-white duration-200 bg-black/20 backdrop-blur-md w-[68px] hover:w-60 z-40'>
@@ -73,7 +75,6 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
 
         <div className="relative">
             <div
-                ref={imageGenerationRef}
                 onClick={handleImageGenerationClick}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/5 group/item ${
                   (pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
@@ -83,53 +84,6 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
             </div>
         </div>
-
-        {/* Branding Kit Sub-options */}
-        {showBrandingOptions && (
-          <div
-            className='fixed group-hover:left-[240px] left-[68px] bg-black/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-2 space-y-1 z-50 transition-all duration-200'
-            style={{
-              top: `${brandingOptionsPosition.top}px`,
-              minWidth: '180px'
-            }}
-            ref={brandingOptionsRef}
-            onMouseLeave={handleBrandingMouseLeave}
-          >
-            <div
-              onClick={() => handleGenerationTypeChange('logo-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
-                currentGenerationType === 'logo-generation' ? 'bg-white/15' : ''
-              }`}
-            >
-              <span className='text-sm text-white'>Logo Generation</span>
-            </div>
-            <div
-              onClick={() => handleGenerationTypeChange('sticker-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
-                currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
-              }`}
-            >
-              <span className='text-sm text-white'>Sticker Generation</span>
-            </div>
-            <div
-              onClick={() => handleGenerationTypeChange('mockup-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
-                currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
-              }`}
-            >
-              <span className='text-sm text-white'>Mockup Generation</span>
-            </div>
-            <div
-              onClick={() => handleGenerationTypeChange('product-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
-                currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
-              }`}
-            >
-              <span className='text-sm text-white'>Product Generation</span>
-            </div>
-          </div>
-        )}
-
 
         <div>
             <div 
@@ -154,18 +108,94 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Music Generation</span>
             </div>
         </div>
+
+        {/* Wildmind Skit */}
+        <div>
+            <div 
+                onClick={() => handleGenerationTypeChange('ad-generation')}
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/5 group/item ${
+                  (pathname?.includes('/ad-generation')) ? 'bg-white/10' : ''
+                }`}
+            >
+                <Clapperboard size={25} className="text-white" />
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Wildmind Skit</span>
+            </div>
+        </div>
         
+        {/* Branding Kit with Dropdown */}
         <div className="relative">
             <div
                 ref={brandingRef}
-                onMouseEnter={handleBrandingMouseEnter}
+                onMouseEnter={handleBrandingHover}
+                onMouseLeave={handleBrandingLeave}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/5 group/item ${
-                  (pathname?.includes('/logo-generation') || pathname?.includes('/sticker-generation') || pathname?.includes('/mockup-generation') || pathname?.includes('/product-generation')) ? 'bg-white/10' : ''
+                  isBrandingActive ? 'bg-white/10' : ''
                 }`}
             >
                 <Image src="/icons/brandingkitwhite.svg" alt="Branding Kit" width={25} height={25} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
+                
+                {/* Dropdown Arrow */}
+                <div className={`ml-auto transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : ''}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="6,9 12,15 18,9"></polyline>
+                    </svg>
+                </div>
             </div>
+
+            {/* Branding Dropdown Menu */}
+            {showBrandingDropdown && (
+                <div
+                    ref={dropdownRef}
+                    onMouseEnter={handleBrandingHover}
+                    onMouseLeave={handleBrandingLeave}
+                    className='absolute left-full top-0 ml-2 bg-black/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-2 space-y-1 z-50 min-w-[200px]'
+                >
+                    <div className='px-3 py-2 border-b border-white/10'>
+                        <span className='text-xs text-white/60 uppercase tracking-wider'>Branding Kit</span>
+                    </div>
+                    
+                    <div
+                        onClick={() => handleGenerationTypeChange('logo-generation')}
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
+                            currentGenerationType === 'logo-generation' ? 'bg-white/15' : ''
+                        }`}
+                    >
+                        {/* <div className='w-2 h-2 rounded-full bg-blue-400'></div> */}
+                        <span className='text-sm text-white'>Logo Generation</span>
+                    </div>
+                    
+                    <div
+                        onClick={() => handleGenerationTypeChange('sticker-generation')}
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
+                            currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
+                        }`}
+                    >
+                        {/* <div className='w-2 h-2 rounded-full bg-green-400'></div> */}
+                        <span className='text-sm text-white'>Sticker Generation</span>
+                    </div>
+                    
+                    <div
+                        onClick={() => handleGenerationTypeChange('mockup-generation')}
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
+                            currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
+                        }`}
+                    >
+                        {/* <div className='w-2 h-2 rounded-full bg-purple-400'></div> */}
+                        <span className='text-sm text-white'>Mockup Generation</span>
+                    </div>
+                    
+                    <div
+                        onClick={() => handleGenerationTypeChange('product-generation')}
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded ${
+                            currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
+                        }`}
+                    >
+                        {/* <div className='w-2 h-2 rounded-full bg-orange-400'></div> */}
+                        <span className='text-sm text-white'>Product Generation</span>
+                    </div>
+                </div>
+            )}
         </div>
         
         <div>

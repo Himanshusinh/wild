@@ -29,10 +29,12 @@ export async function POST(request: Request) {
   let historyId: string | null = null;
 
   try {
-    const { prompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image', uploadedImages = [] } = await request.json();
+    const { prompt, userPrompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image', uploadedImages = [] } = await request.json();
     const apiKey = process.env.BFL_API_KEY;
 
-    if (!prompt) {
+    const promptForHistory = typeof userPrompt === 'string' && userPrompt.trim().length > 0 ? userPrompt : prompt;
+
+    if (!promptForHistory) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
 
     // Create initial history entry
     historyId = await saveHistoryEntry({
-      prompt,
+      prompt: promptForHistory,
       model,
       generationType,
       images: [],

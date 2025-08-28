@@ -17,9 +17,10 @@ import {
   addHistoryEntry, 
   updateHistoryEntry,
   loadHistory,
-  loadMoreHistory
+  loadMoreHistory,
+  removeHistoryEntry
 } from '@/store/slices/historySlice';
-import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
+import { saveHistoryEntry, saveHistoryEntryWithId, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
 
 // Import the product-specific components
 import ModelsDropdown from './ModelsDropdown';
@@ -71,8 +72,8 @@ const ProductWithModelPoseInputBox = () => {
 
     // Create a loading entry immediately to show loading frames
     const loadingEntry: HistoryEntry = {
-      id: `loading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      prompt: `${prompt}`,
+      id: `loading-${Date.now()}`, // Simplified ID without random to prevent duplicates
+      prompt: prompt, // Store only user prompt, not backend prompt
       model: selectedModel,
       generationType: 'product-generation',
       images: Array.from({ length: imageCount }, (_, index) => ({
@@ -89,17 +90,19 @@ const ProductWithModelPoseInputBox = () => {
     // Add loading entry to show frames immediately
     dispatch(addHistoryEntry(loadingEntry));
 
-    // Save to Firebase and get the real Firebase ID
-    let firebaseHistoryId: string;
-    try {
-      const { id, ...loadingEntryWithoutId } = loadingEntry;
-      firebaseHistoryId = await saveHistoryEntry(loadingEntryWithoutId);
-      console.log('🔥 Firebase history entry created with ID:', firebaseHistoryId);
-    } catch (error) {
-      console.error('❌ Failed to save to Firebase:', error);
-      dispatch(addNotification({ type: 'error', message: 'Failed to save to history' }));
-      dispatch(setIsGenerating(false));
-      return;
+    // For local model, we manage Firebase; for Flux, server manages Firebase
+    let firebaseHistoryId: string | null = null;
+    if (selectedModel === 'flux-krea') {
+      try {
+        const { id, ...loadingEntryWithoutId } = loadingEntry;
+        firebaseHistoryId = await saveHistoryEntryWithId(loadingEntry.id, loadingEntryWithoutId);
+        console.log('🔥 Firebase history entry created with ID:', firebaseHistoryId);
+      } catch (error) {
+        console.error('❌ Failed to save to Firebase:', error);
+        dispatch(addNotification({ type: 'error', message: 'Failed to save to history' }));
+        dispatch(setIsGenerating(false));
+        return;
+      }
     }
 
     try {
@@ -107,7 +110,6 @@ const ProductWithModelPoseInputBox = () => {
       
       // Check if using local model or Flux model
       if (selectedModel === 'flux-krea') {
-        let result;
         
         if (generationMode === 'product-only') {
           // Call local product generation API - only needs prompt and image count
@@ -150,6 +152,18 @@ const ProductWithModelPoseInputBox = () => {
           }
 
           result = await localResponse.json();
+        }
+        
+        // Normalize the response to handle both single image_url and images array
+        if (result.image_url && !result.images) {
+          console.log('🔄 Normalizing single image_url response to images array format');
+          // Convert single image_url to images array format
+          result.images = [{
+            id: `local-${Date.now()}`,
+            url: result.image_url,
+            originalUrl: result.image_url
+          }];
+          console.log('✅ Normalized response:', result);
         }
         
         if (!result.images) {
@@ -230,6 +244,7 @@ const ProductWithModelPoseInputBox = () => {
           body: JSON.stringify({
             prompt_upsampling:true,
             prompt: backendPrompt,
+            userPrompt: prompt, // send user's original prompt for history
             model: selectedModel,
             n: imageCount,
             aspect_ratio: frameSize, // Use the selected frame size as aspect_ratio
@@ -252,8 +267,8 @@ const ProductWithModelPoseInputBox = () => {
 
       // Create the completed entry
       const completedEntry: HistoryEntry = {
-        id: selectedModel === 'flux-krea' ? loadingEntry.id : (result.historyId || Date.now().toString()),
-        prompt: `${prompt}`,
+        id: selectedModel === 'flux-krea' ? loadingEntry.id : (result.historyId || loadingEntry.id),
+        prompt: prompt,
         model: selectedModel === 'flux-krea' ? 'Flux Kontext [DEV]' : selectedModel,
         generationType: 'product-generation',
         images: result.images,
@@ -261,30 +276,31 @@ const ProductWithModelPoseInputBox = () => {
         createdAt: new Date().toISOString(),
         imageCount: imageCount,
         status: 'completed',
-        frameSize: selectedModel === 'flux-kontext-dev' ? '1:1' : frameSize, // Use selected frame size for Flux models
+        frameSize: selectedModel === 'flux-kontext-dev' ? '1:1' : frameSize,
         style: 'product'
       };
 
-      console.log('🔄 Updating history entry:', loadingEntry.id);
-      console.log('📝 Completed entry:', completedEntry);
+      if (selectedModel === 'flux-krea') {
+        // Update the loading entry in Redux
+        dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: completedEntry }));
 
-      // Update the loading entry with completed data for both local and Flux models
-      dispatch(updateHistoryEntry({
-        id: loadingEntry.id,
-        updates: completedEntry
-      }));
-
-      // Update Firebase history entry with completed status
-      try {
-        await updateFirebaseHistory(firebaseHistoryId, {
-          images: result.images,
-          imageCount: result.images.length,
-          status: 'completed',
-          style: 'product'
-        });
-        console.log('🔥 Firebase history updated with completed status');
-      } catch (error) {
-        console.error('❌ Failed to update Firebase history:', error);
+        // Update Firebase for local model
+        try {
+          await updateFirebaseHistory(firebaseHistoryId as string, {
+            images: result.images,
+            imageCount: result.images.length,
+            status: 'completed',
+            style: 'product',
+            prompt: prompt
+          });
+          console.log('🔥 Firebase history updated with completed status');
+        } catch (error) {
+          console.error('❌ Failed to update Firebase history:', error);
+        }
+      } else {
+        // Flux: server already saved history; replace loading entry with server entry id
+        dispatch(removeHistoryEntry(loadingEntry.id));
+        dispatch(addHistoryEntry(completedEntry));
       }
 
       // Clear the prompt and images (clear images for all models after successful generation)
@@ -313,15 +329,17 @@ const ProductWithModelPoseInputBox = () => {
         }
       }));
 
-      // Update Firebase history with failed status
-      try {
-        await updateFirebaseHistory(firebaseHistoryId, {
-          status: 'failed',
-          error: error.message || 'Failed to generate product images'
-        });
-        console.log('🔥 Firebase history updated with failed status');
-      } catch (firebaseError) {
-        console.error('❌ Failed to update Firebase history with error:', firebaseError);
+      // For Flux models, update Firebase history with failed status
+      if (selectedModel === 'flux-krea') {
+        try {
+          await updateFirebaseHistory(firebaseHistoryId!, {
+            status: 'failed',
+            error: error.message || 'Failed to generate product images'
+          });
+          console.log('🔥 Firebase history updated with failed status');
+        } catch (firebaseError) {
+          console.error('❌ Failed to update Firebase history with error:', firebaseError);
+        }
       }
 
       // Show error notification

@@ -21,7 +21,15 @@ const ModelsDropdown = () => {
     { name: 'FLUX.1 Dev', value: 'flux-dev' },
     { name: 'Runway Gen4 Image', value: 'gen4_image' },
     { name: 'Runway Gen4 Image Turbo', value: 'gen4_image_turbo' },
-    { name: 'MiniMax Image-01', value: 'minimax-image-01' }
+    { name: 'MiniMax Image-01', value: 'minimax-image-01' },
+    // Local models
+    { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
+    { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
+    { name: 'SD 3.5 Large (Local)', value: 'stable-large' },
+    { name: 'SD 3.5 Turbo (Local)', value: 'stable-turbo' },
+    { name: 'SDXL 1.0 (Local)', value: 'stable-xl' },
+    { name: 'Flux Krea (Local)', value: 'flux-krea' },
+    { name: 'Playground SDXL (Local)', value: 'playground' },
   ];
 
   // If user uploaded images, restrict to models which support image inputs

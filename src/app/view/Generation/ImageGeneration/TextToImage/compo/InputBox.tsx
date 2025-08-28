@@ -154,12 +154,7 @@ const InputBox = () => {
     }
   }, [prompt]);
 
-  // PageRouter already loads initial history, so we just set up pagination state
-  useEffect(() => {
-    console.log('🖼️ Image Generation - Component mounted, setting up pagination state');
-    setPage(1);
-    console.log('🖼️ Image Generation - Pagination state initialized');
-  }, []);
+ 
 
   // Handle scroll to load more history
   useEffect(() => {
@@ -721,52 +716,144 @@ const InputBox = () => {
         );
         clearInputs(); // Clear inputs after successful generation
       } else {
-        // Use regular BFL generation
-        const result = await dispatch(
-          generateImages({
-        prompt: `${prompt} [Style: ${style}]`,
-        model: selectedModel,
-        imageCount,
-        frameSize,
+        // Use regular BFL generation OR local models
+        const localModels = [
+          // Previously integrated local models
+          'flux-schnell',
+          'stable-medium',
+          'stable-large',
+          'stable-turbo',
+          'stable-xl',
+          // Newly added local models
+          'flux-krea',
+          'playground',
+        ];
+        const isLocalImageModel = localModels.includes(selectedModel);
+
+        if (isLocalImageModel) {
+          // Create Firebase history entry for local models (generating)
+          try {
+            firebaseHistoryId = await saveHistoryEntry({
+              prompt: prompt,
+              model: selectedModel,
+              generationType: 'text-to-image',
+              images: [],
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount,
+              status: 'generating',
+              frameSize,
+              style,
+            });
+            // Point the temporary loading entry to the Firebase document id
+            dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
+          } catch (e) {
+            console.error('Failed to create Firebase history for local model:', e);
+          }
+
+          // Call local image generation proxy (server uploads to Firebase)
+          const response = await fetch('/api/local/local-image-generation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: `${prompt} [Style: ${style}]`,
+              model: selectedModel,
+              n: imageCount,
+              aspect_ratio: frameSize,
+              historyId: firebaseHistoryId,
+              style,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Local image API failed: ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          // Create the completed entry
+          const completedEntry: HistoryEntry = {
+            id: firebaseHistoryId || loadingEntry.id,
+            prompt: prompt,
+            model: selectedModel,
+            generationType: 'text-to-image',
+            images: result.images,
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount: result.images.length,
+            status: 'completed',
+            frameSize,
             style,
-            generationType: "text-to-image",
-            uploadedImages,
-          })
-        ).unwrap();
+          };
 
-      // Create the completed entry
-      const completedEntry: HistoryEntry = {
-        id: result.historyId || Date.now().toString(),
-        prompt: prompt,
-        model: selectedModel,
-          generationType: "text-to-image",
-        images: result.images,
-          timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        imageCount: result.images.length,
-          status: "completed",
+          // Update the loading entry with completed data
+          dispatch(
+            updateHistoryEntry({
+              id: firebaseHistoryId || loadingEntry.id,
+              updates: completedEntry,
+            })
+          );
+
+          // Server already finalized Firebase when historyId is provided
+
+          // Show success notification
+          dispatch(
+            addNotification({
+              type: 'success',
+              message: `Generated ${result.images.length} image${
+                result.images.length > 1 ? 's' : ''
+              } successfully!`,
+            })
+          );
+          clearInputs();
+        } else {
+          // Use regular BFL generation
+          const result = await dispatch(
+            generateImages({
+          prompt: `${prompt} [Style: ${style}]`,
+          model: selectedModel,
+          imageCount,
           frameSize,
-          style,
-      };
+              style,
+              generationType: "text-to-image",
+              uploadedImages,
+            })
+          ).unwrap();
 
-      // Update the loading entry with completed data
-        dispatch(
-          updateHistoryEntry({
-        id: loadingEntry.id,
-            updates: completedEntry,
-          })
-        );
+        // Create the completed entry
+        const completedEntry: HistoryEntry = {
+          id: result.historyId || Date.now().toString(),
+          prompt: prompt,
+          model: selectedModel,
+            generationType: "text-to-image",
+          images: result.images,
+            timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          imageCount: result.images.length,
+            status: "completed",
+            frameSize,
+            style,
+        };
 
-      // Show success notification
-        dispatch(
-          addNotification({
-            type: "success",
-            message: `Generated ${result.images.length} image${
-              result.images.length > 1 ? "s" : ""
-            } successfully!`,
-          })
-        );
-        clearInputs(); // Clear inputs after successful generation
+        // Update the loading entry with completed data
+          dispatch(
+            updateHistoryEntry({
+          id: loadingEntry.id,
+              updates: completedEntry,
+            })
+          );
+
+        // Show success notification
+          dispatch(
+            addNotification({
+              type: "success",
+              message: `Generated ${result.images.length} image${
+                result.images.length > 1 ? "s" : ""
+              } successfully!`,
+            })
+          );
+          clearInputs(); // Clear inputs after successful generation
+        }
       }
     } catch (error) {
       console.error("Error generating images:", error);
