@@ -51,9 +51,11 @@ export async function uploadGeneratedImage(image: GeneratedImage): Promise<Gener
     // Download the image from the original URL
     const blob = await downloadImageAsBlob(image.originalUrl);
     
-    // Generate a unique filename
+    // Generate a unique filename with proper extension
     const timestamp = Date.now();
-    const fileName = `${image.id}_${timestamp}.jpg`;
+    const isVideo = image.originalUrl.includes('.mp4') || image.originalUrl.includes('.mov') || image.originalUrl.includes('.avi');
+    const extension = isVideo ? 'mp4' : 'jpg';
+    const fileName = `${image.id}_${timestamp}.${extension}`;
     console.log('Generated filename:', fileName);
     
     // Upload to Firebase Storage

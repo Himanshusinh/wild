@@ -12,7 +12,9 @@ type ImageAnalysis = {
 
 export async function POST(req: NextRequest) {
   try {
+    const start = Date.now();
     const { imageData } = await req.json();
+    console.log('[analyze-image] request received. dataUriLength=', typeof imageData === 'string' ? imageData.length : 0);
     if (!imageData || typeof imageData !== "string") {
       return NextResponse.json({ error: "Image data is required" }, { status: 400 });
     }
@@ -76,9 +78,11 @@ export async function POST(req: NextRequest) {
       parsed.color_scheme = ["#000000", "#FFFFFF"];
     }
 
+    const ms = Date.now() - start;
+    console.log('[analyze-image] success in', ms + 'ms', 'analysis=', parsed);
     return NextResponse.json({ analysis: parsed });
   } catch (err) {
-    console.error("analyze-image error:", err);
+    console.error("[analyze-image] error:", err);
     return NextResponse.json({ error: "Failed to analyze image" }, { status: 500 });
   }
 }

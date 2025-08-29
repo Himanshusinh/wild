@@ -23,6 +23,17 @@ export interface HistoryEntry {
     total: number;
     status: string;
   };
+  // Ad generation specific fields
+  prompts?: any;
+  analysis?: any;
+  backendPrompt?: any;
+  compiledPrompt?: string;
+  falRequest?: {
+    model: string;
+    type: string;
+    parameters?: any;
+  };
+  mode?: 'auto' | 'manual';
 }
 
 export interface HistoryEntryFirestore {
@@ -43,6 +54,17 @@ export interface HistoryEntryFirestore {
     total: number;
     status: string;
   };
+  // Ad generation specific fields
+  prompts?: any;
+  analysis?: any;
+  backendPrompt?: any;
+  compiledPrompt?: string;
+  falRequest?: {
+    model: string;
+    type: string;
+    parameters?: any;
+  };
+  mode?: 'auto' | 'manual';
 }
 
 export interface HistoryFilters {

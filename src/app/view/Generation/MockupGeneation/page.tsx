@@ -1,20 +1,17 @@
+"use client";
 import React, { useEffect } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { loadHistory } from '@/store/slices/historySlice';
 import InputBox from './compo/InputBox';
 
-const MockupGenration = () => {
-  const dispatch = useAppDispatch();
+const Page = () => {
+	const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    dispatch(loadHistory({}));
-  }, [dispatch]);
+	useEffect(() => {
+		dispatch(loadHistory({ filters: { generationType: 'mockup-generation' } }));
+	}, [dispatch]);
 
-  return (
-    <div className="relative min-h-screen">
-      <InputBox />
-    </div>
-  );
+	return <InputBox />;
 };
 
-export default MockupGenration;
+export default Page;

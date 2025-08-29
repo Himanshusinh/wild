@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../../../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toast } from 'react-hot-toast';
 import { 
   VideoGenerationState, 
@@ -10,19 +10,19 @@ import {
   VideoToVideoState,
   PromptImageObject,
   ReferenceImage
-} from '../../../../../types/videoGeneration';
+} from '@/types/videoGeneration';
 import { 
   buildImageToVideoBody, 
   buildVideoToVideoBody,
   getAvailableRatios,
   getDefaultRatioForModel
-} from '../../../../../lib/videoGenerationBuilders';
+} from '@/lib/videoGenerationBuilders';
 import { 
   waitForRunwayVideoCompletion,
   validateVideoFile,
   fileToDataURI
-} from '../../../../../lib/runwayVideoService';
-import { saveHistoryEntry, updateFirebaseHistory } from '../../../../../lib/historyService';
+} from '@/lib/runwayVideoService';
+import { saveHistoryEntry, updateHistoryEntry } from '@/lib/historyService';
 
 // Icons
 import { 
@@ -237,27 +237,24 @@ const VideoGenerationInputBox: React.FC = () => {
     setIsGenerating(true);
     setGenerationProgress({ current: 0, total: 100, status: 'Starting generation...' });
 
-    try {
-      // Create initial history entry
-      const historyData = {
-        prompt: state.mode === 'image_to_video' ? state.imageToVideo.promptText || '' : state.videoToVideo.promptText,
-        model: state.mode === 'image_to_video' ? state.imageToVideo.model : state.videoToVideo.model,
-        frameSize: state.mode === 'image_to_video' ? state.imageToVideo.ratio : state.videoToVideo.ratio,
-        style: 'video',
-        generationType: 'text-to-video',
-        imageCount: 1,
-        status: 'generating',
-        timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        generationProgress: { current: 0, total: 100, status: 'Starting generation...' }
-      };
+    // Create initial history entry
+    const historyData = {
+      prompt: state.mode === 'image_to_video' ? state.imageToVideo.promptText || '' : state.videoToVideo.promptText,
+      model: state.mode === 'image_to_video' ? state.imageToVideo.model : state.videoToVideo.model,
+      frameSize: state.mode === 'image_to_video' ? state.imageToVideo.ratio : state.videoToVideo.ratio,
+      style: 'video',
+      generationType: 'text-to-video' as const,
+      imageCount: 1,
+      images: [],
+      status: 'generating' as const,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      generationProgress: { current: 0, total: 100, status: 'Starting generation...' }
+    };
 
-      let firebaseHistoryId: string | undefined;
-      try {
-        firebaseHistoryId = await saveHistoryEntry(historyData);
-      } catch (error) {
-        console.error('Failed to save initial history entry:', error);
-      }
+    let firebaseHistoryId: string | undefined;
+    try {
+      firebaseHistoryId = await saveHistoryEntry(historyData);
 
       // Call video generation API
       const response = await fetch('/api/runway/video', {
@@ -283,14 +280,14 @@ const VideoGenerationInputBox: React.FC = () => {
         (progress, status) => {
           setGenerationProgress(progress);
           if (firebaseHistoryId) {
-            updateFirebaseHistory(firebaseHistoryId, { generationProgress: progress });
+            updateHistoryEntry(firebaseHistoryId, { generationProgress: progress });
           }
         }
       );
 
       // Update history with final status
       if (firebaseHistoryId && finalStatus.output) {
-        await updateFirebaseHistory(firebaseHistoryId, {
+        await updateHistoryEntry(firebaseHistoryId, {
           status: 'completed',
           images: finalStatus.output.map((url: string, index: number) => ({
             id: `${result.taskId}-${index}`,
@@ -311,7 +308,7 @@ const VideoGenerationInputBox: React.FC = () => {
       
       // Update history with error status
       if (firebaseHistoryId) {
-        await updateFirebaseHistory(firebaseHistoryId, {
+        await updateHistoryEntry(firebaseHistoryId, {
           status: 'failed',
           generationProgress: { current: 0, total: 100, status: 'Failed' }
         });
