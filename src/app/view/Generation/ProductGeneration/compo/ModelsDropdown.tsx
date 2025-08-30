@@ -11,9 +11,10 @@ const ModelsDropdown = () => {
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
 
   const models = [
-    { name: 'Flux Krea', value: 'flux-krea', description: 'Generate from description only (no image upload)' },
-    { name: 'Flux Kontext [PRO]', value: 'flux-kontext-pro', description: 'Best for professional products' },
-    { name: 'Flux Kontext [MAX]', value: 'flux-kontext-max', description: 'High-quality product designs' }
+    { name: 'Flux Krea', value: 'flux-krea', description: 'Local model - Product generation only' },
+    { name: 'Flux Kontext Dev', value: 'flux-kontext-dev', description: 'Product with model pose only' },
+    { name: 'Flux Kontext Pro', value: 'flux-kontext-pro', description: 'API model - Both generation types' },
+    { name: 'Flux Kontext Max', value: 'flux-kontext-max', description: 'API model - Both generation types' }
   ];
 
   const handleDropdownClick = () => {

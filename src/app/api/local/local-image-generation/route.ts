@@ -14,24 +14,110 @@ function mapAspectToSize(aspect: string, model: LocalModel): { width: number; he
   const isMediumOrLarge = model === 'stable-medium' || model === 'stable-large';
   const isKreaOrPlayground = model === 'flux-krea' || model === 'playground';
 
-  // Recommended defaults per model
-  const defaultSquare = (isSchnell || isTurbo) ? 768 : 1024;
-  const portrait = (isSchnell || isTurbo) ? 768 : 1024;
-  const landscape = (isSchnell || isTurbo) ? 768 : 1024;
+  // Helper function to ensure dimensions are divisible by 16
+  const makeDivisibleBy16 = (value: number): number => {
+    return Math.round(value / 16) * 16;
+  };
+
+  // Helper function to clamp dimensions to reasonable ranges
+  const clampDimension = (value: number, min: number, max: number): number => {
+    return Math.max(min, Math.min(max, value));
+  };
+
+  // Base dimensions per model (all divisible by 16)
+  const getBaseDimensions = () => {
+    if (isSchnell || isTurbo) {
+      return { base: 768, min: 512, max: 1024 }; // Smaller models
+    } else if (isXL || isMediumOrLarge || isKreaOrPlayground) {
+      return { base: 1024, min: 512, max: 1280 }; // Larger models
+    } else {
+      return { base: 1024, min: 512, max: 1024 }; // Default
+    }
+  };
+
+  const { base, min, max } = getBaseDimensions();
+  
+  console.log(`[mapAspectToSize] Model: ${model}, Aspect: ${aspect}, Base: ${base}, Min: ${min}, Max: ${max}`);
 
   switch (aspect) {
     case '1:1':
-      return { width: defaultSquare, height: defaultSquare };
+      return { width: base, height: base };
+      
     case '3:4': // portrait
-      return { width: Math.round(portrait * 0.75), height: portrait };
+      const portraitWidth = makeDivisibleBy16(base * 0.75);
+      return { 
+        width: clampDimension(portraitWidth, min, max), 
+        height: base 
+      };
+      
     case '4:3': // landscape
-      return { width: landscape, height: Math.round(landscape * 0.75) };
+      const landscapeHeight = makeDivisibleBy16(base * 0.75);
+      return { 
+        width: base, 
+        height: clampDimension(landscapeHeight, min, max) 
+      };
+      
     case '16:9':
-      return { width: (isXL || isMediumOrLarge || isKreaOrPlayground) ? 1280 : 896, height: (isXL || isMediumOrLarge || isKreaOrPlayground) ? 720 : 504 };
+      const widescreenHeight = makeDivisibleBy16(base * (9/16));
+      return { 
+        width: base, 
+        height: clampDimension(widescreenHeight, min, max) 
+      };
+      
+    case '9:16': // portrait widescreen
+      const portraitWidescreenWidth = makeDivisibleBy16(base * (9/16));
+      return { 
+        width: clampDimension(portraitWidescreenWidth, min, max), 
+        height: base 
+      };
+      
+    case '3:2':
+      const threeTwoHeight = makeDivisibleBy16(base * (2/3));
+      return { 
+        width: base, 
+        height: clampDimension(threeTwoHeight, min, max) 
+      };
+      
+    case '2:3': // portrait 3:2
+      const twoThreeWidth = makeDivisibleBy16(base * (2/3));
+      return { 
+        width: clampDimension(twoThreeWidth, min, max), 
+        height: base 
+      };
+      
     case '21:9':
-      return { width: (isXL || isMediumOrLarge || isKreaOrPlayground) ? 1344 : 896, height: (isXL || isMediumOrLarge || isKreaOrPlayground) ? 576 : 384 };
+      const ultrawideHeight = makeDivisibleBy16(base * (9/21));
+      return { 
+        width: base, 
+        height: clampDimension(ultrawideHeight, min, max) 
+      };
+      
+    case '9:21': // portrait ultrawide
+      const portraitUltrawideWidth = makeDivisibleBy16(base * (9/21));
+      return { 
+        width: clampDimension(portraitUltrawideWidth, min, max), 
+        height: base 
+      };
+      
+    case '16:10':
+      const sixteenTenHeight = makeDivisibleBy16(base * (10/16));
+      return { 
+        width: base, 
+        height: clampDimension(sixteenTenHeight, min, max) 
+      };
+      
+    case '10:16': // portrait 16:10
+      const tenSixteenWidth = makeDivisibleBy16(base * (10/16));
+      return { 
+        width: clampDimension(tenSixteenWidth, min, max), 
+        height: base 
+      };
+      
     default:
-      return { width: defaultSquare, height: defaultSquare };
+      // For unknown aspect ratios, return square
+      const result = { width: base, height: base };
+      console.log(`[mapAspectToSize] Default case for ${aspect}: ${result.width}x${result.height}`);
+      return result;
   }
 }
 
@@ -85,6 +171,20 @@ export async function POST(req: NextRequest) {
 
     const endpoint = `${BASE.replace(/\/$/, '')}/${modelToEndpoint(model)}`;
     const { width, height } = mapAspectToSize(aspectRatio, model);
+    
+    // Log dimension calculations for debugging
+    console.log(`[local-image-generation] Model: ${model}, Aspect: ${aspectRatio}`);
+    console.log(`[local-image-generation] Calculated dimensions: ${width}x${height}`);
+    console.log(`[local-image-generation] Validation: width divisible by 16: ${width % 16 === 0}, height divisible by 16: ${height % 16 === 0}`);
+    console.log(`[local-image-generation] Endpoint: ${endpoint}`);
+
+    // Validate dimensions are divisible by 16
+    if (width % 16 !== 0 || height % 16 !== 0) {
+      console.error(`[local-image-generation] Invalid dimensions: ${width}x${height} - not divisible by 16`);
+      return NextResponse.json({ 
+        error: `Invalid dimensions: ${width}x${height}. Dimensions must be divisible by 16.` 
+      }, { status: 400 });
+    }
 
     // Build request payload – do not send inference steps/guidance from frontend
     const payload: any = {

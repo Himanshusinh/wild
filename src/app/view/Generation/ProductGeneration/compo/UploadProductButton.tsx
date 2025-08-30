@@ -13,9 +13,9 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
 
-  // Disable product image upload for local model or when externally disabled
-  const isLocalModel = selectedModel === 'flux-kontext-dev';
-  const isDisabled = externalDisabled || isLocalModel;
+  // Disable product image upload only for flux-krea (text-only) or when externally disabled
+  const isTextOnlyModel = selectedModel === 'flux-krea';
+  const isDisabled = externalDisabled || isTextOnlyModel;
 
   const handleClick = () => {
     if (isDisabled) return;
@@ -67,7 +67,7 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
         }`}
         aria-label="Upload product"
-        title={isDisabled ? "Product image not needed for local model" : "Upload product"}
+        title={isDisabled ? "Product image not needed for text-only model" : "Upload product"}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
           <path d="M12 5v14" />

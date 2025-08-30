@@ -63,6 +63,43 @@ const InputBox = () => {
 
     return ratioMap[frameSize] || "1024:1024"; // Default to square if no match
   };
+
+  // Helper function to convert frameSize to flux-pro-1.1 dimensions
+  const convertFrameSizeToFluxProDimensions = (frameSize: string): { width: number; height: number } => {
+    const dimensionMap: { [key: string]: { width: number; height: number } } = {
+      "1:1": { width: 1024, height: 1024 },
+      "16:9": { width: 1024, height: 576 }, // 1024 * (9/16) = 576
+      "9:16": { width: 576, height: 1024 }, // 1024 * (16/9) = 576
+      "4:3": { width: 1024, height: 768 }, // 1024 * (3/4) = 768
+      "3:4": { width: 768, height: 1024 }, // 1024 * (4/3) = 768
+      "3:2": { width: 1024, height: 672 }, // 1024 * (2/3) = 682, rounded to 672 (multiple of 32)
+      "2:3": { width: 672, height: 1008 }, // 672 * (3/2) = 1008
+      "21:9": { width: 1024, height: 438 }, // 1024 * (9/21) = 438, rounded to 448 (multiple of 32)
+      "9:21": { width: 448, height: 1024 }, // 448 * (21/9) = 1024
+      "16:10": { width: 1024, height: 640 }, // 1024 * (10/16) = 640
+      "10:16": { width: 640, height: 1024 }, // 640 * (16/10) = 1024
+    };
+
+    // Ensure dimensions are within API limits and multiples of 32
+    const dimensions = dimensionMap[frameSize] || { width: 1024, height: 1024 };
+    
+    // Clamp to API limits: 256 <= x <= 1440, must be multiple of 32
+    const clampToLimits = (value: number): number => {
+      const clamped = Math.max(256, Math.min(1440, Math.round(value / 32) * 32));
+      console.log(`Dimension ${value} clamped to ${clamped} (multiple of 32, within 256-1440 range)`);
+      return clamped;
+    };
+
+    const result = {
+      width: clampToLimits(dimensions.width),
+      height: clampToLimits(dimensions.height)
+    };
+
+    console.log(`Frame size ${frameSize} converted to dimensions:`, result);
+    console.log(`API compliance check: width=${result.width} (${result.width % 32 === 0 ? '✓ multiple of 32' : '✗ not multiple of 32'}), height=${result.height} (${result.height % 32 === 0 ? '✓ multiple of 32' : '✗ not multiple of 32'})`);
+    console.log(`Range check: width=${result.width} (${result.width >= 256 && result.width <= 1440 ? '✓ in range 256-1440' : '✗ out of range'}), height=${result.height} (${result.height >= 256 && result.height <= 1440 ? '✓ in range 256-1440' : '✗ out of range'})`);
+    return result;
+  };
   const downloadImage = async (url: string) => {
     try {
       const response = await fetch(url, { mode: "cors" });
@@ -808,16 +845,35 @@ const InputBox = () => {
           clearInputs();
         } else {
           // Use regular BFL generation
+          // Check if this is a flux-pro model that needs width/height conversion
+          // Note: flux-pro, flux-pro-1.1, and flux-pro-1.1-ultra use width/height
+          // flux-dev uses frameSize conversion (handled in API route)
+          const isFluxProModel = selectedModel === "flux-pro-1.1" || selectedModel === "flux-pro-1.1-ultra" || selectedModel === "flux-pro";
+          
+          let generationPayload: any = {
+            prompt: `${prompt} [Style: ${style}]`,
+            model: selectedModel,
+            imageCount,
+            frameSize,
+            style,
+            generationType: "text-to-image",
+            uploadedImages,
+          };
+
+          // For flux-pro-1.1 models, convert frameSize to width/height dimensions
+          if (isFluxProModel) {
+            const dimensions = convertFrameSizeToFluxProDimensions(frameSize);
+            generationPayload.width = dimensions.width;
+            generationPayload.height = dimensions.height;
+            // Remove frameSize as it's not needed for these models
+            delete generationPayload.frameSize;
+            console.log(`Flux Pro model detected: ${selectedModel}, using dimensions:`, dimensions);
+            console.log(`Original frameSize: ${frameSize}, converted to: ${dimensions.width}x${dimensions.height}`);
+            console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
+          }
+
           const result = await dispatch(
-            generateImages({
-          prompt: `${prompt} [Style: ${style}]`,
-          model: selectedModel,
-          imageCount,
-          frameSize,
-              style,
-              generationType: "text-to-image",
-              uploadedImages,
-            })
+            generateImages(generationPayload)
           ).unwrap();
 
         // Create the completed entry
@@ -831,15 +887,18 @@ const InputBox = () => {
           createdAt: new Date().toISOString(),
           imageCount: result.images.length,
             status: "completed",
-            frameSize,
+            frameSize: isFluxProModel ? `${generationPayload.width}x${generationPayload.height}` : frameSize,
             style,
         };
 
-        // Update the loading entry with completed data
+                  // Update the loading entry with completed data
           dispatch(
             updateHistoryEntry({
           id: loadingEntry.id,
-              updates: completedEntry,
+              updates: {
+                ...completedEntry,
+                frameSize: isFluxProModel ? `${generationPayload.width}x${generationPayload.height}` : frameSize,
+              },
             })
           );
 

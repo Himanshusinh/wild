@@ -57,6 +57,46 @@ const ProductWithModelPoseInputBox = () => {
   const [modelImage, setModelImage] = useState<string | null>(null);
   const [generationMode, setGenerationMode] = useState<string>('product-only');
 
+  // Auto-set generation mode based on selected model
+  useEffect(() => {
+    if (!selectedModel) return; // Don't run if selectedModel is not set yet
+    
+    console.log('🔄 Model changed to:', selectedModel);
+    if (selectedModel === 'flux-krea') {
+      // flux-krea only supports product generation
+      setGenerationMode('product-only');
+      console.log('✅ Set generation mode to: product-only');
+    } else if (selectedModel === 'flux-kontext-dev') {
+      // flux-kontext-dev only supports product with model pose
+      setGenerationMode('product-with-model');
+      console.log('✅ Set generation mode to: product-with-model');
+    }
+    // flux-kontext-pro and flux-kontext-max keep their current mode (both supported)
+  }, [selectedModel]);
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('🔍 Current state:', {
+      selectedModel,
+      generationModel: !!selectedModel,
+      generationMode,
+      productImage: !!productImage,
+      modelImage: !!modelImage,
+      prompt: prompt.length > 0
+    });
+  }, [selectedModel, generationMode, productImage, modelImage, prompt]);
+
+  // Debug logging on mount
+  useEffect(() => {
+    console.log('🚀 Component mounted with initial state:', {
+      selectedModel,
+      generationMode,
+      productImage: !!productImage,
+      modelImage: !!modelImage,
+      prompt: prompt.length > 0
+    });
+  }, []);
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     
@@ -67,8 +107,30 @@ const ProductWithModelPoseInputBox = () => {
     console.log('🖼️ Product Image:', !!productImage);
     console.log('👤 Model Image:', !!modelImage);
     
-    // For Flux models, product image is required
-    if (selectedModel !== 'flux-krea' && !productImage) return;
+    // Validate required inputs based on model and generation mode
+    if (selectedModel === 'flux-krea') {
+      // flux-krea only needs prompt (no images required)
+      if (!prompt.trim()) return;
+    } else if (selectedModel === 'flux-kontext-dev') {
+      // flux-kontext-dev only supports product with model pose
+      if (!productImage || !modelImage) {
+        dispatch(addNotification({ type: 'error', message: 'Both product image and model image are required for flux-kontext-dev' }));
+        return;
+      }
+    } else {
+      // flux-kontext-pro and flux-kontext-max support both modes
+      if (generationMode === 'product-only') {
+        if (!productImage) {
+          dispatch(addNotification({ type: 'error', message: 'Product image is required for product generation' }));
+          return;
+        }
+      } else if (generationMode === 'product-with-model') {
+        if (!productImage || !modelImage) {
+          dispatch(addNotification({ type: 'error', message: 'Both product image and model image are required for product with model pose generation' }));
+          return;
+        }
+      }
+    }
 
     // Create a loading entry immediately to show loading frames
     const loadingEntry: HistoryEntry = {
@@ -90,9 +152,9 @@ const ProductWithModelPoseInputBox = () => {
     // Add loading entry to show frames immediately
     dispatch(addHistoryEntry(loadingEntry));
 
-    // For local model, we manage Firebase; for Flux, server manages Firebase
+    // For local models, we manage Firebase; for Flux, server manages Firebase
     let firebaseHistoryId: string | null = null;
-    if (selectedModel === 'flux-krea') {
+    if (selectedModel === 'flux-krea' || selectedModel === 'flux-kontext-dev') {
       try {
         const { id, ...loadingEntryWithoutId } = loadingEntry;
         firebaseHistoryId = await saveHistoryEntryWithId(loadingEntry.id, loadingEntryWithoutId);
@@ -110,49 +172,67 @@ const ProductWithModelPoseInputBox = () => {
       
       // Check if using local model or Flux model
       if (selectedModel === 'flux-krea') {
-        
-        if (generationMode === 'product-only') {
-          // Call local product generation API - only needs prompt and image count
-          const localResponse = await fetch('/api/local/product-generation', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              prompt,
-              imageCount
-            })
-          });
+        // flux-krea only supports product generation (no model pose)
+        const localResponse = await fetch('/api/local/product-generation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt,
+            imageCount
+          })
+        });
 
-          if (!localResponse.ok) {
-            throw new Error(`Local API failed: ${localResponse.status}`);
-          }
-
-          result = await localResponse.json();
-        } else if (generationMode === 'product-with-model') {
-          // Call local product with model pose API
-          if (!productImage || !modelImage) {
-            throw new Error('Both product image and model image are required for product with model pose generation');
-          }
-
-          const formData = new FormData();
-          formData.append('product_image', await fetch(productImage).then(r => r.blob()), 'product.png');
-          formData.append('model_image', await fetch(modelImage).then(r => r.blob()), 'model.png');
-          formData.append('scene_desc', prompt);
-          formData.append('width', '768');
-          formData.append('height', '768');
-
-          const localResponse = await fetch('/api/local/product-pose-generation', {
-            method: 'POST',
-            body: formData
-          });
-
-          if (!localResponse.ok) {
-            throw new Error(`Local pose API failed: ${localResponse.status}`);
-          }
-
-          result = await localResponse.json();
+        if (!localResponse.ok) {
+          throw new Error(`Local API failed: ${localResponse.status}`);
         }
+
+        result = await localResponse.json();
+        
+        // Normalize the response to handle both single image_url and images array
+        if (result.image_url && !result.images) {
+          console.log('🔄 Normalizing single image_url response to images array format');
+          // Convert single image_url to images array format
+          result.images = [{
+            id: `local-${Date.now()}`,
+            url: result.image_url,
+            originalUrl: result.image_url
+          }];
+          console.log('✅ Normalized response:', result);
+        }
+        
+        if (!result.images) {
+          console.error('❌ Local API response missing images:', result);
+          throw new Error('No images received from local API');
+        }
+        
+        console.log('✅ Local API response received:', result);
+        console.log('🖼️ Images from local API:', result.images);
+      } else if (selectedModel === 'flux-kontext-dev') {
+        // flux-kontext-dev uses local product-pose-generation API
+        if (!productImage || !modelImage) {
+          throw new Error('Both product image and model image are required for flux-kontext-dev');
+        }
+
+        const formData = new FormData();
+        formData.append('product_image', await fetch(productImage).then(r => r.blob()), 'product.png');
+        formData.append('model_image', await fetch(modelImage).then(r => r.blob()), 'model.png');
+        formData.append('scene_desc', prompt);
+        // For local models, use 1024x1024 (1:1 aspect ratio) to avoid dimension errors
+        formData.append('width', '1024');
+        formData.append('height', '1024');
+
+        const localResponse = await fetch('/api/local/product-pose-generation', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!localResponse.ok) {
+          throw new Error(`Local pose API failed: ${localResponse.status}`);
+        }
+
+        result = await localResponse.json();
         
         // Normalize the response to handle both single image_url and images array
         if (result.image_url && !result.images) {
@@ -174,10 +254,10 @@ const ProductWithModelPoseInputBox = () => {
         console.log('✅ Local API response received:', result);
         console.log('🖼️ Images from local API:', result.images);
       } else {
-        // Use existing Flux API for Kontext models
+        // Use Flux API for Kontext models (pro, max)
         let backendPrompt;
         
-        if (modelImage) {
+        if (generationMode === 'product-with-model') {
           // Product with model pose case
           backendPrompt = `
         Use the provided reference model image as the main subject. 
@@ -208,7 +288,6 @@ const ProductWithModelPoseInputBox = () => {
         
         AVOID: blurry, low-res, pixelated, jpeg artifacts, overexposed, underexposed, heavy vignette, strong color cast, banding, posterization, text, watermark, logo overlays, frames, borders, stickers, graphics, extra fingers, missing fingers, fused fingers, warped hands, twisted wrists, broken anatomy, extra limbs, distorted face, changed identity, changed age, changed gender, changed ethnicity, beautified/liquified/slimmed face or body, unreal fabric physics, cloth clipping through body, plastic-looking leather, rubbery materials, melted metal, incorrect reflections, unrealistic shadows, floating product, mismatched perspective, busy/cluttered background, distracting props, extreme fisheye, unrealistic depth of field, oversaturated neon tones.
         `.trim();
-        
         } else {
           // Product-only case
           backendPrompt = `
@@ -250,7 +329,15 @@ const ProductWithModelPoseInputBox = () => {
             aspect_ratio: frameSize, // Use the selected frame size as aspect_ratio
             style: 'product',
             generationType: 'product-generation',
-            uploadedImages: modelImage ? [productImage, modelImage] : [productImage]
+            uploadedImages: (() => {
+              if (selectedModel === 'flux-kontext-dev') {
+                // flux-kontext-dev always needs both images
+                return [productImage, modelImage];
+              } else {
+                // flux-kontext-pro and flux-kontext-max depend on generation mode
+                return generationMode === 'product-with-model' ? [productImage, modelImage] : [productImage];
+              }
+            })()
           })
         });
 
@@ -267,24 +354,24 @@ const ProductWithModelPoseInputBox = () => {
 
       // Create the completed entry
       const completedEntry: HistoryEntry = {
-        id: selectedModel === 'flux-krea' ? loadingEntry.id : (result.historyId || loadingEntry.id),
+        id: (selectedModel === 'flux-krea' || selectedModel === 'flux-kontext-dev') ? loadingEntry.id : (result.historyId || loadingEntry.id),
         prompt: prompt,
-        model: selectedModel === 'flux-krea' ? 'Flux Kontext [DEV]' : selectedModel,
+        model: selectedModel,
         generationType: 'product-generation',
         images: result.images,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: imageCount,
         status: 'completed',
-        frameSize: selectedModel === 'flux-kontext-dev' ? '1:1' : frameSize,
+        frameSize: (selectedModel === 'flux-krea' || selectedModel === 'flux-kontext-dev') ? '1:1' : frameSize,
         style: 'product'
       };
 
-      if (selectedModel === 'flux-krea') {
-        // Update the loading entry in Redux
+      if (selectedModel === 'flux-krea' || selectedModel === 'flux-kontext-dev') {
+        // Update the loading entry in Redux for local models
         dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: completedEntry }));
 
-        // Update Firebase for local model
+        // Update Firebase for local models
         try {
           await updateFirebaseHistory(firebaseHistoryId as string, {
             images: result.images,
@@ -329,8 +416,8 @@ const ProductWithModelPoseInputBox = () => {
         }
       }));
 
-      // For Flux models, update Firebase history with failed status
-      if (selectedModel === 'flux-krea') {
+      // For local models, update Firebase history with failed status
+      if (selectedModel === 'flux-krea' || selectedModel === 'flux-kontext-dev') {
         try {
           await updateFirebaseHistory(firebaseHistoryId!, {
             status: 'failed',
@@ -414,20 +501,37 @@ const ProductWithModelPoseInputBox = () => {
   // Check if generation button should be enabled
   const canGenerate = (() => {
     const hasPrompt = prompt.trim().length > 0;
-    const isLocalModel = selectedModel === 'flux-krea';
     const notGenerating = !isGenerating;
     
-    if (isLocalModel) {
+    // Don't enable if selectedModel is not set yet
+    if (!selectedModel) {
+      console.log('🔍 No selectedModel yet, disabling button');
+      return false;
+    }
+    
+    if (selectedModel === 'flux-krea') {
+      // flux-krea only needs prompt (text-only generation)
+      return hasPrompt && notGenerating;
+    } else if (selectedModel === 'flux-kontext-dev') {
+      // flux-kontext-dev always uses product-with-model mode, needs prompt + both images
+      const canGen = hasPrompt && productImage && modelImage && notGenerating;
+      console.log('🔍 flux-kontext-dev canGenerate check:', {
+        hasPrompt,
+        productImage: !!productImage,
+        modelImage: !!modelImage,
+        notGenerating,
+        result: canGen
+      });
+      return canGen;
+    } else {
+      // For Flux API models (pro, max), check based on generation mode
       if (generationMode === 'product-only') {
-        // For product-only mode, only prompt is required
-        return hasPrompt && notGenerating;
+        // For product-only mode, prompt and product image are required
+        return hasPrompt && productImage && notGenerating;
       } else if (generationMode === 'product-with-model') {
         // For product-with-model mode, prompt, product image, and model image are required
         return hasPrompt && productImage && modelImage && notGenerating;
       }
-    } else {
-      // For Flux models, prompt and product image are required
-      return hasPrompt && productImage && notGenerating;
     }
     
     return false;
@@ -476,8 +580,12 @@ const ProductWithModelPoseInputBox = () => {
               >
                 {isGenerating ? 'Generating...' : (
                   selectedModel === 'flux-krea' 
-                    ? (generationMode === 'product-only' ? 'Generate Product' : 'Generate with Model Pose')
-                    : 'Generate Product'
+                    ? 'Generate Product (Text Only)'
+                    : selectedModel === 'flux-kontext-dev'
+                    ? 'Generate with Model Pose'
+                    : generationMode === 'product-only'
+                    ? 'Generate Product'
+                    : 'Generate with Model Pose'
                 )}
               </button>
             </div>
@@ -487,17 +595,23 @@ const ProductWithModelPoseInputBox = () => {
             <GenerationModeDropdown 
               selectedMode={generationMode}
               onModeSelect={setGenerationMode}
-              isVisible={selectedModel === 'flux-krea'}
+              isVisible={true}
+              selectedModel={selectedModel}
             />
             <UploadProductButton 
               onImageUpload={setProductImage} 
-              isDisabled={selectedModel === 'flux-krea' && generationMode === 'product-only'}
+              isDisabled={selectedModel === 'flux-krea'}
             />
-            <UploadModelButton 
-              onImageUpload={setModelImage} 
-              isDisabled={selectedModel === 'flux-krea' && generationMode === 'product-only'}
-            />
-            <FrameSizeButton />
+            {/* Model image upload - only show for models that support it */}
+            {(selectedModel === 'flux-kontext-dev' || 
+              (selectedModel !== 'flux-krea' && generationMode === 'product-with-model')) && (
+              <UploadModelButton 
+                onImageUpload={setModelImage} 
+                isDisabled={false}
+              />
+            )}
+            {/* Frame size selection - available for all models except flux-krea (which is text-only) */}
+            {selectedModel !== 'flux-krea' && <FrameSizeButton />}
             <ImageCountButton />
           </div>
         </div>

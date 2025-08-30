@@ -82,7 +82,7 @@ const InputBox = () => {
     const loadingEntry: HistoryEntry = {
       id: tempId,
       prompt: `Mockup: ${businessName}${businessTagline ? ` — ${businessTagline}` : ''}`,
-      model: 'flux-krea',
+      model: 'flux-kontext-dev',
       generationType: 'mockup-generation',
       images: [],
       timestamp: new Date().toISOString(),

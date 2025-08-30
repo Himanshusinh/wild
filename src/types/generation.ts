@@ -8,6 +8,6 @@ export type GenerationType =
   | 'text-to-music'
   | 'mockup-generation'
   | 'product-generation'
-  | 'generationad-';
+  | 'ad-generation';
 
 

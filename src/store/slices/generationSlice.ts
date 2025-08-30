@@ -38,7 +38,7 @@ type GenerationTypeLocal = SharedGenerationType;
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages }: {
+    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height }: {
       prompt: string;
       model: string;
       imageCount: number;
@@ -46,6 +46,8 @@ export const generateImages = createAsyncThunk(
       style?: string;
       generationType: GenerationTypeLocal;
       uploadedImages?: string[];
+      width?: number;
+      height?: number;
     },
     { rejectWithValue }
   ) => {
@@ -65,6 +67,7 @@ export const generateImages = createAsyncThunk(
           style,
           generationType,
           uploadedImages,
+          ...(width && height ? { width, height } : {}),
         }),
       });
 

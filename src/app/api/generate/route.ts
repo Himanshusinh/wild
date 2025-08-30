@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   let historyId: string | null = null;
 
   try {
-    const { prompt, userPrompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image', uploadedImages = [] } = await request.json();
+    const { prompt, userPrompt, model, n = 1, frameSize = '1:1', style = 'realistic', generationType = 'text-to-image', uploadedImages = [], width, height } = await request.json();
     const apiKey = process.env.BFL_API_KEY;
 
     const promptForHistory = typeof userPrompt === 'string' && userPrompt.trim().length > 0 ? userPrompt : prompt;
@@ -67,8 +67,20 @@ export async function POST(request: Request) {
           return { width: 1344, height: 1024 };
         case '16:9':
           return { width: 1280, height: 720 };
+        case '9:16': // portrait
+          return { width: 720, height: 1280 };
+        case '3:2':
+          return { width: 1344, height: 896 };
+        case '2:3': // portrait
+          return { width: 896, height: 1344 };
         case '21:9':
           return { width: 1344, height: 576 };
+        case '9:21': // portrait
+          return { width: 576, height: 1344 };
+        case '16:10':
+          return { width: 1280, height: 800 };
+        case '10:16': // portrait
+          return { width: 800, height: 1280 };
         default:
           return { width: 1024, height: 768 };
       }
@@ -92,10 +104,23 @@ export async function POST(request: Request) {
           if (img3) body.input_image_3 = img3;
           if (img4) body.input_image_4 = img4;
         }
-      } else if (normalizedModel === 'flux-pro' || normalizedModel === 'flux-dev') {
-        const { width, height } = getDimensions(frameSize);
-        body.width = width;
-        body.height = height;
+      } else if (normalizedModel === 'flux-pro' || normalizedModel === 'flux-pro-1.1' || normalizedModel === 'flux-pro-1.1-ultra') {
+        // flux-pro models use width/height parameters directly
+        if (width && height) {
+          body.width = width;
+          body.height = height;
+        } else {
+          // Fallback to frameSize conversion if width/height not provided
+          const { width: convertedWidth, height: convertedHeight } = getDimensions(frameSize);
+          body.width = convertedWidth;
+          body.height = convertedHeight;
+        }
+        body.output_format = 'jpeg';
+      } else if (normalizedModel === 'flux-dev') {
+        // flux-dev still uses the old frameSize conversion approach
+        const { width: convertedWidth, height: convertedHeight } = getDimensions(frameSize);
+        body.width = convertedWidth;
+        body.height = convertedHeight;
         body.output_format = 'jpeg';
       } else {
         // Fallback to aspect_ratio for other variants

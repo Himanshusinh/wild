@@ -8,28 +8,46 @@ interface GenerationModeDropdownProps {
   selectedMode: string;
   onModeSelect: (mode: string) => void;
   isVisible: boolean;
+  selectedModel: string;
 }
 
 const GenerationModeDropdown: React.FC<GenerationModeDropdownProps> = ({ 
   selectedMode, 
   onModeSelect, 
-  isVisible 
+  isVisible,
+  selectedModel
 }) => {
   const dispatch = useAppDispatch();
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
 
-  const modes = [
-    { 
-      name: 'Product Generation', 
-      value: 'product-only', 
-      description: 'Generate product images from description only' 
-    },
-    { 
-      name: 'Product with Model Pose', 
-      value: 'product-with-model', 
-      description: 'Generate product images with model poses' 
+  // Define modes based on selected model
+  const getModes = () => {
+    if (selectedModel === 'flux-kontext-dev') {
+      return [
+        { 
+          name: 'Product with Model Pose', 
+          value: 'product-with-model', 
+          description: 'Generate product images with model poses' 
+        }
+      ];
+    } else {
+      // flux-kontext-pro and flux-kontext-max have both options
+      return [
+        { 
+          name: 'Product Generation', 
+          value: 'product-only', 
+          description: 'Generate product images from description only' 
+        },
+        { 
+          name: 'Product with Model Pose', 
+          value: 'product-with-model', 
+          description: 'Generate product images with model poses' 
+        }
+      ];
     }
-  ];
+  };
+
+  const modes = getModes();
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('product-generation-mode'));
@@ -40,7 +58,11 @@ const GenerationModeDropdown: React.FC<GenerationModeDropdownProps> = ({
     dispatch(toggleDropdown(''));
   };
 
+  // Hide generation mode dropdown for flux-krea since it only supports product generation
   if (!isVisible) return null;
+  
+  // For flux-krea and flux-kontext-dev, don't show generation mode since they have fixed modes
+  if (selectedModel === 'flux-krea' || selectedModel === 'flux-kontext-dev') return null;
 
   return (
     <div className="relative dropdown-container">

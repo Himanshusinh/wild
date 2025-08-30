@@ -43,6 +43,11 @@ export class MiniMaxService {
 
       const data = await response.json();
       console.log('📥 MiniMax API raw response data:', JSON.stringify(data, null, 2));
+      console.log('📥 Response data type:', typeof data);
+      console.log('📥 Response data keys:', Object.keys(data));
+      console.log('📥 task_id field value:', data.task_id);
+      console.log('📥 task_id field type:', typeof data.task_id);
+      console.log('📥 base_resp field:', data.base_resp);
       return data;
     } catch (error) {
       console.error('❌ MiniMax createVideoGeneration failed:', error);
@@ -146,12 +151,22 @@ export class MiniMaxService {
       console.log('📥 Response keys:', Object.keys(createResponse));
       console.log('📥 task_id field:', createResponse.task_id);
       console.log('📥 task_id type:', typeof createResponse.task_id);
+      console.log('📥 base_resp field:', createResponse.base_resp);
+      console.log('📥 base_resp status_code:', createResponse.base_resp?.status_code);
+      console.log('📥 base_resp status_msg:', createResponse.base_resp?.status_msg);
+      
+      // Check if the API call was successful
+      if (createResponse.base_resp && createResponse.base_resp.status_code !== 0) {
+        console.error('❌ MiniMax API returned error status:', createResponse.base_resp);
+        throw new Error(`MiniMax API error: ${createResponse.base_resp.status_msg}`);
+      }
       
       const taskId = createResponse.task_id;
       console.log('✅ MiniMax task created:', taskId);
       
       if (!taskId) {
         console.error('❌ No task_id found in MiniMax response');
+        console.error('❌ Full response structure:', createResponse);
         throw new Error('MiniMax API response missing task_id');
       }
       

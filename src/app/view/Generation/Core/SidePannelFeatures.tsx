@@ -16,7 +16,6 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
-  const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
   const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -24,19 +23,14 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
   const handleGenerationTypeChange = (type: GenerationType) => {
     onGenerationTypeChange(type);
     setShowBrandingDropdown(false);
-    setHoveredItem(null);
   };
 
   const handleImageGenerationClick = () => {
     handleGenerationTypeChange('text-to-image');
   };
 
-  const handleBrandingHover = () => {
-    setShowBrandingDropdown(true);
-  };
-
-  const handleBrandingLeave = () => {
-    setShowBrandingDropdown(false);
+  const toggleBrandingDropdown = () => {
+    setShowBrandingDropdown(!showBrandingDropdown);
   };
 
   // Close dropdown when clicking outside
@@ -117,7 +111,7 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
                   (pathname?.includes('/ad-generation')) ? 'bg-white/10' : ''
                 }`}
             >
-                <Clapperboard size={25} className="text-white" />
+                <Image src="/icons/clapperboard.svg" alt="Wildmind Skit" width={25} height={25} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Wildmind Skit</span>
             </div>
         </div>
@@ -126,8 +120,7 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
         <div className="relative">
             <div
                 ref={brandingRef}
-                onMouseEnter={handleBrandingHover}
-                onMouseLeave={handleBrandingLeave}
+                onClick={toggleBrandingDropdown}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/5 group/item ${
                   isBrandingActive ? 'bg-white/10' : ''
                 }`}
@@ -147,8 +140,6 @@ const SidePannelFeatures = ({ currentView, onViewChange, onGenerationTypeChange 
             {showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
-                    onMouseEnter={handleBrandingHover}
-                    onMouseLeave={handleBrandingLeave}
                     className='absolute left-full top-0 ml-2 bg-black/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-2 space-y-1 z-50 min-w-[200px]'
                 >
                     <div className='px-3 py-2 border-b border-white/10'>

@@ -53,8 +53,16 @@ export async function POST(request: NextRequest) {
     console.log('✅ MiniMax video generation task created, taskId:', result.taskId);
     console.log('✅ TaskId type:', typeof result.taskId);
     console.log('✅ TaskId length:', result.taskId ? result.taskId.length : 'undefined');
-    console.log("result : ",result)
+    console.log('✅ Result object keys:', Object.keys(result));
+    console.log('✅ Result object values:', Object.values(result));
+    console.log("result : ", result);
     
+    // Validate that we have a taskId
+    if (!result.taskId) {
+      console.error('❌ CRITICAL ERROR: result.taskId is undefined or null!');
+      console.error('❌ Result object structure:', result);
+      throw new Error('MiniMax service returned undefined taskId');
+    }
 
     // Only return task_id according to documentation
     return NextResponse.json({

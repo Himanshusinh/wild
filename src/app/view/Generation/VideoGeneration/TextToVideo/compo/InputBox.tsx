@@ -50,20 +50,30 @@ const InputBox = () => {
   const [durationDropdownOpen, setDurationDropdownOpen] = useState(false);
   const [cameraMovementPopupOpen, setCameraMovementPopupOpen] = useState(false);
   const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
+  const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
 
-  // Auto-select model based on generation mode
+  // Auto-select model based onf generation mode (but preserve user's choice when possible)
   useEffect(() => {
     if (generationMode === "text_to_video") {
-      setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax-Hailuo-02 for text→video
+      // Text→Video: Only MiniMax models support this
+      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director")) {
+        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax-Hailuo-02 for text→video
+      }
     } else if (generationMode === "image_to_video") {
-      setSelectedModel("I2V-01-Director"); // Default to I2V-01-Director for image→video
-    } else {
-      setSelectedModel("gen4_aleph"); // Runway model for video→video
+      // Image→Video: Both MiniMax and Runway models support this
+      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01")) {
+        setSelectedModel("gen4_turbo"); // Default to gen4_turbo for image→video (Runway model)
+      }
+    } else if (generationMode === "video_to_video") {
+      // Video→Video: Only Runway models support this
+      if (selectedModel !== "gen4_aleph") {
+        setSelectedModel("gen4_aleph"); // Runway model for video→video
+      }
     }
     
     // Clear camera movements when generation mode changes
     setSelectedCameraMovements([]);
-  }, [generationMode]);
+  }, [generationMode, selectedModel]);
 
   // Auto-set fixed settings for models that don't support customization
   useEffect(() => {
@@ -71,8 +81,25 @@ const InputBox = () => {
       setSelectedResolution("720P");
       setSelectedMiniMaxDuration(6);
       // These models have fixed settings: 6s duration, 720P resolution
+    } else if (selectedModel === "MiniMax-Hailuo-02") {
+      // MiniMax-Hailuo-02: Set default resolution based on duration
+      if (selectedMiniMaxDuration === 6) {
+        setSelectedResolution("768P"); // Default for 6s
+      } else if (selectedMiniMaxDuration === 10) {
+        setSelectedResolution("768P"); // Default for 10s
+      }
     }
-  }, [selectedModel]);
+  }, [selectedModel, selectedMiniMaxDuration]);
+
+  // Auto-adjust resolution when duration changes for MiniMax-Hailuo-02
+  useEffect(() => {
+    if (selectedModel === "MiniMax-Hailuo-02") {
+      if (selectedMiniMaxDuration === 10 && selectedResolution === "1080P") {
+        // 10s doesn't support 1080P, switch to 768P
+        setSelectedResolution("768P");
+      }
+    }
+  }, [selectedMiniMaxDuration, selectedModel, selectedResolution]);
 
   // Reset controls when switching between MiniMax and Runway models
   useEffect(() => {
@@ -121,9 +148,14 @@ const InputBox = () => {
 
   // Handle model change with validation
   const handleModelChange = (newModel: string) => {
+    console.log('🔄 Model change requested:');
+    console.log('🔄 - From:', selectedModel);
+    console.log('🔄 - To:', newModel);
+    console.log('🔄 - Generation mode:', generationMode);
+    
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax-Hailuo-02, T2V-01-Director
+      // Text→Video: Only MiniMax models support this
       if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director") {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
@@ -134,9 +166,17 @@ const InputBox = () => {
         if (newModel === "T2V-01-Director") {
           setSelectedResolution("720P");
           setSelectedMiniMaxDuration(6);
+        } else if (newModel === "MiniMax-Hailuo-02") {
+          // MiniMax-Hailuo-02: Set default resolution based on duration
+          setSelectedMiniMaxDuration(6); // Default duration
+          setSelectedResolution("768P"); // Default resolution for 6s
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
+      } else {
+        // Runway models don't support text-to-video
+        console.warn('Runway models cannot be used for text-to-video generation');
+        return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
       // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01
@@ -150,6 +190,10 @@ const InputBox = () => {
         if (newModel === "I2V-01-Director" || newModel === "S2V-01") {
           setSelectedResolution("720P");
           setSelectedMiniMaxDuration(6);
+        } else if (newModel === "MiniMax-Hailuo-02") {
+          // MiniMax-Hailuo-02: Set default resolution based on duration
+          setSelectedMiniMaxDuration(6); // Default duration
+          setSelectedResolution("768P"); // Default resolution for 6s
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -581,6 +625,27 @@ const InputBox = () => {
     event.target.value = '';
   };
 
+  // Handle last frame image upload for MiniMax-Hailuo-02
+  const handleLastFrameImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const file = files[0];
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setLastFrameImage(result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
   // Handle video upload
   const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -606,6 +671,18 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    console.log('🚀 Starting video generation with:');
+    console.log('🚀 - Selected model:', selectedModel);
+    console.log('🚀 - Generation mode:', generationMode);
+    console.log('🚀 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
+    console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
+
+    // Validate model compatibility with generation mode
+    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director")) {
+      setError("Text→Video mode only supports MiniMax models. Please select a MiniMax model or switch to Image→Video mode.");
+      return;
+    }
+
     setIsGenerating(true);
     setError("");
 
@@ -620,36 +697,23 @@ const InputBox = () => {
       if (generationMode === "text_to_video") {
         // Text to video generation (MiniMax models)
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
-          // Validate MiniMax text-to-video requirements
-          if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) {
-            setError("MiniMax-Hailuo-02 requires a first frame image for 512P resolution");
-            return;
-          }
+          // Text-to-video: No image requirements (pure text generation)
           
           requestBody = {
-      model: selectedModel,
+            model: selectedModel,
             prompt: prompt,
-            // Only include duration and resolution for MiniMax-Hailuo-02
-            // 01 series models (T2V-01-Director, I2V-01-Director, S2V-01) have fixed 6s/720P
+            // MiniMax-Hailuo-02: Include duration and resolution only (no images for text-to-video)
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
-              resolution: selectedResolution,
-              ...(selectedResolution === "512P" && { first_frame_image: uploadedImages[0] })
+              resolution: selectedResolution
             })
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
         } else {
-          // Runway text to video
-          requestBody = buildImageToVideoBody({
-            model: selectedModel as "gen4_turbo" | "gen3a_turbo",
-            ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-            promptText: prompt,
-            duration: duration as 5 | 10,
-            promptImage: [] // Empty array for text-to-video
-          });
-          apiEndpoint = '/api/runway/video';
-          generationType = "text-to-video";
+          // Runway models don't support text-to-video (they require an image)
+          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax model.");
+          return;
         }
       } else if (generationMode === "image_to_video") {
         // Check if we need uploaded images (exclude S2V-01 which only needs references)
@@ -660,37 +724,46 @@ const InputBox = () => {
         
         if (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
           // MiniMax image to video - validate specific requirements
+          
+          // I2V-01-Director: Always requires first frame image
           if (selectedModel === "I2V-01-Director" && uploadedImages.length === 0) {
             setError("I2V-01-Director requires a first frame image");
             return;
           }
           
+          // S2V-01: Requires subject reference image (character image)
           if (selectedModel === "S2V-01" && references.length === 0) {
             setError("S2V-01 requires a subject reference image (character image)");
             return;
           }
           
+          // MiniMax-Hailuo-02: first_frame_image required for 512P, optional for 768P/1080P
           if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) {
             setError("MiniMax-Hailuo-02 requires a first frame image for 512P resolution");
             return;
           }
           
           requestBody = {
-        model: selectedModel, 
+            model: selectedModel, 
             prompt: prompt,
-            // Only include duration and resolution for MiniMax-Hailuo-02
-            // 01 series models (I2V-01-Director, S2V-01) have fixed 6s/720P
+            // MiniMax-Hailuo-02: Include duration and resolution, first_frame_image based on requirements
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
               resolution: selectedResolution,
-              ...(selectedResolution === "512P" && { 
+              // first_frame_image is required for 512P, optional for 768P/1080P
+              ...(uploadedImages.length > 0 && { 
                 first_frame_image: uploadedImages[0] 
+              }),
+              // last_frame_image is optional for supported resolutions
+              ...(lastFrameImage && (selectedResolution === "768P" || selectedResolution === "1080P") && {
+                last_frame_image: lastFrameImage
               })
             }),
-            // Required parameters for specific models
+            // I2V-01-Director: Always requires first_frame_image
             ...(selectedModel === "I2V-01-Director" && { 
               first_frame_image: uploadedImages[0] 
             }),
+            // S2V-01: Uses subject_reference instead of first_frame_image
             ...(selectedModel === "S2V-01" && { 
               subject_reference: [{ 
                 type: "character", 
@@ -702,13 +775,16 @@ const InputBox = () => {
           apiEndpoint = '/api/minimax/video';
         } else {
           // Runway image to video
-          requestBody = buildImageToVideoBody({
-            model: selectedModel as "gen4_turbo" | "gen3a_turbo",
-            ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-            promptText: prompt,
-            duration: duration as 5 | 10,
-            promptImage: uploadedImages[0]
-          });
+          requestBody = {
+            mode: "image_to_video",
+            imageToVideo: buildImageToVideoBody({
+              model: selectedModel as "gen4_turbo" | "gen3a_turbo",
+              ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
+              promptText: prompt,
+              duration: duration as 5 | 10,
+              promptImage: uploadedImages[0]
+            })
+          };
           apiEndpoint = '/api/runway/video';
         }
         generationType = "image-to-video";
@@ -725,16 +801,19 @@ const InputBox = () => {
           return;
         } else {
           // Runway video to video
-          requestBody = buildVideoToVideoBody({
-            model: "gen4_aleph",
-            ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-            promptText: prompt,
-            videoUri: uploadedVideo,
-            references: references.length > 0 ? references.map(ref => ({
-              type: "image",
-              uri: ref
-            })) : undefined,
-          });
+          requestBody = {
+            mode: "video_to_video",
+            videoToVideo: buildVideoToVideoBody({
+              model: "gen4_aleph",
+              ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
+              promptText: prompt,
+              videoUri: uploadedVideo,
+              references: references.length > 0 ? references.map(ref => ({
+                type: "image",
+                uri: ref
+              })) : undefined,
+            })
+          };
           apiEndpoint = '/api/runway/video';
         }
         generationType = "video-to-video";
@@ -791,13 +870,27 @@ const InputBox = () => {
       console.log('🚀 Making API call to:', apiEndpoint);
       console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
       console.log('📤 Selected model:', selectedModel);
-      console.log('📤 S2V-01 subject_reference format:', selectedModel === "S2V-01" ? requestBody.subject_reference : 'N/A');
-      if (selectedModel === "S2V-01") {
-        console.log('📤 S2V-01 references array length:', references.length);
-        console.log('📤 S2V-01 first reference (full):', references[0]);
-        console.log('📤 S2V-01 first reference (base64 only):', references[0] ? references[0].split(',')[1] : 'undefined');
-      }
       console.log('📤 Generation mode:', generationMode);
+      console.log('📤 API Endpoint being used:', apiEndpoint);
+      console.log('📤 Is this a MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
+      console.log('📤 Is this a Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
+      
+      // Debug MiniMax specific fields
+      if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+        console.log('📤 MiniMax Debug Info:');
+        console.log('📤 - Model:', selectedModel);
+        console.log('📤 - Duration:', requestBody.duration);
+        console.log('📤 - Resolution:', requestBody.resolution);
+        console.log('📤 - First frame image:', !!requestBody.first_frame_image);
+        console.log('📤 - Subject reference:', requestBody.subject_reference);
+        console.log('📤 - Prompt length:', requestBody.prompt?.length || 0);
+        
+        if (selectedModel === "S2V-01") {
+          console.log('📤 S2V-01 specific debug:');
+          console.log('📤 - References array length:', references.length);
+          console.log('📤 - Subject reference structure:', JSON.stringify(requestBody.subject_reference, null, 2));
+        }
+      }
       
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -814,6 +907,18 @@ const InputBox = () => {
 
       const result = await response.json();
       console.log('📥 API response:', result);
+      
+      // Debug MiniMax response structure
+      if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+        console.log('📥 MiniMax Response Debug:');
+        console.log('📥 - Response type:', typeof result);
+        console.log('📥 - Response keys:', Object.keys(result));
+        console.log('📥 - Success field:', result.success);
+        console.log('📥 - TaskId field:', result.taskId);
+        console.log('📥 - TaskId type:', typeof result.taskId);
+        console.log('📥 - Error field:', result.error);
+        console.log('📥 - Full response structure:', JSON.stringify(result, null, 2));
+      }
 
       if (result.error) {
         console.error('❌ API returned error:', result.error);
@@ -821,6 +926,12 @@ const InputBox = () => {
       }
 
       // Validate that we have a taskId for MiniMax models
+      console.log('🔍 Validation Debug:');
+      console.log('🔍 - Selected model:', selectedModel);
+      console.log('🔍 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
+      console.log('🔍 - Has taskId?', !!result.taskId);
+      console.log('🔍 - Result object:', result);
+      
       if ((selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && !result.taskId) {
         console.error('❌ MiniMax API response missing taskId:', result);
         throw new Error('MiniMax API response missing taskId');
@@ -1208,7 +1319,7 @@ const InputBox = () => {
                       </svg>
                       {selectedCameraMovements.length > 0 && (
                         <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">
-                          {selectedCameraMovements.length}
+                          1
                         </span>
                       )}
                     </button>
@@ -1216,7 +1327,7 @@ const InputBox = () => {
                     {cameraMovementPopupOpen && (
                       <div className="absolute bottom-full left-0 mb-2 p-4 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[280px]">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-medium text-white">Enhanced Camera Movement Control</h3>
+                          <h3 className="text-sm font-medium text-white">Select One Camera Movement</h3>
                           <button
                             onClick={() => setCameraMovementPopupOpen(false)}
                             className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
@@ -1225,6 +1336,10 @@ const InputBox = () => {
                               <path d="M18 6L6 18M6 6l12 12" />
                             </svg>
                           </button>
+                        </div>
+                        
+                        <div className="text-xs text-white/60 mb-3 text-center">
+                          Click a movement to select it, then add to your prompt
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 mb-3">
@@ -1236,11 +1351,8 @@ const InputBox = () => {
                             <button
                               key={movement}
                               onClick={() => {
-                                if (selectedCameraMovements.includes(movement)) {
-                                  setSelectedCameraMovements(prev => prev.filter(m => m !== movement));
-                                } else {
-                                  setSelectedCameraMovements(prev => [...prev, movement]);
-                                }
+                                // Single selection: only one movement at a time
+                                setSelectedCameraMovements([movement]);
                               }}
                               className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                                 selectedCameraMovements.includes(movement)
@@ -1256,14 +1368,18 @@ const InputBox = () => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
-                              const movementsText = selectedCameraMovements.map(m => `[${m}]`).join(' ');
-                              setPrompt(prev => prev + (prev.endsWith(' ') ? '' : ' ') + movementsText);
-                              setCameraMovementPopupOpen(false);
+                              if (selectedCameraMovements.length > 0) {
+                                const movementText = `[${selectedCameraMovements[0]}]`;
+                                setPrompt(prev => prev + (prev.endsWith(' ') ? '' : ' ') + movementText);
+                                // Reset selection after adding to prompt
+                                setSelectedCameraMovements([]);
+                                setCameraMovementPopupOpen(false);
+                              }
                             }}
                             disabled={selectedCameraMovements.length === 0}
                             className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600 text-white"
                           >
-                            Add to Prompt ({selectedCameraMovements.length})
+                            Add Movement to Prompt
                           </button>
                           <button
                             onClick={() => setSelectedCameraMovements([])}
@@ -1361,8 +1477,9 @@ const InputBox = () => {
                 </div>
               )}
 
-              {/* Image Upload (only for image-to-video, disabled for S2V-01) */}
-              {generationMode === "image_to_video" && selectedModel !== "S2V-01" && (
+              {/* Image Upload for Runway Models (image-to-video only) */}
+              {generationMode === "image_to_video" && 
+               !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && (
                 <div className="relative">
                   <label 
                     className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -1383,33 +1500,15 @@ const InputBox = () => {
                       onChange={handleImageUpload}
                     />
                   </label>
-                  
-                  {/* Camera Movement Popup removed - unified control in top bar */}
-                  
-                  {/* Model Requirements Helper */}
-                  {/* {(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && !(selectedModel === "MiniMax-Hailuo-02" && generationMode === "image_to_video") && (
-                    <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
-                      <div className="text-xs text-white/80 mb-2 font-medium">Model Requirements:</div>
-                      {selectedModel === "I2V-01-Director" && (
-                        <div className="text-xs text-white/60">• Requires first frame image</div>
-                      )}
-                      {selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && (
-                        <div className="text-xs text-white/60">• Requires first frame image for 512P resolution</div>
-                      )}
-                      {(selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && (
-                        <div className="text-xs text-white/60">• Fixed 6s duration, 720P resolution</div>
-                      )}
-                    </div>
-                  )} */}
                 </div>
               )}
 
-              {/* Conditional Image Upload for Text-to-Video (MiniMax-Hailuo-02 512P) */}
-              {generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && (
+              {/* MiniMax Image Uploads - Consolidated (Image-to-Video only) */}
+              {generationMode === "image_to_video" && (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "I2V-01-Director") && (
                 <div className="relative">
                   <label 
                     className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                    title="Upload First Frame Image (Required for 512P)"
+                    title={selectedModel === "MiniMax-Hailuo-02" ? "Upload First Frame Image" : "Upload First Frame Image (Required)"}
                   >
                     <Image
                       src="/icons/imagegenerationwhite.svg"
@@ -1426,17 +1525,76 @@ const InputBox = () => {
                     />
                   </label>
                   
-                  {/* Helper Text */}
-                  <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
-                    <div className="text-xs text-white/80 mb-2 font-medium">512P Resolution Requirement:</div>
-                    <div className="text-xs text-white/60">• MiniMax-Hailuo-02 requires a first frame image for 512P resolution</div>
-                  </div>
+                  {/* Model Requirements Helper */}
+                  {/* <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
+                    <div className="text-xs text-white/80 mb-2 font-medium">Model Requirements:</div>
+                    {selectedModel === "I2V-01-Director" && (
+                      <div className="text-xs text-white/60">• Requires first frame image</div>
+                    )}
+                    {selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && (
+                      <div className="text-xs text-white/60">• Requires first frame image for 512P resolution</div>
+                    )}
+                    {selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                      <div className="text-xs text-white/60">• First frame image is optional</div>
+                    )}
+                  </div> */}
                 </div>
               )}
 
-              
 
 
+              {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) - Image-to-Video only */}
+              {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                <div className="relative">
+                  <label 
+                    className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                    title="Upload Last Frame Image (Optional)"
+                  >
+                    <Image
+                      src="/icons/imagegenerationwhite.svg"
+                      alt="Upload Last Frame Image"
+                      width={22}
+                      height={22}
+                      className={`transition-all duration-200 ${
+                        lastFrameImage 
+                          ? 'text-green-400 hover:text-green-300 hover:scale-110' 
+                          : 'text-white/60 hover:text-white/80 hover:scale-110'
+                      }`}
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLastFrameImageUpload}
+                    />
+                  </label>
+                  
+                  {/* Last Frame Image Preview */}
+                  {lastFrameImage && (
+                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
+                      <div className="text-xs text-white/60 mb-2">Last Frame Image</div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
+                          <img 
+                            src={lastFrameImage} 
+                            alt="Last Frame"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-xs text-white/80 flex-1">Last Frame</span>
+                        <button
+                          onClick={() => setLastFrameImage("")}
+                          className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Video Upload (only for video-to-video) */}
               {generationMode === "video_to_video" && (
@@ -1473,10 +1631,10 @@ const InputBox = () => {
                     // Mode-specific validations
                     (generationMode === "image_to_video" && selectedModel !== "S2V-01" && uploadedImages.length === 0) ||
                     (generationMode === "video_to_video" && !uploadedVideo) ||
-                    // Model-specific validations
-                    (selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
-                    (selectedModel === "S2V-01" && references.length === 0) ||
-                    (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0);
+                    // Model-specific validations (only for image-to-video)
+                    (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0);
                   
                   // Debug logging for S2V-01
                   if (selectedModel === "S2V-01") {
@@ -1686,39 +1844,70 @@ const InputBox = () => {
                               </button>
                               {resolutionDropdownOpen && (
                                 <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-                                  <button
-                                    onClick={() => {
-                                      setSelectedResolution("512P");
-                                      setResolutionDropdownOpen(false);
-                                    }}
-                                    className={`w-full px-4 py-2 text-left transition text-[13px] ${
-                                      selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                    }`}
-                                  >
-                                    512P
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedResolution("768P");
-                                      setResolutionDropdownOpen(false);
-                                    }}
-                                    className={`w-full px-4 py-2 text-left transition text-[13px] ${
-                                      selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                    }`}
-                                  >
-                                    768P
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedResolution("1080P");
-                                      setResolutionDropdownOpen(false);
-                                    }}
-                                    className={`w-full px-4 py-2 text-left transition text-[13px] ${
-                                      selectedResolution === "1080P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                    }`}
-                                  >
-                                    1080P
-                                  </button>
+                                  {/* Available resolutions based on duration */}
+                                  {selectedMiniMaxDuration === 6 && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedResolution("512P");
+                                          setResolutionDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                          selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                        }`}
+                                      >
+                                        512P
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedResolution("768P");
+                                          setResolutionDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                          selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                        }`}
+                                      >
+                                        768P
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedResolution("1080P");
+                                          setResolutionDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                          selectedResolution === "1080P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                        }`}
+                                      >
+                                        1080P
+                                      </button>
+                                    </>
+                                  )}
+                                  {selectedMiniMaxDuration === 10 && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedResolution("512P");
+                                          setResolutionDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                          selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                        }`}
+                                      >
+                                        512P
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedResolution("768P");
+                                          setResolutionDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                          selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                        }`}
+                                      >
+                                        768P
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>
