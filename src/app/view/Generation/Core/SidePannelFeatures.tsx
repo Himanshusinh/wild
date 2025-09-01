@@ -12,12 +12,14 @@ interface SidePannelFeaturesProps {
   currentView?: ViewType;
   onViewChange?: (view: ViewType) => void;
   onGenerationTypeChange?: (type: GenerationType) => void;
+  onWildmindSkitClick?: () => void;
 }
 
 const SidePannelFeatures = ({ 
   currentView = 'generation', 
   onViewChange = () => {}, 
-  onGenerationTypeChange = () => {} 
+  onGenerationTypeChange = () => {},
+  onWildmindSkitClick = () => {}
 }: SidePannelFeaturesProps) => {
 
 
@@ -156,7 +158,7 @@ const SidePannelFeatures = ({
         {/* Wildmind Skit */}
         <div>
             <div 
-                onClick={() => handleGenerationTypeChange('ad-generation')}
+                onClick={onWildmindSkitClick}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
                   (pathname?.includes('/ad-generation')) ? 'bg-white/10' : ''
                 }`}
@@ -293,6 +295,8 @@ const SidePannelFeatures = ({
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Bookmarks</span>
             </div>
         </div>
+
+
     </div>
   )
 }

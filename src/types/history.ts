@@ -9,7 +9,7 @@ export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation';
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
   images: GeneratedImage[];
   timestamp: string; // ISO string for Redux serializability
   createdAt: string; // ISO string for Firestore
@@ -18,6 +18,7 @@ export interface HistoryEntry {
   error?: string;
   frameSize?: string;
   style?: string;
+  sessionId?: string; // Live chat grouping id
   generationProgress?: {
     current: number;
     total: number;
@@ -40,7 +41,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation';
+  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
   images: GeneratedImage[];
   timestamp: any; // Firestore Timestamp
   createdAt: string;
@@ -49,6 +50,7 @@ export interface HistoryEntryFirestore {
   error?: string;
   frameSize?: string;
   style?: string;
+  sessionId?: string; // Live chat grouping id
   generationProgress?: {
     current: number;
     total: number;
@@ -69,7 +71,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'text_to_image' | 'image_to_video' | 'video_to_video';
+  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text_to_image' | 'image_to_video' | 'video_to_video';
   dateRange?: {
     start: Date;
     end: Date;
