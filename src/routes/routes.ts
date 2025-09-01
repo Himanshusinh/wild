@@ -7,7 +7,7 @@ export const AUTH_ROUTES = {
 
 // Main Application Routes
 export const APP_ROUTES = {
-  HOME: '/view/home',
+  HOME: '/view/HomePage',
   LANDING: '/',
   SIGNUP:'/view/signup'
 } as const;
