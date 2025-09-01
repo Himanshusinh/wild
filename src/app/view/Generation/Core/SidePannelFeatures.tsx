@@ -6,6 +6,7 @@ import { ViewType, GenerationType } from '@/types/generation';
 import { usePathname, useRouter } from 'next/navigation';
 import { Clapperboard } from 'lucide-react';
 import { imageRoutes } from '../../HomePage/routes';
+import { APP_ROUTES } from '@/routes/routes';
 
 interface SidePannelFeaturesProps {
   currentView?: ViewType;
@@ -84,7 +85,14 @@ const SidePannelFeatures = ({
         {/* Logo at the top */}
         <div className="flex items-center gap-4 p-2 mb-4 -ml-1">
           <div 
-            onClick={() => router.push('/')}
+            onClick={() => {
+              try {
+                if (onViewChange && typeof onViewChange === 'function') {
+                  onViewChange('landing');
+                }
+              } catch {}
+              router.push(APP_ROUTES.LANDING);
+            }}
           className="w-[32px] h-[32px] min-w-[32px] min-h-[32px] flex-none">
             <Image 
               src={imageRoutes.core.logo}
@@ -101,7 +109,7 @@ const SidePannelFeatures = ({
 
         <div>
             <div
-                onClick={() => router.push('/HomePage')}
+                onClick={() => router.push(APP_ROUTES.HOME)}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item`}
             >
                 <Image src="/icons/Homewhite.svg" alt="Home" width={30} height={30} />
