@@ -16,7 +16,7 @@ interface UIState {
 }
 
 const initialState: UIState = {
-  currentView: 'generation',
+  currentView: 'landing',
   currentGenerationType: 'text-to-image',
   activeDropdown: null,
   sidebarExpanded: false,
@@ -29,7 +29,12 @@ const uiSlice = createSlice({
   initialState,
   reducers: {
     setCurrentView: (state, action: PayloadAction<ViewType>) => {
+      console.log('🔍 Redux - setCurrentView action dispatched:', { 
+        from: state.currentView, 
+        to: action.payload 
+      });
       state.currentView = action.payload;
+      console.log('🔍 Redux - State updated to:', state.currentView);
     },
     setCurrentGenerationType: (state, action: PayloadAction<GenerationType>) => {
       state.currentGenerationType = action.payload;

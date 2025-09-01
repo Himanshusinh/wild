@@ -1220,36 +1220,42 @@ const InputBox = () => {
                         ) : (
                           // Completed video thumbnail
                           <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
-                                                      <video 
-                            src={video.firebaseUrl || video.url} 
-                            className="w-full h-full object-cover"
-                            muted
-                            onLoadedData={(e) => {
-                              // Create thumbnail from video
-                              const video = e.target as HTMLVideoElement;
-                              const canvas = document.createElement('canvas');
-                              canvas.width = video.videoWidth;
-                              canvas.height = video.videoHeight;
-                              const ctx = canvas.getContext('2d');
-                              if (ctx) {
-                                ctx.drawImage(video, 0, 0);
-                                // You could use this canvas as thumbnail if needed
-                              }
-                            }}
-                          />
-                            {/* Video play icon overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
-                              </div>
+                                                                                {(video.firebaseUrl || video.url) ? (
+                            <video 
+                              src={video.firebaseUrl || video.url} 
+                              className="w-full h-full object-cover"
+                              muted
+                              onLoadedData={(e) => {
+                                // Create thumbnail from video
+                                const video = e.target as HTMLVideoElement;
+                                const canvas = document.createElement('canvas');
+                                canvas.width = video.videoWidth;
+                                canvas.height = video.videoHeight;
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                  ctx.drawImage(video, 0, 0);
+                                  // You could use this canvas as thumbnail if needed
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">Video not available</span>
                             </div>
-                            {/* Video duration or other info */}
-                            <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                              <span className="text-xs text-white">Video</span>
+                          )}
+                          {/* Video play icon overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
                             </div>
                           </div>
+                          {/* Video duration or other info */}
+                          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                            <span className="text-xs text-white">Video</span>
+                          </div>
+                        </div>
                         )}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                       </div>

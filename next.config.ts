@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      { source: '/HomePage', destination: '/view/HomePage' },
+      { source: '/Landingpage', destination: '/view/Landingpage' },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -428,12 +428,18 @@ const History = () => {
                     ) : video ? (
                       // Completed video thumbnail
                       <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
-                        <video 
-                          src={mediaUrl}
-                          className="w-full h-full object-cover"
-                          muted
-                          preload="metadata"
-                        />
+                        {mediaUrl ? (
+                          <video 
+                            src={mediaUrl}
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">Video not available</span>
+                          </div>
+                        )}
                         {/* Video play icon overlay */}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
@@ -449,13 +455,21 @@ const History = () => {
                       </div>
                     ) : (
                       // Completed image
-                      <Image
-                        src={mediaUrl}
-                        alt={entry.prompt}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-200"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
-                      />
+                      <div className="w-full h-full relative">
+                        {mediaUrl ? (
+                          <Image
+                            src={mediaUrl}
+                            alt={entry.prompt}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-200"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">Image not available</span>
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                   </div>

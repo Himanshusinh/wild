@@ -151,7 +151,13 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
                     className={`relative aspect-square w-[90px] rounded-xl overflow-hidden ring-2 transition ${selectedId === img.id ? 'ring-[#2F6BFF]' : 'ring-white/20 hover:ring-white/30'}`}
                     aria-label={`Choose ${img.alt || 'model'}`}
                   >
-                    <Image src={img.src} alt={img.alt || 'Model'} fill className="object-cover" />
+                    {img.src ? (
+                      <Image src={img.src} alt={img.alt || 'Model'} fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">No image</span>
+                      </div>
+                    )}
                     {selectedId === img.id && (
                       <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#2F6BFF] grid place-items-center shadow">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

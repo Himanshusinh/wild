@@ -15,18 +15,27 @@ import Bookmarks from './Bookmarks';
 import { loadHistory, clearHistoryByType } from '@/store/slices/historySlice';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation';
+type GenerationType = 'text-to-image' | 'image-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
 }
 
 const generators: GeneratorComponentMap = {
+  // Image Generation Features
   'text-to-image': TextToImageInputBox,
+  'image-to-image': TextToImageInputBox, // Uses same component as text-to-image (supports image uploads)
   'logo-generation': LogoGenerationInputBox,
   'sticker-generation': StickerGenerationInputBox,
+  
+  // Video Generation Features
   'text-to-video': TextToVideoInputBox,
+  'image-to-video': TextToVideoInputBox, // Uses same component as text-to-video (supports image-to-video mode)
+  
+  // Music Generation Features
   'text-to-music': TextToMusicInputBox,
+  
+  // Branding Kit Features
   'mockup-generation': MockupGenerationInputBox,
   'product-generation': ProductGenerationInputBox,
   'ad-generation': AdGenerationInputBox,
