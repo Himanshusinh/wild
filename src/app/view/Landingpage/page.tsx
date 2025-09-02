@@ -28,12 +28,7 @@ const LazyCircularGallery = React.lazy(() => import('./components/CicularGallery
 const LazyWorldMap = React.lazy(() => import('./components/worldmap').then(module => ({ default: module.WorldMap })))
 import { GenerationType } from '@/types/generation';
 
-interface LandingPageProps {
-  onGetStarted: () => void;
-  onNavigateToGeneration: (type: GenerationType) => void;
-}
-
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGeneration }) => {
+const LandingPage: React.FC = () => {
   const router = useRouter()
   const proximityContainerRef = React.useRef<HTMLDivElement | null>(null)
   const hKnowRef = React.useRef<HTMLDivElement | null>(null)
@@ -51,6 +46,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
   const [unlockBelow, setUnlockBelow] = React.useState(false)
   const [canScrollWorkflowLeft, setCanScrollWorkflowLeft] = React.useState(false)
   const [canScrollWorkflowRight, setCanScrollWorkflowRight] = React.useState(true)
+
+  const onGetStarted = () => router.push('/view/HomePage');
+  const onNavigateToGeneration = (type: GenerationType) => router.push('/');
   
   // Carousel items
   const carouselItems = carouselCards.map((card, index) => (

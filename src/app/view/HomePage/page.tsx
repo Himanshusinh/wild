@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react'
+import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Nav from './compo/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures';
 import Header from './compo/Header'
@@ -15,22 +16,38 @@ import { getImageUrl } from './routes'
 
 import { ViewType, GenerationType } from '@/types/generation';
 
-interface HomePageProps {
-  onViewChange: (view: ViewType) => void;
-  onGenerationTypeChange: (type: GenerationType) => void;
-  currentView: ViewType;
-  currentGenerationType: GenerationType;
-}
+const HomePage: React.FC = () => {
+  const router = useRouter();
+  const [currentView, setCurrentView] = useState<ViewType>('home');
+  const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
 
-const HomePage: React.FC<HomePageProps> = ({ 
-  onViewChange, 
-  onGenerationTypeChange, 
-  currentView, 
-  currentGenerationType 
-}) => {
-  console.log('🔍 HomePage - Rendered with props:', { currentView, currentGenerationType });
-  console.log('🔍 HomePage - onViewChange function type:', typeof onViewChange);
-  console.log('🔍 HomePage - COMPONENT IS RENDERING!');
+  const onViewChange = (view: ViewType) => {
+    setCurrentView(view);
+    switch (view) {
+      case 'landing':
+        router.push('/view/Landingpage');
+        break;
+      case 'home':
+        router.push('/view/HomePage');
+        break;
+      case 'history':
+        router.push('/history');
+        break;
+      case 'bookmarks':
+        router.push('/bookmarks');
+        break;
+      case 'generation':
+      default:
+        router.push('/text-to-image');
+        break;
+    }
+  };
+  const onGenerationTypeChange = (type: GenerationType) => {
+    setCurrentGenerationType(type);
+    router.push(`/${type}`);
+  };
+
+  console.log('🔍 HomePage - Rendered with state:', { currentView, currentGenerationType });
 
   const CARDS: WorkflowCard[] = [
     {

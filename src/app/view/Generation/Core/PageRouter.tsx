@@ -73,6 +73,9 @@ export default function PageRouter() {
           return;
         }
         
+        // Normalize type for history filters (history doesn't track 'image-to-image' separately)
+        const historyGenerationType = (currentGenerationType === 'image-to-image') ? 'text-to-image' : currentGenerationType;
+        
         // Check if generation type changed
         const generationTypeChanged = previousGenerationTypeRef.current !== currentGenerationType;
         
@@ -95,7 +98,11 @@ export default function PageRouter() {
             // Debounce the history clearing to prevent rapid clearing
             clearTimeoutRef.current = setTimeout(() => {
               if (previousType && previousType !== currentGenerationType) {
-                dispatch(clearHistoryByType(previousType));
+                try {
+                  dispatch(clearHistoryByType(previousType as any));
+                } catch (e) {
+                  console.warn('clearHistoryByType skipped due to invalid type:', previousType);
+                }
               }
             }, 100); // 100ms debounce
           } else {
@@ -115,7 +122,7 @@ export default function PageRouter() {
         if (!loadedTypesRef.current.has(currentGenerationType)) {
           isLoadingRef.current = true;
           dispatch(loadHistory({ 
-            filters: { generationType: currentGenerationType }, 
+            filters: { generationType: historyGenerationType as any }, 
             paginationParams: { limit: 10 } 
           }))
             .finally(() => {
@@ -126,7 +133,7 @@ export default function PageRouter() {
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
           isLoadingRef.current = true;
           dispatch(loadHistory({ 
-            filters: { generationType: currentGenerationType }, 
+            filters: { generationType: historyGenerationType as any }, 
             paginationParams: { limit: 10 } 
           }))
             .finally(() => {

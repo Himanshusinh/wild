@@ -145,7 +145,8 @@ const historySlice = createSlice({
     clearHistoryByType: (state, action) => {
       // Clear only entries for a specific generation type
       // Normalize both the action payload and entry generationType for comparison
-      const normalizeGenerationType = (type: string): string => {
+      const normalizeGenerationType = (type: string | undefined): string => {
+        if (!type || typeof type !== 'string') return '';
         return type.replace(/[_-]/g, '-').toLowerCase();
       };
       
@@ -188,7 +189,8 @@ const historySlice = createSlice({
         if (usedFilters && Object.keys(usedFilters).length > 0) {
           if (usedFilters.generationType) {
             // Normalize both the filter and entry generationType for comparison
-            const normalizeGenerationType = (type: string): string => {
+            const normalizeGenerationType = (type: string | undefined): string => {
+              if (!type || typeof type !== 'string') return '';
               return type.replace(/[_-]/g, '-').toLowerCase();
             };
             const normalizedFilter = normalizeGenerationType(usedFilters.generationType);

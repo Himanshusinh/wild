@@ -60,22 +60,14 @@ export default function App() {
   if (currentView === 'landing') {
     console.log('🔍 App - Rendering LandingPage');
     return (
-      <LandingPage 
-        onGetStarted={() => handleViewChange('home')}
-        onNavigateToGeneration={(type: GenerationType) => handleGenerationTypeChange(type)}
-      />
+      <LandingPage />
     );
   }
 
   if (currentView === 'home') {
     console.log('🔍 App - Rendering HomePage');
     return (
-      <HomePage 
-        onViewChange={handleViewChange}
-        onGenerationTypeChange={handleGenerationTypeChange}
-        currentView={currentView}
-        currentGenerationType={currentGenerationType}
-      />
+      <HomePage />
     );
   }
 
