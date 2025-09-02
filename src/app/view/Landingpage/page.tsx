@@ -138,6 +138,8 @@ const LandingPage: React.FC = () => {
     }
   }, [smoothScrollTo]);
 
+  const onGetStarted = () => router.push('/view/HomePage');
+
   // Optimized intersection observers with proper cleanup
   React.useEffect(() => {
     const sentinel = afterScrollFloatRef.current
