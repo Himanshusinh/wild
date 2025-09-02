@@ -78,3 +78,40 @@ export interface HistoryFilters {
   };
   status?: 'generating' | 'completed' | 'failed';
 }
+
+// Live Chat specific types
+export interface LiveChatMessage {
+  prompt: string;
+  images: GeneratedImage[];
+  timestamp: string; // ISO
+}
+
+export interface LiveChatSession {
+  id: string; // Firestore document id
+  sessionId: string; // Also stored for client grouping
+  model: string;
+  frameSize?: string;
+  style?: string;
+  startedAt: string; // ISO
+  completedAt?: string; // ISO
+  status: 'active' | 'completed' | 'failed';
+  messages: LiveChatMessage[]; // ordered by time (first → last)
+  totalImages: number;
+}
+
+export interface LiveChatSessionFirestore {
+  id: string;
+  sessionId: string;
+  model: string;
+  frameSize?: string;
+  style?: string;
+  startedAt: any; // Firestore Timestamp
+  completedAt?: any;
+  status: 'active' | 'completed' | 'failed';
+  messages: Array<{
+    prompt: string;
+    images: GeneratedImage[];
+    timestamp: any; // Firestore Timestamp
+  }>;
+  totalImages: number;
+}
