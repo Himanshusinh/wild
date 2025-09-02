@@ -12,6 +12,11 @@ const FrameSizeDropdown = () => {
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
 
+  // Hide frame size dropdown for Google Nano Banana since it doesn't accept aspect ratio parameters
+  if (selectedModel === 'gemini-25-flash-image') {
+    return null;
+  }
+
   // Model-aware frame size options
   // Common set supported across providers; Runway maps to pixel ratios internally
   const baseSizes = [

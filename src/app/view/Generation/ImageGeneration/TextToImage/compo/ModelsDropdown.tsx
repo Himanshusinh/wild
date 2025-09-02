@@ -22,6 +22,7 @@ const ModelsDropdown = () => {
     { name: 'Runway Gen4 Image', value: 'gen4_image' },
     { name: 'Runway Gen4 Image Turbo', value: 'gen4_image_turbo' },
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
+    { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
     // Local models
     { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -38,7 +39,8 @@ const ModelsDropdown = () => {
       m.value.startsWith('flux-kontext') || 
       m.value === 'gen4_image' || 
       m.value === 'gen4_image_turbo' ||
-      m.value === 'minimax-image-01'
+      m.value === 'minimax-image-01' ||
+      m.value === 'gemini-25-flash-image'
     );
   }
 

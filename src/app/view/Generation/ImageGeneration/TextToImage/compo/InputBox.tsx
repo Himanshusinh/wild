@@ -28,6 +28,7 @@ import ImageCountDropdown from "./ImageCountDropdown";
 import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
 import ImagePreviewModal from "./ImagePreviewModal";
+import UpscalePopup from "./UpscalePopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,7 @@ const InputBox = () => {
     entry: HistoryEntry;
     image: any;
   } | null>(null);
+  const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
 
   // Helper function to get clean prompt without style
@@ -752,6 +754,157 @@ const InputBox = () => {
           })
         );
         clearInputs(); // Clear inputs after successful generation
+      } else if (selectedModel === 'gemini-25-flash-image') {
+        // FAL Gemini (Nano Banana) using submit → status → result routes
+        console.log('🤖 FAL Gemini flow (submit/status/result)');
+
+        try {
+          // 1) Ensure Firebase history entry
+          firebaseHistoryId = await saveHistoryEntry({
+            prompt: prompt,
+            model: selectedModel,
+            generationType: 'text-to-image',
+            images: [],
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount,
+            status: 'generating',
+            frameSize,
+            style,
+          });
+          dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
+
+          // Initialize progress
+          dispatch(updateHistoryEntry({
+            id: firebaseHistoryId!,
+            updates: {
+              generationProgress: {
+                current: 0,
+                total: imageCount * 100,
+                status: `Submitting ${imageCount} task(s)...`
+              }
+            }
+          }));
+
+          // 2) Submit tasks
+          const submitRes = await fetch('/api/fal/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: `${prompt} [Style: ${style}]`,
+              model: selectedModel,
+              n: imageCount,
+              uploadedImages,
+              output_format: 'jpeg',
+              historyId: firebaseHistoryId,
+            })
+          });
+          if (!submitRes.ok) {
+            const err = await submitRes.json();
+            throw new Error(err?.error || 'Failed to submit FAL tasks');
+          }
+          const { requestIds, isEdit } = await submitRes.json();
+
+          let currentImages: any[] = [...loadingEntry.images];
+          let completedCount = 0;
+
+          // 3) Process each task: poll status then fetch result
+          await Promise.all(
+            requestIds.map(async (reqId: string, index: number) => {
+              try {
+                let done = false;
+                let attempts = 0;
+                while (!done && attempts < 300) { // up to ~5 min at 1s
+                  attempts++;
+                  const statusRes = await fetch(`/api/fal/status?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}`);
+                  if (statusRes.ok) {
+                    const st = await statusRes.json();
+                    const statusText = st?.status || st?.state || 'IN_PROGRESS';
+                    dispatch(updateHistoryEntry({
+                      id: firebaseHistoryId!,
+                      updates: {
+                        generationProgress: {
+                          current: completedCount * 100,
+                          total: imageCount * 100,
+                          status: `Gemini ${index + 1}/${imageCount}: ${statusText}`
+                        }
+                      }
+                    }));
+                    if (statusText === 'COMPLETED' || statusText === 'READY' || st?.done) {
+                      done = true;
+                      break;
+                    }
+                  }
+                  await new Promise(res => setTimeout(res, 1000));
+                }
+
+                // Fetch result and persist
+                const resultRes = await fetch(`/api/fal/result?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}&historyId=${encodeURIComponent(firebaseHistoryId!)}`);
+                if (!resultRes.ok) {
+                  const err = await resultRes.json();
+                  throw new Error(err?.error || 'Failed to fetch FAL result');
+                }
+                const resultJson = await resultRes.json();
+                const imgs = resultJson.images || [];
+                if (imgs.length > 0) {
+                  const newImages = [...currentImages];
+                  newImages[index] = imgs[0];
+                  currentImages = newImages;
+                  completedCount++;
+                  dispatch(updateHistoryEntry({
+                    id: firebaseHistoryId!,
+                    updates: {
+                      images: currentImages,
+                      generationProgress: {
+                        current: completedCount * 100,
+                        total: imageCount * 100,
+                        status: `Completed ${completedCount}/${imageCount}`
+                      }
+                    }
+                  }));
+                }
+              } catch (err) {
+                dispatch(addNotification({ type: 'error', message: `Gemini image ${index + 1} failed` }));
+              }
+            })
+          );
+
+          // 4) Finalize
+          dispatch(updateHistoryEntry({
+            id: firebaseHistoryId!,
+            updates: {
+              status: completedCount > 0 ? 'completed' : 'failed',
+              imageCount: completedCount,
+              frameSize,
+              style,
+            }
+          }));
+
+          if (completedCount > 0) {
+            dispatch(addNotification({ type: 'success', message: `Google Nano Banana completed (${completedCount}/${imageCount})` }));
+            clearInputs();
+          }
+        } catch (error) {
+          console.error('FAL (split) generation failed:', error);
+          const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
+          dispatch(updateHistoryEntry({
+            id: entryIdToUpdate,
+            updates: {
+              status: 'failed',
+              error: error instanceof Error ? error.message : 'Failed to generate images with FAL API',
+            }
+          }));
+          if (firebaseHistoryId) {
+            try {
+              await updateFirebaseHistory(firebaseHistoryId, {
+                status: 'failed',
+                error: error instanceof Error ? error.message : 'Failed to generate images with FAL API',
+              });
+            } catch {}
+          }
+          dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana' }));
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
@@ -1232,7 +1385,7 @@ const InputBox = () => {
                     // Only auto-switch models if this is the first upload AND we're not using an image-to-image model
                     if (uploadedImages.length === 0 && next.length > 0) {
                       // Check if current model is an image-to-image model
-                      const isImageToImageModel = selectedModel === "gen4_image_turbo" || selectedModel === "gen4_image";
+                      const isImageToImageModel = selectedModel === "gen4_image_turbo" || selectedModel === "gen4_image" || selectedModel === 'gemini-25-flash-image';
                       
                       if (!isImageToImageModel) {
                         // Only auto-switch for text-to-image models
@@ -1313,8 +1466,8 @@ const InputBox = () => {
                 title="Upscale"
                 borderRadius="1.5rem"
                 containerClassName="h-10 w-auto"
-                
-                className="bg-black  text-white px-4 py-2"
+                onClick={() => setIsUpscaleOpen(true)}
+                className="bg-black text-white px-4 py-2"
               >
                 <div className="flex items-center gap-2">
                   <svg
@@ -1364,6 +1517,7 @@ const InputBox = () => {
       </div>
       </div>
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
+      <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} />
     </>
   );
 };
