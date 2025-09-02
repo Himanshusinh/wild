@@ -3,17 +3,13 @@ import React from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
-import { HeroParallax } from './components/HeroParallax'
 import ScrollFloat from './components/ScrollFloat'
 import VariableProximity from './components/VariableProximity'
-import { Carousel, Card } from './components/CardsCarousel'
-import { LayoutGrid } from './components/LayoutGrid'
+import { Card } from './components/CardsCarousel'
 import { CardContainer, CardBody, CardItem } from './components/3DCardEffect'
 import NAV_LAND from './components/NAV_LAND'
-import FeatuesAll from './components/FeatuesAll'
 import Subscribe from './components/subscribe'
 import SpotlightCard from './components/SpotlightCard'
-import FAQ from './components/FAQ'
 import { workflowCards } from './data/workflowData'
 import { carouselCards } from './data/carouselData'
 import { layoutGridCards } from './data/layoutGridData'
@@ -21,11 +17,16 @@ import { heroProducts } from './data/heroParallaxData'
 import { worldMapDots } from './data/worldMapData'
 import FooterNew from '../core/FooterNew'
 import { HoverBorderGradient } from './components/hover-border-gradiant'
-import { WobbleCard } from './components/wobble-card'
 
-// Lazy load heavy components
+// Lazy load heavy components with better performance
 const LazyCircularGallery = React.lazy(() => import('./components/CicularGallery').then(module => ({ default: module.default })))
 const LazyWorldMap = React.lazy(() => import('./components/worldmap').then(module => ({ default: module.WorldMap })))
+const LazyHeroParallax = React.lazy(() => import('./components/HeroParallax').then(module => ({ default: module.HeroParallax })))
+const LazyCarousel = React.lazy(() => import('./components/CardsCarousel').then(module => ({ default: module.Carousel })))
+const LazyLayoutGrid = React.lazy(() => import('./components/LayoutGrid').then(module => ({ default: module.LayoutGrid })))
+const LazyFeaturesAll = React.lazy(() => import('./components/FeatuesAll'))
+const LazyWobbleCard = React.lazy(() => import('./components/wobble-card').then(module => ({ default: module.WobbleCard })))
+const LazyFAQ = React.lazy(() => import('./components/FAQ'))
 import { GenerationType } from '@/types/generation';
 
 interface LandingPageProps {
@@ -44,6 +45,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
   const hWhyRef = React.useRef<HTMLDivElement | null>(null)
   const hPricingRef = React.useRef<HTMLDivElement | null>(null)
   const hArtGalleryRef = React.useRef<HTMLDivElement | null>(null)
+  const hFAQRef = React.useRef<HTMLDivElement | null>(null)
   const workflowScrollRef = React.useRef<HTMLDivElement | null>(null)
   const afterScrollFloatRef = React.useRef<HTMLDivElement | null>(null)
   const unlockRef = React.useRef<HTMLDivElement | null>(null)
@@ -51,6 +53,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
   const [unlockBelow, setUnlockBelow] = React.useState(false)
   const [canScrollWorkflowLeft, setCanScrollWorkflowLeft] = React.useState(false)
   const [canScrollWorkflowRight, setCanScrollWorkflowRight] = React.useState(true)
+  const [loadHeroParallax, setLoadHeroParallax] = React.useState(true)
+  const [loadCarousel, setLoadCarousel] = React.useState(false)
+  const [loadFeatures, setLoadFeatures] = React.useState(false)
+  const [loadLayoutGrid, setLoadLayoutGrid] = React.useState(false)
+  const [loadWorldMap, setLoadWorldMap] = React.useState(false)
+  const [loadPricing, setLoadPricing] = React.useState(false)
+  const [loadGallery, setLoadGallery] = React.useState(false)
+  const [loadFAQ, setLoadFAQ] = React.useState(false)
   
   // Carousel items
   const carouselItems = carouselCards.map((card, index) => (
@@ -164,6 +174,93 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
     return () => io.disconnect()
   }, [])
 
+  // Progressive loading observers
+  React.useEffect(() => {
+    const observers: IntersectionObserver[] = []
+    
+    // Load carousel when carousel section comes into view
+    if (hKnowRef.current) {
+      const carouselObserver = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadCarousel(true)
+          carouselObserver.disconnect()
+        }
+      }, { threshold: 0.1, rootMargin: '200px' })
+      carouselObserver.observe(hKnowRef.current)
+      observers.push(carouselObserver)
+    }
+
+    // Load features when features section comes into view
+    if (hFeaturesRef.current) {
+      const featuresObserver = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadFeatures(true)
+          featuresObserver.disconnect()
+        }
+      }, { threshold: 0.1, rootMargin: '200px' })
+      featuresObserver.observe(hFeaturesRef.current)
+      observers.push(featuresObserver)
+    }
+
+    // Load layout grid when highlights section comes into view
+    if (hHighlightsRef.current) {
+      const layoutObserver = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadLayoutGrid(true)
+          layoutObserver.disconnect()
+        }
+      }, { threshold: 0.1, rootMargin: '200px' })
+      layoutObserver.observe(hHighlightsRef.current)
+      observers.push(layoutObserver)
+    }
+
+    // Load world map when global section comes into view
+    if (hGlobalRef.current) {
+      const worldMapObserver = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadWorldMap(true)
+          worldMapObserver.disconnect()
+        }
+      }, { threshold: 0.1, rootMargin: '200px' })
+      worldMapObserver.observe(hGlobalRef.current)
+      observers.push(worldMapObserver)
+    }
+
+    // Load pricing when pricing section comes into view
+    if (hPricingRef.current) {
+      const pricingObserver = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadPricing(true)
+          pricingObserver.disconnect()
+        }
+      }, { threshold: 0.1, rootMargin: '200px' })
+      pricingObserver.observe(hPricingRef.current)
+      observers.push(pricingObserver)
+    }
+
+    // Load gallery when gallery section comes into view
+    if (hArtGalleryRef.current) {
+      const galleryObserver = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadGallery(true)
+          galleryObserver.disconnect()
+        }
+      }, { threshold: 0.1, rootMargin: '200px' })
+      galleryObserver.observe(hArtGalleryRef.current)
+      observers.push(galleryObserver)
+    }
+
+    // Load FAQ early since it's near the bottom
+    const faqTimer = setTimeout(() => {
+      setLoadFAQ(true)
+    }, 3000)
+
+    return () => {
+      observers.forEach(observer => observer.disconnect())
+      clearTimeout(faqTimer)
+    }
+  }, [])
+
   // const [isHovered, setIsHovered] = useState(false)
   return (
 
@@ -175,7 +272,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
     </div>
                 
     <div className='w-full bg-[#0a1116]'>
-        <HeroParallax products={heroProducts} />
+        {loadHeroParallax ? (
+          <React.Suspense fallback={<div className="h-screen bg-[#0a1116] animate-pulse" />}>
+            <LazyHeroParallax products={heroProducts} />
+          </React.Suspense>
+        ) : (
+          <div className="h-screen bg-[#0a1116]" />
+        )}
     </div>
     
     {/* Spacer to ensure proper separation (minimized) */}
@@ -256,7 +359,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
           />
         </h2>
         <div className="max-w-7xl mx-auto">
-          <Carousel items={carouselItems} />
+          {loadCarousel ? (
+            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+              <LazyCarousel items={carouselItems} />
+            </React.Suspense>
+          ) : (
+            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+          )}
         </div>
       </div>
       
@@ -277,7 +386,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
           </p>
         </div>
         <div>
-          <FeatuesAll />
+          {loadFeatures ? (
+            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+              <LazyFeaturesAll />
+            </React.Suspense>
+          ) : (
+            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+          )}
         </div>
 
         {/* Additional ScrollFloat under Features section - ensure visibility even with short content */}
@@ -309,7 +424,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
 
         {/* LayoutGrid section */}
         <div className="px-8 md:px-6 lg:px-8 -mt-4 md:-mt-2 lg:-mt-4">
-          <LayoutGrid cards={layoutGridCards} />
+          {loadLayoutGrid ? (
+            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+              <LazyLayoutGrid cards={layoutGridCards} />
+            </React.Suspense>
+          ) : (
+            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+          )}
         </div>
 
         {/* Workflows */}
@@ -412,12 +533,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
               falloff='linear'
             />
           </h2>
-          <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
-            <LazyWorldMap 
-              dots={worldMapDots}
-              lineColor="#0ea5e9"
-            />
-          </React.Suspense>
+          {loadWorldMap ? (
+            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+              <LazyWorldMap 
+                dots={worldMapDots}
+                lineColor="#0ea5e9"
+              />
+            </React.Suspense>
+          ) : (
+            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+          )}
         </div>
 
         {/* Why choose wildmindAI Section */}
@@ -483,61 +608,67 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
               falloff='linear'
             />
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-3 lg:gap-4 max-w-7xl mx-auto w-full">
-            <WobbleCard
-              containerClassName="col-span-1 lg:col-span-2 md:col-span-2 h-full bg-pink-800 min-h-[500px] md:min-h-[350px] lg:min-h-[400px]"
-              className=""
-            >
-              <div className="max-w-xs md:max-w-sm lg:max-w-xs">
-                <h2 className="text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
-                  Free Plan
-                </h2>
-                <p className="mt-4 md:mt-3 lg:mt-4 text-left font-poppins text-neutral-200 text-justify font-medium text-sm md:text-sm lg:text-sm">
-                Get started with 2,100 free credits and access to our full creative suite. No cost, no commitment, just pure AI power from day one. Generate 100+ Images monthly with the free plan
-                </p>
+          {loadPricing ? (
+            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-3 lg:gap-4 max-w-7xl mx-auto w-full">
+                <LazyWobbleCard
+                  containerClassName="col-span-1 lg:col-span-2 md:col-span-2 h-full bg-pink-800 min-h-[500px] md:min-h-[350px] lg:min-h-[400px]"
+                  className=""
+                >
+                  <div className="max-w-xs md:max-w-sm lg:max-w-xs">
+                    <h2 className="text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                      Free Plan
+                    </h2>
+                    <p className="mt-4 md:mt-3 lg:mt-4 font-poppins text-neutral-200 text-justify font-medium text-sm md:text-sm lg:text-sm">
+                    Get started with 2,100 free credits and access to our full creative suite. No cost, no commitment, just pure AI power from day one. Generate 100+ Images monthly with the free plan
+                    </p>
+                  </div>
+                  <div className="absolute -right-16 md:-right-[40%] lg:-right-[35%] -bottom-20 mb:static mb-10 mb:mt-6 mb:w-[90%] mb:max-w-[320px] mb:mx-auto mobile:w-[85%]">
+                    <Image
+                      src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2Ffree%20plan%20(1).jpg?alt=media&token=24ca1409-6f04-45d5-a9c4-f891a7f6fcc6"
+                      width={500}
+                      height={500}
+                      alt="WildmindAI demo image"
+                      className="grayscale filter object-contain rounded-2xl scale-90"
+                    />
+                  </div>
+                </LazyWobbleCard>
+                <LazyWobbleCard containerClassName="col-span-1 md:col-span-1 min-h-[300px] md:min-h-[250px] lg:min-h-[280px] bg-[#288F1A]">
+                  <h2 className="max-w-80 text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                    Student Discount
+                  </h2>
+                  <p className="mt-4 md:mt-3 lg:mt-4 max-w-[26rem] text-base/6 md:text-sm lg:text-base text-neutral-200 text-justify font-medium">
+                  Students save 33% on all plans — verified student ID required. Unlock pro-level AI tools at a student-friendly price.
+                  </p>
+                </LazyWobbleCard>
+                <LazyWobbleCard containerClassName="col-span-1 lg:col-span-3 md:col-span-3 bg-[#3F2185] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]">
+                  <div className="max-w-sm md:max-w-md lg:max-w-sm">
+                    <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                      Explore All Plans
+                    </h2>
+                    <p className="mt-4 md:mt-3 lg:mt-4 max-w-[26rem] text-base/6 md:text-sm lg:text-base text-neutral-200 text-justify mr-2 font-medium">
+                    From hobbyist to enterprise, our plans <br/>scale with your creativity. Get more<br/>credits, more power, more freedom — <br/>see what fits you best
+                    </p>
+                  </div>
+                  
+                  {/* Pricing Plans Button - Bottom Left */}
+                  <button className="absolute font-poppins text-sm bottom-6 left-10 bg-white text-[#3F2185] font-medium px-4 py-2 rounded-full hover:bg-gray-100 transition-all duration-200 shadow-lg">
+                    Pricing Plans
+                  </button>
+                  
+                  <Image
+                    src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2Fexplore_plans%20(1).jpg?alt=media&token=9c03c318-b7c3-4326-b53f-7310e70815bc"
+                    width={500}
+                    height={500}
+                    alt="WildmindAI demo image"
+                    className="grayscale filter absolute -right-10 md:-right-[20%] lg:-right-[20%] -bottom-10 object-contain rounded-2xl mb:static mb:mt-6 mb:w-[80%] mb:max-w-[320px] mb:mx-auto mobile:w-[85%]"
+                  />
+                </LazyWobbleCard>
               </div>
-              <div className="absolute -right-16 md:-right-[40%] lg:-right-[35%] -bottom-20 mb:static mb-10 mb:mt-6 mb:w-[90%] mb:max-w-[320px] mb:mx-auto mobile:w-[85%]">
-                <Image
-                  src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2Ffree%20plan%20(1).jpg?alt=media&token=24ca1409-6f04-45d5-a9c4-f891a7f6fcc6"
-                  width={500}
-                  height={500}
-                  alt="WildmindAI demo image"
-                  className="grayscale filter object-contain rounded-2xl scale-90"
-                />
-              </div>
-            </WobbleCard>
-            <WobbleCard containerClassName="col-span-1 md:col-span-1 min-h-[300px] md:min-h-[250px] lg:min-h-[280px] bg-[#288F1A]">
-              <h2 className="max-w-80 text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
-                Student Discount
-              </h2>
-              <p className="mt-4 md:mt-3 lg:mt-4 max-w-[26rem] text-left text-base/6 md:text-sm lg:text-base text-neutral-200 text-justify font-medium">
-              Students save 33% on all plans — verified student ID required. Unlock pro-level AI tools at a student-friendly price.
-              </p>
-            </WobbleCard>
-            <WobbleCard containerClassName="col-span-1 lg:col-span-3 md:col-span-3 bg-[#3F2185] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]">
-              <div className="max-w-sm md:max-w-md lg:max-w-sm">
-                <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
-                  Explore All Plans
-                </h2>
-                <p className="mt-4 md:mt-3 lg:mt-4 max-w-[26rem] text-left text-base/6 md:text-sm lg:text-base text-neutral-200 text-justify mr-2 font-medium">
-                From hobbyist to enterprise, our plans <br/>scale with your creativity. Get more<br/>credits, more power, more freedom — <br/>see what fits you best
-                </p>
-              </div>
-              
-              {/* Pricing Plans Button - Bottom Left */}
-              <button className="absolute font-poppins text-sm bottom-6 left-10 bg-white text-[#3F2185] font-medium px-4 py-2 rounded-full hover:bg-gray-100 transition-all duration-200 shadow-lg">
-                Pricing Plans
-              </button>
-              
-              <Image
-                src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2Fexplore_plans%20(1).jpg?alt=media&token=9c03c318-b7c3-4326-b53f-7310e70815bc"
-                width={500}
-                height={500}
-                alt="WildmindAI demo image"
-                className="grayscale filter absolute -right-10 md:-right-[20%] lg:-right-[20%] -bottom-10 object-contain rounded-2xl mb:static mb:mt-6 mb:w-[80%] mb:max-w-[320px] mb:mx-auto mobile:w-[85%]"
-              />
-            </WobbleCard>
-          </div>
+            </React.Suspense>
+          ) : (
+            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+          )}
         </div>
 
         {/* Get Started for Free Button */}
@@ -557,8 +688,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
         </div>
 
         {/* FAQ */}
-        <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28">
-          <FAQ />
+        <div ref={hFAQRef} className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28">
+          {loadFAQ ? (
+            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+              <LazyFAQ />
+            </React.Suspense>
+          ) : (
+            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+          )}
         </div>
 
         {/* Circular Gallery (same placement as landingPage) */}
@@ -580,57 +717,63 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onNavigateToGen
               </span>
             </div>
 
-            {/* First gallery */}
-            <div className="relative mt-30 z-[30]">
-              <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
-                <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
-                  <LazyCircularGallery
-                    bend={0}
-                    textColor="#ffffff"
-                    borderRadius={0.05}
-                    scrollEase={0.02}
-                    imageGap={0.8}
-                    items={[
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg1.png?alt=media&token=636b6993-8838-417a-b40b-9a109675a848', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg2.png?alt=media&token=507a37f0-ef55-4867-ab1f-79b92cb2d2d5', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg3.png?alt=media&token=01bc4c52-e552-4a93-8f6c-8e62fdf11930', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex1.png?alt=media&token=def5ff0e-f95d-4622-9987-38b92b4f2982', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex2.png?alt=media&token=ff63ea0e-6335-4b41-87cf-738636039ecb', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex3.png?alt=media&token=f198a71f-2319-4b79-9dcd-d7355161032a', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex4.png?alt=media&token=8c83af98-29a4-44f7-8135-da8aed0ec78d', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex5.png?alt=media&token=4fdb2267-b1f2-4a80-b900-d6631c08378c', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex6.png?alt=media&token=9ffa68a0-a392-4ced-a154-761a8046df86', text: '' },
-                    ]}
-                  />
-                </React.Suspense>
-              </div>
-            </div>
-            {/* Second gallery below, opposite direction */}
-            <div className="relative -mt-[96px] md:-mt-[140px] lg:-mt-[180px] z-[30]">
-              <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
-                <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
-                  <LazyCircularGallery
-                    bend={0}
-                    textColor="#ffffff"
-                    borderRadius={0.05}
-                    scrollEase={0.02}
-                    autoScrollSpeed={-0.05}
-                    imageGap={0.8}
-                    items={[
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex7.png?alt=media&token=bc1a7a8f-ebe0-4fd6-9a75-3d0f07414e27', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex8.png?alt=media&token=68dad024-f582-4e6a-9b8a-92f70188252f', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex9.png?alt=media&token=fd980978-cbb2-4039-8b02-307d028635d5', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex10.png?alt=media&token=8cd9bec9-ad65-4807-8189-e60dcc4eb441', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex11.png?alt=media&token=85a8bb76-f450-4db8-9df3-6f4b4eb75166', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex12.png?alt=media&token=65c055c1-d812-40c5-b85e-7e50103f6672', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex13.png?alt=media&token=d8392b12-de19-471b-8902-d1a8e72d3b8f', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex14.png?alt=media&token=230af79c-da11-4eec-b143-b444aaa6c266', text: '' },
-                      { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex15.png?alt=media&token=64e4d18e-3bb0-471d-839b-656ce06ab0c0', text: '' },
-                    ]}
-                  />
-                </React.Suspense>
-              </div>
-          </div>
+            {loadGallery ? (
+              <>
+                {/* First gallery */}
+                <div className="relative mt-30 z-[30]">
+                  <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
+                    <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
+                      <LazyCircularGallery
+                        bend={0}
+                        textColor="#ffffff"
+                        borderRadius={0.05}
+                        scrollEase={0.02}
+                        imageGap={0.8}
+                        items={[
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg1.png?alt=media&token=636b6993-8838-417a-b40b-9a109675a848', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg2.png?alt=media&token=507a37f0-ef55-4867-ab1f-79b92cb2d2d5', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg3.png?alt=media&token=01bc4c52-e552-4a93-8f6c-8e62fdf11930', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex1.png?alt=media&token=def5ff0e-f95d-4622-9987-38b92b4f2982', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex2.png?alt=media&token=ff63ea0e-6335-4b41-87cf-738636039ecb', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex3.png?alt=media&token=f198a71f-2319-4b79-9dcd-d7355161032a', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex4.png?alt=media&token=8c83af98-29a4-44f7-8135-da8aed0ec78d', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex5.png?alt=media&token=4fdb2267-b1f2-4a80-b900-d6631c08378c', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex6.png?alt=media&token=9ffa68a0-a392-4ced-a154-761a8046df86', text: '' },
+                        ]}
+                      />
+                    </React.Suspense>
+                  </div>
+                </div>
+                {/* Second gallery below, opposite direction */}
+                <div className="relative -mt-[96px] md:-mt-[140px] lg:-mt-[180px] z-[30]">
+                  <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
+                    <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
+                      <LazyCircularGallery
+                        bend={0}
+                        textColor="#ffffff"
+                        borderRadius={0.05}
+                        scrollEase={0.02}
+                        autoScrollSpeed={-0.05}
+                        imageGap={0.8}
+                        items={[
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex7.png?alt=media&token=bc1a7a8f-ebe0-4fd6-9a75-3d0f07414e27', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex8.png?alt=media&token=68dad024-f582-4e6a-9b8a-92f70188252f', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex9.png?alt=media&token=fd980978-cbb2-4039-8b02-307d028635d5', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex10.png?alt=media&token=8cd9bec9-ad65-4807-8189-e60dcc4eb441', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex11.png?alt=media&token=85a8bb76-f450-4db8-9df3-6f4b4eb75166', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex12.png?alt=media&token=65c055c1-d812-40c5-b85e-7e50103f6672', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex13.png?alt=media&token=d8392b12-de19-471b-8902-d1a8e72d3b8f', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex14.png?alt=media&token=230af79c-da11-4eec-b143-b444aaa6c266', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex15.png?alt=media&token=64e4d18e-3bb0-471d-839b-656ce06ab0c0', text: '' },
+                        ]}
+                      />
+                    </React.Suspense>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+            )}
         </div>
       </div>
 
