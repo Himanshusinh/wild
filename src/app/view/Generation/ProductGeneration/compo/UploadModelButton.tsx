@@ -47,6 +47,17 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
   };
 
   const handleFileUpload = (file: File) => {
+    // Check file size (2MB limit)
+    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+    if (file.size > maxSize) {
+      alert("Image too large. Maximum size is 2MB per image.");
+      // Clear the input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+    
     setUploadedName(file.name);
     setSelectedId(null);
     

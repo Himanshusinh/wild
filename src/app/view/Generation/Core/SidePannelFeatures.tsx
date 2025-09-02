@@ -76,7 +76,7 @@ const SidePannelFeatures = ({
 
   return (
     <div 
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 py-4 px-3 group transition-all text-white duration-200 bg-[#1C303D]/50 backdrop-blur-md w-[68px] hover:w-60 z-50 border border-white/10 shadow-2xl'
+      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 py-4 px-3 group transition-all text-white duration-200 bg-[#1C303D]/50 backdrop-blur-md w-[68px] hover:w-60 z-40 border border-white/10 shadow-2xl'
       style={{
         borderTopLeftRadius: '16px',
         borderBottomLeftRadius: '16px',
@@ -192,7 +192,7 @@ const SidePannelFeatures = ({
             {showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
-                    className='absolute left-full top-0 ml-2 bg-[#1C303D]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-3xl p-2 space-y-1 z-50 min-w-[200px]'
+                    className='absolute left-full top-0 ml-2 bg-[#1C303D]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-3xl p-2 space-y-1 z-[80] min-w-[200px]'
                 >
                     <div className='px-3 py-2 border-b border-white/10'>
                         <span className='text-xs text-white/60 uppercase tracking-wider'>Branding Kit</span>

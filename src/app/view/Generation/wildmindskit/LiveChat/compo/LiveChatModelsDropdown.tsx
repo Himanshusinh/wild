@@ -25,9 +25,15 @@ const LiveChatModelsDropdown: React.FC = () => {
   const models = [
     { name: 'Flux Kontext Pro', value: 'flux-kontext-pro' },
     { name: 'Flux Kontext Max', value: 'flux-kontext-max' },
+    { name: 'Nano Banana', value: 'gemini-25-flash-image' },
   ];
 
-  const currentName = selectedModel === 'flux-kontext-max' ? 'Flux Kontext Max' : 'Flux Kontext Pro';
+  const currentName =
+    selectedModel === 'flux-kontext-max'
+      ? 'Flux Kontext Max'
+      : selectedModel === 'gemini-25-flash-image'
+        ? 'Nano Banana'
+        : 'Flux Kontext Pro';
 
   return (
     <div className="relative" ref={ref}>

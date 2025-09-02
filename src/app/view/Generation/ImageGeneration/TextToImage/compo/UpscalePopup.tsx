@@ -12,13 +12,14 @@ interface UpscalePopupProps {
 const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState<string>("");
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [fullscreenTitle, setFullscreenTitle] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Upscale parameters state
-  const [model, setModel] = useState('Standard V2');
+  const [model, setModel] = useState('Flux.1-dev-Controlnet-Upscaler');
   const [upscaleFactor, setUpscaleFactor] = useState(2);
   const [outputFormat, setOutputFormat] = useState('jpeg');
   const [subjectDetection, setSubjectDetection] = useState('All');
@@ -34,6 +35,15 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (2MB limit)
+      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        alert("Image too large. Maximum size is 2MB per image.");
+        // Clear the input
+        event.target.value = "";
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         setUploadedImage(e.target?.result as string);
@@ -49,55 +59,37 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
     setIsUpscaling(true);
     
     try {
-      // 1. Submit the upscale request using existing FAL route
-      const submitResponse = await fetch('/api/fal/submit', {
+      // Convert data URL to file
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'image.jpg', { type: blob.type });
+      
+      // Create FormData
+      const formData = new FormData();
+      formData.append('image', file);
+      if (prompt && prompt.trim().length > 0) {
+        formData.append('prompt', prompt.trim());
+      }
+      
+      // Call local upscale API
+      const upscaleResponse = await fetch('/api/local/upscale-generation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_url: uploadedImage,
-          model,
-          upscale_factor: upscaleFactor,
-          output_format: outputFormat,
-          subject_detection: subjectDetection,
-          face_enhancement: faceEnhancement,
-          face_enhancement_creativity: faceEnhancementCreativity,
-          face_enhancement_strength: faceEnhancementStrength
-        }),
+        body: formData, // Don't set Content-Type; browser sets it with boundary
       });
 
-      if (!submitResponse.ok) {
-        const errorData = await submitResponse.json();
-        throw new Error(errorData.error || `Upscale submit failed: ${submitResponse.status}`);
+      if (!upscaleResponse.ok) {
+        const errorData = await upscaleResponse.json();
+        throw new Error(errorData.error || `Upscale failed: ${upscaleResponse.status}`);
       }
       
-      const submitResult = await submitResponse.json();
-      const { requestId } = submitResult;
-
-      // 2. Poll for status using existing FAL route
-      let done = false;
-      while (!done) {
-        const statusResponse = await fetch(`/api/fal/status?requestId=${requestId}&isUpscale=true`);
-        if (!statusResponse.ok) {
-          const errorData = await statusResponse.json();
-          throw new Error(errorData.error || `Upscale status check failed: ${statusResponse.status}`);
-        }
-        const statusResult = await statusResponse.json();
-        if (statusResult?.status === 'COMPLETED' || statusResult?.status === 'READY' || statusResult?.done) {
-          done = true;
-        } else {
-          await new Promise(r => setTimeout(r, 1000)); // Wait 1 second before polling again
-        }
-      }
-
-      // 3. Fetch result using existing FAL route
-      const resultResponse = await fetch(`/api/fal/result?requestId=${requestId}&isUpscale=true`);
-      if (!resultResponse.ok) {
-        const errorData = await resultResponse.json();
-        throw new Error(errorData.error || `Upscale result fetch failed: ${resultResponse.status}`);
-      }
-      
-      const result = await resultResponse.json();
-      setUpscaledImage(result.image.url);
+      const result = await upscaleResponse.json();
+      console.log('Upscale result:', result);
+      const proxiedUrl = `/api/local/upscale-generation/proxy?${
+        result.absolute_url
+          ? `url=${encodeURIComponent(result.absolute_url)}`
+          : `path=${encodeURIComponent(result.image_url)}`
+      }`;
+      setUpscaledImage(proxiedUrl);
     } catch (error) {
       console.error('Upscale failed:', error);
       alert(error instanceof Error ? error.message : 'Failed to upscale image');
@@ -178,29 +170,39 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Side - Settings */}
                 <div className="lg:col-span-1 space-y-6">
-                  <h3 className="text-lg font-medium text-white">Additional Settings</h3>
+                  {/* <h3 className="text-lg font-medium text-white">Additional Settings</h3> */}
 
                   {/* Input Image Preview (small) */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm text-white/80">Input Preview</h4>
-                    <div className="relative w-full aspect-square max-w-[180px] bg-white/5 rounded-xl overflow-hidden border border-white/10">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Input Image</h3>
+                    <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
                       <Image
                         src={uploadedImage}
-                        alt="Input Preview"
+                        alt="Original"
                         fill
                         className="object-cover"
                       />
                       <button
-                        onClick={() => openFullscreen(uploadedImage, 'Original Image')}
-                        className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
+                        onClick={() => openFullscreen(uploadedImage, 'Input Image')}
+                        className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
                       >
                         <Maximize2 className="w-4 h-4 text-white" />
                       </button>
                     </div>
+                    {/* Optional Prompt */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white">Prompt (optional)</label>
+                      <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe what to enhance or focus on..."
+                        className="w-full min-h-[80px] bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y"
+                      />
+                    </div>
                   </div>
 
-                  {/* Model Selection */}
-                  <div className="space-y-2">
+                  {/* Model Selection - Comment out all form inputs */}
+                  {/* <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <label className="text-sm font-medium text-white">Model</label>
                       <Info className="w-4 h-4 text-white/60" />
@@ -215,7 +217,7 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                       </button>
                       {modelDropdownOpen && (
                         <div className="absolute top-full left-0 right-0 bg-black/90 border border-white/20 rounded-lg mt-1 z-10">
-                          {['Low Resolution V2', 'Standard V2', 'CGI', 'High Fidelity V2', 'Text Refine', 'Recovery', 'Redefine', 'Recovery V2'].map((option) => (
+                          {['Flux.1-dev-Controlnet-Upscaler'].map((option) => (
                             <button
                               key={option}
                               onClick={() => {
@@ -230,10 +232,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Upscale Factor */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-white">Upscale Factor</label>
                       <span className="text-sm text-white/60">{upscaleFactor}</span>
@@ -258,10 +260,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         className="w-16 bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
                       />
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Output Format */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <label className="text-sm font-medium text-white">Output Format</label>
                     <div className="relative">
                       <button
@@ -288,10 +290,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Subject Detection */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <label className="text-sm font-medium text-white">Subject Detection</label>
                       <Info className="w-4 h-4 text-white/60" />
@@ -321,10 +323,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Face Enhancement */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <label className="text-sm font-medium text-white">Face Enhancement</label>
                       <Info className="w-4 h-4 text-white/60" />
@@ -339,10 +341,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         faceEnhancement ? 'translate-x-6' : 'translate-x-1'
                       }`} />
                     </button>
-                  </div>
+                  </div> */}
 
                   {/* Face Enhancement Creativity */}
-                  {faceEnhancement && (
+                  {/* {faceEnhancement && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -372,10 +374,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         />
                       </div>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Face Enhancement Strength */}
-                  {faceEnhancement && (
+                  {/* {faceEnhancement && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -405,7 +407,7 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                         />
                       </div>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Action Buttons */}
                   <div className="flex gap-3 pt-4">
@@ -413,7 +415,7 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                       onClick={() => {
                         setUploadedImage(null);
                         setUpscaledImage(null);
-                        setModel('Standard V2');
+                        setModel('Flux.1-dev-Controlnet-Upscaler');
                         setUpscaleFactor(2);
                         setOutputFormat('jpeg');
                         setSubjectDetection('All');
@@ -456,11 +458,10 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                     ) : (
                       <div className="space-y-4">
                         <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
-                          <Image
+                          <img
                             src={upscaledImage}
                             alt="Upscaled"
-                            fill
-                            className="object-cover"
+                            className="w-full h-full object-cover"
                           />
                           {/* Fullscreen Button */}
                           <button
@@ -499,11 +500,9 @@ const UpscalePopup = ({ isOpen, onClose }: UpscalePopupProps) => {
                 {fullscreenTitle}
               </h3>
             </div>
-            <Image
+            <img
               src={fullscreenImage}
               alt={`${fullscreenTitle} Fullscreen`}
-              width={1920}
-              height={1080}
               className="w-full h-full object-contain"
             />
             {/* Close Fullscreen Button */}

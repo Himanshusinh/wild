@@ -37,9 +37,9 @@ const LiveChatInputBox: React.FC = () => {
     element.style.height = element.scrollHeight + 'px';
   };
 
-  // Force allowed models for Live Chat (flux-kontext-pro or flux-kontext-max)
+  // Force allowed models for Live Chat (include Nano Banana)
   useEffect(() => {
-    const allowed = ["flux-kontext-pro", "flux-kontext-max"];
+    const allowed = ["flux-kontext-pro", "flux-kontext-max", "gemini-25-flash-image"];
     if (!allowed.includes(selectedModel)) {
       dispatch(setSelectedModel("flux-kontext-pro"));
     }

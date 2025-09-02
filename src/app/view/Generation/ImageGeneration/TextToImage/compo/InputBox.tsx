@@ -1372,6 +1372,21 @@ const InputBox = () => {
                     const inputEl = e.currentTarget as HTMLInputElement;
                     const files = Array.from(inputEl.files || []).slice(0, 4);
                     const urls: string[] = [];
+                    
+                    // Check file sizes (2MB limit per file)
+                    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+                    const oversizedFiles = files.filter(file => file.size > maxSize);
+                    
+                    if (oversizedFiles.length > 0) {
+                      dispatch(addNotification({
+                        type: "error",
+                        message: `Image(s) too large. Maximum size is 2MB per image. ${oversizedFiles.length} file(s) exceed the limit.`,
+                      }));
+                      // Clear the input
+                      if (inputEl) inputEl.value = "";
+                      return;
+                    }
+                    
                     for (const file of files) {
                       const reader = new FileReader();
                       const asDataUrl: string = await new Promise((res) => {
@@ -1468,6 +1483,7 @@ const InputBox = () => {
                   borderRadius="1.5rem"
                   containerClassName="h-10 w-auto"
                   className="bg-black  text-white px-4 py-2"
+                  onClick={() => setIsUpscaleOpen(true)}
                 >
                   <div className="flex items-center gap-2">
                     <svg

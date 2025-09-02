@@ -20,6 +20,7 @@ const HomePage: React.FC = () => {
   const router = useRouter();
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
+  const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
 
   const onViewChange = (view: ViewType) => {
     setCurrentView(view);
@@ -229,6 +230,7 @@ const HomePage: React.FC = () => {
             currentView={currentView}
             onViewChange={onViewChange}
             onGenerationTypeChange={onGenerationTypeChange}
+            onWildmindSkitClick={() => setShowWildmindSkitPopup(true)}
           />
         </div>
 
@@ -302,6 +304,95 @@ const HomePage: React.FC = () => {
     <FooterNew />
         </div>
       </div>
+      {/* Wildmind Skit Popup */}
+      {showWildmindSkitPopup && (
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center"
+            onClick={() => setShowWildmindSkitPopup(false)}
+          >
+            {/* Popup Content */}
+            <div 
+              className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-white text-3xl font-bold">Choose Style</h2>
+                <button 
+                  onClick={() => setShowWildmindSkitPopup(false)}
+                  className="text-white hover:text-gray-300 transition-colors"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Features Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {/* Video Ads - Available */}
+                <div 
+                  onClick={() => {
+                    onGenerationTypeChange('ad-generation');
+                    setShowWildmindSkitPopup(false);
+                  }}
+                  className="relative group cursor-pointer"
+                >
+                  <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+                    <div className="absolute top-4 right-4">
+                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div className="text-4xl mb-4">📹</div>
+                  </div>
+                  <h3 className="text-white text-lg font-semibold mt-4">Video Ads</h3>
+                </div>
+
+                {/* Jewelry - Coming Soon */}
+                <div className="relative group cursor-not-allowed opacity-60">
+                  <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
+                    <div className="text-4xl mb-4">💎</div>
+                  </div>
+                  <h3 className="text-white text-lg font-semibold mt-4">Jewelry</h3>
+                  <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
+                </div>
+
+                {/* Live Chat - Available */}
+                <div 
+                  onClick={() => {
+                    router.push('/view/Generation/wildmindskit/LiveChat');
+                    setShowWildmindSkitPopup(false);
+                  }}
+                  className="relative group cursor-pointer"
+                >
+                  <div className="bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+                    <div className="absolute top-4 right-4">
+                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div className="text-4xl mb-4">💬</div>
+                  </div>
+                  <h3 className="text-white text-lg font-semibold mt-4">Live Chat</h3>
+                </div>
+
+                {/* Virtual Try-On - Coming Soon */}
+                <div className="relative group cursor-not-allowed opacity-60">
+                  <div className="bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
+                    <div className="text-4xl mb-4">👗</div>
+                  </div>
+                  <h3 className="text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
+                  <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

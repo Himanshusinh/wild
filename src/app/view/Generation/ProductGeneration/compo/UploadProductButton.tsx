@@ -25,6 +25,15 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
   const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (2MB limit)
+      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        alert("Image too large. Maximum size is 2MB per image.");
+        // Clear the input
+        event.target.value = "";
+        return;
+      }
+      
       setSelectedFileName(file.name);
       
       // Convert file to base64

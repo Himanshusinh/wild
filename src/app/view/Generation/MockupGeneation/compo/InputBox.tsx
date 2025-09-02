@@ -162,47 +162,63 @@ const InputBox = () => {
             console.log('📡 Client SSE data received:', data);
 
             if (data.type === 'progress') {
-              // Add new image to the list
-              const newImage = {
-                id: `mockup-${Date.now()}-${receivedImages.length}`,
+              // Upload this image to Firebase immediately, then render the Firebase URL
+              const newId = `mockup-${Date.now()}-${receivedImages.length}`;
+              const toUpload = [{
+                id: newId,
                 url: data.imageUrl,
                 originalUrl: data.imageUrl,
-                firebaseUrl: data.imageUrl
-              };
-              
-              receivedImages.push(newImage);
-              totalCount = data.total === 'unknown' ? Math.max(totalCount, receivedImages.length) : data.total;
-              
-              console.log(`🖼️ Progress: ${receivedImages.length}/${totalCount} images received`);
-              console.log('🖼️ New image added:', newImage);
-              
-              // Update progress state for UI
-              setGenerationProgress({
-                current: receivedImages.length,
-                total: 21,
-                status: `Generated ${data.item}`
-              });
-              
-              // Update Redux state for immediate UI update
-              dispatch(updateHistoryEntry({ 
-                id: tempId, 
-                updates: { 
-                  images: [...receivedImages],
-                  imageCount: receivedImages.length,
-                  status: 'generating'
-                } 
-              }));
-              
-              // Update Firebase history entry
+                firebaseUrl: data.imageUrl,
+              }];
+
               try {
-                await updateFirebaseHistory(firebaseHistoryId, {
-                  images: [...receivedImages],
-                  imageCount: receivedImages.length,
-                  status: 'generating'
+                const uploadResponse = await fetch('/api/upload-mockup-images', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ images: toUpload }),
                 });
-                console.log('🔥 Firebase history updated with new images');
-              } catch (error) {
-                console.error('❌ Failed to update Firebase history:', error);
+                if (!uploadResponse.ok) {
+                  throw new Error(`Single image upload failed: ${uploadResponse.status}`);
+                }
+                const uploadResult = await uploadResponse.json();
+                const uploadedImage = uploadResult.images?.[0] || toUpload[0];
+
+                receivedImages.push(uploadedImage);
+                totalCount = 5;
+
+                console.log(`🖼️ Progress: ${receivedImages.length}/${totalCount} images uploaded to Firebase`);
+                console.log('🖼️ Uploaded image:', uploadedImage);
+
+                // Update progress state for UI
+                setGenerationProgress({
+                  current: receivedImages.length,
+                  total: 5,
+                  status: `Generated ${data.item}`
+                });
+
+                // Update Redux state for immediate UI update
+                dispatch(updateHistoryEntry({ 
+                  id: tempId, 
+                  updates: { 
+                    images: [...receivedImages],
+                    imageCount: receivedImages.length,
+                    status: 'generating'
+                  } 
+                }));
+
+                // Update Firebase history entry (metadata) with Firebase URLs
+                try {
+                  await updateFirebaseHistory(firebaseHistoryId, {
+                    images: [...receivedImages],
+                    imageCount: receivedImages.length,
+                    status: 'generating'
+                  });
+                  console.log('🔥 Firebase history updated with new images');
+                } catch (error) {
+                  console.error('❌ Failed to update Firebase history:', error);
+                }
+              } catch (e) {
+                console.error('❌ Incremental Firebase upload failed:', e);
               }
               
               console.log('🔄 Redux update dispatched for entry:', tempId);
@@ -230,24 +246,13 @@ const InputBox = () => {
               // Update progress to show completion
               setGenerationProgress({
                 current: data.count,
-                total: 21,
+                total: 5,
                 status: 'Generation completed! Uploading to Firebase...'
               });
               
-              // Upload all images to Firebase
-              console.log('🔥 Starting Firebase upload for all images...');
-              const uploadResponse = await fetch('/api/upload-mockup-images', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ images: receivedImages })
-              });
-              
-              if (!uploadResponse.ok) {
-                throw new Error('Firebase upload failed');
-              }
-              
-              const uploadResult = await uploadResponse.json();
-              console.log('🔥 Firebase upload result:', uploadResult);
+              // Finalize: images are already uploaded incrementally; skip re-upload
+              const uploadResult = { images: receivedImages };
+              console.log('🔥 Firebase images already uploaded incrementally');
               
               // Update progress to show Firebase completion
               setGenerationProgress({
@@ -360,7 +365,25 @@ const InputBox = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    // Check file size (2MB limit)
+                    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+                    if (file.size > maxSize) {
+                      dispatch(addNotification({
+                        type: "error",
+                        message: "Image too large. Maximum size is 2MB per image.",
+                      }));
+                      // Clear the input
+                      e.target.value = "";
+                      return;
+                    }
+                    setLogoFile(file);
+                  } else {
+                    setLogoFile(null);
+                  }
+                }}
                 className="text-white text-sm"
               />
               <input
@@ -471,7 +494,7 @@ const InputBox = () => {
                   ))}
                   
                   {/* Show loading spinners for remaining expected images */}
-                  {entry.status === 'generating' && entry.imageCount < 21 && Array.from({ length: Math.max(0, 21 - entry.imageCount) }).map((_, idx) => (
+                  {entry.status === 'generating' && entry.imageCount < 5 && Array.from({ length: Math.max(0, 5 - entry.imageCount) }).map((_, idx) => (
                     <div key={`loading-${idx}`} className="aspect-square relative group">
                       <div className="w-full h-full bg-white/5 rounded-lg flex items-center justify-center">
                         <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
