@@ -54,6 +54,7 @@ export const generateImages = createAsyncThunk(
     try {
       // Enforce app-wide max of 4 images
       const requestedCount = Math.min(imageCount, 4);
+      const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -67,6 +68,7 @@ export const generateImages = createAsyncThunk(
           style,
           generationType,
           uploadedImages,
+          clientRequestId,
           ...(width && height ? { width, height } : {}),
         }),
       });
@@ -83,6 +85,33 @@ export const generateImages = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to generate images');
+    }
+  }
+);
+
+// Live chat specific generate (flux-kontext only)
+export const generateLiveChatImage = createAsyncThunk(
+  'generation/generateLiveChatImage',
+  async (
+    { prompt, model, frameSize, uploadedImages }: {
+      prompt: string;
+      model: string;
+      frameSize?: string;
+      uploadedImages?: string[];
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await fetch('/api/live-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, model, frameSize, uploadedImages }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Live chat generation failed');
+      return { images: data.images, requestId: data.requestId };
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Live chat generation failed');
     }
   }
 );
@@ -280,6 +309,19 @@ const generationSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(generateLiveChatImage.pending, (state) => {
+        state.isGenerating = true;
+        state.error = null;
+      })
+      .addCase(generateLiveChatImage.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.lastGeneratedImages = action.payload.images;
+        state.error = null;
+      })
+      .addCase(generateLiveChatImage.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = action.payload as string;
+      })
       .addCase(generateImages.pending, (state) => {
         state.isGenerating = true;
         state.error = null;

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
-import { getHistoryEntries, getRecentHistory } from '@/lib/historyService';
+import { getHistoryEntries, getRecentHistory, saveHistoryEntry } from '@/lib/historyService';
 import { PaginationParams, PaginationResult } from '@/lib/paginationUtils';
 
 interface HistoryState {
@@ -92,6 +92,23 @@ export const loadMoreHistory = createAsyncThunk(
       // Keep error for visibility
       console.error('❌ Load more history failed:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load more history');
+    }
+  }
+);
+
+// Async thunk for adding and persisting history entry
+const addAndSaveHistoryEntry = createAsyncThunk(
+  'history/addAndSaveHistoryEntry',
+  async (entry: Omit<HistoryEntry, 'id'>, { rejectWithValue }) => {
+    try {
+      console.log('[historySlice] addAndSaveHistoryEntry', { generationType: entry.generationType, imageCount: entry.imageCount });
+      const id = await saveHistoryEntry(entry);
+      const savedEntry: HistoryEntry = { ...entry, id };
+      console.log('[historySlice] addAndSaveHistoryEntry success', { id, generationType: entry.generationType });
+      return savedEntry;
+    } catch (error) {
+      console.error('[historySlice] addAndSaveHistoryEntry failed', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to save history entry');
     }
   }
 );
@@ -232,6 +249,25 @@ const historySlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
         try { console.warn('[historySlice] loadMoreHistory.rejected', { error: state.error }); } catch {}
+      })
+      // Add and save history entry
+      .addCase(addAndSaveHistoryEntry.pending, (state) => {
+        // Optional: could show loading state for saving
+      })
+      .addCase(addAndSaveHistoryEntry.fulfilled, (state, action) => {
+        // Add the saved entry with Firebase ID to the beginning
+        state.entries.unshift(action.payload);
+        try {
+          console.log('[historySlice] addAndSaveHistoryEntry.fulfilled', {
+            id: action.payload.id,
+            generationType: action.payload.generationType,
+            totalEntries: state.entries.length
+          });
+        } catch {}
+      })
+      .addCase(addAndSaveHistoryEntry.rejected, (state, action) => {
+        state.error = action.payload as string;
+        try { console.warn('[historySlice] addAndSaveHistoryEntry.rejected', { error: state.error }); } catch {}
       });
   },
 });
@@ -246,5 +282,10 @@ export const {
   clearHistoryByType,
   clearError,
 } = historySlice.actions;
+
+// Export the async thunk
+export { addAndSaveHistoryEntry };
+
+
 
 export default historySlice.reducer;

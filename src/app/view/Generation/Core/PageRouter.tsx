@@ -13,9 +13,10 @@ import AdGenerationInputBox from '../AdGeneration/compo/InputBox';
 import History from './History';
 import Bookmarks from './Bookmarks';
 import { loadHistory, clearHistoryByType } from '@/store/slices/historySlice';
+import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation';
+type GenerationType = 'text-to-image' | 'image-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -39,6 +40,7 @@ const generators: GeneratorComponentMap = {
   'mockup-generation': MockupGenerationInputBox,
   'product-generation': ProductGenerationInputBox,
   'ad-generation': AdGenerationInputBox,
+  'live-chat': LiveChatInputBox,
 };
 
 export default function PageRouter() {

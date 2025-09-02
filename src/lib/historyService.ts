@@ -13,10 +13,11 @@ import {
   startAfter,
   Timestamp
 } from 'firebase/firestore';
-import { HistoryEntry, HistoryEntryFirestore, HistoryFilters } from '@/types/history';
+import { HistoryEntry, HistoryEntryFirestore, HistoryFilters, LiveChatSession, LiveChatSessionFirestore } from '@/types/history';
 import { PaginationParams, PaginationResult } from './paginationUtils';
 
 const HISTORY_COLLECTION = 'generationHistory';
+const LIVECHAT_COLLECTION = 'liveChatSessions';
 
 /**
  * Converts Firestore document to HistoryEntry
@@ -274,6 +275,77 @@ export async function getRecentHistory(): Promise<HistoryEntry[]> {
   } catch (error) {
     console.error('Error loading recent history, returning sample data:', error);
     return getSampleHistoryData();
+  }
+}
+
+// ===== Live Chat Session APIs =====
+
+function convertFirestoreToLiveChatSession(doc: any): LiveChatSession {
+  const data = doc.data() as LiveChatSessionFirestore;
+  return {
+    id: doc.id,
+    sessionId: data.sessionId,
+    model: data.model,
+    frameSize: data.frameSize,
+    style: data.style,
+    startedAt: data.startedAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+    completedAt: data.completedAt?.toDate?.()?.toISOString?.(),
+    status: data.status,
+    messages: (data.messages || []).map((m:any)=> ({
+      prompt: m.prompt,
+      images: m.images,
+      timestamp: m.timestamp?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+    })),
+    totalImages: data.totalImages || 0,
+  };
+}
+
+function convertLiveChatSessionToFirestore(session: Omit<LiveChatSession, 'id'>): Omit<LiveChatSessionFirestore, 'id'> {
+  return {
+    sessionId: session.sessionId,
+    model: session.model,
+    frameSize: session.frameSize,
+    style: session.style,
+    startedAt: Timestamp.fromDate(new Date(session.startedAt)),
+    completedAt: session.completedAt ? Timestamp.fromDate(new Date(session.completedAt)) : undefined,
+    status: session.status,
+    messages: session.messages.map(m => ({
+      prompt: m.prompt,
+      images: m.images,
+      timestamp: Timestamp.fromDate(new Date(m.timestamp)),
+    })),
+    totalImages: session.totalImages,
+  };
+}
+
+export async function saveLiveChatSession(session: Omit<LiveChatSession, 'id'>): Promise<string> {
+  try {
+    const firestoreData = convertLiveChatSessionToFirestore(session);
+    const docRef = await addDoc(collection(db, LIVECHAT_COLLECTION), firestoreData);
+    return docRef.id;
+  } catch (e) {
+    console.error('Failed to save live chat session:', e);
+    throw e;
+  }
+}
+
+export async function updateLiveChatSession(id: string, updates: Partial<LiveChatSession>): Promise<void> {
+  try {
+    const docRef = doc(db, LIVECHAT_COLLECTION, id);
+    const partial: any = { ...updates };
+    if (updates.startedAt) partial.startedAt = Timestamp.fromDate(new Date(updates.startedAt));
+    if (updates.completedAt) partial.completedAt = Timestamp.fromDate(new Date(updates.completedAt));
+    if (updates.messages) {
+      partial.messages = updates.messages.map(m => ({
+        prompt: m.prompt,
+        images: m.images,
+        timestamp: Timestamp.fromDate(new Date(m.timestamp)),
+      }));
+    }
+    await updateDoc(docRef, partial);
+  } catch (e) {
+    console.error('Failed to update live chat session:', e);
+    throw e;
   }
 }
 
