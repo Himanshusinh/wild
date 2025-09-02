@@ -443,6 +443,9 @@ const LandingPage: React.FC = () => {
               falloff='linear'
             />
           </p>
+
+
+        
         </div>
         <div className="relative w-full">
           <div className="flex gap-6 md:gap-4 lg:gap-6 overflow-x-auto px-4 md:px-3 lg:px-4 py-4 md:py-3 lg:py-4 [scrollbar-width:none] scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} ref={workflowScrollRef} onScroll={checkWorkflowScrollability}>
