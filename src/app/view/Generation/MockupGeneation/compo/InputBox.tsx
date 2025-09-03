@@ -132,6 +132,8 @@ const InputBox = () => {
       let buffer = '';
       let receivedImages: any[] = [];
       let totalCount = 0;
+      const TARGET_COUNT = 5; // Hardcoded target count
+      let stopStreaming = false;
 
       console.log('📡 Starting SSE stream processing...');
 
@@ -184,7 +186,7 @@ const InputBox = () => {
                 const uploadedImage = uploadResult.images?.[0] || toUpload[0];
 
                 receivedImages.push(uploadedImage);
-                totalCount = 5;
+                totalCount = TARGET_COUNT;
 
                 console.log(`🖼️ Progress: ${receivedImages.length}/${totalCount} images uploaded to Firebase`);
                 console.log('🖼️ Uploaded image:', uploadedImage);
@@ -192,7 +194,7 @@ const InputBox = () => {
                 // Update progress state for UI
                 setGenerationProgress({
                   current: receivedImages.length,
-                  total: 5,
+                  total: TARGET_COUNT,
                   status: `Generated ${data.item}`
                 });
 
@@ -225,6 +227,36 @@ const InputBox = () => {
               console.log('🖼️ Current received images count:', receivedImages.length);
               console.log('🖼️ Current history entries count:', mockupHistoryEntries.length);
               
+              // If we have reached the target count, mark as completed immediately
+              if (receivedImages.length >= TARGET_COUNT) {
+                try {
+                  // Update Redux
+                  dispatch(updateHistoryEntry({
+                    id: tempId,
+                    updates: {
+                      images: [...receivedImages],
+                      imageCount: receivedImages.length,
+                      status: 'completed'
+                    }
+                  }));
+                  // Update Firebase
+                  await updateFirebaseHistory(firebaseHistoryId, {
+                    images: [...receivedImages],
+                    imageCount: receivedImages.length,
+                    status: 'completed',
+                    style: 'mockup'
+                  });
+                  setGenerationProgress({
+                    current: TARGET_COUNT,
+                    total: TARGET_COUNT,
+                    status: 'Generation completed!'
+                  });
+                  stopStreaming = true;
+                } catch (finalizeErr) {
+                  console.error('❌ Failed to finalize after reaching target count:', finalizeErr);
+                }
+              }
+
               // Debug: Check if images are accessible
               if (receivedImages.length > 0) {
                 console.log('🧪 Debug: First image object:', receivedImages[0]);
@@ -246,7 +278,7 @@ const InputBox = () => {
               // Update progress to show completion
               setGenerationProgress({
                 current: data.count,
-                total: 5,
+                total: TARGET_COUNT,
                 status: 'Generation completed! Uploading to Firebase...'
               });
               
@@ -302,6 +334,11 @@ const InputBox = () => {
           } catch (e) {
             console.error('❌ Error parsing SSE data:', e, 'Line:', line);
           }
+        }
+
+        if (stopStreaming) {
+          try { await reader.cancel(); } catch {}
+          break;
         }
       }
 
