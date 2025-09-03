@@ -53,6 +53,30 @@ const AdvancedManualForm: React.FC<AdvancedManualFormProps> = ({
   const [audioDropdown, setAudioDropdown] = useState(false);
   const [motionDropdown, setMotionDropdown] = useState(false);
 
+  // Local image upload (optional) – if provided here, it overrides the parent productImage
+  const [localImage, setLocalImage] = useState<File | null>(null);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const handleLocalImageChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) return;
+    // Validate type and size (<= 8MB)
+    if (!file.type.startsWith('image/')) {
+      alert('Unsupported file. Please upload an image.');
+      e.currentTarget.value = '';
+      return;
+    }
+    const maxBytes = 8 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert('Image too large. Please upload an image ≤ 8MB.');
+      e.currentTarget.value = '';
+      return;
+    }
+    setLocalImage(file);
+    const reader = new FileReader();
+    reader.onload = () => setLocalPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleInputChange = (section: string, field: string, value: any) => {
     setFormData(prev => {
       const currentSection = prev[section as keyof BackendPromptV1];
@@ -90,8 +114,21 @@ const AdvancedManualForm: React.FC<AdvancedManualFormProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!productImage) {
+    const selectedImage = localImage || productImage;
+    if (!selectedImage) {
       alert('Please upload a product image first');
+      return;
+    }
+
+    // Validate product image per Veo3 Fast requirements
+    const allowedImage = /^image\//.test(selectedImage.type);
+    const maxBytes = 8 * 1024 * 1024; // 8MB limit per docs
+    if (!allowedImage) {
+      alert('Unsupported file. Please upload a valid image file.');
+      return;
+    }
+    if (selectedImage.size > maxBytes) {
+      alert('Image too large. Please upload an image ≤ 8MB.');
       return;
     }
 
@@ -100,6 +137,7 @@ const AdvancedManualForm: React.FC<AdvancedManualFormProps> = ({
     reader.onload = () => {
       const imageDataUri = reader.result as string;
       
+      // Build prompt compatible with Veo3 Fast image-to-video
       const backendPrompt: BackendPromptV1 = {
         mode: 'manual',
         media: { image_url: imageDataUri },
@@ -115,11 +153,45 @@ const AdvancedManualForm: React.FC<AdvancedManualFormProps> = ({
 
       onSubmit(backendPrompt);
     };
-    reader.readAsDataURL(productImage);
+    reader.readAsDataURL(selectedImage);
   };
 
   const renderDeliveryTab = () => (
     <div className="space-y-4">
+      {/* Input Image (local upload) */}
+      <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 ring-1 ring-white/10">
+        <h3 className="text-lg font-semibold text-white mb-3">Input Image</h3>
+        <div className="flex items-start gap-4">
+          <div>
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg ring-1 ring-white/20 bg-white/10 hover:bg-white/20 text-white/90 text-sm cursor-pointer">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Upload Image</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleLocalImageChange} />
+            </label>
+            <div className="text-xs text-white/60 mt-2">Max 8MB • Recommended 16:9 image</div>
+          </div>
+          {(localPreview || productImage) && (
+            <div className="flex items-center gap-3">
+              <div className="w-28 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 bg-black/30">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={localPreview || ''} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+              {localImage && (
+                <button
+                  type="button"
+                  onClick={() => { setLocalImage(null); setLocalPreview(null); }}
+                  className="px-3 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/20 text-white/80"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Delivery Settings */}
       <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 ring-1 ring-white/10">
         <h3 className="text-lg font-semibold text-white mb-3">Delivery Settings</h3>
@@ -648,7 +720,7 @@ const AdvancedManualForm: React.FC<AdvancedManualFormProps> = ({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isGenerating || !productImage}
+              disabled={isGenerating || !(localImage || productImage)}
               className="px-8 py-2.5 bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white rounded-lg font-semibold transition-colors shadow-[0_4px_16px_rgba(47,107,255,.45)] text-sm"
             >
               {isGenerating ? 'Generating...' : 'Generate Video'}

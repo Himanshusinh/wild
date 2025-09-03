@@ -149,7 +149,7 @@ const LiveChatGrid: React.FC = () => {
       })}
       {/* Image preview modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setPreviewUrl(null)}>
+        <div className="fixed inset-0 z-[130] bg-black/70 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setPreviewUrl(null)}>
           <div className="relative bg-black/90 ring-1 ring-white/20 rounded-2xl overflow-hidden max-w-4xl w-full max-h-[85vh]" onClick={(e)=> e.stopPropagation()}>
             <button onClick={() => setPreviewUrl(null)} className="absolute top-3 right-3 px-3 py-1.5 text-xs rounded-full bg-white text-black hover:bg-gray-200 transition z-10">Close</button>
             <div className="relative w-full h-[75vh]">

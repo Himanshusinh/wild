@@ -9,6 +9,9 @@ interface AdImagePreviewProps {
 
 const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const userPrompt = (entry.prompt || '').replace(/^Ad:\s*/i, '').trim();
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const isLongPrompt = userPrompt.length > 280;
 
   const handleDownload = async (imageUrl: string, filename: string) => {
     try {
@@ -40,7 +43,7 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-70 flex items-center justify-center p-4">
       <div className="bg-white/10 backdrop-blur-md rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden border border-white/20">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/20">
@@ -77,20 +80,26 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
             {/* Sidebar Info */}
             <div className="space-y-4">
               {/* Prompt */}
-              <div>
-                <h4 className="text-white font-medium mb-2">Prompt</h4>
-                <div className="bg-white/5 rounded-lg p-3">
-                  <p className="text-white/80 text-sm">{entry.prompt}</p>
-                  <button
-                    onClick={handleCopyPrompt}
-                    className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy Prompt
-                  </button>
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm opacity-80">Prompt</div>
+                {/* existing download or buttons remain */}
+              </div>
+              <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
+                <div className="flex items-start gap-2">
+                  <div className={`opacity-90 leading-relaxed flex-1 max-w-[280px] break-words whitespace-pre-wrap ${isPromptExpanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-40 overflow-hidden'}`}>{userPrompt}</div>
+                  {/* keep existing copy button if present; if not, add a simple copy */}
                 </div>
+                {!isPromptExpanded && isLongPrompt && (
+                  <div className="pointer-events-none absolute left-3 right-3 bottom-10 h-10 bg-gradient-to-t from-black/30 to-transparent" />
+                )}
+                {isLongPrompt && (
+                  <button
+                    onClick={() => setIsPromptExpanded(v => !v)}
+                    className="mt-2 text-xs text-white/80 hover:text-white underline"
+                  >
+                    {isPromptExpanded ? 'See less' : 'See more'}
+                  </button>
+                )}
               </div>
 
               {/* Model & Settings */}

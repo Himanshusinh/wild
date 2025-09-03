@@ -59,6 +59,10 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     window.open(selectedImage.url, '_blank');
   };
 
+  const userPrompt = getUserPrompt(entry.prompt);
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const isLongPrompt = (userPrompt || '').length > 280;
+
   return (
     <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <button 
@@ -111,11 +115,9 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             </div>
 
             {/* Prompt Text */}
-            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10">
+            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
               <div className="flex items-start gap-2">
-                <div className="opacity-90 leading-relaxed flex-1 max-w-[280px] break-words">
-                  {getUserPrompt(entry.prompt)}
-                </div>
+                <div className={`opacity-90 leading-relaxed flex-1 max-w-[280px] break-words whitespace-pre-wrap ${isPromptExpanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-40 overflow-hidden'}`}>{userPrompt}</div>
                 <button
                   onClick={handleCopyPrompt}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
@@ -124,6 +126,17 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
+              {!isPromptExpanded && isLongPrompt && (
+                <div className="pointer-events-none absolute left-3 right-3 bottom-10 h-10 bg-gradient-to-t from-black/30 to-transparent" />
+              )}
+              {isLongPrompt && (
+                <button
+                  onClick={() => setIsPromptExpanded(v => !v)}
+                  className="mt-2 text-xs text-white/80 hover:text-white underline"
+                >
+                  {isPromptExpanded ? 'See less' : 'See more'}
+                </button>
+              )}
             </div>
 
             {/* Image Thumbnails */}

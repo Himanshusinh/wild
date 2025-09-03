@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 import { uploadGeneratedImages } from '@/lib/imageUpload';
 import { updateHistoryEntry } from '@/lib/historyService';
 // @ts-ignore - runtime dependency provided in production

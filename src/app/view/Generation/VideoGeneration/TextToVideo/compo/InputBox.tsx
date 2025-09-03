@@ -652,6 +652,28 @@ const InputBox = () => {
     if (!files) return;
 
     const file = files[0];
+    // Validate file type and size (≤14MB client-side; service hard limit is 16MB)
+    const allowedMimes = new Set([
+      'video/mp4',
+      'video/webm',
+      'video/ogg',
+      'video/quicktime',
+      'video/mov',
+      'video/h264',
+    ]);
+
+    const maxBytes = 14 * 1024 * 1024;
+    if (!allowedMimes.has(file.type)) {
+      toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > maxBytes) {
+      toast.error('Video too large. Please upload a video ≤ 14MB');
+      event.target.value = '';
+      return;
+    }
+
     if (file.type.startsWith('video/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -901,8 +923,19 @@ const InputBox = () => {
       });
 
       if (!response.ok) {
-        console.error('❌ API response not ok:', response.status, response.statusText);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorPayload: any = null;
+        try {
+          errorPayload = await response.json();
+        } catch {}
+        const msg: string =
+          (errorPayload && (errorPayload.message || errorPayload.error)) ||
+          response.statusText ||
+          '';
+        if (response.status === 413 || /request entity too large/i.test(msg)) {
+          toast.error('Video too large for Runway. Max 16MB. Please upload ≤ 14MB');
+        }
+        console.error('❌ API response not ok:', response.status, msg);
+        throw new Error(`HTTP ${response.status}: ${msg || 'Request failed'}`);
       }
 
       const result = await response.json();

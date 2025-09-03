@@ -45,6 +45,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
   const displayedAspect = preview.entry.frameSize || '—';
+  const cleanPrompt = getCleanPrompt(preview.entry.prompt);
+  const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
+  const isLongPrompt = cleanPrompt.length > 280;
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -56,9 +59,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       </button>
              <div className="relative w-full max-w-[1200px] max-h-[90vh] bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col md:flex-row h-full">
-          <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group">
+          <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group flex items-center justify-center">
             {preview.image?.url && (
-              <Image src={preview.image.url} alt={preview.entry.prompt} fill className="object-contain" />
+              <Image src={preview.image.url} alt={preview.entry.prompt} fill className="object-contain max-w-full max-h-full" />
             )}
             <button
               aria-label="Fullscreen"
@@ -89,13 +92,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 <span className="text-sm">Download</span>
               </button>
             </div>
-                                      <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10">
+                                      <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
                <div className="flex items-start gap-2">
-                 <div className="opacity-90 leading-relaxed flex-1 max-w-[280px] break-words">{getCleanPrompt(preview.entry.prompt)}</div>
+                 <div className={`opacity-90 leading-relaxed flex-1 max-w-[280px] break-words whitespace-pre-wrap ${isPromptExpanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-40 overflow-hidden'}`}>{cleanPrompt}</div>
                  <button
                    onClick={() => {
-                     navigator.clipboard.writeText(getCleanPrompt(preview.entry.prompt));
-                     // You can add a toast notification here if you have access to the dispatch
+                     navigator.clipboard.writeText(cleanPrompt);
                    }}
                    className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
                    title="Copy prompt"
@@ -106,6 +108,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                    </svg>
                  </button>
                </div>
+               {!isPromptExpanded && isLongPrompt && (
+                 <div className="pointer-events-none absolute left-3 right-3 bottom-10 h-10 bg-gradient-to-t from-black/30 to-transparent" />
+               )}
+               {isLongPrompt && (
+                 <button
+                   onClick={() => setIsPromptExpanded(v => !v)}
+                   className="mt-2 text-xs text-white/80 hover:text-white underline"
+                 >
+                   {isPromptExpanded ? 'See less' : 'See more'}
+                 </button>
+               )}
              </div>
                          <div className="space-y-2 text-sm">
                <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">

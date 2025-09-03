@@ -78,13 +78,16 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
                 <span className="text-sm">Download</span>
               </button>
             </div>
-            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10">
+            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
               <div className="flex items-start gap-2">
-                <div className="opacity-90 leading-relaxed flex-1 max-w-[320px] break-words">{getUserPrompt(entry.prompt)}</div>
+                <div className={`opacity-90 leading-relaxed flex-1 max-w-[320px] break-words whitespace-pre-wrap ${(() => { const txt = getUserPrompt(entry.prompt); return (txt.length > 280) ? 'max-h-60 overflow-y-auto pr-1' : '' })()}`}>{getUserPrompt(entry.prompt)}</div>
                 <button onClick={handleCopyPrompt} className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5" title="Copy prompt">
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
+              {(() => { const txt = getUserPrompt(entry.prompt); if (txt.length > 280) return (
+                <button onClick={() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2 text-xs text-white/80 hover:text-white underline">See more</button>
+              ); return null; })()}
             </div>
             {entry.images.length > 1 && (
               <div className="mb-5">

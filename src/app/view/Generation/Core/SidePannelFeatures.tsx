@@ -163,8 +163,8 @@ const SidePannelFeatures = ({
                   (pathname?.includes('/ad-generation')) ? 'bg-white/10' : ''
                 }`}
             >
-                <Image src="/icons/clapperboard.svg" alt="Wildmind Skit" width={30} height={30} />
-                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Wildmind Skit</span>
+                <Image src="/yy666.png" alt="Wildmind Skit" width={30} height={30} />
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>AI Entourage</span>
             </div>
         </div>
         
@@ -180,12 +180,12 @@ const SidePannelFeatures = ({
                 <Image src="/icons/brandingkitwhite.svg" alt="Branding Kit" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
                 
-                {/* Dropdown Arrow */}
+                {/* Dropdown Arrow
                 <div className={`ml-auto transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : ''}`}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="6,9 12,15 18,9"></polyline>
                     </svg>
-                </div>
+                </div> */}
             </div>
 
             {/* Branding Dropdown Menu */}

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 // @ts-ignore - runtime dependency provided in production
 import { fal } from '@fal-ai/client';
 
