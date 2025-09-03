@@ -1160,7 +1160,7 @@ const InputBox = () => {
                     <div className="flex flex-col">
                       <div className="flex flex-row-reverse items-center gap-2">
                         {(() => { const text = getCleanPrompt(entry.prompt); const expanded = expandedPromptIds.has(entry.id); return (
-                          <div className="relative max-w-[500px]">
+                          <div className="relative max-w-[500px] flex-1">
                             <p className={`text-white/90 text-sm leading-relaxed break-words ${expanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-24 overflow-hidden'}`}>{text}</p>
                             {!expanded && text.length > 180 && (
                               <div className="pointer-events-none absolute left-0 right-0 bottom-0 h-8 bg-gradient-to-t from-black/60 to-transparent" />

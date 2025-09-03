@@ -172,6 +172,16 @@ const InputBox = () => {
     (state: any) => state.generation?.uploadedImages || []
   );
 
+  // Track expanded prompts for history entries (Load more / Show less)
+  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(new Set());
+  const togglePromptExpand = (id: string) => {
+    setExpandedPromptIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   // Function to clear input after successful generation
   const clearInputs = () => {
     dispatch(setPrompt(""));
@@ -1169,9 +1179,16 @@ const InputBox = () => {
                     </div>
                     <div className="flex flex-col">
                       <div className="flex flex-row-reverse items-center gap-2">
-                        <p className="text-white/90 text-sm leading-relaxed flex-1 max-w-[500px] break-words">
-                          {getCleanPrompt(entry.prompt)}
-                        </p>
+                        {(() => { const text = getCleanPrompt(entry.prompt); const expanded = expandedPromptIds.has(entry.id); return (
+                          <div className="relative max-w-[500px] flex-1">
+                            <p className={`text-white/90 text-sm leading-relaxed break-words ${expanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-24 overflow-hidden'}`}>
+                              {text}
+                            </p>
+                            {!expanded && text.length > 180 && (
+                              <div className="pointer-events-none absolute left-0 right-0 bottom-0 h-8 bg-gradient-to-t from-black/60 to-transparent" />
+                            )}
+                          </div>
+                        ); })()}
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(
@@ -1207,6 +1224,15 @@ const InputBox = () => {
                             />
                           </svg>
                         </button>
+                      </div>
+                      <div className="mt-1">
+                        {(() => { const text = getCleanPrompt(entry.prompt); const expanded = expandedPromptIds.has(entry.id); if (text.length > 180) {
+                          return (
+                            <button onClick={() => togglePromptExpand(entry.id)} className="text-xs text-white/80 hover:text-white underline">
+                              {expanded ? 'Show less' : 'Load more'}
+                            </button>
+                          );
+                        } return null; })()}
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
                         <span>
