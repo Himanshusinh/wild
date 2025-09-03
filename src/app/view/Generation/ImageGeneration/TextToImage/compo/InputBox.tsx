@@ -1474,60 +1474,60 @@ const InputBox = () => {
           <ImageCountDropdown />
           <FrameSizeDropdown />
           <StyleSelector />
-            {/* moved previews near upload above */}
-            {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
-              <div className="absolute right-2 bottom-32 ml-auto flex items-center gap-2">
-                <Button
-                  aria-label="Upscale"
-                  title="Upscale"
-                  borderRadius="1.5rem"
-                  containerClassName="h-10 w-auto"
-                  className="bg-black  text-white px-4 py-2"
-                  onClick={() => setIsUpscaleOpen(true)}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 text-[#2F6BFF]"
-                    >
-                      <path d="M7 17l-4 4" />
-                      <path d="M3 17h4v4" />
-                      <path d="M17 7l4-4" />
-                      <path d="M21 7h-4V3" />
-                    </svg>
-                    <span className="text-sm text-white">Upscale</span>
-                  </div>
-                </Button>
-                <Button
-                  aria-label="Remove background"
-                  title="Remove background"
-                  borderRadius="1.5rem"
-                  containerClassName="h-10 w-auto"
-                  className="bg-black text-white px-4 py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 text-[#F97316]"
-                    >
-                      <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
-                      <path d="M5 13l6 6" />
-                    </svg>
-                    <span className="text-sm text-white">Remove background</span>
-                  </div>
-                </Button>
-              </div>
-            )}
+          {/* moved previews near upload above */}
+          {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
+            <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0">
+              <Button
+                aria-label="Upscale"
+                title="Upscale"
+                borderRadius="1.5rem"
+                containerClassName="h-10 w-auto"
+                className="bg-black text-white px-4 py-2"
+                onClick={() => setIsUpscaleOpen(true)}
+              >
+                <div className="flex items-center gap-2">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 text-[#2F6BFF]"
+                  >
+                    <path d="M7 17l-4 4" />
+                    <path d="M3 17h4v4" />
+                    <path d="M17 7l4-4" />
+                    <path d="M21 7h-4V3" />
+                  </svg>
+                  <span className="text-sm text-white">Upscale</span>
+                </div>
+              </Button>
+              <Button
+                aria-label="Remove background"
+                title="Remove background"
+                borderRadius="1.5rem"
+                containerClassName="h-10 w-auto"
+                className="bg-black text-white px-4 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 text-[#F97316]"
+                  >
+                    <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
+                    <path d="M5 13l6 6" />
+                  </svg>
+                  <span className="text-sm text-white">Remove background</span>
+                </div>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       </div>
