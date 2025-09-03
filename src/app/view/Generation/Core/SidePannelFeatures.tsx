@@ -6,7 +6,7 @@ import { ViewType, GenerationType } from '@/types/generation';
 import { usePathname, useRouter } from 'next/navigation';
 import { Clapperboard } from 'lucide-react';
 import { imageRoutes } from '../../HomePage/routes';
-import { APP_ROUTES } from '@/routes/routes';
+import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
 
 interface SidePannelFeaturesProps {
   currentView?: ViewType;
@@ -249,7 +249,12 @@ const SidePannelFeatures = ({
         </div>
         
         <div>
-            <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item'>
+            <div 
+                onClick={() => router.push(NAV_ROUTES.PRICING)}
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                  (pathname?.includes('/pricing')) ? 'bg-white/10' : ''
+                }`}
+            >
                 <Image src="/icons/pricingwhite.svg" alt="Pricing" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Pricing</span>
             </div>
