@@ -1470,13 +1470,15 @@ const InputBox = () => {
             </span>
           </div> */}
           
-          <ModelsDropdown />
-          <ImageCountDropdown />
-          <FrameSizeDropdown />
-          <StyleSelector />
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+            <ModelsDropdown />
+            <ImageCountDropdown />
+            <FrameSizeDropdown />
+            <StyleSelector />
+          </div>
           {/* moved previews near upload above */}
           {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
-            <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0">
+            <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
               <Button
                 aria-label="Upscale"
                 title="Upscale"
