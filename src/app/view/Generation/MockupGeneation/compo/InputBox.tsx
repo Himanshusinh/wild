@@ -59,6 +59,21 @@ const InputBox = () => {
     .filter((e: HistoryEntry) => e.generationType === 'mockup-generation')
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  // Group entries by date
+  const groupedByDate = mockupHistoryEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const date = new Date(entry.timestamp).toDateString();
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(entry);
+    return groups;
+  }, {});
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
+
   console.log('🔍 Mockup history debug:');
   console.log('🔍 All history entries:', historyEntries.length);
   console.log('🔍 Mockup entries:', mockupHistoryEntries.length);
@@ -476,68 +491,103 @@ const InputBox = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            {mockupHistoryEntries.map((entry: HistoryEntry) => (
-              <div key={entry.id} className="space-y-4">
-                {/* Prompt */}
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            {sortedDates.map((date) => (
+              <div key={date} className="space-y-4">
+                {/* Date Header */}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="text-white/60"
+                    >
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-white/90 text-sm leading-relaxed">{entry.prompt.replace(/^Mockup:\s*/i, '')}</p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                      <span>{new Date(entry.timestamp).toLocaleDateString()}</span>
-                      <span>{entry.model}</span>
-                      <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
-                      {entry.status === 'generating' && (
-                        <span className="text-yellow-400 flex items-center gap-1"><div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>Generating...</span>
-                      )}
-                      {entry.status === 'failed' && (
-                        <span className="text-red-400">Failed</span>
-                      )}
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-medium text-white/70">
+                    {new Date(date).toLocaleDateString('en-US', { 
+                      weekday: 'short', 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}
+                  </h3>
                 </div>
-                {/* Grid (support many) */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
-                  {entry.images.map((img: any, idx: number) => (
-                    <div key={img.id} className="aspect-square relative group">
-                      {img.url ? (
-                        <>
-                          <Image
-                            src={img.url}
-                            alt={`Mockup ${idx + 1}`}
-                            fill
-                            className="object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-200"
-                            onClick={() => openPreview(entry)}
-                            onError={(e) => {
-                              console.error('❌ Image failed to load:', img.url, e);
-                            }}
-                            onLoad={() => {
-                              console.log('✅ Image loaded successfully:', img.url);
-                            }}
-                          />
-                          {/* Debug info - remove this later */}
-                          {/* <div className="absolute top-0 left-0 bg-black/50 text-white text-xs p-1 rounded">
-                            {idx + 1}: {img.url.substring(0, 20)}...
-                          </div> */}
-                        </>
-                      ) : (
-                        <div className="w-full h-full bg-red-500/20 rounded-lg flex items-center justify-center">
-                          <span className="text-red-400 text-xs">Failed</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {/* Show loading spinners for remaining expected images */}
-                  {entry.status === 'generating' && entry.imageCount < 5 && Array.from({ length: Math.max(0, 5 - entry.imageCount) }).map((_, idx) => (
-                    <div key={`loading-${idx}`} className="aspect-square relative group">
-                      <div className="w-full h-full bg-white/5 rounded-lg flex items-center justify-center">
-                        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+
+                {/* All Mockup Images for this Date - Horizontal Layout */}
+                <div className="flex flex-wrap gap-3 ml-9">
+                  {groupedByDate[date].map((entry: HistoryEntry) => 
+                    entry.images.map((img: any, idx: number) => (
+                      <div
+                        key={`${entry.id}-${img.id}`}
+                        data-image-id={`${entry.id}-${img.id}`}
+                        onClick={() => openPreview(entry)}
+                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                      >
+                        {entry.status === 'generating' ? (
+                          // Loading frame
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-white/60">
+                                Generating...
+                              </div>
+                            </div>
+                          </div>
+                        ) : entry.status === 'failed' ? (
+                          // Error frame
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="text-red-400"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                              </svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        ) : img.url ? (
+                          // Completed mockup with shimmer loading
+                          <div className="relative w-full h-full">
+                            <Image
+                              src={img.url}
+                              alt={`Mockup ${idx + 1}`}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-200"
+                              sizes="192px"
+                              onError={(e) => {
+                                console.error('❌ Image failed to load:', img.url, e);
+                              }}
+                              onLoad={() => {
+                                console.log('✅ Image loaded successfully:', img.url);
+                                // Remove shimmer when image loads
+                                setTimeout(() => {
+                                  const shimmer = document.querySelector(`[data-image-id="${entry.id}-${img.id}"] .shimmer`) as HTMLElement;
+                                  if (shimmer) {
+                                    shimmer.style.opacity = '0';
+                                  }
+                                }, 100);
+                              }}
+                            />
+                            {/* Shimmer loading effect */}
+                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                          </div>
+                        ) : (
+                          // No image available
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                            <div className="text-xs text-white/60">No image</div>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             ))}

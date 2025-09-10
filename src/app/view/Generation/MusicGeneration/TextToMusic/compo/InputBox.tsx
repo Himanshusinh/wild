@@ -18,6 +18,10 @@ const InputBox = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [selectedAudio, setSelectedAudio] = useState<{
+    entry: any;
+    audio: any;
+  } | null>(null);
 
   // Get user ID from Redux state (adjust based on your auth setup)
   const userId = useAppSelector((state: any) => state.auth?.user?.uid || 'anonymous');
@@ -30,6 +34,21 @@ const InputBox = () => {
       entry.generationType === 'text_to_music'
     );
   });
+
+  // Group entries by date
+  const groupedByDate = historyEntries.reduce((groups: { [key: string]: any[] }, entry: any) => {
+    const date = new Date(entry.timestamp).toDateString();
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(entry);
+    return groups;
+  }, {});
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
 
   // Load history on mount
   useEffect(() => {
@@ -289,76 +308,96 @@ const InputBox = () => {
             </div>
           )}
 
-          {/* History Entries */}
+          {/* History Entries - Grouped by Date */}
           {historyEntries.length > 0 && (
             <div className="space-y-8">
-              {historyEntries.map((entry: any) => (
-                <div key={entry.id} className="space-y-4">
-                  {/* Entry Header - Same style as image/video generation */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <Music4 className="w-3 h-3 text-white/60" />
+              {sortedDates.map((date) => (
+                <div key={date} className="space-y-4">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-white/60"
+                      >
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                      </svg>
                     </div>
-                    <div className="flex flex-col flex-1">
-                      <div className="flex flex-row-reverse items-start gap-2">
-                        <div className="flex-1">
-                          {/* Title and lyrics now shown only in CustomAudioPlayer */}
-                        </div>
-                        {/* Removed copy button - now in CustomAudioPlayer */}
-                      </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                        <span>
-                          {new Date(entry.timestamp).toLocaleDateString()}
-                        </span>
-                        <span>{entry.model}</span>
-                        <span>1 audio track</span>
-                        {entry.status === "generating" && (
-                          <span className="text-yellow-400 flex items-center gap-1">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                            Generating...
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <h3 className="text-sm font-medium text-white/70">
+                      {new Date(date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </h3>
                   </div>
 
-                  {/* Audio Grid - Same grid style as image/video generation */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ml-9">
-                    {entry.images.map((audio: any) => (
-                      <div key={audio.id} className="bg-black/40 backdrop-blur-xl rounded-lg p-4 ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200">
-                        {entry.status === 'generating' ? (
-                          // Loading state - Same as image/video generation
-                          <div className="w-full h-24 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg">
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">Generating...</div>
-                            </div>
-                          </div>
-                        ) : entry.status === 'failed' ? (
-                          // Error state - Same as image/video generation
-                          <div className="w-full h-24 flex items-center justify-center bg-red-500/20 rounded-lg">
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="text-red-400 text-sm">Failed</div>
-                              {entry.error && (
-                                <div className="text-red-300 text-xs text-center max-w-[200px]">
-                                  {entry.error}
+                  {/* All Music Tracks for this Date - Horizontal Layout */}
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    {groupedByDate[date].map((entry: any) => 
+                      entry.images.map((audio: any) => (
+                        <div
+                          key={`${entry.id}-${audio.id}`}
+                          onClick={() => setSelectedAudio({ entry, audio })}
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                        >
+                          {entry.status === "generating" ? (
+                            // Loading frame
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-white/60">
+                                  Generating...
                                 </div>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          // Completed audio - Custom player matching UI style
-                          <div className="space-y-3">
-                            <CustomAudioPlayer 
-                              audioUrl={audio.firebaseUrl || audio.url}
-                              prompt={entry.prompt}
-                              model={entry.model}
-                              lyrics={entry.lyrics}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          ) : entry.status === "failed" ? (
+                            // Error frame
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                              <div className="flex flex-col items-center gap-2">
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  className="text-red-400"
+                                >
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                </svg>
+                                <div className="text-xs text-red-400">Failed</div>
+                              </div>
+                            </div>
+                          ) : (
+                            // Completed music track
+                            <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center relative">
+                              {/* Song Logo/Icon */}
+                              <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <Music4 className="w-8 h-8 text-white/80" />
+                              </div>
+                              
+                              {/* Play button overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              
+                              {/* Music track label */}
+                              <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                                <span className="text-xs text-white">Music</span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               ))}
@@ -395,6 +434,32 @@ const InputBox = () => {
           errorMessage={errorMessage}
         />
       </div>
+
+      {/* Audio Player Modal */}
+      {selectedAudio && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
+          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-lg font-semibold">Music Track</h3>
+              <button
+                onClick={() => setSelectedAudio(null)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+             <CustomAudioPlayer 
+               audioUrl={selectedAudio.audio.firebaseUrl || selectedAudio.audio.url}
+               prompt={selectedAudio.entry.prompt}
+               model={selectedAudio.entry.model}
+               lyrics={selectedAudio.entry.lyrics}
+               autoPlay={true}
+             />
+          </div>
+        </div>
+      )}
     </>
   );
 };

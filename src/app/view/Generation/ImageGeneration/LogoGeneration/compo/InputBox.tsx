@@ -42,23 +42,7 @@ const InputBox = () => {
   // Local state for preview modal
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
 
-  // Prompt expand/collapse tracking
-  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(new Set());
-  const [overflowPromptIds, setOverflowPromptIds] = useState<Set<string>>(new Set());
-  const promptRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
 
-  const getUserPrompt = (rawPrompt: string | undefined) => {
-    if (!rawPrompt) return '';
-    return rawPrompt.replace(/^Logo:\s*/i, '').trim();
-  };
-
-  const toggleExpand = (id: string) => {
-    setExpandedPromptIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -219,19 +203,21 @@ const InputBox = () => {
     .filter((entry: HistoryEntry) => entry.generationType === 'logo-generation')
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  // Measure overflow after render to decide when to show See more
-  useEffect(() => {
-    const next = new Set<string>();
-    for (const id in promptRefs.current) {
-      const el = promptRefs.current[id];
-      if (!el) continue;
-      if (el.scrollWidth > el.clientWidth) next.add(id);
+  // Group entries by date
+  const groupedByDate = logoHistoryEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const date = new Date(entry.timestamp).toDateString();
+    if (!groups[date]) {
+      groups[date] = [];
     }
-    const isSame = next.size === overflowPromptIds.size && Array.from(next).every(id => overflowPromptIds.has(id));
-    if (!isSame) {
-      setOverflowPromptIds(next);
-    }
-  }, [logoHistoryEntries, expandedPromptIds]);
+    groups[date].push(entry);
+    return groups;
+  }, {});
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
+
 
   return (
     <div className="min-h-screen p-6">
@@ -298,94 +284,99 @@ const InputBox = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            {logoHistoryEntries.map((entry: HistoryEntry) => (
-              <div key={entry.id} className="space-y-4">
-                {/* Prompt Text */}
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            {sortedDates.map((date) => (
+              <div key={date} className="space-y-4">
+                {/* Date Header */}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="text-white/60"
+                    >
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                     </svg>
                   </div>
-                  <div className="flex-1">
-                    {(() => {
-                      const userPrompt = getUserPrompt(entry.prompt);
-                      const isExpanded = expandedPromptIds.has(entry.id);
-                      const showTruncate = !isExpanded;
-                      const shouldShowToggle = overflowPromptIds.has(entry.id) || userPrompt.includes('\n');
-                      return (
-                        <div className="flex items-start gap-2">
-                          <p
-                            className={`${showTruncate ? 'whitespace-nowrap overflow-hidden text-ellipsis' : 'whitespace-normal'} text-white/90 text-sm leading-relaxed max-w-[600px]`}
-                            ref={(el) => { promptRefs.current[entry.id] = el; }}
-                          >
-                            {userPrompt}
-                          </p>
-                          <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-                            {userPrompt.length > 0 && (
-                              <button
-                                onClick={() => { navigator.clipboard.writeText(userPrompt); }}
-                                className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80"
-                                title="Copy prompt"
-                              >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                                </svg>
-                              </button>
-                            )}
-                            {shouldShowToggle && (
-                              <button
-                                onClick={() => toggleExpand(entry.id)}
-                                className="px-2 py-1 text-xs rounded-md bg-white/5 hover:bg-white/10 text-white/70"
-                              >
-                                {isExpanded ? 'Show less' : 'See more'}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                      <span>{new Date(entry.timestamp).toLocaleDateString()}</span>
-                      <span>{entry.model}</span>
-                      <span>{entry.images.length} image{entry.images.length !== 1 ? 's' : ''}</span>
-                      {entry.status === 'generating' && (
-                        <span className="text-yellow-400 flex items-center gap-1">
-                          <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                          Generating...
-                        </span>
-                      )}
-                      {entry.status === 'failed' && (
-                        <span className="text-red-400">Failed</span>
-                      )}
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-medium text-white/70">
+                    {new Date(date).toLocaleDateString('en-US', { 
+                      weekday: 'short', 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}
+                  </h3>
                 </div>
 
-                {/* Images Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
-                  {entry.images.map((image, imageIndex) => (
-                    <div key={image.id} className="aspect-square relative group">
-                      {entry.status === 'generating' ? (
-                        <div className="w-full h-full bg-white/5 rounded-lg flex items-center justify-center">
-                          <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                        </div>
-                      ) : image.url ? (
-                        <Image
-                          src={image.url}
-                          alt={`Generated logo ${imageIndex + 1}`}
-                          fill
-                          className="object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-200"
-                          onClick={() => handleImageClick(entry)}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-red-500/20 rounded-lg flex items-center justify-center">
-                          <span className="text-red-400 text-xs">Failed</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                {/* All Logo Images for this Date - Horizontal Layout */}
+                <div className="flex flex-wrap gap-3 ml-9">
+                  {groupedByDate[date].map((entry: HistoryEntry) => 
+                    entry.images.map((image, imageIndex) => (
+                      <div
+                        key={`${entry.id}-${image.id}`}
+                        data-image-id={`${entry.id}-${image.id}`}
+                        onClick={() => handleImageClick(entry)}
+                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                      >
+                        {entry.status === 'generating' ? (
+                          // Loading frame
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-white/60">
+                                Generating...
+                              </div>
+                            </div>
+                          </div>
+                        ) : entry.status === 'failed' ? (
+                          // Error frame
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="text-red-400"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                              </svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        ) : image.url ? (
+                          // Completed logo with shimmer loading
+                          <div className="relative w-full h-full">
+                            <Image
+                              src={image.url}
+                              alt={`Generated logo ${imageIndex + 1}`}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-200"
+                              sizes="192px"
+                              onLoad={() => {
+                                // Remove shimmer when image loads
+                                setTimeout(() => {
+                                  const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
+                                  if (shimmer) {
+                                    shimmer.style.opacity = '0';
+                                  }
+                                }, 100);
+                              }}
+                            />
+                            {/* Shimmer loading effect */}
+                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                          </div>
+                        ) : (
+                          // No image available
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                            <div className="text-xs text-white/60">No image</div>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             ))}

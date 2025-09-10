@@ -313,6 +313,21 @@ const InputBox = () => {
     return sortedMergedEntries;
   }, shallowEqual);
 
+  // Group entries by date
+  const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const date = new Date(entry.timestamp).toDateString();
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(entry);
+    return groups;
+  }, {});
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
+
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
   useEffect(() => {
     let isMounted = true;
@@ -401,15 +416,6 @@ const InputBox = () => {
     return sortedList as any[];
   }, [historyEntries, extraVideoEntries]);
 
-  // Track expanded prompts per entry id
-  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(new Set());
-  const togglePromptExpand = (id: string) => {
-    setExpandedPromptIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
   // Auto-load more history pages until we find non-text video types (bounded attempts)
   const autoLoadAttemptsRef = useRef(0);
@@ -432,10 +438,6 @@ const InputBox = () => {
     }
   }, [historyEntries, hasMore, loading, dispatch]);
 
-  // Helper function to get clean prompt without style
-  const getCleanPrompt = (promptText: string): string => {
-    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
-  };
 
   // Helper function to convert frameSize to Runway ratio format
   const convertFrameSizeToRunwayRatio = (frameSize: string): string => {
@@ -1140,13 +1142,13 @@ const InputBox = () => {
               </div>
             )}
 
-            {/* History Entries */}
+            {/* History Entries - Grouped by Date */}
             <div className="space-y-8">
-              {historyEntriesForDisplay.map((entry: HistoryEntry) => (
-                <div key={entry.id} className="space-y-4">
-                  {/* Prompt Text in Left Corner */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+              {sortedDates.map((date) => (
+                <div key={date} className="space-y-4">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
                         height="12"
@@ -1154,169 +1156,111 @@ const InputBox = () => {
                         fill="currentColor"
                         className="text-white/60"
                       >
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                       </svg>
                     </div>
-                    <div className="flex flex-col">
-                      <div className="flex flex-row-reverse items-center gap-2">
-                        {(() => { const text = getCleanPrompt(entry.prompt); const expanded = expandedPromptIds.has(entry.id); return (
-                          <div className="relative max-w-[500px] flex-1">
-                            <p className={`text-white/90 text-sm leading-relaxed break-words ${expanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-24 overflow-hidden'}`}>{text}</p>
-                            {!expanded && text.length > 180 && (
-                              <div className="pointer-events-none absolute left-0 right-0 bottom-0 h-8 bg-gradient-to-t from-black/60 to-transparent" />
-                            )}
-                          </div>
-                        ); })()}
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              getCleanPrompt(entry.prompt)
-                            );
-                            dispatch(
-                              addNotification({
-                                type: "success",
-                                message: "Prompt copied to clipboard!",
-                              })
-                            );
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
-                          title="Copy prompt"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-4 w-4"
-                          >
-                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2h2" />
-                            <rect
-                              x="8"
-                              y="2"
-                              width="8"
-                              height="4"
-                              rx="1"
-                              ry="1"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="mt-1">
-                        {(() => { const text = getCleanPrompt(entry.prompt); const expanded = expandedPromptIds.has(entry.id); if (text.length > 180) {
-                          return (
-                            <button onClick={() => togglePromptExpand(entry.id)} className="text-xs text-white/80 hover:text-white underline">
-                              {expanded ? 'Show less' : 'Load more'}
-                            </button>
-                          );
-                        } return null; })()}
-                      </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
-                        <span>
-                          {new Date(entry.timestamp).toLocaleDateString()}
-                        </span>
-                        <span>{entry.model}</span>
-                        <span>
-                          {entry.images.length} video
-                          {entry.images.length !== 1 ? "s" : ""}
-                        </span>
-                        {entry.frameSize && !entry.model.includes("MiniMax") && (
-                          <span className="text-green-400">Aspect: {entry.frameSize}</span>
-                        )}
-                        {entry.model.includes("MiniMax") && (
-                          <span className="text-blue-400">Fixed Resolution</span>
-                        )}
-                        {entry.status === "generating" && (
-                          <span className="text-yellow-400 flex items-center gap-1">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                            Generating...
-                          </span>
-                        )}
-                        {entry.status === "failed" && (
-                          <span className="text-red-400">Failed</span>
-                        )}
-                      </div>
-                    </div>
+                    <h3 className="text-sm font-medium text-white/70">
+                      {new Date(date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </h3>
                   </div>
 
-                  {/* Videos Grid - Same Size as Text-to-Image History */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
-                    {entry.images.map((video: any) => (
-                      <div
-                        key={video.id}
-                        onClick={() => setPreview({ entry, video })}
-                        className="relative aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
-                      >
-                        {entry.status === "generating" ? (
-                          // Loading frame
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                            <div className="flex flex-col items-center gap-2">
-                            <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">
-                                Generating...
-                          </div>
+                  {/* All Videos for this Date - Horizontal Layout */}
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    {groupedByDate[date].map((entry: HistoryEntry) => 
+                      entry.images.map((video: any) => (
+                        <div
+                          key={`${entry.id}-${video.id}`}
+                          data-video-id={`${entry.id}-${video.id}`}
+                          onClick={() => setPreview({ entry, video })}
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                        >
+                          {entry.status === "generating" ? (
+                            // Loading frame
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-white/60">
+                                  Generating...
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ) : entry.status === "failed" ? (
-                          // Error frame
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                            <div className="flex flex-col items-center gap-2">
-                              <svg
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                className="text-red-400"
-                              >
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                              <div className="text-xs text-red-400">Failed</div>
+                          ) : entry.status === "failed" ? (
+                            // Error frame
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                              <div className="flex flex-col items-center gap-2">
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  className="text-red-400"
+                                >
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                </svg>
+                                <div className="text-xs text-red-400">Failed</div>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          // Completed video thumbnail
-                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
-                                                                                {(video.firebaseUrl || video.url) ? (
-                            <video 
-                              src={video.firebaseUrl || video.url} 
-                              className="w-full h-full object-cover"
-                              muted
-                              onLoadedData={(e) => {
-                                // Create thumbnail from video
-                                const video = e.target as HTMLVideoElement;
-                                const canvas = document.createElement('canvas');
-                                canvas.width = video.videoWidth;
-                                canvas.height = video.videoHeight;
-                                const ctx = canvas.getContext('2d');
-                                if (ctx) {
-                                  ctx.drawImage(video, 0, 0);
-                                  // You could use this canvas as thumbnail if needed
-                                }
-                              }}
-                            />
                           ) : (
-                            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                              <span className="text-gray-400 text-xs">Video not available</span>
+                            // Completed video thumbnail with shimmer loading
+                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
+                              {(video.firebaseUrl || video.url) ? (
+                                <div className="relative w-full h-full">
+                                  <video 
+                                    src={video.firebaseUrl || video.url} 
+                                    className="w-full h-full object-cover"
+                                    muted
+                                    onLoadedData={(e) => {
+                                      // Create thumbnail from video
+                                      const videoElement = e.target as HTMLVideoElement;
+                                      const canvas = document.createElement('canvas');
+                                      canvas.width = videoElement.videoWidth;
+                                      canvas.height = videoElement.videoHeight;
+                                      const ctx = canvas.getContext('2d');
+                                      if (ctx) {
+                                        ctx.drawImage(videoElement, 0, 0);
+                                        // You could use this canvas as thumbnail if needed
+                                      }
+                                      
+                                      // Remove shimmer when video loads
+                                      setTimeout(() => {
+                                        const shimmer = document.querySelector(`[data-video-id="${entry.id}-${video.id}"] .shimmer`) as HTMLElement;
+                                        if (shimmer) {
+                                          shimmer.style.opacity = '0';
+                                        }
+                                      }, 100);
+                                    }}
+                                  />
+                                  {/* Shimmer loading effect */}
+                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                </div>
+                              ) : (
+                                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                  <span className="text-gray-400 text-xs">Video not available</span>
+                                </div>
+                              )}
+                              {/* Video play icon overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              {/* Video duration or other info */}
+                              <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                                <span className="text-xs text-white">Video</span>
+                              </div>
                             </div>
                           )}
-                          {/* Video play icon overlay */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </div>
-                          </div>
-                          {/* Video duration or other info */}
-                          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                            <span className="text-xs text-white">Video</span>
-                          </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                         </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               ))}

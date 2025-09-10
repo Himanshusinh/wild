@@ -21,10 +21,6 @@ const AdGenerationInputBox: React.FC = () => {
   const [previewEntry, setPreviewEntry] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
-  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(new Set());
-  const [overflowPromptIds, setOverflowPromptIds] = useState<Set<string>>(new Set());
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const promptRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const inputEl = useRef<HTMLTextAreaElement>(null);
 
   const history = useAppSelector((state) => state.history.entries);
@@ -33,6 +29,21 @@ const AdGenerationInputBox: React.FC = () => {
 
   // Filter history for ad generation
   const adGenerationHistory = history.filter(entry => entry.generationType === 'ad-generation');
+
+  // Group entries by date
+  const groupedByDate = adGenerationHistory.reduce((groups: { [key: string]: any[] }, entry: any) => {
+    const date = new Date(entry.timestamp).toDateString();
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(entry);
+    return groups;
+  }, {});
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
 
   useEffect(() => {
     // Load initial history for ad generation
@@ -495,63 +506,13 @@ const AdGenerationInputBox: React.FC = () => {
 
   const canGenerate = productImage && script.trim() && !isGeneratingLocal;
 
-  const getUserPrompt = (entry: any) => {
-    return entry.prompt || 'No prompt available';
-  };
 
-  const handlePromptToggle = (entryId: string) => {
-    setExpandedPromptIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(entryId)) {
-        newSet.delete(entryId);
-      } else {
-        newSet.add(entryId);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleDropdown = (dropdownName: string) => {
-    setActiveDropdown(activeDropdown === dropdownName ? null : dropdownName);
-  };
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (activeDropdown && !(event.target as Element).closest('.dropdown-container')) {
-        setActiveDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activeDropdown]);
 
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
     element.style.height = 'auto';
     element.style.height = Math.min(element.scrollHeight, 96) + 'px';
   };
 
-  useEffect(() => {
-    // Measure prompt overflow after a small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      const newOverflowPromptIds = new Set<string>();
-      
-      adGenerationHistory.forEach(entry => {
-        const promptElement = promptRefs.current[entry.id];
-        if (promptElement) {
-          const isOverflowing = promptElement.scrollWidth > promptElement.clientWidth;
-          if (isOverflowing) {
-            newOverflowPromptIds.add(entry.id);
-          }
-        }
-      });
-
-      setOverflowPromptIds(newOverflowPromptIds);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [adGenerationHistory.length]); // Only depend on length, not the entire array
 
   const loadMoreHistoryHandler = () => {
     if (!loading && hasMore) {
@@ -561,135 +522,132 @@ const AdGenerationInputBox: React.FC = () => {
 
   return (
     <>
-      {/* History Section */}
+      {/* History Section - Fixed overlay like video generation */}
       {adGenerationHistory.length > 0 && (
-        <div className="min-h-screen bg-transparent pt-20 pb-32">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-white mb-4">Video Ad Generation</h1>
-              <p className="text-xl text-white/60">Transform your product images into engaging video ads</p>
+        <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
+          <div className="p-6">
+            {/* History Header - Fixed during scroll */}
+            <div className="sticky top-0 z-10 mb-6 bg-black/80 backdrop-blur-sm py-4 -mx-6 px-6 border-b border-white/10">
+              <h2 className="text-white text-xl font-semibold">Ad Generation History</h2>
             </div>
 
-            <div className="space-y-6">
-              {adGenerationHistory.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 ring-1 ring-white/10 hover:ring-white/20 transition-all duration-300"
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Left side: Prompt and metadata */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-xs text-white/60 bg-white/10 px-3 py-1.5 rounded-full">
-                          {entry.model}
-                        </span>
-                        <span className="text-xs text-white/60 bg-white/10 px-3 py-1.5 rounded-full">
-                          {entry.style}
-                        </span>
-                        <span className="text-xs text-white/60 bg-white/10 px-3 py-1.5 rounded-full">
-                          {entry.images.length} video{entry.images.length !== 1 ? 's' : ''}
-                        </span>
-                        {entry.status === 'generating' && (
-                          <span className="text-yellow-400 flex items-center gap-1 text-xs">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                            Generating...
-                          </span>
-                        )}
-                        {entry.status === 'failed' && (
-                          <span className="text-red-400 text-xs">Failed</span>
-                        )}
-                      </div>
-                      
-                      <div
-                        ref={(el) => {
-                          promptRefs.current[entry.id] = el;
-                        }}
-                        className="text-white text-sm mb-3 overflow-hidden"
+            {/* Main Loader */}
+            {loading && adGenerationHistory.length === 0 && (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-white text-lg">Loading your ad generation history...</div>
+                </div>
+              </div>
+            )}
+
+            {/* History Entries - Grouped by Date */}
+            <div className="space-y-8">
+              {sortedDates.map((date) => (
+                <div key={date} className="space-y-4">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-white/60"
                       >
-                        {getUserPrompt(entry)}
-                      </div>
-
-                      {overflowPromptIds.has(entry.id) && (
-                        <button
-                          onClick={() => handlePromptToggle(entry.id)}
-                          className="text-blue-400 hover:text-blue-300 text-xs"
-                        >
-                          {expandedPromptIds.has(entry.id) ? 'See less' : 'See more'}
-                        </button>
-                      )}
-
-                      <div className="text-xs text-white/40 mt-3">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </div>
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                      </svg>
                     </div>
-
-                    {/* Right side: Actions */}
-                    <div className="flex items-center gap-2">
-                      {entry.status === 'generating' && (
-                        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                      )}
-                      
-                      {entry.status === 'completed' && entry.images.length > 0 && (
-                        <button
-                          onClick={() => {
-                            setPreviewEntry(entry);
-                            setShowPreview(true);
-                          }}
-                          className="text-blue-400 hover:text-blue-300 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          View Ad
-                        </button>
-                      )}
-
-                      {entry.status === 'failed' && (
-                        <span className="text-red-400 text-sm bg-red-400/10 px-3 py-1.5 rounded-lg">Failed</span>
-                      )}
-                    </div>
+                    <h3 className="text-sm font-medium text-white/70">
+                      {new Date(date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </h3>
                   </div>
 
-                  {/* Video Grid */}
-                  {entry.images.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 mt-4">
-                      {entry.images.map((image: any) => (
+                  {/* All Ad Videos for this Date - Horizontal Layout */}
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    {groupedByDate[date].map((entry: any) => 
+                      entry.images.map((video: any) => (
                         <div
-                          key={image.id}
+                          key={`${entry.id}-${video.id}`}
+                          data-ad-video-id={`${entry.id}-${video.id}`}
                           onClick={() => {
                             setPreviewEntry(entry);
                             setShowPreview(true);
                           }}
-                          className="relative aspect-video rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
-                          {entry.status === 'generating' ? (
+                          {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-white/60">Generating...</div>
+                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-white/60">
+                                  Generating...
+                                </div>
                               </div>
                             </div>
-                          ) : entry.status === 'failed' ? (
+                          ) : entry.status === "failed" ? (
                             // Error frame
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
                               <div className="flex flex-col items-center gap-2">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  className="text-red-400"
+                                >
                                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                                 </svg>
                                 <div className="text-xs text-red-400">Failed</div>
                               </div>
                             </div>
                           ) : (
-                            // Completed video
-                            <video
-                              src={image.url}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                              muted
-                            />
+                            // Completed ad video - Show actual video preview with shimmer loading
+                            <div className="relative w-full h-full">
+                              <video
+                                src={video.url}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                muted
+                                preload="metadata"
+                                onLoadedData={() => {
+                                  // Remove shimmer when video loads
+                                  setTimeout(() => {
+                                    const shimmer = document.querySelector(`[data-ad-video-id="${entry.id}-${video.id}"] .shimmer`) as HTMLElement;
+                                    if (shimmer) {
+                                      shimmer.style.opacity = '0';
+                                    }
+                                  }, 100);
+                                }}
+                              />
+                              {/* Shimmer loading effect */}
+                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              
+                              {/* Play button overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              
+                              {/* Ad video label */}
+                              <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                                <span className="text-xs text-white">Ad</span>
+                              </div>
+                            </div>
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
               ))}
 
@@ -774,7 +732,7 @@ const AdGenerationInputBox: React.FC = () => {
              {/* Model Dropdown */}
              <div className="relative dropdown-container">
                <button
-                 onClick={() => toggleDropdown('engine')}
+                 onClick={() => setEngine(engine === 'veo3_fast' ? 'veo3' : 'veo3_fast')}
                  className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
                >
                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -782,36 +740,12 @@ const AdGenerationInputBox: React.FC = () => {
                  </svg>
                  {engine === 'veo3_fast' ? 'Veo3 Fast' : 'Veo3'}
                </button>
-               {activeDropdown === 'engine' && (
-                 <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-                   <button
-                     onClick={() => {
-                       setEngine('veo3_fast');
-                       setActiveDropdown(null);
-                     }}
-                     className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${engine === 'veo3_fast' ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                   >
-                     <span>Veo3 Fast</span>
-                     {engine === 'veo3_fast' && <div className="w-2 h-2 bg-black rounded-full"></div>}
-                   </button>
-                   <button
-                     onClick={() => {
-                       setEngine('veo3');
-                       setActiveDropdown(null);
-                     }}
-                     className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${engine === 'veo3' ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                   >
-                     <span>Veo3</span>
-                     {engine === 'veo3' && <div className="w-2 h-2 bg-black rounded-full"></div>}
-                   </button>
-                 </div>
-               )}
              </div>
 
              {/* Resolution Dropdown */}
              <div className="relative dropdown-container">
                <button
-                 onClick={() => toggleDropdown('resolution')}
+                 onClick={() => setResolution(resolution === '720p' ? '1080p' : '720p')}
                  className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
                >
                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -819,29 +753,12 @@ const AdGenerationInputBox: React.FC = () => {
                  </svg>
                  {resolution}
                </button>
-               {activeDropdown === 'resolution' && (
-                 <div className="absolute bottom-full left-0 mb-2 w-36 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-                   {(['720p','1080p'] as const).map((res) => (
-                     <button
-                       key={res}
-                       onClick={() => {
-                         setResolution(res);
-                         setActiveDropdown(null);
-                       }}
-                       className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${resolution === res ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                     >
-                       <span>{res}</span>
-                       {resolution === res && <div className="w-2 h-2 bg-black rounded-full"></div>}
-                     </button>
-                   ))}
-                 </div>
-               )}
              </div>
 
              {/* Audio Dropdown */}
              <div className="relative dropdown-container">
                <button
-                 onClick={() => toggleDropdown('audio')}
+                 onClick={() => setGenerateAudio(!generateAudio)}
                  className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
                >
                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -849,23 +766,6 @@ const AdGenerationInputBox: React.FC = () => {
                  </svg>
                  {generateAudio ? 'Audio: On' : 'Audio: Off'}
                </button>
-               {activeDropdown === 'audio' && (
-                 <div className="absolute bottom-full left-0 mb-2 w-36 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-                   {[true, false].map((val) => (
-                     <button
-                       key={String(val)}
-                       onClick={() => {
-                         setGenerateAudio(val);
-                         setActiveDropdown(null);
-                       }}
-                       className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${(generateAudio === val) ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                     >
-                       <span>{val ? 'Audio: On' : 'Audio: Off'}</span>
-                       {(generateAudio === val) && <div className="w-2 h-2 bg-black rounded-full"></div>}
-                     </button>
-                   ))}
-                 </div>
-               )}
              </div>
 
              {/* Duration Display (Fixed at 8s for FAL AI Veo3) */}

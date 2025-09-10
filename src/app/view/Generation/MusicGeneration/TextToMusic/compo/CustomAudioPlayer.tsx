@@ -8,9 +8,10 @@ interface CustomAudioPlayerProps {
   prompt: string;
   model: string;
   lyrics?: string;
+  autoPlay?: boolean;
 }
 
-const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt, model, lyrics }) => {
+const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt, model, lyrics, autoPlay = false }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -37,6 +38,27 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
       audio.removeEventListener('ended', handleEnded);
     };
   }, []);
+
+  // Auto-play effect
+  useEffect(() => {
+    if (autoPlay && audioRef.current) {
+      const playAudio = async () => {
+        try {
+          // Small delay to ensure audio element is ready
+          setTimeout(async () => {
+            if (audioRef.current) {
+              await audioRef.current.play();
+              setIsPlaying(true);
+            }
+          }, 100);
+        } catch (error) {
+          console.log('Auto-play failed:', error);
+          // Auto-play might fail due to browser policies, that's okay
+        }
+      };
+      playAudio();
+    }
+  }, [autoPlay, audioUrl]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
