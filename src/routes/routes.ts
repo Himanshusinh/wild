@@ -9,7 +9,8 @@ export const AUTH_ROUTES = {
 export const APP_ROUTES = {
   HOME: '/view/HomePage',
   LANDING: '/',
-  SIGNUP:'/view/signup'
+  SIGNUP:'/view/signup',
+  LOGIN: '/view/signup' // Login uses the same page with different form state
 } as const;
 
 // Feature Routes

@@ -12,6 +12,8 @@ export const imageRoutes: FolderImageRoutes = {
       coins : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fsetting%2Fcoins.png?alt=media&token=56e61d6d-8695-47ea-8e4d-952d2f8ff1ed',
       diamond : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fsetting%2Fdiamond.png?alt=media&token=4aad71ad-e181-4d8c-b2da-2de227d44336',
       profile:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fsetting%2Fprofile.png?alt=media&token=fb2b2e2c-944a-458e-a505-8ca414315d00',
+      google: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fcore%2Fgoogle.svg?alt=media&token=5fb13362-b31d-4791-89d2-1a596d07ed17',
+      apple: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fcore%2Fapple.svg?alt=media&token=c7fb97bb-0278-4b5d-9e86-a68977d0cb7d',
       arrowup:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Farrowup.svg?alt=media&token=bad88f57-b83a-4186-a586-06a487f2a5d8',
   
       arrowdown:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Farrowdown.svg?alt=media&token=0823be44-ab26-44b9-a1e3-d15d8ef08531'

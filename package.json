@@ -12,6 +12,7 @@
     "@fal-ai/client": "^1.6.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@tabler/icons-react": "^3.34.1",
+    "axios": "^1.12.2",
     "clsx": "^2.1.1",
     "dotted-map": "^2.2.3",
     "firebase": "^12.1.0",

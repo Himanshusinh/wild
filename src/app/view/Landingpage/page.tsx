@@ -138,7 +138,7 @@ const LandingPage: React.FC = () => {
     }
   }, [smoothScrollTo]);
 
-  const onGetStarted = () => router.push('/view/HomePage');
+  const onGetStarted = () => router.push('/view/signup');
 
   // Optimized intersection observers with proper cleanup
   React.useEffect(() => {
