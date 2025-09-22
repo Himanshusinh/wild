@@ -3,6 +3,7 @@
 import { useState, type FormEvent, useEffect } from "react"
 import axios from "axios"
 import Image from "next/image"
+import { useUsernameAvailability } from "./useUsernameAvailability"
 import { getImageUrl } from "@/routes/imageroute"
 import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
@@ -59,13 +60,13 @@ export default function SignInForm() {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
-  const [showPopup, setShowPopup] = useState(false)
-  const [popupData, setPopupData] = useState<{
-    title: string
-    message: string
-    type: 'warning' | 'info' | 'error'
-    actions: Array<{ text: string; action: () => void }>
-  } | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+
+  // Username live availability (always declared to keep hook order stable)
+  const availability = useUsernameAvailability('http://localhost:5000/api')
+  useEffect(() => {
+    availability.setUsername(username)
+  }, [username])
 
   // Test cookie setting function
   const testCookieSetting = () => {
@@ -79,20 +80,23 @@ export default function SignInForm() {
     }, 200)
   }
 
-  // Popup handling functions
-  const showErrorPopup = (title: string, message: string, type: 'warning' | 'info' | 'error', actions: Array<{ text: string; action: () => void }>) => {
-    setPopupData({ title, message, type, actions })
-    setShowPopup(true)
-  }
+  // Loading Spinner Component (white ring, no label)
+  const LoadingSpinner = () => (
+    <div className="flex items-center justify-center py-1">
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+    </div>
+  )
 
-  const closePopup = () => {
-    setShowPopup(false)
-    setPopupData(null)
-  }
+  // Redirect Spinner Component (white ring, no label) 
+  const RedirectSpinner = () => (
+    <div className="flex items-center justify-center py-1">
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+    </div>
+  )
 
   const switchToGoogleSignIn = () => {
     setShowLoginForm(false) // Ensure we're in sign-up mode for Google
-    closePopup()
+    setError("")
     // Trigger Google sign-in
     setTimeout(() => {
       handleGoogleLogin()
@@ -101,7 +105,7 @@ export default function SignInForm() {
 
   const switchToEmailSignIn = () => {
     setShowLoginForm(true) // Switch to login mode
-    closePopup()
+    setError("")
   }
 
   // Handle login form submission
@@ -159,10 +163,8 @@ export default function SignInForm() {
         localStorage.setItem("user", JSON.stringify(user))
         localStorage.setItem("authToken", idToken)
         
-        // Show success message
-        setSuccess("Login successful! Redirecting...")
-        
-        // Clear form
+        // Show redirect spinner and clear form
+        setIsRedirecting(true)
         setEmail("")
         setPassword("")
         
@@ -171,7 +173,7 @@ export default function SignInForm() {
           const redirectUrl = redirect || APP_ROUTES.HOME
           console.log("🏠 Redirecting to:", redirectUrl)
           window.location.href = redirectUrl
-        }, 1000)
+        }, 2000)
         
       } else {
         console.error("❌ Login failed:", response.data?.message)
@@ -181,25 +183,27 @@ export default function SignInForm() {
     } catch (error: any) {
       console.error("❌ Login error:", error)
       
-      const errorMessage = error.response?.data?.message || 'An error occurred'
-      
-      if (errorMessage.includes('already have an account with Google')) {
-        // Show popup for Google account conflict
-        showErrorPopup(
-          'Wrong Sign-in Method',
-          'You already have an account with Google. Please sign in with Google instead.',
-          'warning',
-          [
-            { text: 'Sign in with Google', action: switchToGoogleSignIn },
-            { text: 'Cancel', action: closePopup }
-          ]
-        )
-      } else if (error.response?.status === 401) {
-        setError("Invalid credentials. Please check your email and password.")
-      } else if (error.response?.status === 404) {
-        setError("User not found. Please check your email.")
+      // Prefer detailed validation errors when present
+      const validationList = error?.response?.data?.data
+      if (Array.isArray(validationList) && validationList.length > 0) {
+        const detailedMessage = validationList
+          .map((e: any) => e?.msg || e?.message)
+          .filter(Boolean)
+          .join('\n')
+        setError(detailedMessage || 'Please fix the highlighted fields and try again.')
       } else {
-        setError(errorMessage)
+        const errorMessage = error.response?.data?.message || 'An error occurred'
+        if (errorMessage.includes('already have an account with Google')) {
+          setError("This email is registered with Google. Please use the Google sign-in button below.")
+        } else if (error.response?.status === 401) {
+          setError("Invalid credentials. Please check your email and password.")
+        } else if (error.response?.status === 404) {
+          setError("User not found. Please check your email.")
+        } else if (error.response?.status === 400 && errorMessage === 'Validation failed') {
+          setError('Please check your input and try again.')
+        } else {
+          setError(errorMessage)
+        }
       }
     } finally {
       setProcessing(false)
@@ -282,27 +286,9 @@ export default function SignInForm() {
       const errorMessage = error.response?.data?.message || 'An error occurred'
       
       if (errorMessage.includes('already have an account with Google')) {
-        // Show popup for Google account conflict
-        showErrorPopup(
-          'Account Already Exists',
-          'You already have an account with Google. Please sign in with Google instead.',
-          'warning',
-          [
-            { text: 'Sign in with Google', action: switchToGoogleSignIn },
-            { text: 'Cancel', action: closePopup }
-          ]
-        )
+        setError("This email is registered with Google. Please use the Google sign-in button below.")
       } else if (errorMessage.includes('Account already exists')) {
-        // Show popup for existing email/password account
-        showErrorPopup(
-          'Account Already Exists', 
-          'Account already exists. Please use sign-in instead.',
-          'info',
-          [
-            { text: 'Go to Sign In', action: switchToEmailSignIn },
-            { text: 'Cancel', action: closePopup }
-          ]
-        )
+        setError("Account already exists. Please use sign-in instead.")
       } else {
         // Handle other errors normally
         setError(errorMessage)
@@ -495,7 +481,13 @@ export default function SignInForm() {
     }
   }
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (e?: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent any form submission
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
     console.log("🔵 Starting Google sign-in...")
     console.log("📋 Current form state - showLoginForm:", showLoginForm)
     
@@ -561,11 +553,11 @@ export default function SignInForm() {
           
           // Store user profile only; rely on httpOnly cookie for auth
           localStorage.setItem("user", JSON.stringify(userData))
-          setSuccess("Google sign-in successful! Redirecting...")
+          setIsRedirecting(true)
           
           setTimeout(() => {
             window.location.href = redirect || APP_ROUTES.HOME
-          }, 1000)
+          }, 2000)
         }
       }
       
@@ -575,16 +567,7 @@ export default function SignInForm() {
       const errorMessage = error.response?.data?.message || 'An error occurred'
       
       if (errorMessage.includes('already have an account with email/password')) {
-        // Show popup for email/password account conflict
-        showErrorPopup(
-          'Account Already Exists',
-          'You already have an account with email/password. Please sign in with your email and password instead.',
-          'warning',
-          [
-            { text: 'Sign in with Email', action: switchToEmailSignIn },
-            { text: 'Cancel', action: closePopup }
-          ]
-        )
+        setError("This email is registered with email/password. Please use the regular sign-in form above.")
       } else if (error.code === 'auth/popup-closed-by-user') {
         setError("Google sign-in was cancelled.")
       } else if (error.code === 'auth/popup-blocked') {
@@ -662,12 +645,12 @@ export default function SignInForm() {
           localStorage.setItem("user", JSON.stringify(finalUserData))
           
           console.log("✅ Google authentication complete!")
-          setSuccess("Account created successfully! Redirecting...")
+          setIsRedirecting(true)
           setShowUsernameForm(false)
           
           setTimeout(() => {
             window.location.href = redirect || APP_ROUTES.HOME
-          }, 1000)
+          }, 2000)
         }
         
       } else {
@@ -809,39 +792,9 @@ export default function SignInForm() {
 
 
   return (
-    <div className="w-full h-full flex flex-col p-12 bg-[#1E1E1E] relative">        
+    <div className="w-full min-h-screen flex flex-col p-12 bg-[#1E1E1E] relative">        
     <div className="absolute inset-0 bg-gradient-to-l from-gray-900/90 via-transparent to-transparent pointer-events-none"></div>
 
-      {/* Error Popup Modal */}
-      {showPopup && popupData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[#2A2A2A] rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
-            <div className="flex items-center mb-4">
-              <div className={`w-3 h-3 rounded-full mr-3 ${
-                popupData.type === 'warning' ? 'bg-yellow-500' : 
-                popupData.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-              }`}></div>
-              <h3 className="text-lg font-semibold text-white">{popupData.title}</h3>
-            </div>
-            <p className="text-gray-300 mb-6">{popupData.message}</p>
-            <div className="flex space-x-3 justify-end">
-              {popupData.actions.map((action, index) => (
-                <button
-                  key={index}
-                  onClick={action.action}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    index === popupData.actions.length - 1
-                      ? 'bg-[#6366F1] text-white hover:bg-[#5855EB]'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                  }`}
-                >
-                  {action.text}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Header with WildMind Logo - Top Left */}
       <div className="flex items-center mb-6">
@@ -854,9 +807,9 @@ export default function SignInForm() {
         />
       </div>
        
-      {/* Form Content - Centered */}
-      <div className="flex-1 flex items-center justify-center -mt-4   ">
-        <div className="w-full max-w-md space-y-6  ">
+      {/* Form Content - Page-scrolling */}
+      <div className="flex-1 flex items-start md:items-center justify-center mt-0">
+        <div className="w-full max-w-md space-y-6">
           {/* Welcome Section - Only show when not on OTP screen, username screen, or login screen */}
           {!otpSent && !showUsernameForm && !showLoginForm && (
             <div className="text-start space-y-2 ml-2">
@@ -884,12 +837,20 @@ export default function SignInForm() {
                   className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base"
                   required
                 />
+                {/* Live availability feedback */}
+                <UsernameAvailabilityFeedback 
+                  status={availability.status}
+                  result={availability.result}
+                  error={availability.error}
+                  onSuggestion={setUsername}
+                />
               </div>
 
               {/* Access WildMind Button */}
               <button 
                 onClick={handleUsernameSubmit} 
-                className="w-full bg-[#1C303D] hover:bg-[#3367D6] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                disabled={!availability.isAvailable}
+                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-white transition-all duration-200"
               >
                 Access WildMind
               </button>
@@ -904,15 +865,17 @@ export default function SignInForm() {
 
               {/* Error Message */}
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <p className="text-red-400 text-sm">{error}</p>
+                <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
+                  <p className="text-white text-sm leading-relaxed">{error}</p>
                 </div>
               )}
 
-              {/* Success Message */}
-              {success && (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                  <p className="text-green-400 text-sm">{success}</p>
+              {/* Success Message or Redirect Spinner */}
+              {isRedirecting ? (
+                <RedirectSpinner />
+              ) : success && (
+                <div className="rounded-xl p-3 bg-emerald-500/20 border border-emerald-500/25">
+                  <p className="text-white text-sm leading-relaxed">{success}</p>
                 </div>
               )}
 
@@ -977,6 +940,7 @@ export default function SignInForm() {
               {/* Social Login Button */}
               <div>
                 <button
+                  type="button"
                   onClick={handleGoogleLogin}
                   className="w-full bg-[#1a1a1a] text-white font-medium py-2.5 px-4 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
                 >
@@ -1046,8 +1010,21 @@ export default function SignInForm() {
                 </button>
               </div>
 
-              {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-              {success && <p className="text-green-400 text-sm text-center">{success}</p>}
+              {/* Error Message */}
+              {error && (
+                <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
+                  <p className="text-white text-sm text-center leading-relaxed">{error}</p>
+                </div>
+              )}
+              
+              {/* Success Message or Redirect Spinner */}
+              {isRedirecting ? (
+                <RedirectSpinner />
+              ) : success && (
+                <div className="rounded-xl p-3 bg-emerald-500/20 border border-emerald-500/25">
+                  <p className="text-white text-sm text-center leading-relaxed">{success}</p>
+                </div>
+              )}
             </form>
           ) : (
             <>
@@ -1106,7 +1083,12 @@ export default function SignInForm() {
                   </label>
                 </div>
 
-                {error && <p className="text-red-400 text-sm">{error}</p>}
+                {/* Error Message */}
+                {error && (
+                  <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
+                    <p className="text-white text-sm leading-relaxed">{error}</p>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -1131,6 +1113,7 @@ export default function SignInForm() {
               {/* Social Login Button */}
               <div className="mb-6">
                 <button
+                  type="button"
                   onClick={handleGoogleLogin}
                   className="w-full bg-[#1a1a1a] text-white font-medium py-2.5 px-4 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
                 >
@@ -1191,5 +1174,63 @@ export default function SignInForm() {
       )}
     </div>
   )
+}
+
+function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: { status: 'idle'|'checking'|'available'|'taken'|'invalid'|'error'; result: any; error: string | null; onSuggestion: (v: string) => void }) {
+
+  if (status === 'idle') return null
+  if (status === 'invalid') {
+    return (
+      <div className="rounded-xl p-2 bg-amber-500/20 border border-amber-500/25">
+        <p className="text-white text-xs">Use 3-30 chars: a-z 0-9 _ . -</p>
+      </div>
+    )
+  }
+  if (status === 'checking') {
+    return (
+      <div className="rounded-xl p-2 bg-white/5 border border-white/10 inline-flex items-center gap-2">
+        <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white" />
+        <span className="text-white text-xs">Checking…</span>
+      </div>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <div className="rounded-xl p-2 bg-red-500/20 border border-red-500/25">
+        <p className="text-white text-xs">{error || 'Something went wrong'}</p>
+      </div>
+    )
+  }
+  if (status === 'available') {
+    return (
+      <div className="rounded-xl p-2 bg-emerald-500/20 border border-emerald-500/25">
+        <p className="text-white text-xs">Username “{result?.normalized}” is available</p>
+      </div>
+    )
+  }
+  if (status === 'taken') {
+    return (
+      <div className="space-y-2">
+        <div className="rounded-xl p-2 bg-red-500/20 border border-red-500/25">
+          <p className="text-white text-xs">Username is already taken</p>
+        </div>
+        {result?.suggestions && result.suggestions.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {result.suggestions.map((s: string) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onSuggestion(s)}
+                className="px-3 py-1 rounded-full border border-white/15 bg-white/5 text-white text-xs hover:bg-white/10"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+  return null
 }
 

@@ -9,16 +9,16 @@ export default function SignUp() {
   const [imageError, setImageError] = useState(false)
 
   return (
-    <main className="flex h-full bg-background overflow-hidden w-[100%]">
+    <main className="flex min-h-screen bg-background w-[100%]">
       {/* Left Side - Form */}
-      <div className="w-[60%] h-screen relative z-20 bg-[#000000] flex justify-center items-center">
+      <div className="w-[60%] min-h-screen relative z-20 bg-[#000000] flex justify-center items-center">
 
         <SignInForm />
 
       </div>
 
       {/* Right Side - Image */}
-      <div className="flex-1 h-screen relative bg-gray-900 w-[40%] z-10">
+      <div className="flex-1 min-h-screen relative bg-gray-900 w-[40%] z-10">
         <div className="absolute inset-0 rounded-tl-[50px] rounded-bl-[50px] overflow-hidden pointer-events-none">
           {!imageError ? (
             <Image 
