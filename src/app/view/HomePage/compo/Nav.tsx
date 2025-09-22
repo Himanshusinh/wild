@@ -1,13 +1,14 @@
+"use client"
 import React, { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
-import { getImageUrl } from '../routes'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
+import { getApiClient } from '../../../../lib/axiosInstance'
 
 interface UserData {
   uid: string
   email: string
   username: string
   photoURL?: string
+  displayName?: string
   provider: string
   createdAt?: string
   emailVerified?: boolean
@@ -38,6 +39,7 @@ const Nav = () => {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [theme, setTheme] = useState<'dark' | 'light' | 'auto'>('dark')
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -70,31 +72,22 @@ const Nav = () => {
         console.log('Fetching user data with token:', authToken ? 'present' : 'missing')
         console.log('🍪 Current cookies before API call:', document.cookie)
 
-        // Call backend API to get current user data
+        // Call backend API to get current user data using axios
         // Note: The backend expects the token in cookies (app_session), not Authorization header
-        const response = await fetch('http://localhost:5000/api/me', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include' // This ensures cookies are sent
-        })
-        
+        const api = getApiClient()
+        const response = await api.get('/api/auth/me')
+
         console.log('📥 /api/me response status:', response.status)
         console.log('📥 /api/me response headers:', response.headers)
 
-        if (response.ok) {
-          const responseData = await response.json()
-          console.log('Raw user data response:', responseData)
-          
-          // Parse the new response structure
-          const userData = responseData.data?.user || responseData.user || responseData
-          console.log('Parsed user data:', userData)
-          
-          setUserData(userData)
-        } else {
-          console.error('Failed to fetch user data:', response.status)
-        }
+        const responseData = response.data
+        console.log('Raw user data response:', responseData)
+        
+        // Parse the new response structure
+        const userData = responseData.data?.user || responseData.user || responseData
+        console.log('Parsed user data:', userData)
+        
+        setUserData(userData)
       } catch (error) {
         console.error('Error fetching user data:', error)
       } finally {
@@ -114,14 +107,9 @@ const Nav = () => {
       // Clear authentication cookie
       document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
       
-      // Call logout API
-      await fetch('http://localhost:5000/api/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
+      // Call logout API using axios
+      const api = getApiClient()
+      await api.post('/api/auth/logout')
       
       // Redirect to landing page
       window.location.href = '/'
@@ -142,16 +130,29 @@ const Nav = () => {
     const nextIndex = (currentIndex + 1) % themes.length
     setTheme(themes[nextIndex])
   }
+  console.log(userData?.photoURL)
 
   return (
     <div className='fixed top-4 right-4 z-50'>
       <div className='flex items-center gap-3'>
         {/* Group 1: search + credits inside shared background */}
         <div className='flex items-center gap-3 rounded-full backdrop-blur-3xl bg-black/30 shadow-lg border border-white/10 px-3 py-2'>
-          <Image className='cursor-pointer p-1' src={getImageUrl('core', 'search')} alt='search' width={36} height={36} />
+          <svg className='cursor-pointer p-1' width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+            <path d='M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z' stroke='currentColor' strokeWidth='2' className='text-white/70'/>
+            <path d='M21 21l-4.3-4.3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' className='text-white/70'/>
+          </svg>
           <button className='flex items-center rounded-full bg-[#1C303D] text-white text-lg px-6 py-2 gap-2'>
             {loading ? '...' : (userData?.credits || 150)}
-            <Image className='cursor-pointer' src={getImageUrl('core', 'coins')} alt='coins' width={26} height={26} />
+            <svg className='cursor-pointer' width='26' height='26' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+              <circle cx='12' cy='12' r='9' stroke='#F4D03F' strokeWidth='2' fill='url(#coinGrad)'/>
+              <path d='M12 7v10M9 10h6M9 14h6' stroke='#8E6B00' strokeWidth='1.5' strokeLinecap='round'/>
+              <defs>
+                <linearGradient id='coinGrad' x1='12' y1='3' x2='12' y2='21' gradientUnits='userSpaceOnUse'>
+                  <stop stopColor='#F9E79F'/>
+                  <stop offset='1' stopColor='#F4D03F'/>
+                </linearGradient>
+              </defs>
+            </svg>
           </button>
         </div>
 
@@ -162,7 +163,20 @@ const Nav = () => {
               onClick={toggleDropdown}
               className='flex items-center justify-center rounded-full'
             >
-              <Image className='cursor-pointer' src={getImageUrl('core', 'profile')} alt='profile' width={28} height={28} />
+              {(!loading && userData?.photoURL && !avatarFailed) ? (
+                <img
+                  src={userData.photoURL}
+                  alt='profile'
+                  referrerPolicy='no-referrer'
+                  onError={() => setAvatarFailed(true)}
+                  className='w-7 h-7 rounded-full object-cover'
+                />
+              ) : (
+                <svg width='28' height='28' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' className='text-white/80'>
+                  <circle cx='12' cy='8' r='4' stroke='currentColor' strokeWidth='2'/>
+                  <path d='M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8' stroke='currentColor' strokeWidth='2'/>
+                </svg>
+              )}
             </button>
           </div>
 
@@ -172,14 +186,24 @@ const Nav = () => {
               <div className='p-4'>
                 {/* User Info Header */}
                 <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
-                  <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center'>
-                    <span className='text-white font-semibold text-lg'>
-                      {loading ? '...' : (userData?.username?.charAt(0).toUpperCase() || userData?.email?.charAt(0).toUpperCase() || 'U')}
-                    </span>
+                  <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
+                    {(!loading && userData?.photoURL && !avatarFailed) ? (
+                      <img
+                        src={userData.photoURL}
+                        alt='avatar'
+                        referrerPolicy='no-referrer'
+                        onError={() => setAvatarFailed(true)}
+                        className='w-full h-full object-cover'
+                      />
+                    ) : (
+                      <span className='text-white font-semibold text-lg'>
+                        {loading ? '...' : ((userData?.username || userData?.email || 'U').charAt(0).toUpperCase())}
+                      </span>
+                    )}
                   </div>
                   <div className='flex-1'>
                     <div className='text-white font-semibold text-lg'>
-                      {loading ? 'Loading...' : (userData?.username || 'User')}
+                      {loading ? 'Loading...' : ( userData?.username || 'User')}
                     </div>
                     <div className='text-gray-300 text-sm'>
                       {loading ? 'Loading...' : (userData?.email || 'user@example.com')}

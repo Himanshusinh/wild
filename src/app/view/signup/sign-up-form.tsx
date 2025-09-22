@@ -347,7 +347,7 @@ export default function SignInForm() {
           console.log("🔍 Full response data:", JSON.stringify(response.data, null, 2))
           
           // Get custom token from backend response
-          const customToken = response.data.token || response.data.data?.token || response.data.idToken || response.data.data?.idToken
+          const customToken = response.data.customToken || response.data.data?.customToken || response.data.token || response.data.data?.token || response.data.idToken || response.data.data?.idToken
           
           if (customToken) {
             console.log("🔑 Custom token received from backend")
@@ -386,17 +386,18 @@ export default function SignInForm() {
                 
                 // Test /api/me immediately to verify it works
                 try {
-                  console.log("🧪 Testing /api/me immediately...")
-                  const meResponse = await axios.get('http://localhost:5000/api/me', {
+                  console.log("🧪 Testing /api/auth/me immediately...")
+                  const meResponse = await axios.get('http://localhost:5000/api/auth/me', {
                     withCredentials: true
                   })
-                  console.log("✅ /api/me SUCCESS:", meResponse.data)
+                  console.log("✅ /api/auth/me SUCCESS:", meResponse.data)
                 } catch (meError: any) {
-                  console.error("❌ /api/me still fails:", meError.response?.data)
+                  console.error("❌ /api/auth/me still fails:", meError.response?.data)
                 }
                 
-                // Store user data and continue flow
-                localStorage.setItem("user", JSON.stringify(response.data))
+                // Store user profile only; rely on httpOnly cookie for auth
+                const createdUser = response.data?.data?.user || response.data?.user || response.data
+                localStorage.setItem("user", JSON.stringify(createdUser))
                 setShowUsernameForm(true)
       setOtp("")
       setOtpSent(false)
@@ -523,7 +524,7 @@ export default function SignInForm() {
       
       // Step 3: Send to backend
       console.log("📤 Sending to backend /api/auth/google")
-      const response = await axios.post('http://localhost:5000/api/auth/google', {
+          const response = await axios.post('http://localhost:5000/api/auth/google', {
         idToken: idToken
       }, {
         withCredentials: true
@@ -532,7 +533,8 @@ export default function SignInForm() {
       console.log("📥 Backend response:", response.data)
       
       if (response.data?.data) {
-        const { user: userData, needsUsername, idToken: sessionToken, redirect } = response.data.data
+        const { user: userData, needsUsername, customToken: sessionToken, idToken: legacyIdToken, redirect } = response.data.data
+        const sessionTokenResolved = sessionToken || legacyIdToken
         
         
         if (needsUsername) {
@@ -546,7 +548,7 @@ export default function SignInForm() {
           console.log("✅ Existing user, logging in...")
           
           // Convert custom token to ID token and create session
-          const userCredential = await signInWithCustomToken(auth, sessionToken)
+          const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
           
           // Create session
@@ -557,7 +559,7 @@ export default function SignInForm() {
           
           console.log("✅ Session created, redirecting...")
           
-          // Store user data
+          // Store user profile only; rely on httpOnly cookie for auth
           localStorage.setItem("user", JSON.stringify(userData))
           setSuccess("Google sign-in successful! Redirecting...")
           
@@ -635,12 +637,13 @@ export default function SignInForm() {
         console.log("📥 Google username response:", response.data)
         
         if (response.data?.data) {
-          const { idToken: sessionToken, redirect } = response.data.data
+          const { customToken: sessionToken, idToken: legacyIdToken, redirect } = response.data.data
+          const sessionTokenResolved = sessionToken || legacyIdToken
           
           console.log("✅ Username set successfully!")
           
           // Convert custom token and create session
-          const userCredential = await signInWithCustomToken(auth, sessionToken)
+          const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
           
           await axios.post('http://localhost:5000/api/auth/session', 
@@ -734,15 +737,15 @@ export default function SignInForm() {
                  console.log("🍪 Cookies after session creation:", document.cookie)
                  
                  // Test /api/me immediately to verify it works
-                 try {
-                   console.log("🧪 Testing /api/me after username creation...")
-                   const meResponse = await axios.get('http://localhost:5000/api/me', {
-                     withCredentials: true
-                   })
-                   console.log("✅ /api/me SUCCESS after username:", meResponse.data)
-                 } catch (meError: any) {
-                   console.error("❌ /api/me still fails:", meError.response?.data)
-                 }
+                try {
+                  console.log("🧪 Testing /api/auth/me after username creation...")
+                  const meResponse = await axios.get('http://localhost:5000/api/auth/me', {
+                    withCredentials: true
+                  })
+                  console.log("✅ /api/auth/me SUCCESS after username:", meResponse.data)
+                } catch (meError: any) {
+                  console.error("❌ /api/auth/me still fails:", meError.response?.data)
+                }
                  
                  // Store user data in localStorage for Nav component
                  const userData = {

@@ -5,7 +5,7 @@ import Image from "next/image"
 import { User, X, ChevronDown, ChevronUp, LogOut } from "lucide-react"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
-import { doc, getDoc } from "firebase/firestore"
+
 import { APP_ROUTES, NAV_ROUTES, FEATURE_ROUTES, IMAGEGENERATION, BRANDINGKIT, VIDEOGENERATION, MUSICGENERATION } from "@/routes/routes"
 import { getImageUrl } from "@/routes/imageroute"
 import ImageGeneration from "../../core/feature-categories/ImageGeneration"
@@ -51,45 +51,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
     }
   });
 
-  useEffect(() => {
-    // check auth state on mount
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setIsLoggedIn(true)
-        setUserEmail(user.email || "")
-        const docRef = doc(db, "users", user.email || "")
-        const docSnap = await getDoc(docRef)
-        if (docSnap.exists()) {
-          const data = docSnap.data()
-          if (data?.slug) {
-            setUserSlug(data.slug) // get the unique slug
-          }
-        }
-
-        // Get username from localStorage if available
-        const storedUsername = localStorage.getItem("username")
-        if (storedUsername) {
-          setUsername(storedUsername)
-        }
-      } else {
-        const otpEmail = localStorage.getItem("otpUser")
-        if (otpEmail) {
-          setUserEmail(otpEmail)
-          const storedUsername = localStorage.getItem("username")
-          if (storedUsername) {
-            setUsername(storedUsername)
-          }
-        } else {
-          setIsLoggedIn(false)
-          setUserSlug("")
-          setUserEmail("")
-          setUsername("")
-        }
-      }
-    })
-
-    return () => unsubscribe()
-  }, [])
+  
 
   useEffect(() => {
     // Handle clicks outside the menu to close it
