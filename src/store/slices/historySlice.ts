@@ -37,9 +37,18 @@ export const loadHistory = createAsyncThunk(
       if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
       const res = await client.get('/api/generations', { params });
       const result = res.data?.data || { items: [], nextCursor: undefined };
-      
-      // Handle both old array format and new pagination format
-      const items = result.items || [];
+
+      // Normalize dates so UI always has a valid timestamp (ISO)
+      const items = (result.items || []).map((it: any) => {
+        const created = it?.createdAt || it?.updatedAt || it?.timestamp;
+        const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
+        const timestamp = iso || new Date().toISOString();
+        return {
+          ...it,
+          timestamp,
+          createdAt: it?.createdAt || timestamp,
+        };
+      });
       const nextCursor = result.nextCursor;
       return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
@@ -87,9 +96,18 @@ export const loadMoreHistory = createAsyncThunk(
       if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
       const res = await client.get('/api/generations', { params });
       const result = res.data?.data || { items: [], nextCursor: undefined };
-      
-      // Handle both old array format and new pagination format
-      const items = result.items || [];
+
+      // Normalize dates so UI always has a valid timestamp (ISO)
+      const items = (result.items || []).map((it: any) => {
+        const created = it?.createdAt || it?.updatedAt || it?.timestamp;
+        const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
+        const timestamp = iso || new Date().toISOString();
+        return {
+          ...it,
+          timestamp,
+          createdAt: it?.createdAt || timestamp,
+        };
+      });
       const nextCursor = result.nextCursor;
       return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
@@ -238,8 +256,8 @@ const historySlice = createSlice({
         state.loading = false;
         
         // Filter out duplicate entries before adding
-        const newEntries = action.payload.entries.filter(newEntry => 
-          !state.entries.some(existingEntry => existingEntry.id === newEntry.id)
+        const newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
+          !state.entries.some((existingEntry: HistoryEntry) => existingEntry.id === newEntry.id)
         );
         
         state.entries.push(...newEntries);
