@@ -20,7 +20,10 @@ import {
   loadMoreHistory,
   removeHistoryEntry
 } from '@/store/slices/historySlice';
-import { saveHistoryEntry, saveHistoryEntryWithId, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
+// historyService removed; backend persists history
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+const saveHistoryEntryWithId = async (_id: string, _entry: any) => undefined as unknown as string;
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 
 // Import the product-specific components
 import ModelsDropdown from './ModelsDropdown';

@@ -23,19 +23,17 @@ export interface VideoGenerationCallback {
  */
 export async function pollRunwayVideoTaskStatus(taskId: string): Promise<RunwayVideoTaskStatus> {
   try {
-    const response = await fetch(`/api/runway/video/status/${taskId}`);
-    
+    // Backend provides unified status at /api/runway/status/:id
+    const response = await fetch(`/api/runway/status/${taskId}`, { credentials: 'include' });
     if (!response.ok) {
       throw new Error(`Failed to fetch task status: ${response.status}`);
     }
-    
     const data = await response.json();
     console.log('=== RUNWAY VIDEO STATUS POLL ===');
     console.log('Task ID:', taskId);
     console.log('Status:', data.status);
     console.log('Progress:', data.progress);
     console.log('Output:', data.output);
-    
     return data;
   } catch (error) {
     console.error('Error polling Runway video task status:', error);

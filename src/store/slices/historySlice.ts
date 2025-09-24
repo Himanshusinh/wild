@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
-import { getHistoryEntries, getRecentHistory, saveHistoryEntry } from '@/lib/historyService';
+import axiosInstance from '@/lib/axiosInstance';
 import { PaginationParams, PaginationResult } from '@/lib/paginationUtils';
 
 interface HistoryState {
@@ -29,14 +29,19 @@ export const loadHistory = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const result = filters ? await getHistoryEntries(filters, paginationParams) : await getRecentHistory();
+      const client = axiosInstance;
+      const params: any = {};
+      if (filters?.status) params.status = filters.status;
+      if (filters?.generationType) params.generationType = filters.generationType;
+      if (paginationParams?.limit) params.limit = paginationParams.limit;
+      if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
+      const res = await client.get('/api/generations', { params });
+      const result = res.data?.data || { items: [], nextCursor: undefined };
       
       // Handle both old array format and new pagination format
-      if (Array.isArray(result)) {
-        return { entries: result, hasMore: result.length === (paginationParams?.limit || 20) };
-      } else {
-        return { entries: result.data, hasMore: result.hasMore, nextCursor: result.nextCursor };
-      }
+      const items = result.items || [];
+      const nextCursor = result.nextCursor;
+      return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load history');
     }
@@ -75,19 +80,18 @@ export const loadMoreHistory = createAsyncThunk(
       
       // Debug removed to reduce noise
       
-      const result = filters 
-        ? await getHistoryEntries(filters, nextPageParams)
-        : await getHistoryEntries(undefined, nextPageParams);
+      const client = axiosInstance;
+      const params: any = { limit: nextPageParams.limit };
+      if (filters?.status) params.status = filters.status;
+      if (filters?.generationType) params.generationType = filters.generationType;
+      if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
+      const res = await client.get('/api/generations', { params });
+      const result = res.data?.data || { items: [], nextCursor: undefined };
       
       // Handle both old array format and new pagination format
-      if (Array.isArray(result)) {
-        // Debug removed to reduce noise
-        const newEntries = result.slice(currentEntries.length);
-        return { entries: newEntries, hasMore: result.length === currentEntries.length + (paginationParams?.limit || 20) };
-      } else {
-        // Debug removed to reduce noise
-        return { entries: result.data, hasMore: result.hasMore, nextCursor: result.nextCursor };
-      }
+      const items = result.items || [];
+      const nextCursor = result.nextCursor;
+      return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
       // Keep error for visibility
       console.error('❌ Load more history failed:', error);
@@ -102,7 +106,9 @@ const addAndSaveHistoryEntry = createAsyncThunk(
   async (entry: Omit<HistoryEntry, 'id'>, { rejectWithValue }) => {
     try {
       console.log('[historySlice] addAndSaveHistoryEntry', { generationType: entry.generationType, imageCount: entry.imageCount });
-      const id = await saveHistoryEntry(entry);
+      // Start a generation history record in backend for consistency
+      const res = await axiosInstance.post('/api/generations', entry as any);
+      const id = res.data?.data?.historyId || res.data?.data?.item?.id || Date.now().toString();
       const savedEntry: HistoryEntry = { ...entry, id };
       console.log('[historySlice] addAndSaveHistoryEntry success', { id, generationType: entry.generationType });
       return savedEntry;

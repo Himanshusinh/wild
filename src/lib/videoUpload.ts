@@ -9,13 +9,8 @@ async function downloadVideoAsBlob(videoUrl: string): Promise<Blob> {
   console.log(`Downloading video from URL: ${videoUrl}`);
   try {
     // Use our backend API to proxy the download and avoid CORS
-    const response = await fetch('/api/download-video', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ videoUrl }),
-    });
+    // Direct fetch; if CORS blocks, consider letting backend return Firebase URL directly
+    const response = await fetch(videoUrl);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

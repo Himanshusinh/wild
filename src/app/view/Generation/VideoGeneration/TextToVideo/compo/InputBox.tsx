@@ -8,7 +8,10 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
 import { addHistoryEntry, loadMoreHistory, loadHistory, updateHistoryEntry, clearFilters } from "@/store/slices/historySlice";
 import { addNotification } from "@/store/slices/uiSlice";
-import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory, getHistoryEntries } from "@/lib/historyService";
+// historyService removed; backend owns history persistence
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
+const getHistoryEntries = async (_filters?: any, _pag?: any) => ({ data: [] } as any);
 import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo } from "@/lib/videoUpload";
@@ -484,7 +487,7 @@ const InputBox = () => {
       try {
         console.log(`🔄 MiniMax polling attempt ${attempts + 1}/${maxAttempts}`);
         
-        const response = await fetch(`/api/minimax/video/status?task_id=${taskId}`);
+        const response = await fetch(`/api/minimax/video/status?task_id=${taskId}`, { credentials: 'include' });
         if (!response.ok) {
           throw new Error(`Status check failed: ${response.status}`);
         }
@@ -496,7 +499,7 @@ const InputBox = () => {
           console.log('✅ MiniMax video completed, retrieving file...');
           
           // Get the actual download URL
-          const fileResponse = await fetch(`/api/minimax/video/file?file_id=${statusResult.file_id}`);
+          const fileResponse = await fetch(`/api/minimax/video/file?file_id=${statusResult.file_id}`, { credentials: 'include' });
           if (!fileResponse.ok) {
             throw new Error(`File retrieval failed: ${fileResponse.status}`);
           }

@@ -7,7 +7,9 @@ import { setPrompt } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
 import { addHistoryEntry, updateHistoryEntry, loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { HistoryEntry } from '@/types/history';
-import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
+// historyService removed; backend persists history
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MockupImagePreview from '@/app/view/Generation/MockupGeneation/compo/MockupImagePreview';
 
 const InputBox = () => {

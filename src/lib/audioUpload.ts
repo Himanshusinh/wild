@@ -19,14 +19,8 @@ export async function downloadAudioAsBlob(url: string): Promise<Blob> {
   try {
     console.log('🎵 Downloading audio from URL:', url);
     
-    // Use our backend proxy to avoid CORS issues
-    const response = await fetch('/api/download-audio', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ url }),
-    });
+    // Direct fetch; backend should hand back CORS-safe URLs
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`);

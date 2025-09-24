@@ -3,10 +3,12 @@ import uiReducer from './slices/uiSlice';
 import generationReducer from './slices/generationSlice';
 import historyReducer from './slices/historySlice';
 import bookmarksReducer from './slices/bookmarksSlice';
+import authReducer from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
     ui: uiReducer,
+    auth: authReducer,
     generation: generationReducer,
     history: historyReducer,
     bookmarks: bookmarksReducer,

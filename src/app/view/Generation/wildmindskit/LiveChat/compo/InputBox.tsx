@@ -9,7 +9,7 @@ import { HistoryEntry, GeneratedImage, LiveChatMessage } from "@/types/history";
 import Image from "next/image";
 import LiveChatModelsDropdown from "./LiveChatModelsDropdown";
 import { useEffect } from 'react';
-import { saveLiveChatSession, updateLiveChatSession } from '@/lib/historyService';
+// Live chat persistence will be handled by backend history endpoints
 
 const LiveChatInputBox: React.FC = () => {
   const dispatch = useAppDispatch();

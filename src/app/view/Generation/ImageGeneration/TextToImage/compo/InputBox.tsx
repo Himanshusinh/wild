@@ -14,14 +14,18 @@ import {
   setUploadedImages,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
+import { runwayGenerate, bflGenerate, falGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
-  addHistoryEntry,
-  updateHistoryEntry,
   loadMoreHistory,
   loadHistory,
 } from "@/store/slices/historySlice";
-import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
+// Frontend history writes removed; rely on backend history service
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+// No-op action creators to satisfy existing dispatch calls without affecting store
+const updateHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
+const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 
 // Import the new components
 import ModelsDropdown from "./ModelsDropdown";
@@ -270,29 +274,8 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // Create a loading entry immediately to show loading frames
-    const loadingEntry: HistoryEntry = {
-      id: `loading-${Date.now()}`,
-      prompt: prompt,
-      model: selectedModel,
-      generationType: "text-to-image",
-      images: Array.from({ length: imageCount }, (_, index) => ({
-        id: `loading-${index}`,
-        url: "",
-        originalUrl: "",
-      })),
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      imageCount: imageCount,
-      status: "generating",
-      frameSize,
-      style,
-    };
+    // No local history writes; backend tracks history
 
-    // Add loading entry to show frames immediately
-    dispatch(addHistoryEntry(loadingEntry));
-
-    // Declare firebaseHistoryId at function level for error handling
     let firebaseHistoryId: string | undefined;
 
     try {
@@ -335,10 +318,10 @@ const InputBox = () => {
           console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
           
           // Update the local entry with the Firebase ID
-          dispatch(updateHistoryEntry({
-            id: loadingEntry.id,
-            updates: { id: firebaseHistoryId }
-          }));
+          // dispatch(updateHistoryEntry({
+          //   id: loadingEntry.id,
+          //   updates: { id: firebaseHistoryId }
+          // }));
           
           // Don't modify the loadingEntry object - use firebaseHistoryId directly
           console.log('Using Firebase ID for all operations:', firebaseHistoryId);
@@ -386,15 +369,15 @@ const InputBox = () => {
           }
           
           // Remove the loading entry since validation failed
-          dispatch(
-            updateHistoryEntry({
-              id: firebaseHistoryId!,
-              updates: {
-                status: "failed",
-                error: "gen4_image_turbo requires at least one reference image"
-              },
-            })
-          );
+          // dispatch(
+          //   updateHistoryEntry({
+          //     id: firebaseHistoryId!,
+          //     updates: {
+          //       status: "failed",
+          //       error: "gen4_image_turbo requires at least one reference image"
+          //     },
+          //   })
+          // );
           
           dispatch(
             addNotification({
@@ -420,7 +403,7 @@ const InputBox = () => {
 
         // For Runway, support multiple images by creating parallel tasks
         const totalToGenerate = Math.min(imageCount, 4);
-        let currentImages = [...loadingEntry.images];
+        let currentImages = [...uploadedImages]; // Start with uploaded images
         let completedCount = 0;
         let anyFailures = false;
 
@@ -428,18 +411,18 @@ const InputBox = () => {
         console.log('Initial currentImages array:', currentImages);
 
         // Update initial progress
-        dispatch(
-          updateHistoryEntry({
-            id: firebaseHistoryId!,
-            updates: {
-              generationProgress: {
-                current: 0,
-                total: totalToGenerate * 100,
-                status: `Starting Runway generation for ${totalToGenerate} image(s)...`,
-              },
-            },
-          })
-        );
+        // dispatch(
+        //   updateHistoryEntry({
+        //     id: firebaseHistoryId!,
+        //     updates: {
+        //       generationProgress: {
+        //         current: 0,
+        //         total: totalToGenerate * 100,
+        //         status: `Starting Runway generation for ${totalToGenerate} image(s)...`,
+        //       },
+        //     },
+        //   })
+        // );
 
         // Create all generation tasks in parallel
         const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
@@ -458,32 +441,15 @@ const InputBox = () => {
               existingHistoryId: firebaseHistoryId
             });
             
-            const runwayResponse = await fetch('/api/runway', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                promptText: `${prompt} [Style: ${style}]`,
-                model: selectedModel,
-                ratio,
-                generationType: "text-to-image",
-                uploadedImages,
-                style,
-                existingHistoryId: firebaseHistoryId // Pass existing history ID
-              }),
-            });
-
-            console.log(`Runway API response status: ${runwayResponse.status}`);
-            console.log(`Runway API response headers:`, Object.fromEntries(runwayResponse.headers.entries()));
-
-            if (!runwayResponse.ok) {
-              const errorData = await runwayResponse.json();
-              console.error(`Runway API error for image ${index + 1}:`, errorData);
-              throw new Error(errorData.error || 'Runway API request failed');
-            }
-
-            const result = await runwayResponse.json();
+            const result = await dispatch(runwayGenerate({
+              promptText: `${prompt} [Style: ${style}]`,
+              model: selectedModel,
+              ratio,
+              generationType: "text-to-image",
+              uploadedImages,
+              style,
+              existingHistoryId: firebaseHistoryId
+            })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
             // Poll for completion
@@ -495,18 +461,18 @@ const InputBox = () => {
                 const currentProgress = Math.round(progress * 100);
                 const totalProgress = completedCount * 100 + currentProgress;
                 
-                dispatch(
-                  updateHistoryEntry({
-                    id: firebaseHistoryId!,
-                    updates: {
-                      generationProgress: {
-                        current: totalProgress,
-                        total: totalToGenerate * 100,
-                        status: `Runway ${index + 1}/${totalToGenerate}: ${status}`,
-                      },
-                    },
-                  })
-                );
+                // dispatch(
+                //   updateHistoryEntry({
+                //     id: firebaseHistoryId!,
+                //     updates: {
+                //       generationProgress: {
+                //         current: totalProgress,
+                //         total: totalToGenerate * 100,
+                //         status: `Runway ${index + 1}/${totalToGenerate}: ${status}`,
+                //       },
+                //     },
+                //   })
+                // );
                 
                 // Note: Firebase progress updates will happen after image completion
                 // to avoid async issues in the progress callback
@@ -546,20 +512,20 @@ const InputBox = () => {
                 currentImages = newImages;
                 
                 // Update the history entry with the new image and Firebase URL
-                dispatch(
-                  updateHistoryEntry({
-                    id: firebaseHistoryId!,
-                    updates: {
-                      images: currentImages,
-                      frameSize: ratio,
-                      generationProgress: {
-                        current: completedCount * 100,
-                        total: totalToGenerate * 100,
-                        status: `Completed ${completedCount}/${totalToGenerate} images`,
-                      },
-                    },
-                  })
-                );
+                // dispatch(
+                //   updateHistoryEntry({
+                //     id: firebaseHistoryId!,
+                //     updates: {
+                //       images: currentImages,
+                //       frameSize: ratio,
+                //       generationProgress: {
+                //         current: completedCount * 100,
+                //         total: totalToGenerate * 100,
+                //         status: `Completed ${completedCount}/${totalToGenerate} images`,
+                //       },
+                //     },
+                //   })
+                // );
                 
                 // 🔥 CRITICAL FIX: Update Firebase with completed image
                 try {
@@ -579,20 +545,20 @@ const InputBox = () => {
               } catch (uploadError) {
                 console.error(`Failed to upload image ${index + 1} to Firebase:`, uploadError);
                 // Continue with the original URL if upload fails
-                dispatch(
-                  updateHistoryEntry({
-                    id: firebaseHistoryId!,
-                    updates: {
-                      images: currentImages,
-                      frameSize: ratio,
-                      generationProgress: {
-                        current: completedCount * 100,
-                        total: totalToGenerate * 100,
-                        status: `Completed ${completedCount}/${totalToGenerate} images (Firebase upload failed)`,
-                      },
-                    },
-                  })
-                );
+                // dispatch(
+                //   updateHistoryEntry({
+                //     id: firebaseHistoryId!,
+                //     updates: {
+                //       images: currentImages,
+                //       frameSize: ratio,
+                //       generationProgress: {
+                //         current: completedCount * 100,
+                //         total: totalToGenerate * 100,
+                //         status: `Completed ${completedCount}/${totalToGenerate} images (Firebase upload failed)`,
+                //       },
+                //     },
+                //   })
+                // );
               }
             } else {
               console.error(`No image URL returned for image ${index + 1}`);
@@ -631,24 +597,24 @@ const InputBox = () => {
         console.log('Final currentImages:', currentImages);
         console.log('Successful generations:', successfulResults.length);
         
-        dispatch(
-          updateHistoryEntry({
-            id: firebaseHistoryId!,
-            updates: {
-              status: successfulResults.length > 0 ? "completed" : "failed",
-              timestamp: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              imageCount: successfulResults.length,
-              frameSize: ratio,
-              style,
-              generationProgress: {
-                current: successfulResults.length * 100,
-                total: totalToGenerate * 100,
-                status: `Completed ${successfulResults.length}/${totalToGenerate} images`,
-              },
-            },
-          })
-        );
+        // dispatch(
+        //   updateHistoryEntry({
+        //     id: firebaseHistoryId!,
+        //     updates: {
+        //       status: successfulResults.length > 0 ? "completed" : "failed",
+        //       timestamp: new Date().toISOString(),
+        //       createdAt: new Date().toISOString(),
+        //       imageCount: successfulResults.length,
+        //       frameSize: ratio,
+        //       style,
+        //       generationProgress: {
+        //         current: successfulResults.length * 100,
+        //         total: totalToGenerate * 100,
+        //         status: `Completed ${successfulResults.length}/${totalToGenerate} images`,
+        //       },
+        //     },
+        //   })
+        // );
         
         // 🔥 CRITICAL FIX: Update Firebase with final status
         console.log('💾 UPDATING FIREBASE WITH FINAL STATUS...');
@@ -728,6 +694,7 @@ const InputBox = () => {
             })
           );
           clearInputs(); // Clear inputs after successful generation
+          dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
         } else {
           console.log('All Runway generations failed');
         }
@@ -749,20 +716,20 @@ const InputBox = () => {
 
         // MiniMax now returns images directly with Firebase URLs
         // Update the loading entry with completed data
-        dispatch(
-          updateHistoryEntry({
-            id: loadingEntry.id,
-            updates: {
-              status: 'completed',
-              images: result.images,
-              imageCount: result.images.length,
-              frameSize: result.aspect_ratio || frameSize,
-              style,
-              timestamp: new Date().toISOString(),
-              createdAt: new Date().toISOString()
-            },
-          })
-        );
+        // dispatch(
+        //   updateHistoryEntry({
+        //     id: loadingEntry.id,
+        //     updates: {
+        //       status: 'completed',
+        //       images: result.images,
+        //       imageCount: result.images.length,
+        //       frameSize: result.aspect_ratio || frameSize,
+        //       style,
+        //       timestamp: new Date().toISOString(),
+        //       createdAt: new Date().toISOString()
+        //     },
+        //   })
+        // );
 
         // Show success notification
         dispatch(
@@ -772,6 +739,7 @@ const InputBox = () => {
           })
         );
         clearInputs(); // Clear inputs after successful generation
+        dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) using submit → status → result routes
         console.log('🤖 FAL Gemini flow (submit/status/result)');
@@ -790,40 +758,31 @@ const InputBox = () => {
             frameSize,
             style,
           });
-          dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
+          // dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
 
           // Initialize progress
-          dispatch(updateHistoryEntry({
-            id: firebaseHistoryId!,
-            updates: {
-              generationProgress: {
-                current: 0,
-                total: imageCount * 100,
-                status: `Submitting ${imageCount} task(s)...`
-              }
-            }
-          }));
+          // dispatch(updateHistoryEntry({
+          //   id: firebaseHistoryId!,
+          //   updates: {
+          //     generationProgress: {
+          //       current: 0,
+          //       total: imageCount * 100,
+          //       status: `Submitting ${imageCount} task(s)...`
+          //     }
+          //   }
+          // }));
 
           // 2) Submit tasks
-          const submitRes = await fetch('/api/fal/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: `${prompt} [Style: ${style}]`,
-              model: selectedModel,
-              n: imageCount,
-              uploadedImages,
-              output_format: 'jpeg',
-              historyId: firebaseHistoryId,
-            })
-          });
-          if (!submitRes.ok) {
-            const err = await submitRes.json();
-            throw new Error(err?.error || 'Failed to submit FAL tasks');
-          }
-          const { requestIds, isEdit } = await submitRes.json();
+          const { requestIds, isEdit } = await dispatch(falGenerate({
+            prompt: `${prompt} [Style: ${style}]`,
+            model: selectedModel,
+            n: imageCount,
+            uploadedImages,
+            output_format: 'jpeg',
+            historyId: firebaseHistoryId,
+          })).unwrap();
 
-          let currentImages: any[] = [...loadingEntry.images];
+          let currentImages: any[] = [...uploadedImages];
           let completedCount = 0;
 
           // 3) Process each task: poll status then fetch result
@@ -834,20 +793,20 @@ const InputBox = () => {
                 let attempts = 0;
                 while (!done && attempts < 300) { // up to ~5 min at 1s
                   attempts++;
-                  const statusRes = await fetch(`/api/fal/status?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}`);
+                  const statusRes = await fetch(`/api/fal/status?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}`, { credentials: 'include' });
                   if (statusRes.ok) {
                     const st = await statusRes.json();
                     const statusText = st?.status || st?.state || 'IN_PROGRESS';
-                    dispatch(updateHistoryEntry({
-                      id: firebaseHistoryId!,
-                      updates: {
-                        generationProgress: {
-                          current: completedCount * 100,
-                          total: imageCount * 100,
-                          status: `Gemini ${index + 1}/${imageCount}: ${statusText}`
-                        }
-                      }
-                    }));
+                    // dispatch(updateHistoryEntry({
+                    //   id: firebaseHistoryId!,
+                    //   updates: {
+                    //     generationProgress: {
+                    //       current: completedCount * 100,
+                    //       total: imageCount * 100,
+                    //       status: `Gemini ${index + 1}/${imageCount}: ${statusText}`
+                    //     }
+                    //   }
+                    // }));
                     if (statusText === 'COMPLETED' || statusText === 'READY' || st?.done) {
                       done = true;
                       break;
@@ -857,7 +816,7 @@ const InputBox = () => {
                 }
 
                 // Fetch result and persist
-                const resultRes = await fetch(`/api/fal/result?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}&historyId=${encodeURIComponent(firebaseHistoryId!)}`);
+                const resultRes = await fetch(`/api/fal/result?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}&historyId=${encodeURIComponent(firebaseHistoryId!)}`, { credentials: 'include' });
                 if (!resultRes.ok) {
                   const err = await resultRes.json();
                   throw new Error(err?.error || 'Failed to fetch FAL result');
@@ -869,17 +828,17 @@ const InputBox = () => {
                   newImages[index] = imgs[0];
                   currentImages = newImages;
                   completedCount++;
-                  dispatch(updateHistoryEntry({
-                    id: firebaseHistoryId!,
-                    updates: {
-                      images: currentImages,
-                      generationProgress: {
-                        current: completedCount * 100,
-                        total: imageCount * 100,
-                        status: `Completed ${completedCount}/${imageCount}`
-                      }
-                    }
-                  }));
+                  // dispatch(updateHistoryEntry({
+                  //   id: firebaseHistoryId!,
+                  //   updates: {
+                  //     images: currentImages,
+                  //     generationProgress: {
+                  //       current: completedCount * 100,
+                  //       total: imageCount * 100,
+                  //       status: `Completed ${completedCount}/${imageCount}`
+                  //     }
+                  //   }
+                  // }));
                 }
               } catch (err) {
                 dispatch(addNotification({ type: 'error', message: `Gemini image ${index + 1} failed` }));
@@ -888,30 +847,31 @@ const InputBox = () => {
           );
 
           // 4) Finalize
-          dispatch(updateHistoryEntry({
-            id: firebaseHistoryId!,
-            updates: {
-              status: completedCount > 0 ? 'completed' : 'failed',
-              imageCount: completedCount,
-              frameSize,
-              style,
-            }
-          }));
+          // dispatch(updateHistoryEntry({
+          //   id: firebaseHistoryId!,
+          //   updates: {
+          //     status: completedCount > 0 ? 'completed' : 'failed',
+          //     imageCount: completedCount,
+          //     frameSize,
+          //     style,
+          //   }
+          // }));
 
           if (completedCount > 0) {
             dispatch(addNotification({ type: 'success', message: `Google Nano Banana completed (${completedCount}/${imageCount})` }));
             clearInputs();
+            dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
           }
         } catch (error) {
           console.error('FAL (split) generation failed:', error);
-          const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
-          dispatch(updateHistoryEntry({
-            id: entryIdToUpdate,
-            updates: {
-              status: 'failed',
-              error: error instanceof Error ? error.message : 'Failed to generate images with FAL API',
-            }
-          }));
+          // const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
+          // dispatch(updateHistoryEntry({
+          //   id: entryIdToUpdate,
+          //   updates: {
+          //     status: 'failed',
+          //     error: error instanceof Error ? error.message : 'Failed to generate images with FAL API',
+          //   }
+          // }));
           if (firebaseHistoryId) {
             try {
               await updateFirebaseHistory(firebaseHistoryId, {
@@ -954,53 +914,29 @@ const InputBox = () => {
               style,
             });
             // Point the temporary loading entry to the Firebase document id
-            dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
+            // dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
           } catch (e) {
             console.error('Failed to create Firebase history for local model:', e);
           }
 
           // Call local image generation proxy (server uploads to Firebase)
-          const response = await fetch('/api/local/local-image-generation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: `${prompt} [Style: ${style}]`,
-              model: selectedModel,
-              n: imageCount,
-              aspect_ratio: frameSize,
-              historyId: firebaseHistoryId,
-              style,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Local image API failed: ${response.status}`);
-          }
-
-          const result = await response.json();
-
-          // Create the completed entry
-          const completedEntry: HistoryEntry = {
-            id: firebaseHistoryId || loadingEntry.id,
-            prompt: prompt,
+          const result = await dispatch(bflGenerate({
+            prompt: `${prompt} [Style: ${style}]`,
             model: selectedModel,
-            generationType: 'text-to-image',
-            images: result.images,
-            timestamp: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            imageCount: result.images.length,
-            status: 'completed',
+            n: imageCount,
             frameSize,
             style,
-          };
+          })).unwrap();
+
+          // History is persisted by backend; no local completed entry needed
 
           // Update the loading entry with completed data
-          dispatch(
-            updateHistoryEntry({
-              id: firebaseHistoryId || loadingEntry.id,
-              updates: completedEntry,
-            })
-          );
+          // dispatch(
+          //   updateHistoryEntry({
+          //     id: firebaseHistoryId || loadingEntry.id,
+          //     updates: completedEntry,
+          //   })
+          // );
 
           // Server already finalized Firebase when historyId is provided
 
@@ -1014,6 +950,7 @@ const InputBox = () => {
             })
           );
           clearInputs();
+          dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
         } else {
           // Use regular BFL generation
           // Check if this is a flux-pro model that needs width/height conversion
@@ -1047,31 +984,18 @@ const InputBox = () => {
             generateImages(generationPayload)
           ).unwrap();
 
-        // Create the completed entry
-        const completedEntry: HistoryEntry = {
-          id: result.historyId || Date.now().toString(),
-          prompt: prompt,
-          model: selectedModel,
-            generationType: "text-to-image",
-          images: result.images,
-            timestamp: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          imageCount: result.images.length,
-            status: "completed",
-            frameSize: isFluxProModel ? `${generationPayload.width}x${generationPayload.height}` : frameSize,
-            style,
-        };
+        // History is persisted by backend; no local completed entry needed
 
                   // Update the loading entry with completed data
-          dispatch(
-            updateHistoryEntry({
-          id: loadingEntry.id,
-              updates: {
-                ...completedEntry,
-                frameSize: isFluxProModel ? `${generationPayload.width}x${generationPayload.height}` : frameSize,
-              },
-            })
-          );
+          // dispatch(
+          //   updateHistoryEntry({
+          //     id: loadingEntry.id,
+          //     updates: {
+          //       ...completedEntry,
+          //       frameSize: isFluxProModel ? `${generationPayload.width}x${generationPayload.height}` : frameSize,
+          //     },
+          //   })
+          // );
 
         // Show success notification
           dispatch(
@@ -1083,6 +1007,7 @@ const InputBox = () => {
             })
           );
           clearInputs(); // Clear inputs after successful generation
+          dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
         }
       }
     } catch (error) {
@@ -1090,20 +1015,20 @@ const InputBox = () => {
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
-      const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
+      // const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
       
-      dispatch(
-        updateHistoryEntry({
-          id: entryIdToUpdate,
-        updates: {
-            status: "failed",
-            error:
-              error instanceof Error
-                ? error.message
-                : "Failed to generate images",
-          },
-        })
-      );
+      // dispatch(
+      //   updateHistoryEntry({
+      //     id: entryIdToUpdate,
+      //     updates: {
+      //         status: "failed",
+      //         error:
+      //           error instanceof Error
+      //             ? error.message
+      //             : "Failed to generate images",
+      //       },
+      //     })
+      // );
 
       // If we have a Firebase ID, also update it there
       if (firebaseHistoryId) {

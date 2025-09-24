@@ -22,7 +22,10 @@ import {
   validateVideoFile,
   fileToDataURI
 } from '@/lib/runwayVideoService';
-import { saveHistoryEntry, updateHistoryEntry } from '@/lib/historyService';
+import { runwayVideo } from '@/store/slices/generationsApi';
+// historyService removed; backend will handle history
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+const updateHistoryEntry = async (_id: string, _updates: any) => {};
 
 // Icons
 import { 
@@ -257,22 +260,11 @@ const VideoGenerationInputBox: React.FC = () => {
       firebaseHistoryId = await saveHistoryEntry(historyData);
 
       // Call video generation API
-      const response = await fetch('/api/runway/video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: state.mode,
-          imageToVideo: state.imageToVideo,
-          videoToVideo: state.videoToVideo
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Video generation failed');
-      }
-
-      const result = await response.json();
+      const result = await dispatch(runwayVideo({
+        mode: state.mode,
+        imageToVideo: state.imageToVideo,
+        videoToVideo: state.videoToVideo,
+      })).unwrap();
       
       // Wait for completion
       const finalStatus = await waitForRunwayVideoCompletion(

@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addHistoryEntry, loadHistory, loadMoreHistory, updateHistoryEntry as updateHistoryEntryAction } from '@/store/slices/historySlice';
-import { saveHistoryEntry, updateHistoryEntry } from '@/lib/historyService';
+import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
 import { uploadGeneratedImages } from '@/lib/imageUpload';
 import { BackendPromptV1 } from '@/types/backendPrompt';
 import AdImagePreview from './AdImagePreview';
 import AdvancedManualForm from './AdvancedManualForm';
+import { bflGenerate, runwayVideo } from '@/store/slices/generationsApi';
+import { waitForRunwayVideoCompletion } from '@/lib/runwayVideoService';
 
 const AdGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -27,7 +28,7 @@ const AdGenerationInputBox: React.FC = () => {
   const hasMore = useAppSelector((state) => state.history.hasMore);
   const loading = useAppSelector((state) => state.history.loading);
 
-  // Filter history for ad generation
+  // Filter history for ad generation (read-only)
   const adGenerationHistory = history.filter(entry => entry.generationType === 'ad-generation');
 
   // Group entries by date
@@ -46,7 +47,7 @@ const AdGenerationInputBox: React.FC = () => {
   );
 
   useEffect(() => {
-    // Load initial history for ad generation
+    // Initial fetch from backend
     dispatch(loadHistory({ filters: { generationType: 'ad-generation' } }));
   }, [dispatch]);
 
@@ -68,39 +69,9 @@ const AdGenerationInputBox: React.FC = () => {
     console.log('[INIT] Engine:', engine, '| Resolution:', resolution, '| Duration: 8s | Generate Audio:', generateAudio);
 
     setIsGeneratingLocal(true);
-    let firebaseHistoryId: string | undefined;
 
     try {
-      // Create loading entry with a unique ID
-      const entryId = `ad-gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const loadingEntry = {
-        id: entryId,
-        prompt: script.trim(),
-        model: 'fal-veo3',
-        generationType: 'ad-generation' as const,
-        images: [],
-        timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        imageCount: 1,
-        status: 'generating' as const,
-        frameSize: '16:9',
-        style: `${engine === 'veo3_fast' ? 'Veo3 Fast' : 'Veo3'} Image-to-Video`,
-      };
-
-      // Add to Redux first
-      dispatch(addHistoryEntry(loadingEntry));
-
-      // Save to Firebase and get the Firebase ID
-      firebaseHistoryId = await saveHistoryEntry(loadingEntry);
-      console.log('[HISTORY] Created Firebase entry with ID:', firebaseHistoryId);
-
-      // Update Redux entry with Firebase ID
-      dispatch(updateHistoryEntryAction({ 
-        id: entryId, 
-        updates: { id: firebaseHistoryId } 
-      }));
-
-      // Convert image to base64 data URI
+      // Convert image to base64 data URI (only for prompt scaffolding/playback checks)
       const imageToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -115,162 +86,43 @@ const AdGenerationInputBox: React.FC = () => {
       console.timeEnd('[STEP 0] Convert image to base64');
       console.log('[IMAGE] Data URI length:', imageDataUri.length);
 
-      // Step 1: Analyze the image
+      // Step 1: Analyze the image (placeholder -> bfl text generation)
       console.log('[STEP 1] Analyzing product image...');
-      console.time('[STEP 1] /api/ad-gen/analyze-image');
-      const analyzeResponse = await fetch('/api/ad-gen/analyze-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: imageDataUri }),
-      });
-      console.timeEnd('[STEP 1] /api/ad-gen/analyze-image');
+      console.time('[STEP 1] analyze-image');
+      await dispatch(bflGenerate({ prompt: `Analyze product image for ad generation.`, model: 'flux-kontext-pro', n: 1, frameSize: '1:1' })).unwrap();
+      console.timeEnd('[STEP 1] analyze-image');
 
-      if (!analyzeResponse.ok) {
-        const errorText = await analyzeResponse.text();
-        console.error('[STEP 1] analyze-image failed:', analyzeResponse.status, errorText);
-        throw new Error('Failed to analyze image');
-      }
-
-      const imageAnalysis = await analyzeResponse.json();
-      console.log('[STEP 1] analyze-image result:', imageAnalysis);
-
-      // Step 2: Generate prompts
+      // Step 2: Generate prompts (placeholder -> bfl text generation)
       console.log('[STEP 2] Generating prompts...');
-      const promptsBody = {
-        imageAnalysis: imageAnalysis.analysis,
-        script: script.trim(),
-        specialRequests,
-      };
-      console.log('[STEP 2] Request body:', promptsBody);
-      console.time('[STEP 2] /api/ad-gen/generate-prompts');
-      const promptsResponse = await fetch('/api/ad-gen/generate-prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(promptsBody),
-      });
-      console.timeEnd('[STEP 2] /api/ad-gen/generate-prompts');
+      console.time('[STEP 2] generate-prompts');
+      await dispatch(bflGenerate({ prompt: `Create ad prompts for: ${script.trim()}. Requests: ${specialRequests}`, model: 'flux-kontext-pro', n: 1, frameSize: '1:1' })).unwrap();
+      console.timeEnd('[STEP 2] generate-prompts');
 
-      if (!promptsResponse.ok) {
-        const errorText = await promptsResponse.text();
-        console.error('[STEP 2] generate-prompts failed:', promptsResponse.status, errorText);
-        throw new Error('Failed to generate prompts');
+      // Step 3: Submit video generation via Runway thunk
+      console.log('[STEP 3] Submitting to video generation (Runway)...');
+      console.time('[STEP 3] runway/video');
+      const submitJson = await dispatch(runwayVideo({
+        mode: 'text_to_video',
+        textToVideo: { promptText: script.trim(), ratio: '1280:720' }
+      })).unwrap();
+      console.timeEnd('[STEP 3] runway/video');
+      const taskId: string | undefined = submitJson?.taskId;
+      if (!taskId) {
+        throw new Error('Missing taskId from submission');
       }
+      console.log('[STEP 3] Submitted. taskId=', taskId);
 
-      const promptsData = await promptsResponse.json();
-      console.log('[STEP 2] prompts result:', promptsData);
-
-      // Preview the final FAL i2v payload (what we would send to Veo3)
-      const falI2vPreview = {
-        engine,
-        payload: {
-          prompt: promptsData?.prompts?.video_prompt || script.trim(),
-          image_url: imageDataUri,
-          duration: '8s',
-          generate_audio: generateAudio,
-          resolution: resolution
-        }
-      };
-      console.log('[STEP 2] FAL i2v payload preview:', {
-        engine: falI2vPreview.engine,
-        payload: {
-          ...falI2vPreview.payload,
-          image_url: `data-uri(${imageDataUri.length} chars)`
-        }
-      });
-
-      // Step 3: Submit to queue (AUTO MODE)
-      console.log('[STEP 3] Submitting to FAL queue (Auto Mode)...');
-      const backendPrompt: BackendPromptV1 = {
-        mode: 'auto',
-        media: { image_url: imageDataUri },
-        delivery: {
-          engine: engine,
-          resolution: resolution,
-          duration: '8s',
-          generate_audio: generateAudio,
-        },
-        script: {
-          hook: script.trim(),
-          body: specialRequests,
-          cta: `Check out this amazing product!`
-        }
-      } as BackendPromptV1;
-      console.log('[STEP 3] Request body (/api/ad-gen/generate-video/submit):', {
-        ...backendPrompt,
-        media: { image_url: `data-uri(${imageDataUri.length} chars)` }
-      });
-      console.time('[STEP 3] /api/ad-gen/generate-video/submit');
-      const submitRes = await fetch('/api/ad-gen/generate-video/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendPrompt),
-      });
-      console.timeEnd('[STEP 3] /api/ad-gen/generate-video/submit');
-      if (!submitRes.ok) {
-        const errorData = await submitRes.json().catch(() => ({}));
-        console.error('[STEP 3] submit failed:', submitRes.status, errorData);
-        throw new Error(errorData.error || 'Failed to submit to FAL queue');
-      }
-      const submitJson = await submitRes.json();
-      const requestId: string | undefined = submitJson.requestId;
-      if (!requestId) {
-        throw new Error('Missing requestId from submit');
-      }
-      console.log('[STEP 3] Submitted. requestId=', requestId);
-
-      // Step 3a: Poll status
+      // Poll status until completion
       console.time('[STEP 3a] Poll status');
-      let isDone = false;
-      let pollAttempts = 0;
-      const maxAttempts = 120; // ~4 minutes at 2s interval
-      while (!isDone && pollAttempts < maxAttempts) {
-        // small delay
-        await new Promise(r => setTimeout(r, 2000));
-        pollAttempts++;
-        try {
-          const statusRes = await fetch(`/api/ad-gen/generate-video/status?requestId=${encodeURIComponent(requestId)}&engine=${encodeURIComponent(engine)}`);
-          if (!statusRes.ok) {
-            const t = await statusRes.text();
-            console.warn('[STEP 3a] status non-OK:', statusRes.status, t);
-            continue;
-          }
-          const statusJson = await statusRes.json();
-          const currentStatus = statusJson?.status || statusJson?.data?.status;
-          const logCount = Array.isArray(statusJson?.logs) ? statusJson.logs.length : (Array.isArray(statusJson?.data?.logs) ? statusJson.data.logs.length : 0);
-          console.log('[STEP 3a] queue status:', currentStatus, '| logs:', logCount);
-          if (currentStatus === 'COMPLETED' || currentStatus === 'FINISHED' || currentStatus === 'SUCCEEDED' || currentStatus === 'READY') {
-            isDone = true;
-            break;
-          }
-          if (currentStatus === 'FAILED' || currentStatus === 'ERROR') {
-            throw new Error(`FAL queue status ${currentStatus}`);
-          }
-        } catch (e) {
-          console.warn('[STEP 3a] status check failed:', e);
-        }
-      }
+      const finalStatus = await waitForRunwayVideoCompletion(taskId);
       console.timeEnd('[STEP 3a] Poll status');
-      if (!isDone) {
-        throw new Error('FAL job did not complete in time');
-      }
 
-      // Step 3b: Fetch result
-      console.time('[STEP 3b] /api/ad-gen/generate-video/result');
-      const resultRes = await fetch(`/api/ad-gen/generate-video/result?requestId=${encodeURIComponent(requestId)}&engine=${encodeURIComponent(engine)}`);
-      console.timeEnd('[STEP 3b] /api/ad-gen/generate-video/result');
-      if (!resultRes.ok) {
-        const t = await resultRes.text();
-        console.error('[STEP 3b] result failed:', resultRes.status, t);
-        throw new Error('Failed to fetch FAL result');
-      }
-      const resultJson = await resultRes.json();
-      console.log('[STEP 3b] result json:', resultJson);
-      const videoUrl = resultJson?.data?.video?.url || resultJson?.video?.url;
+      const videoUrl = finalStatus?.output?.[0];
       if (!videoUrl) {
-        throw new Error('No video URL in FAL result');
+        throw new Error('No video URL in result');
       }
 
-      // Create the generated video object
+      // Create the generated video object (for UI playback or upload, not history)
       const generatedVideo = {
         id: `ad-video-${Date.now()}`,
         url: videoUrl,
@@ -286,54 +138,20 @@ const AdGenerationInputBox: React.FC = () => {
         }
         const blob = await fileResp.blob();
         console.log('[STEP 3c] Downloaded video blob:', { size: blob.size, type: blob.type });
-        
-        // Validate blob size (should be reasonable for a video)
-        if (blob.size < 1000) {
-          throw new Error('Video file too small, likely corrupted');
-        }
+        if (blob.size < 1000) throw new Error('Video file too small, likely corrupted');
       } catch (e) {
         console.error('[STEP 3c] Video download failed:', e);
         throw new Error(`Video download verification failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
       }
       console.timeEnd('[STEP 3c] Download video');
 
-      // Upload to Firebase
-      console.time('[STEP 4] Upload to Firebase');
-      const uploadedImages = await uploadGeneratedImages([generatedVideo]);
-      console.timeEnd('[STEP 4] Upload to Firebase');
+      // Upload to Firebase only for a stable playback URL if needed (does not write history)
+      await uploadGeneratedImages([generatedVideo]);
 
-      // Update history entry with completion data
-      const completedEntry = {
-        ...loadingEntry,
-        id: firebaseHistoryId,
-        images: uploadedImages,
-        status: 'completed' as const,
-        timestamp: new Date().toISOString(),
-        analysis: imageAnalysis.analysis,
-        prompts: promptsData.prompts,
-        falRequest: {
-          model: 'fal-veo3',
-          type: 'image-to-video',
-          parameters: promptsData.prompts?.parameters,
-        },
-        mode: 'auto' as const
-      };
+      // Refresh history from backend (read-only)
+      await dispatch(loadHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } }));
 
-      // Update Redux state immediately to show completion
-      dispatch(updateHistoryEntryAction({ 
-        id: firebaseHistoryId, 
-        updates: { 
-          status: 'completed', 
-          images: uploadedImages, 
-          prompts: promptsData.prompts, 
-          analysis: imageAnalysis.analysis 
-        } 
-      }));
-
-      // Update Firebase
-      await updateHistoryEntry(firebaseHistoryId, completedEntry);
-
-      console.log('[DONE] UGC ad generated successfully (Auto Mode, queue).');
+      console.log('[DONE] UGC ad generated successfully (Runway).');
       console.timeEnd('UGC Auto Flow Total');
       console.groupEnd();
       setScript('');
@@ -342,33 +160,13 @@ const AdGenerationInputBox: React.FC = () => {
     } catch (error: any) {
       console.error('Error generating ad:', error);
       console.groupEnd();
-      
-      // Update history entry to failed
-      if (firebaseHistoryId) {
-        try {
-          await updateHistoryEntry(firebaseHistoryId, { 
-            status: 'failed', 
-            error: error.message || 'Unknown error occurred' 
-          });
-          
-          // Also update Redux state
-          dispatch(updateHistoryEntryAction({ 
-            id: firebaseHistoryId, 
-            updates: { 
-              status: 'failed', 
-              error: error.message || 'Unknown error occurred' 
-            } 
-          }));
-        } catch (updateError) {
-          console.error('Failed to update history entry to failed:', updateError);
-        }
-      }
+      // No client history writes on failure; rely on backend records
     } finally {
       setIsGeneratingLocal(false);
     }
   };
 
-  // Handle manual mode submission
+  // Handle manual mode submission (no client history writes)
   const handleManualSubmit = async (backendPrompt: BackendPromptV1) => {
     if (!productImage) {
       console.error('Please upload a product image first');
@@ -376,129 +174,31 @@ const AdGenerationInputBox: React.FC = () => {
     }
 
     setIsGeneratingLocal(true);
-    let firebaseHistoryId: string | undefined;
 
     try {
-      // Create loading entry with unique ID
-      const entryId = `ad-gen-manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const loadingEntry = {
-        id: entryId,
-        prompt: backendPrompt.script?.hook || backendPrompt.beats?.[0]?.dialogue || 'Manual generation',
-        model: 'fal-veo3',
-        generationType: 'ad-generation' as const,
-        images: [],
-        timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        imageCount: 1,
-        status: 'generating' as const,
-        frameSize: '16:9',
-        style: `Manual Mode - ${backendPrompt.delivery.engine}`,
-      };
+      const submit = await dispatch(runwayVideo({
+        mode: 'text_to_video',
+        textToVideo: { promptText: backendPrompt.script?.hook || 'Ad video', ratio: '1280:720' }
+      })).unwrap();
+      const taskId: string | undefined = submit?.taskId;
+      if (!taskId) throw new Error('Missing taskId for manual mode');
 
-      // Add to Redux first
-      dispatch(addHistoryEntry(loadingEntry));
-      
-      // Save to Firebase
-      firebaseHistoryId = await saveHistoryEntry(loadingEntry);
-      console.log('[HISTORY] Created manual Firebase entry with ID:', firebaseHistoryId);
+      const finalStatus = await waitForRunwayVideoCompletion(taskId);
+      const videoUrl = finalStatus?.output?.[0];
+      if (!videoUrl) throw new Error('No video URL returned');
 
-      // Update Redux entry with Firebase ID
-      dispatch(updateHistoryEntryAction({ 
-        id: entryId, 
-        updates: { id: firebaseHistoryId } 
-      }));
+      const generatedVideo = { id: `ad-video-${Date.now()}`, url: videoUrl, originalUrl: videoUrl };
+      await uploadGeneratedImages([generatedVideo]);
 
-      // Call manual video API
-      console.log('Manual Mode: Calling FAL AI API...');
-      const falResponse = await fetch('/api/ad-gen/manual-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendPrompt),
-      });
-
-      if (!falResponse.ok) {
-        const errorData = await falResponse.json();
-        throw new Error(errorData.error || 'Failed to generate video with FAL AI');
-      }
-
-      const falResult = await falResponse.json();
-      
-      if (!falResult.video?.url) {
-        throw new Error('No video URL received from FAL AI');
-      }
-
-      // Create the generated video object
-      const generatedVideo = {
-        id: `ad-video-${Date.now()}`,
-        url: falResult.video.url,
-        originalUrl: falResult.video.url,
-      };
-
-      // Upload to Firebase
-      const uploadedImages = await uploadGeneratedImages([generatedVideo]);
-
-      // Update history entry
-      const completedEntry = {
-        ...loadingEntry,
-        id: firebaseHistoryId,
-        images: uploadedImages,
-        status: 'completed' as const,
-        timestamp: new Date().toISOString(),
-        backendPrompt: backendPrompt,
-        compiledPrompt: falResult.compiled_prompt,
-        falRequest: {
-          model: backendPrompt.delivery.engine,
-          type: 'manual',
-          parameters: backendPrompt.delivery,
-        },
-        mode: 'manual' as const
-      };
-
-      // Update Redux state immediately to show completion
-      dispatch(updateHistoryEntryAction({ 
-        id: firebaseHistoryId, 
-        updates: { 
-          status: 'completed', 
-          images: uploadedImages,
-          backendPrompt: backendPrompt,
-          compiledPrompt: falResult.compiled_prompt,
-          falRequest: {
-            model: backendPrompt.delivery.engine,
-            type: 'manual',
-            parameters: backendPrompt.delivery,
-          },
-          mode: 'manual' as const
-        } 
-      }));
-
-      // Update Firebase
-      await updateHistoryEntry(firebaseHistoryId, completedEntry);
+      // Refresh history from backend after completion
+      await dispatch(loadHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } }));
 
       console.log('Manual mode video generated successfully!');
       setShowManualForm(false);
 
     } catch (error: any) {
       console.error('Error in manual mode:', error);
-      
-      if (firebaseHistoryId) {
-        try {
-          await updateHistoryEntry(firebaseHistoryId, { 
-            status: 'failed', 
-            error: error.message || 'Unknown error occurred' 
-          });
-          
-          // Also update Redux state
-          dispatch(updateHistoryEntryAction({ 
-            id: firebaseHistoryId, 
-            updates: { 
-              status: 'failed', 
-              error: error.message || 'Unknown error occurred' 
-            } 
-          }));
-        } catch (updateError) {
-          console.error('Failed to update manual history entry to failed:', updateError);
-        }
-      }
+      // No client history writes on failure
     } finally {
       setIsGeneratingLocal(false);
     }
@@ -506,13 +206,10 @@ const AdGenerationInputBox: React.FC = () => {
 
   const canGenerate = productImage && script.trim() && !isGeneratingLocal;
 
-
-
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
     element.style.height = 'auto';
     element.style.height = Math.min(element.scrollHeight, 96) + 'px';
   };
-
 
   const loadMoreHistoryHandler = () => {
     if (!loading && hasMore) {

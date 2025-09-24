@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { getApiClient } from '@/lib/axiosInstance';
 import { GeneratedImage } from '@/types/history';
 import { GenerationType as SharedGenerationType } from '@/types/generation';
 
@@ -55,33 +56,22 @@ export const generateImages = createAsyncThunk(
       // Enforce app-wide max of 4 images
       const requestedCount = Math.min(imageCount, 4);
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          model,
-          n: requestedCount,
-          frameSize,
-          style,
-          generationType,
-          uploadedImages,
-          clientRequestId,
-          ...(width && height ? { width, height } : {}),
-        }),
+      const api = getApiClient();
+      const { data } = await api.post('/api/bfl/generate', {
+        prompt,
+        model,
+        n: requestedCount,
+        frameSize,
+        style,
+        generationType,
+        uploadedImages,
+        clientRequestId,
+        ...(width && height ? { width, height } : {}),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate images');
-      }
-
+      const payload = data?.data || data;
       return {
-        images: data.images,
-        historyId: data.historyId,
+        images: payload.images,
+        historyId: payload.historyId,
       };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to generate images');
@@ -102,14 +92,10 @@ export const generateLiveChatImage = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await fetch('/api/live-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, model, frameSize, uploadedImages }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Live chat generation failed');
-      return { images: data.images, requestId: data.requestId };
+      const api = getApiClient();
+      const { data } = await api.post('/api/bfl/generate', { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
+      const payload = data?.data || data;
+      return { images: payload.images, requestId: payload.requestId };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Live chat generation failed');
     }
@@ -136,33 +122,19 @@ export const generateRunwayImages = createAsyncThunk(
         throw new Error('gen4_image_turbo requires at least one reference image');
       }
 
-      const response = await fetch('/api/runway', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          promptText: prompt,
-          model,
-          ratio,
-          referenceImages: uploadedImages?.map((img, index) => ({
-            uri: img,
-            tag: `ref_${index + 1}`
-          })) || [],
-          generationType,
-          style
-        }),
+      const api = getApiClient();
+      const { data } = await api.post('/api/runway/generate', {
+        promptText: prompt,
+        model,
+        ratio,
+        uploadedImages,
+        generationType,
+        style
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate images with Runway');
-      }
-
+      const payload = data?.data || data;
       return {
-        taskId: data.taskId,
-        historyId: data.historyId,
+        taskId: payload.taskId,
+        historyId: payload.historyId,
         model,
         ratio,
       };
@@ -230,25 +202,12 @@ export const generateMiniMaxImages = createAsyncThunk(
         ];
       }
 
-      const response = await fetch('/api/minimax', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate images with MiniMax');
-      }
-
-      // The server already processes the MiniMax response and returns the processed data
-      // We just need to return it as is
+      const api = getApiClient();
+      const { data } = await api.post('/api/minimax/generate', payload);
+      const payloadOut = data?.data || data;
       return {
-        images: data.images,
-        historyId: data.historyId,
+        images: payloadOut.images,
+        historyId: payloadOut.historyId,
         model,
         aspect_ratio: aspect_ratio || `${width}:${height}`,
       };

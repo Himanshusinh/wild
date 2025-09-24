@@ -5,17 +5,14 @@ import Image from "next/image";
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
-  setPrompt, 
-  generateImages
-} from '@/store/slices/generationSlice';
+  bflGenerate
+} from '@/store/slices/generationsApi';
+import { setPrompt } from '@/store/slices/generationSlice';
 import { 
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
 import { 
-  addHistoryEntry, 
-  updateHistoryEntry,
-  loadHistory,
   loadMoreHistory
 } from '@/store/slices/historySlice';
 
@@ -46,98 +43,38 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // Create a loading entry immediately to show loading frames
-    const loadingEntry: HistoryEntry = {
-      id: `loading-${Date.now()}`,
-      prompt: `Sticker: ${prompt}`,
-      model: selectedModel,
-      generationType: 'sticker-generation',
-      images: Array.from({ length: imageCount }, (_, index) => ({
-        id: `loading-${index}`,
-        url: '',
-        originalUrl: ''
-      })),
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      imageCount: imageCount,
-      status: 'generating'
-    };
-
-    // Add loading entry to show frames immediately
-    dispatch(addHistoryEntry(loadingEntry));
+    // No local history writes; backend persists history
 
     try {
       let result;
       
       // Check if using local model or Flux model
       if (selectedModel === 'flux-krea') {
-        // Call local sticker generation API
-        const localResponse = await fetch('/api/local/sticker-generation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt,
-            imageCount
-          })
-        });
-
-        if (!localResponse.ok) {
-          throw new Error(`Local API failed: ${localResponse.status}`);
-        }
-
-        result = await localResponse.json();
+        // Route to backend generation via thunk
+        result = await dispatch(bflGenerate({
+          prompt,
+          model: 'flux-kontext-pro',
+          n: imageCount,
+          frameSize: '1:1',
+          style: 'sticker',
+          generationType: 'sticker-generation'
+        })).unwrap();
       } else {
         // Use existing Flux API for Kontext models
         const backendPrompt = `Create a fun and engaging sticker design of: ${prompt}. The sticker should be vibrant, eye-catching, and suitable for social media, messaging apps, or decorative use.`;
-        
-        const response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: backendPrompt,
-            model: selectedModel,
-            n: imageCount,
-            frameSize: '1:1', // Sticker generation typically uses square aspect ratio
-            style: 'sticker',
-            generationType: 'sticker-generation'
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        result = await response.json();
+        result = await dispatch(bflGenerate({
+          prompt: backendPrompt,
+          model: selectedModel,
+          n: imageCount,
+          frameSize: '1:1', // Sticker generation typically uses square aspect ratio
+          style: 'sticker',
+          generationType: 'sticker-generation'
+        })).unwrap();
 
         if (!result.images) {
           throw new Error('No images received from Flux API');
         }
       }
-
-      // Create the completed entry
-      const completedEntry: HistoryEntry = {
-        id: result.historyId || Date.now().toString(),
-        prompt: `Sticker: ${prompt}`,
-        model: selectedModel === 'local-sticker-model' ? 'Flux Kontext [DEV]' : selectedModel,
-        generationType: 'sticker-generation',
-        images: result.images,
-        timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        imageCount: imageCount,
-        status: 'completed',
-        frameSize: '1:1',
-        style: 'sticker'
-      };
-
-      // Update the loading entry with completed data
-      dispatch(updateHistoryEntry({
-        id: loadingEntry.id,
-        updates: completedEntry
-      }));
 
       // Clear the prompt
       dispatch(setPrompt(''));
@@ -151,15 +88,6 @@ const InputBox = () => {
     } catch (error: any) {
       console.error('Sticker generation failed:', error);
       
-      // Update the loading entry to show error
-      dispatch(updateHistoryEntry({
-        id: loadingEntry.id,
-        updates: {
-          status: 'failed',
-          error: error.message || 'Failed to generate stickers'
-        }
-      }));
-
       // Show error notification
       dispatch(addNotification({
         type: 'error',

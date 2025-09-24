@@ -1,3 +1,4 @@
+import { getApiClient } from '@/lib/axiosInstance';
 export interface RunwayTaskStatus {
   id: string;
   status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'THROTTLED';
@@ -11,14 +12,8 @@ export interface RunwayTaskStatus {
 export const pollRunwayTaskStatus = async (taskId: string): Promise<RunwayTaskStatus> => {
   try {
     console.log(`Polling Runway task status for taskId: ${taskId}`);
-    const response = await fetch(`/api/runway/status/${taskId}`);
-    
-    if (!response.ok) {
-      console.error(`Failed to fetch task status: ${response.status}`);
-      throw new Error(`Failed to fetch task status: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const api = getApiClient();
+    const { data } = await api.get(`/api/runway/status/${taskId}`);
     console.log(`Task ${taskId} status:`, data.status, data.progress);
     return data;
   } catch (error) {

@@ -5,7 +5,10 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { addHistoryEntry, updateHistoryEntry, loadHistory, clearFilters, loadMoreHistory } from '@/store/slices/historySlice';
 import { addNotification } from '@/store/slices/uiSlice';
 import { uploadGeneratedAudio } from '@/lib/audioUpload';
-import { saveHistoryEntry, updateHistoryEntry as updateFirebaseHistory } from '@/lib/historyService';
+import { minimaxMusic } from '@/store/slices/generationsApi';
+// historyService removed; backend persists history
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MusicInputBox from './MusicInputBox';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
@@ -158,36 +161,24 @@ const InputBox = () => {
         // Continue with generation even if Firebase save fails
       }
 
-      console.log('🎵 Calling MiniMax music API with payload:', payload);
+      console.log('🎵 Calling MiniMax music API with payload via thunk:', payload);
+      const result = await dispatch(minimaxMusic(payload)).unwrap();
+      console.log('🎵 MiniMax music thunk result:', result);
 
-      const response = await fetch('/api/minimax/music', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      const baseResp = (result as any)?.base_resp;
+      if (baseResp && baseResp.status_code !== 0) {
+        throw new Error(baseResp?.status_msg || 'MiniMax API error');
       }
 
-      const result = await response.json();
-      console.log('🎵 MiniMax API response:', result);
-
-      if (result.base_resp?.status_code !== 0) {
-        throw new Error(result.base_resp?.status_msg || 'MiniMax API error');
-      }
-
-      if (!result.data?.audio) {
+      const audioDataField = (result as any)?.data?.audio || (result as any)?.audio;
+      if (!audioDataField) {
         throw new Error('No audio data received from MiniMax');
       }
 
       // Upload audio to Firebase
-      const audioId = result.trace_id || Date.now().toString();
+      const audioId = (result as any).trace_id || Date.now().toString();
       const audioData = await uploadGeneratedAudio(
-        result.data.audio,
+        audioDataField,
         audioId,
         payload.output_format || 'hex'
       );
