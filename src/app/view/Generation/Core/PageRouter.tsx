@@ -12,11 +12,11 @@ import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithMod
 import AdGenerationInputBox from '../AdGeneration/compo/InputBox';
 import History from './History';
 import Bookmarks from './Bookmarks';
-import { loadHistory, clearHistoryByType } from '@/store/slices/historySlice';
+import { loadHistory, clearHistoryByType, loadMoreHistory } from '@/store/slices/historySlice';
 import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -26,7 +26,7 @@ const generators: GeneratorComponentMap = {
   // Image Generation Features
   'text-to-image': TextToImageInputBox,
   'image-to-image': TextToImageInputBox, // Uses same component as text-to-image (supports image uploads)
-  'logo-generation': LogoGenerationInputBox,
+  'logo': LogoGenerationInputBox,
   'sticker-generation': StickerGenerationInputBox,
   
   // Video Generation Features
@@ -58,6 +58,16 @@ export default function PageRouter() {
   const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef<boolean>(false);
   const effectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Helper: fetch all pages for a given filter
+  const fetchAllHistory = async (filtersObj: any) => {
+    try {
+      let result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: 50 } })).unwrap();
+      while (result && result.hasMore) {
+        result = await (dispatch as any)(loadMoreHistory({ filters: filtersObj, paginationParams: { limit: 50 } })).unwrap();
+      }
+    } catch {}
+  };
+
 
   // Load filtered history for the active generation type
   useEffect(() => {
@@ -121,10 +131,7 @@ export default function PageRouter() {
         // Only load history if we haven't loaded it for this type before
         if (!loadedTypesRef.current.has(currentGenerationType)) {
           isLoadingRef.current = true;
-          dispatch(loadHistory({ 
-            filters: { generationType: historyGenerationType as any }, 
-            paginationParams: { limit: 10 } 
-          }))
+          fetchAllHistory({ generationType: historyGenerationType as any })
             .finally(() => {
               isLoadingRef.current = false;
             });
@@ -132,10 +139,7 @@ export default function PageRouter() {
         } else if (!hasEntriesForType && !isInitialLoadRef.current && !isHistoryLoading) {
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
           isLoadingRef.current = true;
-          dispatch(loadHistory({ 
-            filters: { generationType: historyGenerationType as any }, 
-            paginationParams: { limit: 10 } 
-          }))
+          fetchAllHistory({ generationType: historyGenerationType as any })
             .finally(() => {
               isLoadingRef.current = false;
             });

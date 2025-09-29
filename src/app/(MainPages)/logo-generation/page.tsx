@@ -14,7 +14,7 @@ const LogoGenerationPage = () => {
   // Ensure Redux reflects this route on first mount/navigation
   useEffect(() => {
     dispatch(setCurrentView('generation'));
-    dispatch(setCurrentGenerationType('logo-generation'));
+    dispatch(setCurrentGenerationType('logo'));
   }, [dispatch]);
 
   const onViewChange = (view: ViewType) => {

@@ -5,12 +5,21 @@ export interface GeneratedImage {
   originalUrl: string; // Original URL from BFL API
 }
 
+export interface GeneratedVideo {
+  id: string;
+  url: string;
+  storagePath?: string; // Storage path in Zata
+  firebaseUrl?: string; // URL after uploading to Firebase Storage
+  originalUrl?: string; // Original URL from provider API
+}
+
 export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
   images: GeneratedImage[];
+  videos?: GeneratedVideo[];
   timestamp: string; // ISO string for Redux serializability
   createdAt: string; // ISO string for Firestore
   imageCount: number;
@@ -41,8 +50,9 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
   images: GeneratedImage[];
+  videos?: GeneratedVideo[];
   timestamp: any; // Firestore Timestamp
   createdAt: string;
   imageCount: number;
@@ -71,7 +81,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo-generation' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text_to_image' | 'image_to_video' | 'video_to_video';
+  generationType?: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text_to_image' | 'image_to_video' | 'video_to_video';
   dateRange?: {
     start: Date;
     end: Date;

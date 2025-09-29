@@ -14,7 +14,7 @@ import {
   setUploadedImages,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
-import { runwayGenerate, bflGenerate, falGenerate } from "@/store/slices/generationsApi";
+import { runwayGenerate, runwayStatus, bflGenerate, falGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
@@ -70,6 +70,27 @@ const InputBox = () => {
     };
 
     return ratioMap[frameSize] || "1024:1024"; // Default to square if no match
+  };
+
+  // Runway model-specific allowed ratios (kept in sync with backend validator)
+  const RUNWAY_RATIOS_GEN4 = new Set([
+    "1920:1080","1080:1920","1024:1024","1360:768","1080:1080","1168:880",
+    "1440:1080","1080:1440","1808:768","2112:912","1280:720","720:1280",
+    "720:720","960:720","720:960","1680:720"
+  ]);
+  const RUNWAY_RATIOS_GEMINI = new Set([
+    "1344:768","768:1344","1024:1024","1184:864","864:1184","1536:672"
+  ]);
+
+  const coerceRunwayRatio = (ratio: string, model: string): string => {
+    // Ensure aspect in [0.5, 2] and membership in allowed set for model
+    const [wStr, hStr] = ratio.split(":");
+    const w = Number(wStr), h = Number(hStr);
+    const aspectOk = w > 0 && h > 0 && w / h >= 0.5 && w / h <= 2;
+    const allowed = model === "gemini_2.5_flash" ? RUNWAY_RATIOS_GEMINI : RUNWAY_RATIOS_GEN4;
+    if (aspectOk && allowed.has(ratio)) return ratio;
+    // Fallback to safe square
+    return "1024:1024";
   };
 
   // Helper function to convert frameSize to flux-pro-1.1 dimensions
@@ -129,6 +150,16 @@ const InputBox = () => {
       a.click();
       document.body.removeChild(a);
     }
+  };
+
+  // Fetch all history pages for text-to-image
+  const refreshAllHistory = async () => {
+    try {
+      let result: any = await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
+      while (result && result.hasMore) {
+        result = await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
+      }
+    } catch {}
   };
 
   // Redux state
@@ -398,7 +429,8 @@ const InputBox = () => {
         }
 
         // Convert frameSize to Runway ratio format
-        const ratio = convertFrameSizeToRunwayRatio(frameSize);
+        let ratio = convertFrameSizeToRunwayRatio(frameSize);
+        ratio = coerceRunwayRatio(ratio, selectedModel);
         console.log('Converted frame size to Runway ratio:', ratio);
 
         // For Runway, support multiple images by creating parallel tasks
@@ -452,37 +484,23 @@ const InputBox = () => {
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
-            // Poll for completion
-            const finalStatus = await waitForRunwayCompletion(
-              result.taskId,
-              (progress, status) => {
-                console.log(`Runway progress for image ${index + 1}:`, progress, status);
-                // Update progress for this specific image
-                const currentProgress = Math.round(progress * 100);
-                const totalProgress = completedCount * 100 + currentProgress;
-                
-                // dispatch(
-                //   updateHistoryEntry({
-                //     id: firebaseHistoryId!,
-                //     updates: {
-                //       generationProgress: {
-                //         current: totalProgress,
-                //         total: totalToGenerate * 100,
-                //         status: `Runway ${index + 1}/${totalToGenerate}: ${status}`,
-                //       },
-                //     },
-                //   })
-                // );
-                
-                // Note: Firebase progress updates will happen after image completion
-                // to avoid async issues in the progress callback
+            // Poll via backend status route; stop immediately when completed
+            let imageUrl: string | undefined;
+            for (let attempts = 0; attempts < 360; attempts++) {
+              const status = await dispatch(runwayStatus(result.taskId)).unwrap();
+              // Capture backend historyId if frontend one wasn't created
+              if (!firebaseHistoryId && status?.historyId) {
+                firebaseHistoryId = status.historyId;
               }
-            );
-
-            console.log(`Runway completion for image ${index + 1}:`, finalStatus);
+              if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
+                imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
+                break;
+              }
+              await new Promise(res => setTimeout(res, 1000));
+            }
+            if (!imageUrl) throw new Error('Runway generation did not complete in time');
 
             // Process the completed image
-            const imageUrl = finalStatus.output && finalStatus.output.length > 0 ? finalStatus.output[0] : '';
             if (imageUrl) {
               console.log(`Image ${index + 1} completed with URL:`, imageUrl);
               
@@ -539,6 +557,7 @@ const InputBox = () => {
                     },
                   });
                   console.log(`✅ Firebase updated with image ${index + 1}`);
+                  await refreshAllHistory();
                 } catch (firebaseError) {
                   console.error(`❌ Failed to update Firebase with image ${index + 1}:`, firebaseError);
                 }
@@ -693,8 +712,8 @@ const InputBox = () => {
               message: `Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`,
             })
           );
-          clearInputs(); // Clear inputs after successful generation
-          dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
+          clearInputs();
+          await refreshAllHistory();
         } else {
           console.log('All Runway generations failed');
         }
@@ -738,148 +757,25 @@ const InputBox = () => {
             message: `MiniMax generation completed! Generated ${result.images.length} image(s)`,
           })
         );
-        clearInputs(); // Clear inputs after successful generation
-        dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
+        clearInputs();
+        await refreshAllHistory();
       } else if (selectedModel === 'gemini-25-flash-image') {
-        // FAL Gemini (Nano Banana) using submit → status → result routes
-        console.log('🤖 FAL Gemini flow (submit/status/result)');
-
+        // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
-          // 1) Ensure Firebase history entry
-          firebaseHistoryId = await saveHistoryEntry({
-            prompt: prompt,
-            model: selectedModel,
-            generationType: 'text-to-image',
-            images: [],
-            timestamp: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            imageCount,
-            status: 'generating',
-            frameSize,
-            style,
-          });
-          // dispatch(updateHistoryEntry({ id: loadingEntry.id, updates: { id: firebaseHistoryId } }));
-
-          // Initialize progress
-          // dispatch(updateHistoryEntry({
-          //   id: firebaseHistoryId!,
-          //   updates: {
-          //     generationProgress: {
-          //       current: 0,
-          //       total: imageCount * 100,
-          //       status: `Submitting ${imageCount} task(s)...`
-          //     }
-          //   }
-          // }));
-
-          // 2) Submit tasks
-          const { requestIds, isEdit } = await dispatch(falGenerate({
+          const result = await dispatch(falGenerate({
             prompt: `${prompt} [Style: ${style}]`,
             model: selectedModel,
             n: imageCount,
             uploadedImages,
             output_format: 'jpeg',
-            historyId: firebaseHistoryId,
+            generationType: 'text-to-image',
           })).unwrap();
 
-          let currentImages: any[] = [...uploadedImages];
-          let completedCount = 0;
-
-          // 3) Process each task: poll status then fetch result
-          await Promise.all(
-            requestIds.map(async (reqId: string, index: number) => {
-              try {
-                let done = false;
-                let attempts = 0;
-                while (!done && attempts < 300) { // up to ~5 min at 1s
-                  attempts++;
-                  const statusRes = await fetch(`/api/fal/status?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}`, { credentials: 'include' });
-                  if (statusRes.ok) {
-                    const st = await statusRes.json();
-                    const statusText = st?.status || st?.state || 'IN_PROGRESS';
-                    // dispatch(updateHistoryEntry({
-                    //   id: firebaseHistoryId!,
-                    //   updates: {
-                    //     generationProgress: {
-                    //       current: completedCount * 100,
-                    //       total: imageCount * 100,
-                    //       status: `Gemini ${index + 1}/${imageCount}: ${statusText}`
-                    //     }
-                    //   }
-                    // }));
-                    if (statusText === 'COMPLETED' || statusText === 'READY' || st?.done) {
-                      done = true;
-                      break;
-                    }
-                  }
-                  await new Promise(res => setTimeout(res, 1000));
-                }
-
-                // Fetch result and persist
-                const resultRes = await fetch(`/api/fal/result?requestId=${encodeURIComponent(reqId)}&isEdit=${isEdit ? 'true' : 'false'}&historyId=${encodeURIComponent(firebaseHistoryId!)}`, { credentials: 'include' });
-                if (!resultRes.ok) {
-                  const err = await resultRes.json();
-                  throw new Error(err?.error || 'Failed to fetch FAL result');
-                }
-                const resultJson = await resultRes.json();
-                const imgs = resultJson.images || [];
-                if (imgs.length > 0) {
-                  const newImages = [...currentImages];
-                  newImages[index] = imgs[0];
-                  currentImages = newImages;
-                  completedCount++;
-                  // dispatch(updateHistoryEntry({
-                  //   id: firebaseHistoryId!,
-                  //   updates: {
-                  //     images: currentImages,
-                  //     generationProgress: {
-                  //       current: completedCount * 100,
-                  //       total: imageCount * 100,
-                  //       status: `Completed ${completedCount}/${imageCount}`
-                  //     }
-                  //   }
-                  // }));
-                }
-              } catch (err) {
-                dispatch(addNotification({ type: 'error', message: `Gemini image ${index + 1} failed` }));
-              }
-            })
-          );
-
-          // 4) Finalize
-          // dispatch(updateHistoryEntry({
-          //   id: firebaseHistoryId!,
-          //   updates: {
-          //     status: completedCount > 0 ? 'completed' : 'failed',
-          //     imageCount: completedCount,
-          //     frameSize,
-          //     style,
-          //   }
-          // }));
-
-          if (completedCount > 0) {
-            dispatch(addNotification({ type: 'success', message: `Google Nano Banana completed (${completedCount}/${imageCount})` }));
-            clearInputs();
-            dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
-          }
+          dispatch(addNotification({ type: 'success', message: `Generated ${result.images?.length || 1} image(s) successfully!` }));
+          clearInputs();
+          await refreshAllHistory();
         } catch (error) {
-          console.error('FAL (split) generation failed:', error);
-          // const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
-          // dispatch(updateHistoryEntry({
-          //   id: entryIdToUpdate,
-          //   updates: {
-          //     status: 'failed',
-          //     error: error instanceof Error ? error.message : 'Failed to generate images with FAL API',
-          //   }
-          // }));
-          if (firebaseHistoryId) {
-            try {
-              await updateFirebaseHistory(firebaseHistoryId, {
-                status: 'failed',
-                error: error instanceof Error ? error.message : 'Failed to generate images with FAL API',
-              });
-            } catch {}
-          }
+          console.error('FAL generate failed:', error);
           dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana' }));
           return;
         }
@@ -950,7 +846,7 @@ const InputBox = () => {
             })
           );
           clearInputs();
-          dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
+          await refreshAllHistory();
         } else {
           // Use regular BFL generation
           // Check if this is a flux-pro model that needs width/height conversion
@@ -968,13 +864,11 @@ const InputBox = () => {
             uploadedImages,
           };
 
-          // For flux-pro-1.1 models, convert frameSize to width/height dimensions
+          // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
           if (isFluxProModel) {
             const dimensions = convertFrameSizeToFluxProDimensions(frameSize);
             generationPayload.width = dimensions.width;
             generationPayload.height = dimensions.height;
-            // Remove frameSize as it's not needed for these models
-            delete generationPayload.frameSize;
             console.log(`Flux Pro model detected: ${selectedModel}, using dimensions:`, dimensions);
             console.log(`Original frameSize: ${frameSize}, converted to: ${dimensions.width}x${dimensions.height}`);
             console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
@@ -1006,8 +900,8 @@ const InputBox = () => {
               } successfully!`,
             })
           );
-          clearInputs(); // Clear inputs after successful generation
-          dispatch(loadHistory({ filters: { generationType: 'text-to-image' } })); // Refresh history
+          clearInputs();
+          await refreshAllHistory();
         }
       }
     } catch (error) {
@@ -1074,11 +968,11 @@ const InputBox = () => {
   return (
     <>
       {historyEntries.length > 0 && (
-        <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
-          <div className="p-6">
+        <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-50">
+          <div className="py-6 pl-6   "> 
             {/* History Header - Fixed during scroll */}
-            <div className="sticky top-0 z-10 mb-6 bg-black/80 backdrop-blur-sm py-4 -mx-6 px-6 border-b border-white/10">
-              <h2 className="text-xl font-semibold text-white">History</h2>
+            <div className="fixed top-0   z-30 mb-6  py-2 my-2  pl-4 w-24 rounded-lg ">
+              <h2 className="text-xl font-semibold text-white  ">History</h2>
             </div>
 
             {/* Main Loader */}
@@ -1092,7 +986,7 @@ const InputBox = () => {
             )}
 
             {/* History Entries - Grouped by Date */}
-            <div className="space-y-8">
+            <div className=" space-y-8">
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}

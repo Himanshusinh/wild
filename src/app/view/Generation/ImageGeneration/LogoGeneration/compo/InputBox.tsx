@@ -52,7 +52,7 @@ const InputBox = () => {
       id: `loading-${Date.now()}`,
       prompt: `Logo: ${prompt}`,
       model: selectedModel,
-      generationType: 'logo-generation',
+      generationType: 'logo',
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
         url: '',
@@ -102,7 +102,7 @@ const InputBox = () => {
         id: result.historyId || Date.now().toString(),
         prompt: `Logo: ${prompt}`,
         model: selectedModel,
-        generationType: 'logo-generation',
+        generationType: 'logo',
         images: result.images,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
@@ -162,7 +162,7 @@ const InputBox = () => {
     const handleScroll = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
         if (hasMoreHistory && !historyLoading) {
-          dispatch(loadMoreHistory({ filters: { generationType: 'logo-generation' }, paginationParams: { limit: 10 } }));
+          dispatch(loadMoreHistory({ filters: { generationType: 'logo' }, paginationParams: { limit: 10 } }));
         }
       }
     };
@@ -172,7 +172,7 @@ const InputBox = () => {
   }, [dispatch, hasMoreHistory, historyLoading]);
 
   const logoHistoryEntries = historyEntries
-    .filter((entry: HistoryEntry) => entry.generationType === 'logo-generation')
+    .filter((entry: HistoryEntry) => entry.generationType === 'logo')
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Group entries by date

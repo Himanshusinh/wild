@@ -86,7 +86,7 @@ export default function WorkflowCarousel({
         >
           {items.map((item) => (
             <section key={item.id} className="min-w-full pt-4 px-6 md:pl-0 md:pr-12 md:pt-6 md:pb-12 lg:pl-0 lg:pr-12 lg:pt-6 lg:pb-12">
-              <article className="relative rounded-3xl ring-white/10 bg-[#1A1A22]/70 px-4 md:pl-8 md:pr-[600px] lg:pr-[680px] py-12 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-8 items-stretch">
+              <article className="relative rounded-3xl ring-white/10 bg-white/5 px-4 md:pl-8 md:pr-[600px] lg:pr-[680px] py-12 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-8 items-stretch">
                 {/* Left: text */}
                 <div className="flex-1 -mt-4 md:-mt-8 lg:-mt-16">
                   <h3 className="text-white text-4xl md:text-[35px] font-medium mb-6 mt-4">
@@ -130,7 +130,7 @@ export default function WorkflowCarousel({
         </div>
 
         {/* Right-edge mask to hide peeking outline of next card */}
-        <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-2 md:w-3 bg-[#0b0f17]" />
+        <div className="pointer-events-none absolute  top-0 right-0 bottom-0 w-2 md:w-3 bg-white/5" />
  
         {/* Arrows */}
         <div className="absolute bottom-18 right-6 md:bottom-14 md:right-16 z-10 flex items-center justify-end gap-6">

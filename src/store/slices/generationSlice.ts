@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
+import { requestCreditsRefresh } from '@/lib/creditsBus';
 import { GeneratedImage } from '@/types/history';
 import { GenerationType as SharedGenerationType } from '@/types/generation';
 
@@ -69,6 +70,8 @@ export const generateImages = createAsyncThunk(
         ...(width && height ? { width, height } : {}),
       });
       const payload = data?.data || data;
+      // Trigger credits refresh after successful charge
+      requestCreditsRefresh();
       return {
         images: payload.images,
         historyId: payload.historyId,
@@ -95,6 +98,7 @@ export const generateLiveChatImage = createAsyncThunk(
       const api = getApiClient();
       const { data } = await api.post('/api/bfl/generate', { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
       const payload = data?.data || data;
+      requestCreditsRefresh();
       return { images: payload.images, requestId: payload.requestId };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Live chat generation failed');
@@ -132,6 +136,8 @@ export const generateRunwayImages = createAsyncThunk(
         style
       });
       const payload = data?.data || data;
+      // Runway charges may occur async, but backend computes cost on start
+      requestCreditsRefresh();
       return {
         taskId: payload.taskId,
         historyId: payload.historyId,
@@ -205,6 +211,7 @@ export const generateMiniMaxImages = createAsyncThunk(
       const api = getApiClient();
       const { data } = await api.post('/api/minimax/generate', payload);
       const payloadOut = data?.data || data;
+      requestCreditsRefresh();
       return {
         images: payloadOut.images,
         historyId: payloadOut.historyId,

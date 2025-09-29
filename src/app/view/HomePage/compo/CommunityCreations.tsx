@@ -103,10 +103,10 @@ function Chip({
       onClick={onClick}
       className={[
         "inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all",
-        "border ring-1",
+        "border border-white/10",
         active
-          ? "bg-[#1677FF] border-[#1677FF] text-white shadow-sm"
-          : "bg-gradient-to-b from-[#1A1A1A]/80 to-[#111111]/80 border-white/10 text-white/80 hover:text-white hover:bg-white/10",
+          ? "bg-[#2D6CFF] border-[#2D6CFF] text-white shadow-sm"
+          : "bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10",
       ].join(" ")}
     >
       {leftIcon && <span className="text-white/90">{leftIcon}</span>}
@@ -121,7 +121,7 @@ function Card({ item }: { item: Creation }) {
   const ratio = item.width && item.height ? item.height / item.width : 4 / 5;
   return (
     <div className="break-inside-avoid mb-5">
-      <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black/20 group">
+      <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
         <div style={{ aspectRatio: `${1 / ratio}` }}>
           <Image
             src={item.src}

@@ -43,6 +43,19 @@ export const runwayGenerate = createAsyncThunk(
   }
 );
 
+export const runwayStatus = createAsyncThunk(
+  'generations/runwayStatus',
+  async (taskId: string, { rejectWithValue }) => {
+    try {
+      const api = getApiClient();
+      const res = await api.get(`/api/runway/status/${encodeURIComponent(taskId)}`);
+      return res.data?.data || res.data;
+    } catch (e: any) {
+      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway status failed');
+    }
+  }
+);
+
 export const runwayVideo = createAsyncThunk(
   'generations/runwayVideo',
   async (body: any, { rejectWithValue }) => {

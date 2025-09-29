@@ -75,7 +75,7 @@ const Recentcreation: React.FC = () => {
         {filtered.map((item) => (
           <article
             key={item.id}
-            className="rounded-2xl bg-[#151a20]/80 ring-1 ring-white/10 hover:ring-white/20 transition p-4 flex flex-col gap-3"
+            className="rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-4 flex flex-col gap-3"
           >
             <div className="relative h-[250px] rounded-xl overflow-hidden">
               <Image

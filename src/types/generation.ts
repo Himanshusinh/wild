@@ -2,7 +2,7 @@ export type ViewType = 'landing' | 'home' | 'generation' | 'history' | 'bookmark
 
 export type GenerationType =
   | 'text-to-image'
-  | 'logo-generation'
+  | 'logo'
   | 'sticker-generation'
   | 'text-to-video'
   | 'text-to-music'

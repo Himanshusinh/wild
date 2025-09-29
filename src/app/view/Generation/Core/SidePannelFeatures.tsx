@@ -76,7 +76,7 @@ const SidePannelFeatures = ({
 
   return (
     <div 
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 py-4 px-3 group transition-all text-white duration-200 bg-[#1C303D]/50 backdrop-blur-md w-[68px] hover:w-60 z-40 border border-white/10 shadow-2xl'
+      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 py-4 px-3 group transition-all text-white duration-200 bg-white/10 backdrop-blur-md w-[68px] hover:w-60 z-40 border border-white/10 shadow-2xl'
       style={{
         borderTopLeftRadius: '16px',
         borderBottomLeftRadius: '16px',
@@ -112,7 +112,7 @@ const SidePannelFeatures = ({
         <div>
             <div
                 onClick={() => router.push(APP_ROUTES.HOME)}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item`}
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
             >
                 <Image src="/icons/Homewhite.svg" alt="Home" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
@@ -122,7 +122,7 @@ const SidePannelFeatures = ({
         <div className="relative">
             <div
                 onClick={handleImageGenerationClick}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   (pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
                 }`}
             >
@@ -134,7 +134,7 @@ const SidePannelFeatures = ({
         <div>
             <div 
                 onClick={() => handleGenerationTypeChange('text-to-video')}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   (pathname?.includes('/text-to-video')) ? 'bg-white/10' : ''
                 }`}
             >
@@ -146,7 +146,7 @@ const SidePannelFeatures = ({
         <div>
             <div 
                 onClick={() => handleGenerationTypeChange('text-to-music')}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   (pathname?.includes('/text-to-music')) ? 'bg-white/10' : ''
                 }`}
             >
@@ -159,7 +159,7 @@ const SidePannelFeatures = ({
         <div>
             <div 
                 onClick={onWildmindSkitClick}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   (pathname?.includes('/ad-generation')) ? 'bg-white/10' : ''
                 }`}
             >
@@ -173,7 +173,7 @@ const SidePannelFeatures = ({
             <div
                 ref={brandingRef}
                 onClick={toggleBrandingDropdown}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   isBrandingActive ? 'bg-white/10' : ''
                 }`}
             >
@@ -192,14 +192,14 @@ const SidePannelFeatures = ({
             {showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
-                    className='absolute left-full top-0 ml-2 bg-[#1C303D]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-3xl p-2 space-y-1 z-[80] min-w-[200px]'
+                    className='absolute left-full top-0 ml-4 bg-white/20 backdrop-blur-md border border-white/10 rounded-xl shadow-3xl p-2 space-y-1 z-100 min-w-[200px]'
                 >
-                    <div className='px-3 py-2 border-b border-white/10'>
-                        <span className='text-xs text-white/60 uppercase tracking-wider'>Branding Kit</span>
+                    <div className='px-3 py-2  border-white/10 backdrop-blur-md rounded-xl'>
+                        <span className='text-xs text-white/90 uppercase tracking-wider backdrop-blur-md '>Branding Kit</span>
                     </div>
                     
                     <div
-                        onClick={() => handleGenerationTypeChange('logo-generation')}
+                        onClick={() => handleGenerationTypeChange('logo')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded-xl ${
                             currentGenerationType === 'logo-generation' ? 'bg-white/15' : ''
                         }`}
@@ -242,7 +242,7 @@ const SidePannelFeatures = ({
         </div>
         
         <div>
-            <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item'>
+            <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
                 <Image src="/icons/templateswhite.svg" alt="Templates" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Templates</span>
             </div>
@@ -251,7 +251,7 @@ const SidePannelFeatures = ({
         <div>
             <div 
                 onClick={() => router.push(NAV_ROUTES.PRICING)}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   (pathname?.includes('/pricing')) ? 'bg-white/10' : ''
                 }`}
             >
@@ -271,7 +271,7 @@ const SidePannelFeatures = ({
                     console.error('Error in history click handler:', error);
                   }
                 }}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${ (pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : '' }`}
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${ (pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : '' }`}
             >
                 <Image src="/icons/historywhite.svg" alt="History" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
@@ -289,7 +289,7 @@ const SidePannelFeatures = ({
                     console.error('Error in bookmarks click handler:', error);
                   }
                 }}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${ (pathname === '/bookmarks' || pathname?.startsWith('/bookmarks')) ? 'bg-white/10' : '' }`}
+                  className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${ (pathname === '/bookmarks' || pathname?.startsWith('/bookmarks')) ? 'bg-white/10' : '' }`}
             >
                 <Image
                     src="/icons/Bookmarkwhite.svg"

@@ -31,25 +31,29 @@ const History = () => {
 
   // Debug logs removed for cleaner console
 
-     // Load initial history on mount and when view mode changes
-   useEffect(() => {
-     if (viewMode === 'global') {
-       // Load all history
-       dispatch(setFilters({}));
-       dispatch(loadHistory({ filters: {}, paginationParams: { limit: 10 } }));
-     } else {
-       // Load feature-specific history
-       dispatch(setFilters({ generationType: currentGenerationType }));
-       dispatch(loadHistory({ 
-         filters: { generationType: currentGenerationType }, 
-         paginationParams: { limit: 10 } 
-       }));
-     }
-     
-     // Reset pagination state
-     setPage(1);
-     setHasMore(true);
-   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
+  // Helper: fetch all pages until backend has no more
+  const fetchAllHistory = async (filtersObj: any) => {
+    try {
+      let result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: 50 } })).unwrap();
+      while (result && result.hasMore) {
+        result = await (dispatch as any)(loadMoreHistory({ filters: filtersObj, paginationParams: { limit: 50 } })).unwrap();
+      }
+    } catch {}
+  };
+
+  // Load initial history on mount and when view mode changes
+  useEffect(() => {
+    if (viewMode === 'global') {
+      dispatch(setFilters({}));
+      fetchAllHistory({});
+    } else {
+      const f = { generationType: currentGenerationType } as any;
+      dispatch(setFilters(f));
+      fetchAllHistory(f);
+    }
+    setPage(1);
+    setHasMore(false);
+  }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
 
    // Handle sort order changes
    useEffect(() => {
@@ -145,12 +149,9 @@ const History = () => {
     }
     
     dispatch(setFilters(finalFilters));
-    dispatch(loadHistory({ 
-      filters: finalFilters, 
-      paginationParams: { limit: 10 } 
-    }));
+    fetchAllHistory(finalFilters);
     setPage(1);
-    setHasMore(true);
+    setHasMore(false);
   };
 
   const clearAllFilters = () => {
@@ -158,12 +159,9 @@ const History = () => {
     setDateRange({ start: null, end: null });
     setSortOrder('desc');
     dispatch(clearFilters());
-    dispatch(loadHistory({ 
-      filters: {}, 
-      paginationParams: { limit: 10 } 
-    }));
+    fetchAllHistory({});
     setPage(1);
-    setHasMore(true);
+    setHasMore(false);
   };
 
 
@@ -402,7 +400,7 @@ const History = () => {
 
             {/* Content Grid - Detect media type per item */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 ml-9">
-              {entry.images.map((media: any, mediaIndex: number) => {
+              {(entry.images || entry.videos || []).map((media: any, mediaIndex: number) => {
                 const mediaUrl = media.firebaseUrl || media.url;
                 const video = isVideoUrl(mediaUrl);
                 return (

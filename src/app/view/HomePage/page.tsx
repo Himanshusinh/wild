@@ -211,7 +211,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a1116]">
+    <div className="min-h-screen bg-black">
       {/* DEBUG: This is HomePage component */}
       {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
         🔍 DEBUG: HomePage Component is Rendering
@@ -239,21 +239,21 @@ const HomePage: React.FC = () => {
           <Header />
           <Recentcreation />
           <Second />
-      <main className="min-h-screen bg-[#0b0f17] text-white py-10">
+      <main className="min-h-screen bg-black text-white py-10">
       <div className="w-full px-4 md:px-8 lg:px-12 mt-32">
         <h2 className="text-white text-4xl md:text-4xl font-medium ml-6 ">Workflow</h2>
         <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
       </div>
     </main>
 
-    <main className="min-h-screen bg-[#090D16] text-white px-4 md:px-8 py-10">
+    <main className="min-h-screen bg-black text-white px-4 md:px-8 py-10">
       <div className="w-full px-4 md:px-8 lg:px-12">
         <CommunityCreations items={ITEMS} initialFilter="Trending" />
       </div>
     </main>
 
     {/* WobbleCard Section */}
-    <main className="bg-[#0a1116] text-white px-4 md:px-8 py-6 mb-32 mt-32">
+    <main className="bg-black text-white px-4 md:px-8 py-6 mb-32 mt-32">
       <div className="w-full px-4 md:px-8 lg:px-12">
         <div className="w-full">
           <WobbleCard 
@@ -309,12 +309,12 @@ const HomePage: React.FC = () => {
         <>
           {/* Overlay */}
           <div 
-            className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center"
+            className="fixed inset-0 bg-black z-[200] flex items-center justify-center"
             onClick={() => setShowWildmindSkitPopup(false)}
           >
             {/* Popup Content */}
             <div 
-              className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
+              className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}

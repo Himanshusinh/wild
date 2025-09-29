@@ -18,6 +18,15 @@ import { uploadGeneratedVideo } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
+import { getApiClient } from "@/lib/axiosInstance";
+import { requestCreditsRefresh } from "@/lib/creditsBus";
+
+// Extend window interface for temporary video data storage
+declare global {
+  interface Window {
+    miniMaxVideoData?: any;
+  }
+}
 
 // Import the video-specific components
 import VideoModelsDropdown from "./VideoModelsDropdown";
@@ -337,7 +346,8 @@ const InputBox = () => {
     (async () => {
       try {
         // Fetch entries with both underscore and hyphen patterns to ensure we get all video types
-        const [imageToVideoHyphen, imageToVideoUnderscore, videoToVideoHyphen, videoToVideoUnderscore] = await Promise.all([
+        const [textToVideo, imageToVideoHyphen, imageToVideoUnderscore, videoToVideoHyphen, videoToVideoUnderscore] = await Promise.all([
+          getHistoryEntries({ generationType: 'text-to-video' as any }, { limit: 20 }),
           getHistoryEntries({ generationType: 'image-to-video' as any }, { limit: 20 }),
           getHistoryEntries({ generationType: 'image_to_video' as any }, { limit: 20 }),
           getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
@@ -348,6 +358,7 @@ const InputBox = () => {
         
         // Combine all results and remove duplicates by ID
         const allResults = [
+          ...(textToVideo.data || []),
           ...(imageToVideoHyphen.data || []),
           ...(imageToVideoUnderscore.data || []),
           ...(videoToVideoHyphen.data || []),
@@ -371,6 +382,7 @@ const InputBox = () => {
         setExtraVideoEntries(sortedCombined);
         console.log('[VideoPage] fetched extra video entries:', {
           total: sortedCombined.length,
+          textToVideo: textToVideo.data?.length || 0,
           imageToVideoHyphen: imageToVideoHyphen.data?.length || 0,
           imageToVideoUnderscore: imageToVideoUnderscore.data?.length || 0,
           videoToVideoHyphen: videoToVideoHyphen.data?.length || 0,
@@ -412,8 +424,29 @@ const InputBox = () => {
         timestamp: entry.timestamp,
         generationType: entry.generationType,
         source: historyEntries.some(h => h.id === entry.id) ? 'Redux' : 'Extra',
-        prompt: entry.prompt?.substring(0, 30) + '...'
+        prompt: entry.prompt?.substring(0, 30) + '...',
+        status: entry.status,
+        images: entry.images?.length || 0,
+        videos: entry.videos?.length || 0,
+        hasImages: !!entry.images,
+        hasVideos: !!entry.videos
       })));
+      
+      // Debug: Check each entry's video/image structure
+      sortedList.forEach((entry: any, index: number) => {
+        console.log(`[VideoPage] Entry ${index + 1} detailed structure:`, {
+          id: entry.id,
+          generationType: entry.generationType,
+          status: entry.status,
+          images: entry.images,
+          videos: entry.videos,
+          videosType: typeof entry.videos,
+          videosIsArray: Array.isArray(entry.videos),
+          videosLength: entry.videos?.length,
+          imageCount: entry.imageCount,
+          fullEntry: entry
+        });
+      });
     }
     
     return sortedList as any[];
@@ -473,7 +506,7 @@ const InputBox = () => {
   };
 
   // Helper function to wait for MiniMax video completion (same pattern as Runway)
-  const waitForMiniMaxVideoCompletion = async (taskId: string) => {
+  const waitForMiniMaxVideoCompletion = async (taskId: string, opts?: { historyId?: string }) => {
     if (!taskId || taskId.trim() === '') {
       throw new Error('Invalid taskId provided to waitForMiniMaxVideoCompletion');
     }
@@ -483,47 +516,56 @@ const InputBox = () => {
     const maxAttempts = 60; // 5 minutes with 5-second intervals
     let attempts = 0;
     
+    const api = getApiClient();
     while (attempts < maxAttempts) {
       try {
         console.log(`🔄 MiniMax polling attempt ${attempts + 1}/${maxAttempts}`);
-        
-        const response = await fetch(`/api/minimax/video/status?task_id=${taskId}`, { credentials: 'include' });
-        if (!response.ok) {
-          throw new Error(`Status check failed: ${response.status}`);
-        }
-        
-        const statusResult = await response.json();
-        console.log('📊 MiniMax status check result:', statusResult);
-        
-        if (statusResult.status === 'Success' && statusResult.file_id) {
+        const { data: statusEnvelope } = await api.get('/api/minimax/video/status', { params: { task_id: taskId } });
+        console.log('📊 MiniMax status check result:', statusEnvelope);
+
+        const statusData = statusEnvelope?.data || statusEnvelope;
+        const status = statusData?.result?.status || statusData?.status;
+        const fileId = statusData?.result?.file_id || statusData?.file_id;
+
+        if (status === 'Success' && fileId) {
           console.log('✅ MiniMax video completed, retrieving file...');
-          
-          // Get the actual download URL
-          const fileResponse = await fetch(`/api/minimax/video/file?file_id=${statusResult.file_id}`, { credentials: 'include' });
-          if (!fileResponse.ok) {
-            throw new Error(`File retrieval failed: ${fileResponse.status}`);
-          }
-          
-          const fileResult = await fileResponse.json();
-          console.log('📁 MiniMax file result:', fileResult);
-          
-          if (fileResult.file && (fileResult.file.download_url || fileResult.file.backup_download_url)) {
-            return {
-              status: 'Success',
-              download_url: fileResult.file.download_url || fileResult.file.backup_download_url
-            };
-          } else {
+
+          try {
+            // Get the actual download URL (pass history_id if we have it later at callsite)
+            const { data: fileEnvelope } = await api.get('/api/minimax/video/file', { params: { file_id: fileId, ...(opts?.historyId ? { history_id: opts.historyId } : {}) } });
+            console.log('📁 MiniMax file result:', fileEnvelope);
+
+            const fileData = fileEnvelope?.data || fileEnvelope;
+            if (fileData?.file && (fileData.file.download_url || fileData.file.backup_download_url)) {
+              return {
+                status: 'Success',
+                download_url: fileData.file.download_url || fileData.file.backup_download_url,
+                videos: fileData.videos
+              };
+            }
+            if (Array.isArray(fileData?.videos) && fileData.videos[0]?.url) {
+              return { status: 'Success', download_url: fileData.videos[0].url, videos: fileData.videos };
+            }
             throw new Error('No download URL found in file response');
+          } catch (fileError) {
+            console.warn('⚠️ File retrieval failed, but video generation was successful. Video should be available in database.');
+            // Return success status even if file retrieval fails - the video is already in the database
+            return { 
+              status: 'Success', 
+              download_url: null, 
+              videos: null,
+              note: 'Video generated successfully and stored in database'
+            };
           }
-        } else if (statusResult.status === 'Fail') {
-          console.error('❌ MiniMax video generation failed:', statusResult);
-          return { status: 'Fail', error: statusResult.base_resp?.status_msg || 'Generation failed' };
-        } else if (statusResult.status === 'Queueing' || statusResult.status === 'Preparing' || statusResult.status === 'Processing') {
-          console.log(`⏳ MiniMax still processing: ${statusResult.status}`);
+        } else if (status === 'Fail') {
+          console.error('❌ MiniMax video generation failed:', statusData);
+          return { status: 'Fail', error: statusData?.base_resp?.status_msg || 'Generation failed' };
+        } else if (status === 'Queueing' || status === 'Preparing' || status === 'Processing' || status === 'Running') {
+          console.log(`⏳ MiniMax still processing: ${status}`);
           await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
           attempts++;
-        } else if (statusResult.status) {
-          console.log(`⏳ MiniMax status: ${statusResult.status}`);
+        } else if (status) {
+          console.log(`⏳ MiniMax status: ${status}`);
           await new Promise(resolve => setTimeout(resolve, 5000));
           attempts++;
         } else {
@@ -723,8 +765,7 @@ const InputBox = () => {
     setIsGenerating(true);
     setError("");
 
-    // Declare firebaseHistoryId at function level for error handling
-    let firebaseHistoryId: string | undefined;
+    // Backend handles history creation - no frontend history ID needed
 
     try {
       let requestBody;
@@ -870,38 +911,7 @@ const InputBox = () => {
         generationType: generationType as any
       };
 
-      // Add to Redux with temporary ID
-      dispatch(addHistoryEntry({
-        ...loadingEntry,
-        id: tempId
-      }));
-
-      try {
-        // Save to Firebase first (without ID field)
-        firebaseHistoryId = await saveHistoryEntry(loadingEntry);
-
-        console.log('✅ Firebase history entry created with ID:', firebaseHistoryId);
-        console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
-
-        // Update Redux entry with Firebase ID (replace tempId with firebaseHistoryId)
-      dispatch(updateHistoryEntry({
-          id: tempId,
-          updates: { id: firebaseHistoryId }
-        }));
-
-        // Don't modify the loadingEntry object - use firebaseHistoryId directly
-        console.log('Using Firebase ID for all operations:', firebaseHistoryId);
-
-      } catch (firebaseError) {
-        console.error('❌ Firebase save failed:', firebaseError);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to save generation to history",
-          })
-        );
-        // Continue with generation even if Firebase save fails
-      }
+      // Backend will handle history creation - no frontend history creation needed
 
       // Make API call
       console.log('🚀 Making API call to:', apiEndpoint);
@@ -929,31 +939,19 @@ const InputBox = () => {
         }
       }
       
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        let errorPayload: any = null;
-        try {
-          errorPayload = await response.json();
-        } catch {}
-        const msg: string =
-          (errorPayload && (errorPayload.message || errorPayload.error)) ||
-          response.statusText ||
-          '';
-        if (response.status === 413 || /request entity too large/i.test(msg)) {
-          toast.error('Video too large for Runway. Max 16MB. Please upload ≤ 14MB');
+      const api = getApiClient();
+      let result: any;
+      try {
+        const { data } = await api.post(apiEndpoint, requestBody);
+        result = data?.data || data;
+      } catch (e: any) {
+        const msg = e?.response?.data?.message || e?.message || 'Request failed';
+        if (String(e?.response?.status) === '413' || /request entity too large/i.test(String(msg))) {
+          toast.error('Video too large for provider. Max 16MB. Please upload ≤ 14MB');
         }
-        console.error('❌ API response not ok:', response.status, msg);
-        throw new Error(`HTTP ${response.status}: ${msg || 'Request failed'}`);
+        console.error('❌ API response not ok:', e?.response?.status || '-', msg);
+        throw new Error(`HTTP ${e?.response?.status || 500}: ${msg}`);
       }
-
-      const result = await response.json();
       console.log('📥 API response:', result);
       
       // Debug MiniMax response structure
@@ -996,12 +994,29 @@ const InputBox = () => {
         console.log('🎬 Model type:', selectedModel);
         
         // Poll for completion like Runway
-        const videoResult = await waitForMiniMaxVideoCompletion(result.taskId);
+        const videoResult = await waitForMiniMaxVideoCompletion(result.taskId, { historyId: result.historyId });
         console.log('🎬 MiniMax video result received:', videoResult);
         
-        if (videoResult.status === 'Success' && videoResult.download_url) {
-          videoUrl = videoResult.download_url;
-          console.log('✅ MiniMax video completed, URL:', videoUrl);
+        if (videoResult.status === 'Success') {
+          // Video generation completed successfully
+          if (videoResult.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+            // File retrieval succeeded - use Zata URL
+            videoUrl = videoResult.videos[0].url;
+            console.log('✅ MiniMax video completed with Zata URL:', videoUrl);
+            console.log('📹 Video storage path:', videoResult.videos[0].storagePath);
+            console.log('📹 Original URL:', videoResult.videos[0].originalUrl);
+            
+            // Store video data for later use
+            window.miniMaxVideoData = videoResult.videos[0];
+          } else if (videoResult.download_url) {
+            // Fallback to download_url if videos array is not available
+            videoUrl = videoResult.download_url;
+            console.log('✅ MiniMax video completed with download URL:', videoUrl);
+          } else {
+            // File retrieval failed, but video generation succeeded - video should be in database
+            console.log('✅ MiniMax video generation completed successfully. Video stored in database.');
+            videoUrl = ''; // We'll rely on the video being in the database
+          }
         } else if (videoResult.status === 'Fail') {
           console.error('❌ MiniMax video generation failed:', videoResult);
           throw new Error('MiniMax video generation failed');
@@ -1027,63 +1042,124 @@ const InputBox = () => {
         }
       }
 
-      // Upload video to Firebase Storage first
-      console.log('🎬 Starting video upload to Firebase...');
-      const videoToUpload = {
-        id: Date.now().toString(),
-        url: videoUrl,
-        originalUrl: videoUrl
-      };
-      
+      // Handle video data from backend response
       let firebaseVideo;
-      try {
-        firebaseVideo = await uploadGeneratedVideo(videoToUpload);
-        console.log('✅ Video uploaded to Firebase:', firebaseVideo);
-      } catch (uploadError) {
-        console.error('❌ Video upload to Firebase failed:', uploadError);
-        // Continue with original URL if Firebase upload fails
+      
+      // Check if we have video data from MiniMax response (prefer this over videoUrl)
+      if ((window as any).miniMaxVideoData) {
+        const videoData = (window as any).miniMaxVideoData;
+        console.log('🎬 Using video data from backend response:', videoData);
+        
         firebaseVideo = {
-          id: videoToUpload.id,
+          id: videoData.id,
+          url: videoData.url, // This is the Zata URL
+          firebaseUrl: videoData.url, // Same as URL since it's already in our storage
+          originalUrl: videoData.originalUrl
+        };
+        
+        console.log('✅ Video data processed from backend:', firebaseVideo);
+        
+        // Clean up the temporary storage
+        delete (window as any).miniMaxVideoData;
+      } else if (videoUrl) {
+        // Fallback: We have a video URL but no structured data
+        console.log('🎬 Using fallback video URL processing...');
+        const videoToUpload = {
+          id: Date.now().toString(),
           url: videoUrl,
-          firebaseUrl: videoUrl,
           originalUrl: videoUrl
+        };
+        
+        // IMPORTANT: Avoid browser-side fetch of third-party URL (CORS).
+        // If URL already points to our storage (returned from backend with history_id), use it directly.
+        const isOurStorage = /zata\.ai\//i.test(videoUrl) || /firebasestorage\.googleapis\.com/i.test(videoUrl);
+        try {
+          if (isOurStorage) {
+            firebaseVideo = {
+              id: videoToUpload.id,
+              url: videoUrl,
+              firebaseUrl: videoUrl,
+              originalUrl: videoUrl
+            };
+          } else {
+            // Fallback to client upload utility (may CORS-fail; we catch and keep provider URL)
+            firebaseVideo = await uploadGeneratedVideo(videoToUpload);
+          }
+          console.log('✅ Video processed via fallback:', firebaseVideo);
+        } catch (uploadError) {
+          console.error('❌ Video upload to Firebase failed:', uploadError);
+          // Continue with original URL if Firebase upload fails
+          firebaseVideo = {
+            id: videoToUpload.id,
+            url: videoUrl,
+            firebaseUrl: videoUrl,
+            originalUrl: videoUrl
+          };
+        }
+      } else {
+        // No videoUrl - video generation succeeded but file retrieval failed
+        // The video should already be stored in the database by the backend
+        console.log('✅ Video generation completed. Video should be available in database.');
+        firebaseVideo = {
+          id: result.taskId || Date.now().toString(),
+          url: '', // Will be populated from database
+          firebaseUrl: '', // Will be populated from database
+          originalUrl: '' // Will be populated from database
         };
       }
 
-      // Update the history entry with the Firebase video URL
-      const updateData = {
-        status: 'completed' as const,
-        images: [{
-          id: firebaseVideo.id,
-          url: firebaseVideo.url, // Firebase URL
-          firebaseUrl: firebaseVideo.firebaseUrl,
-          originalUrl: firebaseVideo.originalUrl // Original external URL
-        }]
-      };
+      // Backend handles all history updates - no frontend Redux update needed
+      console.log('🎬 Video generation completed successfully');
+      console.log('🎬 History ID:', result.historyId);
+      console.log('🎬 Model:', selectedModel);
+      console.log('🎬 Video data processed:', firebaseVideo);
 
-      console.log('🎬 Final video data for history:', updateData);
-      console.log('🎬 Firebase URL:', firebaseVideo.firebaseUrl);
-      console.log('🎬 Original URL:', firebaseVideo.originalUrl);
-      console.log('🎬 History ID being updated:', firebaseHistoryId || tempId);
-      console.log('🎬 Model for this generation:', selectedModel);
+      // Backend handles history updates - no frontend Firebase update needed
 
-      // Update Redux entry with completion data
-      console.log('🎬 Updating Redux history entry with ID:', firebaseHistoryId || tempId);
-      dispatch(updateHistoryEntry({
-        id: firebaseHistoryId || tempId,
-        updates: updateData
-      }));
-      console.log('🎬 Redux history entry updated');
-
-      // Update Firebase
-      if (firebaseHistoryId) {
+      // Credits likely changed; request UI refresh
+      try { requestCreditsRefresh(); } catch {}
+      
+      // Refresh history to show the new video
+      dispatch(clearFilters());
+      dispatch(loadHistory({ filters: {}, paginationParams: { limit: 50 } }));
+      
+      // Also refresh the extra video entries to ensure text-to-video entries appear
+      setTimeout(async () => {
         try {
-          await updateFirebaseHistory(firebaseHistoryId, updateData);
-          console.log('✅ Firebase history updated successfully');
-        } catch (firebaseError) {
-          console.error('❌ Firebase update failed:', firebaseError);
+          const [textToVideo, imageToVideoHyphen, imageToVideoUnderscore, videoToVideoHyphen, videoToVideoUnderscore] = await Promise.all([
+            getHistoryEntries({ generationType: 'text-to-video' as any }, { limit: 20 }),
+            getHistoryEntries({ generationType: 'image-to-video' as any }, { limit: 20 }),
+            getHistoryEntries({ generationType: 'image_to_video' as any }, { limit: 20 }),
+            getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
+            getHistoryEntries({ generationType: 'video_to_video' as any }, { limit: 20 })
+          ]);
+          
+          const allResults = [
+            ...(textToVideo.data || []),
+            ...(imageToVideoHyphen.data || []),
+            ...(imageToVideoUnderscore.data || []),
+            ...(videoToVideoHyphen.data || []),
+            ...(videoToVideoUnderscore.data || [])
+          ];
+          
+          const byId: Record<string, any> = {};
+          allResults.forEach((entry: any) => {
+            byId[entry.id] = entry;
+          });
+          
+          const combined = Object.values(byId);
+          const sortedCombined = combined.sort((a: any, b: any) => {
+            const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
+            const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
+            return timestampB - timestampA;
+          });
+          
+          setExtraVideoEntries(sortedCombined);
+          console.log('[VideoPage] refreshed extra video entries after generation:', sortedCombined.length);
+        } catch (e) {
+          console.error('[VideoPage] failed to refresh extra video entries:', e);
         }
-      }
+      }, 1000); // Small delay to ensure backend has updated
 
       dispatch(
         addNotification({
@@ -1102,16 +1178,7 @@ const InputBox = () => {
       console.error('❌ Video generation failed:', error);
       setError(error instanceof Error ? error.message : 'Video generation failed');
 
-      // Update history entry with failed status
-      if (firebaseHistoryId) {
-        try {
-          await updateFirebaseHistory(firebaseHistoryId, {
-            status: 'failed'
-          });
-        } catch (firebaseError) {
-          console.error('❌ Failed to update Firebase with failed status:', firebaseError);
-        }
-      }
+      // Backend handles history updates - no frontend Firebase update needed
 
       dispatch(
         addNotification({
@@ -1131,7 +1198,7 @@ const InputBox = () => {
         <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
           <div className="p-6">
             {/* History Header - Fixed during scroll */}
-            <div className="sticky top-0 z-10 mb-6 bg-black/80 backdrop-blur-sm py-4 -mx-6 px-6 border-b border-white/10">
+            <div className="sticky top-0 z-10 mb-6  py-4 -mx-6 px-6 border-b  border-white/10">
               <h2 className="text-white text-xl font-semibold">History</h2>
             </div>
 
@@ -1174,8 +1241,38 @@ const InputBox = () => {
 
                   {/* All Videos for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-9">
-                    {groupedByDate[date].map((entry: HistoryEntry) => 
-                      entry.images.map((video: any) => (
+                    {groupedByDate[date].map((entry: HistoryEntry) => {
+                      // More defensive approach to get media items
+                      let mediaItems: any[] = [];
+                      if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
+                        mediaItems = entry.images;
+                      } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+                        mediaItems = entry.videos;
+                      } else {
+                        // Fallback: check if videos are stored in a different structure
+                        console.log(`[VideoPage] No valid media found for entry ${entry.id}, checking structure:`, {
+                          images: entry.images,
+                          videos: entry.videos,
+                          videosType: typeof entry.videos,
+                          videosIsArray: Array.isArray(entry.videos),
+                          videosContent: entry.videos,
+                          allKeys: Object.keys(entry)
+                        });
+                      }
+                      console.log(`[VideoPage] Rendering entry ${entry.id}:`, {
+                        generationType: entry.generationType,
+                        status: entry.status,
+                        imagesCount: entry.images?.length || 0,
+                        videosCount: entry.videos?.length || 0,
+                        mediaItemsCount: mediaItems.length,
+                        images: entry.images,
+                        videos: entry.videos,
+                        videosType: typeof entry.videos,
+                        videosIsArray: Array.isArray(entry.videos),
+                        videosContent: entry.videos
+                      });
+                      
+                      return mediaItems.map((video: any) => (
                         <div
                           key={`${entry.id}-${video.id}`}
                           data-video-id={`${entry.id}-${video.id}`}
@@ -1262,8 +1359,8 @@ const InputBox = () => {
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                         </div>
-                      ))
-                    )}
+                      ));
+                    })}
                   </div>
                 </div>
               ))}

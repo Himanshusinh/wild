@@ -6,6 +6,7 @@ import { addHistoryEntry, updateHistoryEntry, loadHistory, clearFilters, loadMor
 import { addNotification } from '@/store/slices/uiSlice';
 import { uploadGeneratedAudio } from '@/lib/audioUpload';
 import { minimaxMusic } from '@/store/slices/generationsApi';
+import { requestCreditsRefresh } from '@/lib/creditsBus';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
@@ -56,7 +57,10 @@ const InputBox = () => {
   // Load history on mount
   useEffect(() => {
     dispatch(clearFilters());
-    dispatch(loadHistory({ filters: {}, paginationParams: { limit: 10 } }));
+    dispatch(loadHistory({ 
+      filters: {}, 
+      paginationParams: { limit: 50 } 
+    }));
   }, [dispatch]);
 
   // Load more history function
@@ -68,7 +72,7 @@ const InputBox = () => {
       const result = await dispatch(loadHistory({ 
         filters: {}, 
         paginationParams: { 
-          limit: 10,
+          limit: 50,
           cursor: historyEntries.length > 0 ? {
             timestamp: historyEntries[historyEntries.length - 1].timestamp,
             id: historyEntries[historyEntries.length - 1].id
@@ -76,7 +80,7 @@ const InputBox = () => {
         } 
       })).unwrap();
       
-      if (result.entries.length < 10) {
+      if (result.entries.length < 50) {
         setHasMore(false);
       }
       setPage(prev => prev + 1);
@@ -119,14 +123,13 @@ const InputBox = () => {
     const loadingEntry = {
       id: tempId,
       prompt: payload.prompt, // This will be the formatted prompt from style/instruments
-      lyrics: payload.lyrics, // Store lyrics in the entry
       model: payload.model,
       generationType: 'text-to-music' as const,
-      images: [],
+      images: [], // Will store audio data in this field
       status: "generating" as const,
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      imageCount: 1
+      imageCount: 1 // For music, this represents audio count
     };
 
     // Add to Redux with temporary ID
@@ -165,38 +168,46 @@ const InputBox = () => {
       const result = await dispatch(minimaxMusic(payload)).unwrap();
       console.log('🎵 MiniMax music thunk result:', result);
 
-      const baseResp = (result as any)?.base_resp;
-      if (baseResp && baseResp.status_code !== 0) {
-        throw new Error(baseResp?.status_msg || 'MiniMax API error');
+      // Backend returns: { historyId, audios: [audioItem], status: 'completed', debitedCredits }
+      if (!result || result.status !== 'completed') {
+        throw new Error(result?.error || 'Music generation failed');
       }
 
-      const audioDataField = (result as any)?.data?.audio || (result as any)?.audio;
-      if (!audioDataField) {
+      const audios = result.audios || [];
+      if (audios.length === 0) {
         throw new Error('No audio data received from MiniMax');
       }
 
-      // Upload audio to Firebase
-      const audioId = (result as any).trace_id || Date.now().toString();
-      const audioData = await uploadGeneratedAudio(
-        audioDataField,
-        audioId,
-        payload.output_format || 'hex'
-      );
+      const audioItem = audios[0]; // Get the first audio item
+      const audioUrl = audioItem.url || audioItem.firebaseUrl;
 
-      // Update the history entry with the Firebase audio URL
+      if (!audioUrl) {
+        throw new Error('No audio URL received from MiniMax');
+      }
+
+      // Update the history entry with the audio URL from backend
+      // Store in both audios and images fields for compatibility
       const updateData = {
         status: 'completed' as const,
+        audios: [{
+          id: audioItem.id || 'music-1',
+          url: audioUrl,
+          firebaseUrl: audioUrl,
+          originalUrl: audioItem.originalUrl || audioUrl,
+          storagePath: audioItem.storagePath
+        }],
         images: [{
-          id: audioId,
-          url: audioData.firebaseUrl, // Firebase URL
-          firebaseUrl: audioData.firebaseUrl,
-          originalUrl: audioData.originalUrl // Original external URL
+          id: audioItem.id || 'music-1',
+          url: audioUrl,
+          firebaseUrl: audioUrl,
+          originalUrl: audioItem.originalUrl || audioUrl,
+          storagePath: audioItem.storagePath,
+          type: 'audio' // Mark this as audio type
         }]
       };
 
       console.log('🎵 Final audio data for history:', updateData);
-      console.log('🎵 Firebase URL:', audioData.firebaseUrl);
-      console.log('🎵 Original URL:', audioData.originalUrl);
+      console.log('🎵 Audio URL:', audioUrl);
       console.log('🎵 History ID being updated:', firebaseHistoryId || tempId);
 
       // Update Redux entry with completion data
@@ -218,12 +229,21 @@ const InputBox = () => {
       }
 
       // Set result URL for audio player
-      setResultUrl(audioData.firebaseUrl);
+      setResultUrl(audioUrl);
 
       // Show success notification
       dispatch(addNotification({
         type: 'success',
         message: 'Music generated successfully!'
+      }));
+
+      // Refresh credits to show updated balance
+      requestCreditsRefresh();
+
+      // Refresh history to show the new music
+      dispatch(loadHistory({ 
+        filters: {}, 
+        paginationParams: { limit: 50 } 
       }));
 
       console.log('✅ Music generation completed successfully');
@@ -330,7 +350,7 @@ const InputBox = () => {
                   {/* All Music Tracks for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-9">
                     {groupedByDate[date].map((entry: any) => 
-                      entry.images.map((audio: any) => (
+                      (entry.audios || entry.images || []).map((audio: any) => (
                         <div
                           key={`${entry.id}-${audio.id}`}
                           onClick={() => setSelectedAudio({ entry, audio })}
@@ -442,10 +462,10 @@ const InputBox = () => {
               </button>
             </div>
              <CustomAudioPlayer 
-               audioUrl={selectedAudio.audio.firebaseUrl || selectedAudio.audio.url}
+               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl}
                prompt={selectedAudio.entry.prompt}
                model={selectedAudio.entry.model}
-               lyrics={selectedAudio.entry.lyrics}
+               lyrics={selectedAudio.entry.prompt} // Using prompt as lyrics for now
                autoPlay={true}
              />
           </div>
