@@ -61,6 +61,12 @@ export default function SignInForm() {
   const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
+  
+  // Redeem code states
+  const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
+  const [redeemCode, setRedeemCode] = useState("")
+  const [redeemCodeValidated, setRedeemCodeValidated] = useState(false)
+  const [redeemCodeInfo, setRedeemCodeInfo] = useState<any>(null)
 
   // Username live availability (always declared to keep hook order stable)
   const availability = useUsernameAvailability('http://localhost:5000/api')
@@ -645,12 +651,9 @@ export default function SignInForm() {
           localStorage.setItem("user", JSON.stringify(finalUserData))
           
           console.log("✅ Google authentication complete!")
-          setIsRedirecting(true)
           setShowUsernameForm(false)
-          
-          setTimeout(() => {
-            window.location.href = redirect || APP_ROUTES.HOME
-          }, 2000)
+          setShowRedeemCodeForm(true)
+          setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
         }
         
       } else {
@@ -748,19 +751,19 @@ export default function SignInForm() {
              }
            }
            
-           // Clear form data
-           setEmail("")
-           setPassword("")
-           setConfirmPassword("")
-           setUsername("")
-           setShowUsernameForm(false)
-           setOtpSent(false)
-           setTermsAccepted(false)
-           setError("")
-           setSuccess("")
-           
-           // Redirect to home page
-           window.location.href = "/view/HomePage"
+          // Clear form data
+          setEmail("")
+          setPassword("")
+          setConfirmPassword("")
+          setUsername("")
+          setShowUsernameForm(false)
+          setOtpSent(false)
+          setTermsAccepted(false)
+          setError("")
+          
+          // Show redeem code form
+          setShowRedeemCodeForm(true)
+          setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
          }
       } else {
         console.log("❌ No user data found in localStorage")
@@ -788,6 +791,85 @@ export default function SignInForm() {
       console.log("🏁 Username submission process completed")
       setProcessing(false)
     }
+  }
+
+  // Redeem Code Functions
+  const handleRedeemCodeValidation = async () => {
+    if (!redeemCode.trim()) {
+      setError("Please enter a redeem code")
+      return
+    }
+
+    setError("")
+    setProcessing(true)
+
+    try {
+      const response = await axios.post("http://localhost:5000/api/redeem-codes/validate", {
+        redeemCode: redeemCode.trim().toUpperCase()
+      })
+
+      if (response.data?.data?.valid) {
+        setRedeemCodeValidated(true)
+        setRedeemCodeInfo(response.data.data)
+        const timeInfo = response.data.data.remainingTime ? ` (expires in ${response.data.data.remainingTime})` : ''
+        setSuccess(`✓ Valid ${response.data.data.planName}! You'll get ${response.data.data.creditsToGrant.toLocaleString()} credits when you apply this code${timeInfo}.`)
+      } else {
+        setError(response.data?.data?.error || "Invalid redeem code")
+        setRedeemCodeValidated(false)
+        setRedeemCodeInfo(null)
+      }
+    } catch (error: any) {
+      console.error("❌ Redeem code validation failed:", error)
+      setError(error.response?.data?.message || "Failed to validate redeem code")
+      setRedeemCodeValidated(false)
+      setRedeemCodeInfo(null)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleRedeemCodeSubmit = async () => {
+    if (!redeemCodeValidated) {
+      setError("Please validate your redeem code first")
+      return
+    }
+
+    setError("")
+    setProcessing(true)
+
+    try {
+      const response = await axios.post("http://localhost:5000/api/auth/redeem-code/apply", {
+        redeemCode: redeemCode.trim().toUpperCase()
+      }, {
+        withCredentials: true
+      })
+
+      if (response.data?.responseStatus === 'success') {
+        setSuccess(`🎉 ${response.data.data.planName} activated! You received ${response.data.data.creditsGranted.toLocaleString()} credits.`)
+        
+        // Redirect to home after successful redeem
+        setTimeout(() => {
+          setIsRedirecting(true)
+          setShowRedeemCodeForm(false)
+          window.location.href = APP_ROUTES.HOME
+        }, 2000)
+      } else {
+        setError(response.data?.message || "Failed to apply redeem code")
+      }
+    } catch (error: any) {
+      console.error("❌ Redeem code application failed:", error)
+      setError(error.response?.data?.message || "Failed to apply redeem code")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleSkipRedeemCode = () => {
+    setIsRedirecting(true)
+    setShowRedeemCodeForm(false)
+    setTimeout(() => {
+      window.location.href = APP_ROUTES.HOME
+    }, 1000)
   }
 
 
@@ -854,6 +936,104 @@ export default function SignInForm() {
               >
                 Access WildMind
               </button>
+            </div>
+          ) : showRedeemCodeForm ? (
+            <div className="space-y-6">
+              {/* Title */}
+              <div className="text-start space-y-3">
+                <h1 className="text-3xl font-medium text-white">Welcome to WildMind!</h1>
+                <p className="text-white text-regular">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
+              </div>
+
+              {/* Success Message */}
+              {success && (
+                <div className="rounded-xl p-3 bg-emerald-500/20 border border-emerald-500/25">
+                  <p className="text-white text-sm leading-relaxed">{success}</p>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
+                  <p className="text-white text-sm leading-relaxed">{error}</p>
+                </div>
+              )}
+
+              {/* Redeem Code Input */}
+              <div className="space-y-3">
+                <label className="text-white font-medium text-lg ml-2">
+                  Redeem Code <span className="text-gray-400 text-sm">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your redeem code (e.g., STU-123456-ABC123)"
+                  value={redeemCode}
+                  onChange={(e) => {
+                    setRedeemCode(e.target.value.toUpperCase())
+                    setRedeemCodeValidated(false)
+                    setRedeemCodeInfo(null)
+                    setError("")
+                    setSuccess("")
+                  }}
+                  className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base uppercase"
+                />
+                
+                {/* Validation feedback */}
+                {redeemCodeInfo && redeemCodeValidated && (
+                  <div className="text-sm text-green-400 ml-2 flex items-center space-x-2">
+                    <span>✓</span>
+                    <span>
+                      Valid {redeemCodeInfo.planName} - You'll get {redeemCodeInfo.creditsToGrant.toLocaleString()} credits!
+                      {redeemCodeInfo.remainingTime && (
+                        <span className="text-green-300 ml-1">(expires in {redeemCodeInfo.remainingTime})</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Help text */}
+                <div className="text-xs text-gray-400 ml-2">
+                  Student codes start with "STU-" and Business codes start with "BUS-"
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="space-y-3">
+                {/* Validate/Apply Code Button */}
+                {redeemCode && !redeemCodeValidated ? (
+                  <button 
+                    onClick={handleRedeemCodeValidation}
+                    disabled={processing || !redeemCode.trim()}
+                    className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                  >
+                    {processing ? <LoadingSpinner /> : "Validate Code"}
+                  </button>
+                ) : redeemCodeValidated ? (
+                  <button 
+                    onClick={handleRedeemCodeSubmit}
+                    disabled={processing}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                  >
+                    {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
+                  </button>
+                ) : null}
+                
+                {/* Skip Button */}
+                <button 
+                  onClick={handleSkipRedeemCode}
+                  disabled={processing}
+                  className="w-full bg-[#2e2e2e] hover:bg-[#3e3e3e] border border-[#464646] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                >
+                  Continue with Free Plan
+                </button>
+                
+                {/* Info about free plan */}
+                <div className="text-center">
+                  <p className="text-xs text-gray-400">
+                    Free plan includes 4,120 credits to get you started
+                  </p>
+                </div>
+              </div>
             </div>
           ) : showLoginForm ? (
             <form onSubmit={handleLogin} className="space-y-6">
