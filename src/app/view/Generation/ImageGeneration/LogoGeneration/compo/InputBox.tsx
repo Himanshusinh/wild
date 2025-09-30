@@ -7,11 +7,12 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
   setPrompt
  } from '@/store/slices/generationSlice';
-import { bflGenerate } from '@/store/slices/generationsApi';
+import { bflGenerate, falGenerate } from '@/store/slices/generationsApi';
 import { 
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
+import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
   addHistoryEntry, 
   updateHistoryEntry,
@@ -29,7 +30,7 @@ const InputBox = () => {
   
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'local-logo-model');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
   const imageCount = useAppSelector((state: any) => state.generation?.imageCount || 1);
   const isGenerating = useAppSelector((state: any) => state.generation?.isGenerating || false);
   const error = useAppSelector((state: any) => state.generation?.error);
@@ -39,6 +40,18 @@ const InputBox = () => {
   const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
 
+  // Credits management
+  const {
+    validateAndReserveCredits,
+    handleGenerationSuccess,
+    handleGenerationFailure,
+    creditBalance,
+    clearCreditsError,
+  } = useGenerationCredits('image', selectedModel, {
+    frameSize: '1:1', // Logo generation typically uses square aspect ratio
+    count: imageCount,
+  });
+
   // Local state for preview modal
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
 
@@ -46,6 +59,24 @@ const InputBox = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Clear any previous credit errors
+    clearCreditsError();
+
+    // Validate and reserve credits before generation
+    let transactionId: string;
+    try {
+      const creditResult = await validateAndReserveCredits();
+      transactionId = creditResult.transactionId;
+      console.log('✅ Credits reserved for logo generation:', creditResult);
+    } catch (creditError: any) {
+      console.error('❌ Credit validation failed:', creditError);
+      dispatch(addNotification({
+        type: 'error',
+        message: creditError.message || 'Insufficient credits for generation'
+      }));
+      return;
+    }
 
     // Create a loading entry immediately to show loading frames
     const loadingEntry: HistoryEntry = {
@@ -70,31 +101,33 @@ const InputBox = () => {
     try {
       let result;
 
-      // Check if using local model or Flux models
-      if (selectedModel === 'flux-krea') {
-        result = await dispatch(bflGenerate({
-          prompt,
-          model: 'flux-kontext-pro',
+      // Build the same backend prompt regardless of model
+      const backendPrompt = `Create a professional logo for: ${prompt}. The logo should be clean, modern, and suitable for business use.`;
+
+      if (selectedModel === 'gemini-25-flash-image') {
+        // Route to FAL (Google Nano Banana)
+        result = await dispatch(falGenerate({
+          prompt: backendPrompt,
+          model: selectedModel,
           n: imageCount,
-          frameSize: '1:1',
-          style: 'logo',
-          generationType: 'logo-generation'
+          uploadedImages: [],
+          output_format: 'jpeg',
+          generationType: 'logo',
         })).unwrap();
       } else {
-        // Use existing Flux API for Kontext models
-        const backendPrompt = `Create a professional logo for: ${prompt}. The logo should be clean, modern, and suitable for business use.`;
+        // Default to BFL
         result = await dispatch(bflGenerate({
           prompt: backendPrompt,
           model: selectedModel,
           n: imageCount,
           frameSize: '1:1',
           style: 'logo',
-          generationType: 'logo-generation'
+          generationType: 'logo'
         })).unwrap();
+      }
 
-        if (!result.images) {
-          throw new Error('No images received from Flux API');
-        }
+      if (!result.images) {
+        throw new Error('No images received from Flux API');
       }
 
       // Create the completed entry
@@ -125,6 +158,11 @@ const InputBox = () => {
         message: `Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`
       }));
 
+      // Handle credit success
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+      }
+
     } catch (error: any) {
       console.error('Logo generation failed:', error);
       
@@ -142,6 +180,11 @@ const InputBox = () => {
         type: 'error',
         message: error.message || 'Logo generation failed'
       }));
+
+      // Handle credit failure
+      if (transactionId) {
+        await handleGenerationFailure(transactionId);
+      }
     }
   };
 
@@ -155,14 +198,24 @@ const InputBox = () => {
     setPreviewEntry(null);
   };
 
+  // Load logo generation history entries
+  useEffect(() => {
+    // Load text-to-image history since backend stores logos with this generationType
+    dispatch(loadHistory({ 
+      filters: { 
+        generationType: 'text-to-image'
+      }, 
+      paginationParams: { limit: 50 } 
+    }));
+  }, [dispatch]);
+
   // Filter logo generation history entries
-  // Initial history load is triggered centrally by PageRouter
 
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
         if (hasMoreHistory && !historyLoading) {
-          dispatch(loadMoreHistory({ filters: { generationType: 'logo' }, paginationParams: { limit: 10 } }));
+          dispatch(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 10 } }));
         }
       }
     };
@@ -172,7 +225,35 @@ const InputBox = () => {
   }, [dispatch, hasMoreHistory, historyLoading]);
 
   const logoHistoryEntries = historyEntries
-    .filter((entry: HistoryEntry) => entry.generationType === 'logo')
+    .filter((entry: HistoryEntry) => {
+      // If it has explicit logo type, include it
+      if (entry.generationType === 'logo') {
+        return true;
+      }
+      
+      // If it has explicit logo style, include it
+      if (entry.style === 'logo') {
+        return true;
+      }
+      
+      // For text-to-image entries, check if they're clearly logos
+      if (entry.generationType === 'text-to-image') {
+        // Include if it has logo-related keywords
+        const hasLogoKeywords = entry.prompt?.toLowerCase().includes('logo') ||
+                               entry.prompt?.startsWith('Logo:');
+        
+        // Exclude if it has conflicting styles (product or sticker)
+        const hasConflictingStyle = entry.style === 'product' || entry.style === 'sticker';
+        
+        // Exclude if it has product-related keywords (even without style)
+        const hasProductKeywords = entry.prompt?.toLowerCase().includes('product') ||
+                                  entry.prompt?.toLowerCase().includes('studio product');
+        
+        return hasLogoKeywords && !hasConflictingStyle && !hasProductKeywords;
+      }
+      
+      return false;
+    })
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Group entries by date

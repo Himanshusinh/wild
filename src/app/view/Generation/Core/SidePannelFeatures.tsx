@@ -76,7 +76,7 @@ const SidePannelFeatures = ({
 
   return (
     <div 
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 py-4 px-3 group transition-all text-white duration-200 bg-white/10 backdrop-blur-md w-[68px] hover:w-60 z-40 border border-white/10 shadow-2xl'
+      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 py-4 px-3 group transition-all text-white duration-200 bg-white/10 backdrop-blur-2xl w-[68px] hover:w-60 z-40 border border-white/10 shadow-2xl'
       style={{
         borderTopLeftRadius: '16px',
         borderBottomLeftRadius: '16px',
@@ -173,7 +173,7 @@ const SidePannelFeatures = ({
             <div
                 ref={brandingRef}
                 onClick={toggleBrandingDropdown}
-                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 z-100 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   isBrandingActive ? 'bg-white/10' : ''
                 }`}
             >
@@ -192,15 +192,15 @@ const SidePannelFeatures = ({
             {showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
-                    className='absolute left-full top-0 ml-4 bg-white/20 backdrop-blur-md border border-white/10 rounded-xl shadow-3xl p-2 space-y-1 z-100 min-w-[200px]'
+                    className='absolute left-full top-0 ml-4 bg-black/50 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-50 min-w-[240px]'
                 >
-                    <div className='px-3 py-2  border-white/10 backdrop-blur-md rounded-xl'>
-                        <span className='text-xs text-white/90 uppercase tracking-wider backdrop-blur-md '>Branding Kit</span>
+                    <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md'>
+                        <span className='text-xs text-white/90 uppercase tracking-wider'>Branding Kit</span>
                     </div>
                     
                     <div
-                        onClick={() => handleGenerationTypeChange('logo')}
-                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded-xl ${
+                        onClick={() => handleGenerationTypeChange('logo-generation')}
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'logo-generation' ? 'bg-white/15' : ''
                         }`}
                     >
@@ -210,7 +210,7 @@ const SidePannelFeatures = ({
                     
                     <div
                         onClick={() => handleGenerationTypeChange('sticker-generation')}
-                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded-xl ${
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
                         }`}
                     >
@@ -220,7 +220,7 @@ const SidePannelFeatures = ({
                     
                     <div
                         onClick={() => handleGenerationTypeChange('mockup-generation')}
-                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded-xl ${
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
                         }`}
                     >
@@ -230,7 +230,7 @@ const SidePannelFeatures = ({
                     
                     <div
                         onClick={() => handleGenerationTypeChange('product-generation')}
-                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/10 rounded-xl ${
+                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
                         }`}
                     >

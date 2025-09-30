@@ -5,14 +5,17 @@ import Image from "next/image";
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
-  bflGenerate
+  bflGenerate,
+  falGenerate
 } from '@/store/slices/generationsApi';
 import { setPrompt } from '@/store/slices/generationSlice';
 import { 
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
+import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
+  loadHistory,
   loadMoreHistory
 } from '@/store/slices/historySlice';
 
@@ -28,7 +31,7 @@ const InputBox = () => {
   
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'local-sticker-model');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
   const imageCount = useAppSelector((state: any) => state.generation?.imageCount || 1);
   const isGenerating = useAppSelector((state: any) => state.generation?.isGenerating || false);
   const error = useAppSelector((state: any) => state.generation?.error);
@@ -38,30 +41,59 @@ const InputBox = () => {
   const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
 
+  // Credits management
+  const {
+    validateAndReserveCredits,
+    handleGenerationSuccess,
+    handleGenerationFailure,
+    creditBalance,
+    clearCreditsError,
+  } = useGenerationCredits('image', selectedModel, {
+    frameSize: '1:1', // Sticker generation typically uses square aspect ratio
+    count: imageCount,
+  });
+
 
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // No local history writes; backend persists history
+    // Clear any previous credit errors
+    clearCreditsError();
+
+    // Validate and reserve credits before generation
+    let transactionId: string;
+    try {
+      const creditResult = await validateAndReserveCredits();
+      transactionId = creditResult.transactionId;
+      console.log('✅ Credits reserved for sticker generation:', creditResult);
+    } catch (creditError: any) {
+      console.error('❌ Credit validation failed:', creditError);
+      dispatch(addNotification({
+        type: 'error',
+        message: creditError.message || 'Insufficient credits for generation'
+      }));
+      return;
+    }
 
     try {
       let result;
       
-      // Check if using local model or Flux model
-      if (selectedModel === 'flux-krea') {
-        // Route to backend generation via thunk
-        result = await dispatch(bflGenerate({
-          prompt,
-          model: 'flux-kontext-pro',
+      // Build the same backend prompt regardless of model
+      const backendPrompt = `Create a fun and engaging sticker design of: ${prompt}. The sticker should be vibrant, eye-catching, and suitable for social media, messaging apps, or decorative use.`;
+
+      if (selectedModel === 'gemini-25-flash-image') {
+        // Route to FAL (Google Nano Banana)
+        result = await dispatch(falGenerate({
+          prompt: backendPrompt,
+          model: selectedModel,
           n: imageCount,
-          frameSize: '1:1',
-          style: 'sticker',
-          generationType: 'sticker-generation'
+          uploadedImages: [],
+          output_format: 'jpeg',
+          generationType: 'sticker-generation',
         })).unwrap();
       } else {
-        // Use existing Flux API for Kontext models
-        const backendPrompt = `Create a fun and engaging sticker design of: ${prompt}. The sticker should be vibrant, eye-catching, and suitable for social media, messaging apps, or decorative use.`;
+        // Default to BFL
         result = await dispatch(bflGenerate({
           prompt: backendPrompt,
           model: selectedModel,
@@ -70,10 +102,10 @@ const InputBox = () => {
           style: 'sticker',
           generationType: 'sticker-generation'
         })).unwrap();
+      }
 
-        if (!result.images) {
-          throw new Error('No images received from Flux API');
-        }
+      if (!result.images) {
+        throw new Error('No images received from Flux API');
       }
 
       // Clear the prompt
@@ -85,6 +117,11 @@ const InputBox = () => {
         message: `Successfully generated ${imageCount} sticker${imageCount > 1 ? 's' : ''}!`
       }));
 
+      // Handle credit success
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+      }
+
     } catch (error: any) {
       console.error('Sticker generation failed:', error);
       
@@ -93,6 +130,11 @@ const InputBox = () => {
         type: 'error',
         message: error.message || 'Failed to generate stickers'
       }));
+
+      // Handle credit failure
+      if (transactionId) {
+        await handleGenerationFailure(transactionId);
+      }
     }
   };
 
@@ -108,14 +150,22 @@ const InputBox = () => {
     setSelectedEntry(null);
   };
 
-  // Load and paginate sticker history
-  // Initial history load is triggered centrally by PageRouter
+  // Load sticker generation history entries
+  useEffect(() => {
+    // Load text-to-image history since backend stores stickers with this generationType
+    dispatch(loadHistory({ 
+      filters: { 
+        generationType: 'text-to-image'
+      }, 
+      paginationParams: { limit: 50 } 
+    }));
+  }, [dispatch]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
         if (hasMoreHistory && !historyLoading) {
-          dispatch(loadMoreHistory({ filters: { generationType: 'sticker-generation' }, paginationParams: { limit: 10 } }));
+          dispatch(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 10 } }));
         }
       }
     };
@@ -126,7 +176,35 @@ const InputBox = () => {
 
   // Filter sticker generation history entries
   const stickerHistoryEntries = historyEntries
-    .filter((entry: HistoryEntry) => entry.generationType === 'sticker-generation')
+    .filter((entry: HistoryEntry) => {
+      // If it has explicit sticker-generation type, include it
+      if (entry.generationType === 'sticker-generation') {
+        return true;
+      }
+      
+      // If it has explicit sticker style, include it
+      if (entry.style === 'sticker') {
+        return true;
+      }
+      
+      // For text-to-image entries, check if they're clearly stickers
+      if (entry.generationType === 'text-to-image') {
+        // Include if it has sticker-related keywords
+        const hasStickerKeywords = entry.prompt?.toLowerCase().includes('sticker') ||
+                                  entry.prompt?.toLowerCase().includes('sticker design');
+        
+        // Exclude if it has conflicting styles (product or logo)
+        const hasConflictingStyle = entry.style === 'product' || entry.style === 'logo';
+        
+        // Exclude if it has product-related keywords (even without style)
+        const hasProductKeywords = entry.prompt?.toLowerCase().includes('product') ||
+                                  entry.prompt?.toLowerCase().includes('studio product');
+        
+        return hasStickerKeywords && !hasConflictingStyle && !hasProductKeywords;
+      }
+      
+      return false;
+    })
     .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Group entries by date

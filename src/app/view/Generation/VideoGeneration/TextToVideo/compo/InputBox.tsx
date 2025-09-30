@@ -19,7 +19,7 @@ import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import { getApiClient } from "@/lib/axiosInstance";
-import { requestCreditsRefresh } from "@/lib/creditsBus";
+import { useGenerationCredits } from "@/hooks/useCredits";
 
 // Extend window interface for temporary video data storage
 declare global {
@@ -63,6 +63,18 @@ const InputBox = () => {
   const [cameraMovementPopupOpen, setCameraMovementPopupOpen] = useState(false);
   const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
   const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
+
+  // Credits management - after all state declarations
+  const {
+    validateAndReserveCredits,
+    handleGenerationSuccess,
+    handleGenerationFailure,
+    creditBalance,
+    clearCreditsError,
+  } = useGenerationCredits('video', selectedModel, {
+    resolution: selectedModel.includes("MiniMax") ? selectedResolution : undefined,
+    duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
+  });
 
   // Auto-select model based onf generation mode (but preserve user's choice when possible)
   useEffect(() => {
@@ -764,6 +776,21 @@ const InputBox = () => {
 
     setIsGenerating(true);
     setError("");
+    clearCreditsError();
+
+    // Validate and reserve credits before generation
+    let transactionId: string;
+    try {
+      const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' : 'runway';
+      const creditResult = await validateAndReserveCredits(provider);
+      transactionId = creditResult.transactionId;
+      console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+    } catch (creditError: any) {
+      console.error('❌ Credit validation failed:', creditError);
+      setError(creditError.message || 'Insufficient credits for generation');
+      setIsGenerating(false);
+      return;
+    }
 
     // Backend handles history creation - no frontend history ID needed
 
@@ -1114,10 +1141,9 @@ const InputBox = () => {
       console.log('🎬 Model:', selectedModel);
       console.log('🎬 Video data processed:', firebaseVideo);
 
-      // Backend handles history updates - no frontend Firebase update needed
-
-      // Credits likely changed; request UI refresh
-      try { requestCreditsRefresh(); } catch {}
+      // Confirm credit transaction as successful
+      await handleGenerationSuccess(transactionId);
+      console.log('✅ Credits confirmed for successful generation');
       
       // Refresh history to show the new video
       dispatch(clearFilters());
@@ -1178,7 +1204,13 @@ const InputBox = () => {
       console.error('❌ Video generation failed:', error);
       setError(error instanceof Error ? error.message : 'Video generation failed');
 
-      // Backend handles history updates - no frontend Firebase update needed
+      // Handle credit transaction failure
+      try {
+        await handleGenerationFailure(transactionId);
+        console.log('✅ Credits rolled back for failed generation');
+      } catch (creditError) {
+        console.error('❌ Failed to rollback credits:', creditError);
+      }
 
       dispatch(
         addNotification({
@@ -1193,18 +1225,19 @@ const InputBox = () => {
 
   return (
     <>
-      {/* History Section */}
-      {(historyEntriesForDisplay.length > 0) && (
-        <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
-          <div className="p-6">
-            {/* History Header - Fixed during scroll */}
-            <div className="sticky top-0 z-10 mb-6  py-4 -mx-6 px-6 border-b  border-white/10">
-              <h2 className="text-white text-xl font-semibold">History</h2>
-            </div>
+     {historyEntries.length > 0 && (
+        <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
+          <div className="py-6 pl-4 "> 
+          {/* History Header - Fixed during scroll */}
+          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
+            <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation History</h2>
+          </div>
+          {/* Spacer to keep content below fixed header */}
+          <div className="h-0"></div>
 
             {/* Main Loader */}
             {loading && historyEntries.length === 0 && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
                   <div className="text-white text-lg">Loading your generation history...</div>

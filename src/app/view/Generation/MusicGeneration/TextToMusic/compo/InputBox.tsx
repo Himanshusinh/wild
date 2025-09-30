@@ -7,6 +7,7 @@ import { addNotification } from '@/store/slices/uiSlice';
 import { uploadGeneratedAudio } from '@/lib/audioUpload';
 import { minimaxMusic } from '@/store/slices/generationsApi';
 import { requestCreditsRefresh } from '@/lib/creditsBus';
+import { useGenerationCredits } from '@/hooks/useCredits';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
@@ -29,6 +30,17 @@ const InputBox = () => {
 
   // Get user ID from Redux state (adjust based on your auth setup)
   const userId = useAppSelector((state: any) => state.auth?.user?.uid || 'anonymous');
+
+  // Credits management
+  const {
+    validateAndReserveCredits,
+    handleGenerationSuccess,
+    handleGenerationFailure,
+    creditBalance,
+    clearCreditsError,
+  } = useGenerationCredits('music', 'music-1.5', {
+    duration: 90, // Default duration for music
+  });
 
   // Get history entries for music generation
   const historyEntries = useAppSelector((state: any) => {
@@ -111,6 +123,21 @@ const InputBox = () => {
   const handleGenerate = async (payload: any) => {
     if (!payload.lyrics.trim()) {
       setErrorMessage('Please provide lyrics');
+      return;
+    }
+
+    // Clear any previous credit errors
+    clearCreditsError();
+
+    // Validate and reserve credits before generation
+    let transactionId: string;
+    try {
+      const creditResult = await validateAndReserveCredits();
+      transactionId = creditResult.transactionId;
+      console.log('✅ Credits reserved for music generation:', creditResult);
+    } catch (creditError: any) {
+      console.error('❌ Credit validation failed:', creditError);
+      setErrorMessage(creditError.message || 'Insufficient credits for generation');
       return;
     }
 
@@ -237,8 +264,10 @@ const InputBox = () => {
         message: 'Music generated successfully!'
       }));
 
-      // Refresh credits to show updated balance
-      requestCreditsRefresh();
+      // Handle credit success
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+      }
 
       // Refresh history to show the new music
       dispatch(loadHistory({ 
@@ -279,6 +308,11 @@ const InputBox = () => {
           message: "Music generation failed",
         })
       );
+      
+      // Handle credit failure
+      if (transactionId) {
+        await handleGenerationFailure(transactionId);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -287,22 +321,24 @@ const InputBox = () => {
   return (
     <>
       {/* History Section - Fixed overlay like image/video generation */}
-      <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
-        <div className="p-6">
+      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+          <div className="py-6 pl-4 "> 
           {/* History Header - Fixed during scroll */}
-          <div className="sticky top-0 z-10 mb-6 bg-black/80 backdrop-blur-sm py-4 -mx-6 px-6 border-b border-white/10">
-            <h2 className="text-white text-xl font-semibold">Music Generation History</h2>
+          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
+            <h2 className="text-xl font-semibold text-white pl-0 ">Music Generation History</h2>
           </div>
+          {/* Spacer to keep content below fixed header */}
+          <div className="h-0"></div>
 
           {/* Main Loader */}
           {loading && historyEntries.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                <div className="text-white text-lg">Loading your music generation history...</div>
+              <div className="flex items-center justify-center ">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-white text-lg">Loading your generation history...</div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* No History State */}
           {!loading && historyEntries.length === 0 && (

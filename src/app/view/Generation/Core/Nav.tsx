@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
-import { onCreditsRefresh } from '../../../../lib/creditsBus'
+import { useCredits } from '../../../../hooks/useCredits'
 
 interface UserData {
   uid: string
@@ -24,8 +24,15 @@ const Nav = () => {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [avatarFailed, setAvatarFailed] = useState(false)
-  const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Use Redux credits state
+  const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits()
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('Nav credits state:', { creditBalance, creditsLoading, creditsError });
+  }, [creditBalance, creditsLoading, creditsError]);
 
   useOutsideClick(dropdownRef, () => setShowDropdown(false))
 
@@ -38,13 +45,8 @@ const Nav = () => {
         const user = payload?.data?.user || payload?.user || payload
         setUserData(user || null)
 
-        // Fetch credits/token balance
-        try {
-          const creditsRes = await api.get('/api/credits/me')
-          const creditsPayload = creditsRes.data?.data || creditsRes.data
-          const balance = Number(creditsPayload?.creditBalance)
-          if (!Number.isNaN(balance)) setCreditBalance(balance)
-        } catch {}
+        // Refresh credits from Redux store
+        await refreshCredits()
       } catch (e) {
         // no-op
       } finally {
@@ -54,19 +56,7 @@ const Nav = () => {
     fetchUserData()
   }, [])
 
-  // Listen for credits refresh bus event
-  useEffect(() => {
-    const api = getApiClient()
-    const unsubscribe = onCreditsRefresh(async () => {
-      try {
-        const creditsRes = await api.get('/api/credits/me')
-        const creditsPayload = creditsRes.data?.data || creditsRes.data
-        const balance = Number(creditsPayload?.creditBalance)
-        if (!Number.isNaN(balance)) setCreditBalance(balance)
-      } catch {}
-    })
-    return unsubscribe
-  }, [])
+  // Credits are now managed by Redux - no need for event listeners
 
   const handleLogout = async () => {
     try {
@@ -80,29 +70,33 @@ const Nav = () => {
   }
 
   return (
-    <div className='fixed top-1 left-18 right-0 z-40  '>
+    <div className='fixed top-1 left-18 right-4 z-40  '>
       <div className='flex justify-between items-center m-3'>
         <div className=''>
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
         </div>
 
-        <div className='flex items-center gap-5'>
-          <Image className='cursor-pointer border rounded-full p-2 border-[#998E8E]' src="/icons/searchwhite.svg" alt='logo' width={35} height={35} />
-          <button className='flex items-center gap-2 bg-[#0011FF] border border-[#998E8E] rounded-full p-1 w-24 justify-center'>
-            {loading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
+        <div className='flex items-center gap-3'>
+          {/* <Image className='cursor-pointer border rounded-full p-2 border-white/15' src="/icons/searchwhite.svg" alt='logo' width={45} height={45} /> */}
+          <button 
+            onClick={() => refreshCredits()} 
+            className='flex items-center gap-2 bg-white/15 border border-white/15 backdrop-blur-3xl rounded-full shadow-xl p-1 w-auto px-3 py-2 justify-center hover:bg-white/20 transition-colors z-50'
+            title={`Credits: ${creditBalance ?? userData?.credits ?? 150}${creditsError ? ` (Error: ${creditsError})` : ''}`}
+          >
+            {creditsLoading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
             <Image className='cursor-pointer' src="/icons/coinswhite.svg" alt='logo' width={25} height={25} />
           </button>
 
           {/* Profile trigger + dropdown (same behavior as homepage) */}
           <div className='relative' ref={dropdownRef}>
-            <button onClick={() => setShowDropdown(v => !v)} className='flex items-center gap-2 border border-[#998E8E] rounded-full p-1 cursor-pointer'>
+            <button onClick={() => setShowDropdown(v => !v)} className='flex items-center gap-2 border border-white/15 rounded-full  cursor-pointer'>
               {(!loading && userData?.photoURL && !avatarFailed) ? (
                 <img
                   src={userData.photoURL}
                   alt='profile'
                   referrerPolicy='no-referrer'
                   onError={() => setAvatarFailed(true)}
-                  className='w-[25px] h-[25px] rounded-full object-cover'
+                  className='w-[40px] h-[40px] rounded-full object-cover'
                 />
               ) : (
                 <Image className='cursor-pointer' src="/icons/person.svg" alt='logo' width={25} height={25} />
@@ -110,7 +104,7 @@ const Nav = () => {
             </button>
 
             {showDropdown && (
-              <div className='absolute right-0 top-full mt-2 w-80 rounded-2xl backdrop-blur-3xl bg-black/90 shadow-xl border border-white/10 overflow-hidden'>
+              <div className='absolute right-0 top-full mt-2 w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden'>
                 <div className='p-4'>
                   {/* Header */}
                   <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
@@ -137,14 +131,14 @@ const Nav = () => {
                         <span className='text-white text-sm'>Status</span>
                         <span className='text-green-400 text-sm'>{userData?.metadata?.accountStatus || 'Active'}</span>
                       </div>
-                      <div className='flex items-center justify-between'>
+                      {/* <div className='flex items-center justify-between'>
                         <span className='text-white text-sm'>Login Count</span>
                         <span className='text-gray-300 text-sm'>{userData?.loginCount || 0}</span>
                       </div>
                       <div className='flex items-center justify-between'>
                         <span className='text-white text-sm'>Device</span>
                         <span className='text-gray-300 text-sm'>{userData?.deviceInfo?.browser || 'Unknown'}</span>
-                      </div>
+                      </div> */}
                     </div>
 
                     <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>

@@ -4,6 +4,7 @@ import generationReducer from './slices/generationSlice';
 import historyReducer from './slices/historySlice';
 import bookmarksReducer from './slices/bookmarksSlice';
 import authReducer from './slices/authSlice';
+import creditsReducer from './slices/creditsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     generation: generationReducer,
     history: historyReducer,
     bookmarks: bookmarksReducer,
+    credits: creditsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

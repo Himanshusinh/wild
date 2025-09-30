@@ -14,7 +14,8 @@ const ModelsDropdown = () => {
     { name: 'Flux Krea', value: 'flux-krea', description: 'Fast local generation via ngrok' },
     { name: 'Flux Kontext [PRO]', value: 'flux-kontext-pro', description: 'Best for professional stickers' },
     { name: 'Flux Kontext [MAX]', value: 'flux-kontext-max', description: 'High-quality sticker designs' },
-    { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'Ultra-detailed stickers' }
+    { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'Ultra-detailed stickers' },
+    { name: 'Google Nano Banana', value: 'gemini-25-flash-image', description: 'Google FAL image model' }
   ];
 
   const handleDropdownClick = () => {
