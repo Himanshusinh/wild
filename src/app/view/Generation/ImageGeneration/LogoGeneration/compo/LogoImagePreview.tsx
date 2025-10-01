@@ -16,25 +16,79 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   onClose,
   entry
 }) => {
+  console.log('LogoImagePreview', entry);
   const [copied, setCopied] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    // Prefer storagePath if provided
+    // If full Zata URL, strip prefix to get storagePath
+    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) {
+      return urlOrPath.substring(ZATA_PREFIX.length);
+    }
+    return urlOrPath;
+  };
+
+  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
+  };
+
+  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
 
   if (!isOpen) return null;
 
   const selectedImage = entry.images[selectedImageIndex];
+  const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
+  const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
+  const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
+
+  React.useEffect(() => {
+    let revokeUrl: string | null = null;
+    setSelectedImageObjectUrl('');
+    if (!selectedImagePath) return;
+    const controller = new AbortController();
+    const doFetch = async () => {
+      try {
+        const url = toProxyResourceUrl(selectedImagePath);
+        if (!url) return;
+        const res = await fetch(url, { credentials: 'include', signal: controller.signal });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const obj = URL.createObjectURL(blob);
+        revokeUrl = obj;
+        setSelectedImageObjectUrl(obj);
+      } catch {}
+    };
+    doFetch();
+    return () => {
+      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch {}
+      controller.abort();
+    };
+  }, [selectedImagePath]);
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(selectedImage.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
+      if (!downloadUrl) return;
+      const res = await fetch(downloadUrl, { credentials: 'include' });
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `logo-${Date.now()}.png`;
+      a.href = objectUrl;
+      const baseName = (selectedImagePath || 'logo').split('/').pop() || `logo-${Date.now()}.png`;
+      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `logo-${Date.now()}.png`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
     } catch (error) {
       console.error('Download failed:', error);
     }
@@ -42,6 +96,15 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
+    
+    // Handle the new backend prompt format
+    // The backend prompt starts with "Create a professional, modern logo for: [USER_PROMPT]"
+    const backendPromptMatch = rawPrompt.match(/Create a professional, modern logo for:\s*(.+?)\s*\./i);
+    if (backendPromptMatch && backendPromptMatch[1]) {
+      return backendPromptMatch[1].trim();
+    }
+    
+    // Fallback to old format (remove "Logo:" prefix)
     return rawPrompt.replace(/^Logo:\s*/i, '').trim();
   };
 
@@ -75,17 +138,18 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group">
             {selectedImage && (
               <Image 
-                src={selectedImage.url} 
+                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl} 
                 alt={entry.prompt} 
                 fill 
                 className="object-contain" 
+                unoptimized
               />
             )}
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(selectedImage.url, '_blank')}
+              onClick={() => window.open(selectedImageProxyUrl, '_blank')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
@@ -142,10 +206,11 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                       }`}
                     >
                       <Image
-                        src={image.url}
+                        src={(image as any)?.url}
                         alt={`Logo ${index + 1}`}
                         fill
                         className="object-cover"
+                        unoptimized
                       />
                       {selectedImageIndex === index && (
                         <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">

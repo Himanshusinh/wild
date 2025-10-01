@@ -149,7 +149,20 @@ const InputBox = () => {
       let result;
 
       // Build the same backend prompt regardless of model
-      const backendPrompt = `Create a fun and engaging sticker design of: ${prompt}. The sticker should be vibrant, eye-catching, and suitable for social media, messaging apps, or decorative use.`;
+      const backendPrompt = `
+Create a fun and engaging sticker design of: ${prompt}.  
+
+Style: Bold, colorful, cartoon or vector style with clean outlines. Use exaggerated shapes, smooth shading, and vibrant colors.  
+Focus: Must be eye-catching and playful, with a clear silhouette that stands out at small sizes.  
+Usability: Suitable for social media, messaging apps, and decorative use. Transparent background preferred.  
+
+Art direction: Emphasize expressive character, humor, or charm. Keep the design simple but dynamic, with strong contrast and minimal background clutter.  
+Details: Use thick outlines, smooth curves, and a flat or semi-flat aesthetic. Add fun accents like sparkles, emojis, or motion lines if relevant.  
+
+-- Negative Prompt: avoid photorealism, avoid complex backgrounds, avoid muted colors, avoid excessive text, avoid messy details, avoid 3D rendering.  
+Output: High-resolution, sticker-style illustration, transparent background, bold and crisp edges.
+`;
+
 
       if (selectedModel === 'gemini-25-flash-image') {
         // Route to FAL (Google Nano Banana)

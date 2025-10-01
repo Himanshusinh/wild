@@ -12,6 +12,27 @@ interface ImagePreviewModalProps {
 const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose }) => {
   if (!preview) return null;
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) {
+      return urlOrPath.substring(ZATA_PREFIX.length);
+    }
+    return urlOrPath;
+  };
+
+  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
+  };
+
+  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
+
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
     const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
     return match?.[1]?.trim();
@@ -23,23 +44,21 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const downloadImage = async (url: string) => {
     try {
-      const response = await fetch(url, { mode: 'cors' });
+      const downloadUrl = toProxyDownloadUrl(url);
+      if (!downloadUrl) return;
+      const response = await fetch(downloadUrl, { credentials: 'include' });
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = objectUrl;
-      a.download = 'generated-image.jpg';
+      const baseName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
+      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : 'generated-image.jpg';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(objectUrl);
     } catch (e) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'generated-image.jpg';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      console.error('Download failed:', e);
     }
   };
 
@@ -61,13 +80,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         <div className="flex flex-col md:flex-row h-full">
           <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group flex items-center justify-center">
             {preview.image?.url && (
-              <Image src={preview.image.url} alt={preview.entry.prompt} fill className="object-contain max-w-full max-h-full" />
+              <img src={toProxyResourceUrl(preview.image.url)} alt={preview.entry.prompt} className="max-w-full max-h-full object-contain" />
             )}
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(preview.image.url, '_blank')}
+              onClick={() => window.open(toProxyResourceUrl(preview.image.url), '_blank')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />

@@ -42,6 +42,10 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
+    // Handle new backend prompt template
+    const m = rawPrompt.match(/Create a professional studio product photograph of:\s*(.+?)\s*\./i);
+    if (m && m[1]) return m[1].trim();
+    // Fallback to original prefix format
     return rawPrompt.replace(/^Product:\s*/i, '').trim();
   };
 

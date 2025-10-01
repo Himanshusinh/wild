@@ -1,48 +1,54 @@
-'use client';
+"use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { HistoryEntry } from '@/types/history';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { 
-  setPrompt
- } from '@/store/slices/generationSlice';
-import { bflGenerate, falGenerate } from '@/store/slices/generationsApi';
-import { 
-  toggleDropdown, 
-  addNotification 
-} from '@/store/slices/uiSlice';
-import { useGenerationCredits } from '@/hooks/useCredits';
-import { 
-  loadMoreHistory,
-  loadHistory,
-} from "@/store/slices/historySlice";
+import { HistoryEntry } from "@/types/history";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { setPrompt } from "@/store/slices/generationSlice";
+import { bflGenerate, falGenerate } from "@/store/slices/generationsApi";
+import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
+import { useGenerationCredits } from "@/hooks/useCredits";
+import { loadMoreHistory, loadHistory } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
-const updateFirebaseHistory = async (_id: string, _updates: any) => { };
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 // No-op action creators to satisfy existing dispatch calls without affecting store
-const updateHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
-const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
+const updateHistoryEntry = (_: any) => ({ type: "history/noop" } as any);
+const addHistoryEntry = (_: any) => ({ type: "history/noop" } as any);
 
 // Import the logo-specific components
-import ModelsDropdown from './ModelsDropdown';
-import LogoCountDropdown from './LogoCountDropdown';
-import LogoImagePreview from './LogoImagePreview';
+import ModelsDropdown from "./ModelsDropdown";
+import LogoCountDropdown from "./LogoCountDropdown";
+import LogoImagePreview from "./LogoImagePreview";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
-  
+
   // Redux state
-  const prompt = useAppSelector((state: any) => state.generation?.prompt || '');
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-kontext-pro');
-  const imageCount = useAppSelector((state: any) => state.generation?.imageCount || 1);
-  const isGenerating = useAppSelector((state: any) => state.generation?.isGenerating || false);
+  const prompt = useAppSelector((state: any) => state.generation?.prompt || "");
+  const selectedModel = useAppSelector(
+    (state: any) => state.generation?.selectedModel || "flux-kontext-pro"
+  );
+  const imageCount = useAppSelector(
+    (state: any) => state.generation?.imageCount || 1
+  );
+  const isGenerating = useAppSelector(
+    (state: any) => state.generation?.isGenerating || false
+  );
   const error = useAppSelector((state: any) => state.generation?.error);
-  const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
-  const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
-  const loading = useAppSelector((state: any) => state.history?.loading || false);
-  const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
-  const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const activeDropdown = useAppSelector(
+    (state: any) => state.ui?.activeDropdown
+  );
+  const historyEntries = useAppSelector(
+    (state: any) => state.history?.entries || []
+  );
+  const loading = useAppSelector(
+    (state: any) => state.history?.loading || false
+  );
+  const hasMore = useAppSelector(
+    (state: any) => state.history?.hasMore ?? true
+  );
+  const theme = useAppSelector((state: any) => state.ui?.theme || "dark");
 
   // Credits management
   const {
@@ -51,17 +57,19 @@ const InputBox = () => {
     handleGenerationFailure,
     creditBalance,
     clearCreditsError,
-  } = useGenerationCredits('image', selectedModel, {
-    frameSize: '1:1', // Logo generation typically uses square aspect ratio
+  } = useGenerationCredits("image", selectedModel, {
+    frameSize: "1:1", // Logo generation typically uses square aspect ratio
     count: imageCount,
   });
 
   // Local state for preview modal
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
-  
+
   // Local, ephemeral entry to mimic history-style preview while generating
-  const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
-  
+  const [localGeneratingEntries, setLocalGeneratingEntries] = useState<
+    HistoryEntry[]
+  >([]);
+
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
 
@@ -69,7 +77,7 @@ const InputBox = () => {
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
     if (!entry) return;
-    if (entry.status === 'completed' || entry.status === 'failed') {
+    if (entry.status === "completed" || entry.status === "failed") {
       const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
       return () => clearTimeout(timer);
     }
@@ -78,26 +86,33 @@ const InputBox = () => {
   // Load history on mount and handle infinite scroll
   useEffect(() => {
     // Load only logo entries
-    dispatch(loadHistory({ 
-      filters: { generationType: 'logo' }, 
-      paginationParams: { limit: 10 } 
-    }));
+    dispatch(
+      loadHistory({
+        filters: { generationType: "logo" },
+        paginationParams: { limit: 10 },
+      })
+    );
   }, [dispatch]);
 
   // Infinite scroll
   useEffect(() => {
     const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
+      if (
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 800
+      ) {
         if (hasMore && !loading) {
-          dispatch(loadMoreHistory({ 
-            filters: { generationType: 'logo' }, 
-            paginationParams: { limit: 10 } 
-          }));
+          dispatch(
+            loadMoreHistory({
+              filters: { generationType: "logo" },
+              paginationParams: { limit: 10 },
+            })
+          );
         }
       }
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
@@ -114,13 +129,15 @@ const InputBox = () => {
     try {
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
-      console.log('✅ Credits reserved for logo generation:', creditResult);
+      console.log("✅ Credits reserved for logo generation:", creditResult);
     } catch (creditError: any) {
-      console.error('❌ Credit validation failed:', creditError);
-      dispatch(addNotification({
-        type: 'error',
-        message: creditError.message || 'Insufficient credits for generation'
-      }));
+      console.error("❌ Credit validation failed:", creditError);
+      dispatch(
+        addNotification({
+          type: "error",
+          message: creditError.message || "Insufficient credits for generation",
+        })
+      );
       setIsGeneratingLocally(false);
       return;
     }
@@ -130,16 +147,16 @@ const InputBox = () => {
       id: `loading-${Date.now()}`,
       prompt: `Logo: ${prompt}`,
       model: selectedModel,
-      generationType: 'logo',
+      generationType: "logo",
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
-        url: '',
-        originalUrl: ''
+        url: "",
+        originalUrl: "",
       })),
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: imageCount,
-      status: 'generating'
+      status: "generating",
     };
 
     // Set local preview to show loading frames immediately
@@ -149,28 +166,44 @@ const InputBox = () => {
       let result;
 
       // Build the same backend prompt regardless of model
-      const backendPrompt = `Create a professional logo for: ${prompt}. The logo should be clean, modern, and suitable for business use.`;
+      const backendPrompt = `
+Create a professional, modern logo for: ${prompt}.  
 
-      if (selectedModel === 'gemini-25-flash-image') {
+Style: Clean, minimal, vector-based design. Flat colors or smooth gradients. No clutter, no complex backgrounds.  
+Focus: Strong brand identity, clear silhouette, visually balanced composition.  
+Usability: Scalable, works on both light and dark backgrounds, suitable for business cards, websites, and apps.  
+
+Art direction: Emphasize simplicity, symmetry, and timeless aesthetics. Use geometric shapes, subtle iconography, and harmonious color schemes. Avoid excessive details.  
+Typography: If text is included, keep it minimal, modern sans-serif, and well-balanced with the icon.  
+
+-- Negative Prompt: avoid 3D render, avoid photorealism, avoid cartoonish style, avoid stock icons, avoid pixelation, avoid busy backgrounds, avoid excessive text.  
+Output: High-resolution vector-style logo, plain background, sharp edges.
+`;
+
+      if (selectedModel === "gemini-25-flash-image") {
         // Route to FAL (Google Nano Banana)
-        result = await dispatch(falGenerate({
-          prompt: backendPrompt,
-          model: selectedModel,
-          n: imageCount,
-          uploadedImages: [], // Nano Banana is T2I/I2I, but for logo, we assume T2I for now
-          output_format: 'jpeg',
-          generationType: 'logo',
-        })).unwrap();
+        result = await dispatch(
+          falGenerate({
+            prompt: backendPrompt,
+            model: selectedModel,
+            n: imageCount,
+            uploadedImages: [], // Nano Banana is T2I/I2I, but for logo, we assume T2I for now
+            output_format: "jpeg",
+            generationType: "logo",
+          })
+        ).unwrap();
       } else {
         // Route to BFL (Flux models)
-      result = await dispatch(bflGenerate({
-        prompt: backendPrompt,
-        model: selectedModel,
-        n: imageCount,
-        frameSize: '1:1',
-        style: 'logo',
-        generationType: 'logo'
-      })).unwrap();
+        result = await dispatch(
+          bflGenerate({
+            prompt: backendPrompt,
+            model: selectedModel,
+            n: imageCount,
+            frameSize: "1:1",
+            style: "logo",
+            generationType: "logo",
+          })
+        ).unwrap();
       }
 
       // Create completed entry
@@ -178,25 +211,29 @@ const InputBox = () => {
         id: result.historyId || Date.now().toString(),
         prompt: `Logo: ${prompt}`,
         model: selectedModel,
-        generationType: 'logo',
+        generationType: "logo",
         images: result.images,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: imageCount,
-        status: 'completed'
+        status: "completed",
       };
 
       // Update local preview to completed
       setLocalGeneratingEntries([completedEntry]);
 
       // Clear the prompt
-      dispatch(setPrompt(''));
+      dispatch(setPrompt(""));
 
       // Show success notification
-      dispatch(addNotification({
-        type: 'success',
-        message: `Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`
-      }));
+      dispatch(
+        addNotification({
+          type: "success",
+          message: `Successfully generated ${imageCount} logo${
+            imageCount > 1 ? "s" : ""
+          }!`,
+        })
+      );
 
       // Handle credit success
       if (transactionId) {
@@ -204,29 +241,34 @@ const InputBox = () => {
       }
 
       // Refresh history to show the new logo
-      dispatch(loadHistory({ 
-        filters: { generationType: 'logo' }, 
-        paginationParams: { limit: 10 } 
-      }));
+      dispatch(
+        loadHistory({
+          filters: { generationType: "logo" },
+          paginationParams: { limit: 10 },
+        })
+      );
 
       // Reset local generation state
       setIsGeneratingLocally(false);
-
     } catch (error: any) {
-      console.error('Logo generation failed:', error);
-      
+      console.error("Logo generation failed:", error);
+
       // Update local preview to failed
-      setLocalGeneratingEntries(prev => prev.map(entry => ({
-        ...entry,
-        status: 'failed' as const,
-        error: error.message || 'Generation failed'
-      })));
+      setLocalGeneratingEntries((prev) =>
+        prev.map((entry) => ({
+          ...entry,
+          status: "failed" as const,
+          error: error.message || "Generation failed",
+        }))
+      );
 
       // Show error notification
-      dispatch(addNotification({
-        type: 'error',
-        message: error.message || 'Logo generation failed'
-      }));
+      dispatch(
+        addNotification({
+          type: "error",
+          message: error.message || "Logo generation failed",
+        })
+      );
 
       // Handle credit failure
       if (transactionId) {
@@ -249,32 +291,41 @@ const InputBox = () => {
   // Filter entries for logo generation
   const logoHistoryEntries = historyEntries.filter((entry: any) => {
     // Strictly include only entries persisted as logo
-    return entry.generationType === 'logo';
+    return entry.generationType === "logo";
   });
 
   // Debug logging
-  console.log('🏷️ Logo Generation - All entries:', historyEntries.length);
-  console.log('🏷️ Logo Generation - Filtered logo entries:', logoHistoryEntries.length);
-  console.log('🏷️ Logo Generation - Sample entries:', historyEntries.slice(0, 3).map((e: any) => ({ 
-    id: e.id, 
-    generationType: e.generationType, 
-    prompt: e.prompt?.substring(0, 50) + '...',
-    style: e.style 
-  })));
+  console.log("🏷️ Logo Generation - All entries:", historyEntries.length);
+  console.log(
+    "🏷️ Logo Generation - Filtered logo entries:",
+    logoHistoryEntries.length
+  );
+  console.log(
+    "🏷️ Logo Generation - Sample entries:",
+    historyEntries.slice(0, 3).map((e: any) => ({
+      id: e.id,
+      generationType: e.generationType,
+      prompt: e.prompt?.substring(0, 50) + "...",
+      style: e.style,
+    }))
+  );
 
   // Group entries by date
-  const groupedByDate = logoHistoryEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
-    const date = new Date(entry.timestamp).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(entry);
-    return groups;
-  }, {});
+  const groupedByDate = logoHistoryEntries.reduce(
+    (groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+      const date = new Date(entry.timestamp).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(entry);
+      return groups;
+    },
+    {}
+  );
 
   // Sort dates in descending order (newest first)
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
-    new Date(b).getTime() - new Date(a).getTime()
+  const sortedDates = Object.keys(groupedByDate).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
   );
 
   // Today key for local preview
@@ -301,7 +352,9 @@ const InputBox = () => {
         <div className="py-6 pl-4 ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Logo Generation History</h2>
+            <h2 className="text-xl font-semibold text-white pl-0 ">
+              Logo Generation History
+            </h2>
           </div>
           {/* Spacer to keep content below fixed header */}
           <div className="h-0"></div>
@@ -311,7 +364,9 @@ const InputBox = () => {
             <div className="flex items-center justify-center ">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                <div className="text-white text-lg">Loading your generation history...</div>
+                <div className="text-white text-lg">
+                  Loading your generation history...
+                </div>
               </div>
             </div>
           )}
@@ -321,8 +376,14 @@ const InputBox = () => {
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="text-white/60"
+                  >
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 </div>
                 <div className="text-white text-lg">No logos generated yet</div>
@@ -348,15 +409,15 @@ const InputBox = () => {
                         fill="currentColor"
                         className="text-white/60"
                       >
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                       </svg>
                     </div>
                     <h3 className="text-sm font-medium text-white/70">
-                      {new Date(date).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
+                      {new Date(date).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
                       })}
                     </h3>
                   </div>
@@ -366,45 +427,68 @@ const InputBox = () => {
                     {/* Prepend local preview tiles at the start of today's row to push images right */}
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
-                        {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                            {localGeneratingEntries[0].status === 'generating' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                                <div className="flex flex-col items-center gap-2">
-                                  <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                  <div className="text-xs text-white/60">Generating...</div>
+                        {localGeneratingEntries[0].images.map(
+                          (image: any, idx: number) => (
+                            <div
+                              key={`local-${idx}`}
+                              className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                            >
+                              {localGeneratingEntries[0].status ===
+                              "generating" ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                    <div className="text-xs text-white/60">
+                                      Generating...
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : localGeneratingEntries[0].status === 'failed' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                                <div className="flex flex-col items-center gap-2">
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                  </svg>
-                                  <div className="text-xs text-red-400">Failed</div>
+                              ) : localGeneratingEntries[0].status ===
+                                "failed" ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <svg
+                                      width="20"
+                                      height="20"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                      className="text-red-400"
+                                    >
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                    </svg>
+                                    <div className="text-xs text-red-400">
+                                      Failed
+                                    </div>
+                                  </div>
                                 </div>
+                              ) : (
+                                <div className="relative w-full h-full">
+                                  <Image
+                                    src={
+                                      image.url ||
+                                      image.originalUrl ||
+                                      "/placeholder-logo.png"
+                                    }
+                                    alt={localGeneratingEntries[0].prompt}
+                                    fill
+                                    loading="lazy"
+                                    className="object-cover"
+                                    sizes="192px"
+                                  />
+                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                </div>
+                              )}
+                              <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                                Logo
                               </div>
-                            ) : (
-                              <div className="relative w-full h-full">
-                                <Image
-                                  src={image.url || image.originalUrl || '/placeholder-logo.png'}
-                                  alt={localGeneratingEntries[0].prompt}
-                                  fill
-                                  loading="lazy"
-                                  className="object-cover"
-                                  sizes="192px"
-                                />
-                                <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              </div>
-                            )}
-                            <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Logo</div>
-                          </div>
-                        ))}
+                            </div>
+                          )
+                        )}
                       </>
                     )}
 
                     {/* Regular history entries */}
-                    {groupedByDate[date].map((entry: any) => 
+                    {groupedByDate[date].map((entry: any) =>
                       (entry.images || []).map((image: any) => (
                         <div
                           key={`${entry.id}-${image.id}`}
@@ -435,14 +519,20 @@ const InputBox = () => {
                                 >
                                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                                 </svg>
-                                <div className="text-xs text-red-400">Failed</div>
+                                <div className="text-xs text-red-400">
+                                  Failed
+                                </div>
                               </div>
                             </div>
                           ) : (
                             // Completed logo
                             <div className="relative w-full h-full">
                               <Image
-                                src={image.url || image.originalUrl || '/placeholder-logo.png'}
+                                src={
+                                  image.url ||
+                                  image.originalUrl ||
+                                  "/placeholder-logo.png"
+                                }
                                 alt={entry.prompt}
                                 fill
                                 loading="lazy"
@@ -450,15 +540,17 @@ const InputBox = () => {
                                 sizes="192px"
                                 onLoad={() => {
                                   setTimeout(() => {
-                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
-                                    if (shimmer) shimmer.style.opacity = '0';
+                                    const shimmer = document.querySelector(
+                                      `[data-image-id="${entry.id}-${image.id}"] .shimmer`
+                                    ) as HTMLElement;
+                                    if (shimmer) shimmer.style.opacity = "0";
                                   }, 100);
                                 }}
                               />
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             </div>
                           )}
-                          
+
                           {/* Logo badge */}
                           <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                             Logo
@@ -477,7 +569,9 @@ const InputBox = () => {
             <div className="flex items-center justify-center py-10">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                <div className="text-sm text-white/60">Loading more logos...</div>
+                <div className="text-sm text-white/60">
+                  Loading more logos...
+                </div>
               </div>
             </div>
           )}
@@ -498,15 +592,13 @@ const InputBox = () => {
               />
             </div>
             <div className="flex flex-col items-end gap-2">
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
-              )}
+              {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
                 disabled={!prompt.trim() || isGeneratingLocally}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition-colors"
               >
-                {isGeneratingLocally ? 'Generating Logo...' : 'Generate Logo'}
+                {isGeneratingLocally ? "Generating Logo..." : "Generate Logo"}
               </button>
             </div>
           </div>

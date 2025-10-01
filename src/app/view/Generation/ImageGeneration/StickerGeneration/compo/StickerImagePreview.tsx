@@ -19,22 +19,73 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const [copied, setCopied] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) {
+      return urlOrPath.substring(ZATA_PREFIX.length);
+    }
+    return urlOrPath;
+  };
+
+  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
+  };
+
+  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
+
   if (!isOpen) return null;
 
   const selectedImage = entry.images[selectedImageIndex];
+  const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
+  const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
+  const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
+
+  React.useEffect(() => {
+    let revokeUrl: string | null = null;
+    setSelectedImageObjectUrl('');
+    if (!selectedImagePath) return;
+    const controller = new AbortController();
+    const doFetch = async () => {
+      try {
+        const url = toProxyResourceUrl(selectedImagePath);
+        if (!url) return;
+        const res = await fetch(url, { credentials: 'include', signal: controller.signal });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const obj = URL.createObjectURL(blob);
+        revokeUrl = obj;
+        setSelectedImageObjectUrl(obj);
+      } catch {}
+    };
+    doFetch();
+    return () => {
+      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch {}
+      controller.abort();
+    };
+  }, [selectedImagePath]);
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(selectedImage.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
+      if (!downloadUrl) return;
+      const res = await fetch(downloadUrl, { credentials: 'include' });
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `sticker-${Date.now()}.png`;
+      a.href = objectUrl;
+      const baseName = (selectedImagePath || 'sticker').split('/').pop() || `sticker-${Date.now()}.png`;
+      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `sticker-${Date.now()}.png`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
     } catch (error) {
       console.error('Download failed:', error);
     }
@@ -42,6 +93,10 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
+    // New backend prompt format
+    const m = rawPrompt.match(/Create a fun and engaging sticker design of:\s*(.+?)\s*\./i);
+    if (m && m[1]) return m[1].trim();
+    // Fallback to older prefix style
     return rawPrompt.replace(/^Sticker:\s*/i, '').trim();
   };
 
@@ -56,7 +111,8 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   };
 
   const handleOpenInNewTab = () => {
-    window.open(selectedImage.url, '_blank');
+    if (!selectedImageProxyUrl) return;
+    window.open(selectedImageProxyUrl, '_blank');
   };
 
   const userPrompt = getUserPrompt(entry.prompt);
@@ -79,10 +135,11 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
           <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group">
             {selectedImage && (
               <Image 
-                src={selectedImage.url} 
+                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl} 
                 alt={entry.prompt} 
                 fill 
                 className="object-contain" 
+                unoptimized
               />
             )}
             <button
@@ -155,10 +212,11 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                       }`}
                     >
                       <Image
-                        src={image.url}
+                        src={(image as any)?.url}
                         alt={`Sticker ${index + 1}`}
                         fill
                         className="object-cover"
+                        unoptimized
                       />
                       {selectedImageIndex === index && (
                         <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">

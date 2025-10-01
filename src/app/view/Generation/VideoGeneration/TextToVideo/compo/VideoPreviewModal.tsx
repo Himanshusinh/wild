@@ -11,6 +11,30 @@ interface VideoPreviewModalProps {
 const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose }) => {
   if (!preview) return null;
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
+  const toProxyPath = (urlOrPath: any): string => {
+    if (!urlOrPath) return '';
+    if (typeof urlOrPath !== 'string') return '';
+    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) {
+      return urlOrPath.substring(ZATA_PREFIX.length);
+    }
+    // If it's already a storagePath-like value, return as-is
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    return urlOrPath;
+  };
+
+  const toProxyResourceUrl = (urlOrPath: any) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/media/${encodeURIComponent(path)}` : '';
+  };
+
+  const toProxyDownloadUrl = (urlOrPath: any) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
+
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
     const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
     return match?.[1]?.trim();
@@ -27,42 +51,69 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
     
     try {
-      const response = await fetch(url, { mode: 'cors' });
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      const path = toProxyPath((preview.video as any)?.storagePath || url);
+      const downloadUrl = toProxyDownloadUrl(path || url);
+      if (!downloadUrl) return;
+      const res = await fetch(downloadUrl, { credentials: 'include' });
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = objectUrl;
-      a.download = url.startsWith('data:image/') ? 'uploaded-image.jpg' : 'uploaded-video.mp4';
+      const baseName = (path || 'video').split('/').pop() || `video-${Date.now()}.mp4`;
+      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `video-${Date.now()}.mp4`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      window.URL.revokeObjectURL(objectUrl);
     } catch (e) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = url.startsWith('data:image/') ? 'uploaded-image.jpg' : 'uploaded-video.mp4';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      console.error('Download failed:', e);
     }
   };
 
   const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
   const displayedAspect = preview.entry.frameSize || '—';
 
-  // Extract video URL from different possible structures
-  let videoUrl = '';
+  // Extract video URL and route through proxy for cross-origin safety
+  let rawVideoUrl = '';
   if (preview.video) {
     if (typeof preview.video === 'string') {
-      videoUrl = preview.video;
+      rawVideoUrl = preview.video;
     } else if (preview.video.url) {
-      videoUrl = preview.video.url;
+      rawVideoUrl = preview.video.url;
     } else if (preview.video.firebaseUrl) {
-      videoUrl = preview.video.firebaseUrl;
+      rawVideoUrl = preview.video.firebaseUrl;
     } else if (preview.video.originalUrl) {
-      videoUrl = preview.video.originalUrl;
+      rawVideoUrl = preview.video.originalUrl;
     }
   }
+  const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
+  const videoUrl = toProxyResourceUrl(videoPath);
+
+  const [objectVideoUrl, setObjectVideoUrl] = React.useState<string>('');
+  React.useEffect(() => {
+    let revokeUrl: string | null = null;
+    setObjectVideoUrl('');
+    const path = toProxyPath(videoPath);
+    if (!path) return;
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        const url = toProxyResourceUrl(path);
+        if (!url) return;
+        const res = await fetch(url, { credentials: 'include', signal: controller.signal });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const obj = URL.createObjectURL(blob);
+        revokeUrl = obj;
+        setObjectVideoUrl(obj);
+      } catch {}
+    };
+    run();
+    return () => {
+      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch {}
+      controller.abort();
+    };
+  }, [videoPath]);
 
   console.log('Extracted video URL:', videoUrl);
   console.log('Original video object:', preview.video);
@@ -89,10 +140,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   alt={preview.entry.prompt}
                   className="max-w-full max-h-full object-contain"
                 />
-              ) : videoUrl.startsWith('data:video/') || videoUrl.startsWith('blob:') || videoUrl.startsWith('http') ? (
+              ) : (objectVideoUrl || videoUrl).startsWith('data:video/') || (objectVideoUrl || videoUrl).startsWith('blob:') || (objectVideoUrl || videoUrl).startsWith('http') ? (
                 <video 
-                  key={videoUrl}
-                  src={videoUrl} 
+                  key={objectVideoUrl || videoUrl}
+                  src={objectVideoUrl || videoUrl} 
                   controls 
                   className="max-w-full max-h-full object-contain"
                   autoPlay={false}
@@ -128,8 +179,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() => {
-                if (videoUrl && typeof videoUrl === 'string') {
-                  window.open(videoUrl, '_blank');
+                if (rawVideoUrl && typeof rawVideoUrl === 'string') {
+                  const path = toProxyPath((preview.video as any)?.storagePath || rawVideoUrl);
+                  window.open(toProxyResourceUrl(path), '_blank');
                 }
               }}
             >
