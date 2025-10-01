@@ -351,6 +351,18 @@ const InputBox = () => {
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
     new Date(b).getTime() - new Date(a).getTime()
   );
+  // Today key for injecting local preview into today's row
+  const todayKey = new Date().toDateString();
+
+  // Local, ephemeral preview entry for video generations
+  const [localVideoPreview, setLocalVideoPreview] = useState<HistoryEntry | null>(null);
+  useEffect(() => {
+    if (!localVideoPreview) return;
+    if (localVideoPreview.status === 'completed' || localVideoPreview.status === 'failed') {
+      const t = setTimeout(() => setLocalVideoPreview(null), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [localVideoPreview]);
 
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
   useEffect(() => {
@@ -924,19 +936,18 @@ const InputBox = () => {
         generationType = "video-to-video";
       }
 
-      // Create loading history entry for Redux (with temporary ID)
-      const tempId = Date.now().toString();
-      const loadingEntry: Omit<HistoryEntry, 'id'> = {
+      // Create local preview entry (history-style) to show generating tile in today's row
+      setLocalVideoPreview({
+        id: `video-loading-${Date.now()}`,
         prompt,
         model: selectedModel,
-        frameSize,
-        images: [],
-        status: "generating",
+        generationType: generationType as any,
+        images: [ { id: 'video-loading', url: '', originalUrl: '' } ] as any,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: 1,
-        generationType: generationType as any
-      };
+        status: 'generating'
+      } as any);
 
       // Backend will handle history creation - no frontend history creation needed
 
@@ -1141,6 +1152,18 @@ const InputBox = () => {
       console.log('🎬 Model:', selectedModel);
       console.log('🎬 Video data processed:', firebaseVideo);
 
+      // Update local preview to completed with a thumbnail frame if available
+      try {
+        const previewImageUrl = firebaseVideo?.url || firebaseVideo?.firebaseUrl || '';
+        setLocalVideoPreview(prev => prev ? ({
+          ...prev,
+          status: 'completed',
+          images: [{ id: 'video-thumb', url: previewImageUrl, originalUrl: previewImageUrl }] as any,
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        } as any) : prev);
+      } catch {}
+
       // Confirm credit transaction as successful
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
@@ -1203,6 +1226,7 @@ const InputBox = () => {
     } catch (error) {
       console.error('❌ Video generation failed:', error);
       setError(error instanceof Error ? error.message : 'Video generation failed');
+      setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
 
       // Handle credit transaction failure
       try {
@@ -1247,6 +1271,50 @@ const InputBox = () => {
 
             {/* History Entries - Grouped by Date */}
             <div className="space-y-8">
+              {/* If there's a local preview and no row for today, render a dated block for today */}
+              {localVideoPreview && !groupedByDate[todayKey] && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                      </svg>
+                    </div>
+                    <h3 className="text-sm font-medium text-white/70">
+                      {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                      {localVideoPreview.status === 'generating' ? (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                            <div className="text-xs text-white/60">Generating...</div>
+                          </div>
+                        </div>
+                      ) : localVideoPreview.status === 'failed' ? (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                          <div className="flex flex-col items-center gap-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                            </svg>
+                            <div className="text-xs text-red-400">Failed</div>
+                          </div>
+                        </div>
+                      ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                        <div className="relative w-full h-full">
+                          <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                          <div className="text-xs text-white/60">No preview</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
@@ -1274,6 +1342,36 @@ const InputBox = () => {
 
                   {/* All Videos for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-9">
+                    {/* Prepend local video preview to today's row to push existing items right */}
+                    {date === todayKey && localVideoPreview && (
+                      <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                        {localVideoPreview.status === 'generating' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-white/60">Generating...</div>
+                            </div>
+                          </div>
+                        ) : localVideoPreview.status === 'failed' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                              </svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                          <div className="relative w-full h-full">
+                            <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                          </div>
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                            <div className="text-xs text-white/60">No preview</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {groupedByDate[date].map((entry: HistoryEntry) => {
                       // More defensive approach to get media items
                       let mediaItems: any[] = [];

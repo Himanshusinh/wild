@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { addNotification } from '@/store/slices/uiSlice';
 import { Music4, ChevronDown, Volume2, FileText, Palette, Guitar } from "lucide-react";
 
 // Music styles and instruments for dropdowns
@@ -53,6 +55,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   // Local generating state for UI demo
   const [localGenerating, setLocalGenerating] = useState(false);
+  const dispatch = useAppDispatch();
   const generating = isGenerating || localGenerating;
 
   // Auto-adjust textarea height
@@ -102,7 +105,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     } else {
       // UI-only demo: simulate loading
       setLocalGenerating(true);
-      setTimeout(() => setLocalGenerating(false), 1500);
+      setTimeout(() => { setLocalGenerating(false); }, 1500);
     }
   };
 
@@ -339,6 +342,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     </div>
   );
 
+
   return (
     <div className="w-full max-w-[1200px] rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl p-4">
       {/* Main Input Section - Compact Layout */}
@@ -417,12 +421,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         </div>
       </div>
 
-      {/* Result Section */}
-      
     </div>
   );
 };
 
 export default MusicInputBox;
+
 
 

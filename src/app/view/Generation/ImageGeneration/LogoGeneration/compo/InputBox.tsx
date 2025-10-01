@@ -14,11 +14,15 @@ import {
 } from '@/store/slices/uiSlice';
 import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
-  addHistoryEntry, 
-  updateHistoryEntry,
+  loadMoreHistory,
   loadHistory,
-  loadMoreHistory
-} from '@/store/slices/historySlice';
+} from "@/store/slices/historySlice";
+// Frontend history writes removed; rely on backend history service
+const updateFirebaseHistory = async (_id: string, _updates: any) => { };
+const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+// No-op action creators to satisfy existing dispatch calls without affecting store
+const updateHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
+const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 
 // Import the logo-specific components
 import ModelsDropdown from './ModelsDropdown';
@@ -36,8 +40,8 @@ const InputBox = () => {
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
-  const historyLoading = useAppSelector((state: any) => state.history?.loading || false);
-  const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
+  const loading = useAppSelector((state: any) => state.history?.loading || false);
+  const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
 
   // Credits management
@@ -54,11 +58,53 @@ const InputBox = () => {
 
   // Local state for preview modal
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
+  
+  // Local, ephemeral entry to mimic history-style preview while generating
+  const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
+  
+  // Local state to track generation status for button text
+  const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
 
+  // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
+  useEffect(() => {
+    const entry = localGeneratingEntries[0] as any;
+    if (!entry) return;
+    if (entry.status === 'completed' || entry.status === 'failed') {
+      const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [localGeneratingEntries]);
 
+  // Load history on mount and handle infinite scroll
+  useEffect(() => {
+    // Load text-to-image entries since most logos are stored as text-to-image with logo style/prompt
+    dispatch(loadHistory({ 
+      filters: { generationType: 'text-to-image' }, 
+      paginationParams: { limit: 50 } 
+    }));
+  }, [dispatch]);
+
+  // Infinite scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
+        if (hasMore && !loading) {
+          dispatch(loadMoreHistory({ 
+            filters: { generationType: 'text-to-image' }, 
+            paginationParams: { limit: 50 } 
+          }));
+        }
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Set local generation state immediately
+    setIsGeneratingLocally(true);
 
     // Clear any previous credit errors
     clearCreditsError();
@@ -75,10 +121,11 @@ const InputBox = () => {
         type: 'error',
         message: creditError.message || 'Insufficient credits for generation'
       }));
+      setIsGeneratingLocally(false);
       return;
     }
 
-    // Create a loading entry immediately to show loading frames
+    // Create local preview entry immediately
     const loadingEntry: HistoryEntry = {
       id: `loading-${Date.now()}`,
       prompt: `Logo: ${prompt}`,
@@ -95,8 +142,8 @@ const InputBox = () => {
       status: 'generating'
     };
 
-    // Add loading entry to show frames immediately
-    dispatch(addHistoryEntry(loadingEntry));
+    // Set local preview to show loading frames immediately
+    setLocalGeneratingEntries([loadingEntry]);
 
     try {
       let result;
@@ -110,27 +157,23 @@ const InputBox = () => {
           prompt: backendPrompt,
           model: selectedModel,
           n: imageCount,
-          uploadedImages: [],
+          uploadedImages: [], // Nano Banana is T2I/I2I, but for logo, we assume T2I for now
           output_format: 'jpeg',
           generationType: 'logo',
         })).unwrap();
       } else {
-        // Default to BFL
-        result = await dispatch(bflGenerate({
-          prompt: backendPrompt,
-          model: selectedModel,
-          n: imageCount,
-          frameSize: '1:1',
-          style: 'logo',
-          generationType: 'logo'
-        })).unwrap();
+        // Route to BFL (Flux models)
+      result = await dispatch(bflGenerate({
+        prompt: backendPrompt,
+        model: selectedModel,
+        n: imageCount,
+        frameSize: '1:1',
+        style: 'logo',
+        generationType: 'logo'
+      })).unwrap();
       }
 
-      if (!result.images) {
-        throw new Error('No images received from Flux API');
-      }
-
-      // Create the completed entry
+      // Create completed entry
       const completedEntry: HistoryEntry = {
         id: result.historyId || Date.now().toString(),
         prompt: `Logo: ${prompt}`,
@@ -143,11 +186,8 @@ const InputBox = () => {
         status: 'completed'
       };
 
-      // Update the loading entry with completed data
-      dispatch(updateHistoryEntry({
-        id: loadingEntry.id,
-        updates: completedEntry
-      }));
+      // Update local preview to completed
+      setLocalGeneratingEntries([completedEntry]);
 
       // Clear the prompt
       dispatch(setPrompt(''));
@@ -163,17 +203,24 @@ const InputBox = () => {
         await handleGenerationSuccess(transactionId);
       }
 
+      // Refresh history to show the new logo
+      dispatch(loadHistory({ 
+        filters: { generationType: 'text-to-image' }, 
+        paginationParams: { limit: 50 } 
+      }));
+
+      // Reset local generation state
+      setIsGeneratingLocally(false);
+
     } catch (error: any) {
       console.error('Logo generation failed:', error);
       
-      // Update the loading entry to show error
-      dispatch(updateHistoryEntry({
-        id: loadingEntry.id,
-        updates: {
-          status: 'failed',
-          error: error.message || 'Generation failed'
-        }
-      }));
+      // Update local preview to failed
+      setLocalGeneratingEntries(prev => prev.map(entry => ({
+        ...entry,
+        status: 'failed' as const,
+        error: error.message || 'Generation failed'
+      })));
 
       // Show error notification
       dispatch(addNotification({
@@ -185,6 +232,9 @@ const InputBox = () => {
       if (transactionId) {
         await handleGenerationFailure(transactionId);
       }
+
+      // Reset local generation state
+      setIsGeneratingLocally(false);
     }
   };
 
@@ -194,67 +244,51 @@ const InputBox = () => {
   };
 
   // Close preview modal
-  const closePreview = () => {
-    setPreviewEntry(null);
-  };
+  const closePreview = () => setPreviewEntry(null);
 
-  // Load logo generation history entries
-  useEffect(() => {
-    // Load text-to-image history since backend stores logos with this generationType
-    dispatch(loadHistory({ 
-      filters: { 
-        generationType: 'text-to-image'
-      }, 
-      paginationParams: { limit: 50 } 
-    }));
-  }, [dispatch]);
+  // Filter entries for logo generation
+  const logoHistoryEntries = historyEntries.filter((entry: any) => {
+    // Primary filter: explicit logo type
+    if (entry.generationType === 'logo') return true;
 
-  // Filter logo generation history entries
+    // Secondary filter: entries that are clearly logos based on prompt/style
+    if (entry.generationType === 'text-to-image') {
+      const prompt = (entry.prompt || '').toLowerCase();
+      const style = (entry.style || '').toLowerCase();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
-        if (hasMoreHistory && !historyLoading) {
-          dispatch(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 10 } }));
-        }
-      }
-    };
+      // Exclude any product-like generations first
+      const isProductLike =
+        style === 'product' ||
+        prompt.includes('product') ||
+        prompt.includes('studio product') ||
+        prompt.includes('e-commerce') ||
+        prompt.includes('photograph');
+      if (isProductLike) return false;
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [dispatch, hasMoreHistory, historyLoading]);
+      // Consider as logo only if explicit logo intent is present
+      const hasExplicitLogoIntent =
+        style === 'logo' ||
+        /^logo\s*:/i.test(entry.prompt || '') ||
+        /(^|\s)logo(\s|$)/.test(prompt) ||
+        prompt.includes('company logo') ||
+        prompt.includes('business logo') ||
+        prompt.includes('brand logo');
 
-  const logoHistoryEntries = historyEntries
-    .filter((entry: HistoryEntry) => {
-      // If it has explicit logo type, include it
-      if (entry.generationType === 'logo') {
-        return true;
-      }
-      
-      // If it has explicit logo style, include it
-      if (entry.style === 'logo') {
-        return true;
-      }
-      
-      // For text-to-image entries, check if they're clearly logos
-      if (entry.generationType === 'text-to-image') {
-        // Include if it has logo-related keywords
-        const hasLogoKeywords = entry.prompt?.toLowerCase().includes('logo') ||
-                               entry.prompt?.startsWith('Logo:');
-        
-        // Exclude if it has conflicting styles (product or sticker)
-        const hasConflictingStyle = entry.style === 'product' || entry.style === 'sticker';
-        
-        // Exclude if it has product-related keywords (even without style)
-        const hasProductKeywords = entry.prompt?.toLowerCase().includes('product') ||
-                                  entry.prompt?.toLowerCase().includes('studio product');
-        
-        return hasLogoKeywords && !hasConflictingStyle && !hasProductKeywords;
-      }
-      
-      return false;
-    })
-    .sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      return hasExplicitLogoIntent;
+    }
+
+    return false;
+  });
+
+  // Debug logging
+  console.log('🏷️ Logo Generation - All entries:', historyEntries.length);
+  console.log('🏷️ Logo Generation - Filtered logo entries:', logoHistoryEntries.length);
+  console.log('🏷️ Logo Generation - Sample entries:', historyEntries.slice(0, 3).map((e: any) => ({ 
+    id: e.id, 
+    generationType: e.generationType, 
+    prompt: e.prompt?.substring(0, 50) + '...',
+    style: e.style 
+  })));
 
   // Group entries by date
   const groupedByDate = logoHistoryEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -271,9 +305,213 @@ const InputBox = () => {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
+  // Today key for local preview
+  const todayKey = new Date().toDateString();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        activeDropdown &&
+        !(event.target as HTMLElement).closest(".dropdown-container")
+      ) {
+        dispatch(toggleDropdown(""));
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeDropdown, dispatch]);
 
   return (
-    <div className="min-h-screen p-6">
+    <>
+      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+        <div className="py-6 pl-4 ">
+          {/* History Header - Fixed during scroll */}
+          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
+            <h2 className="text-xl font-semibold text-white pl-0 ">Logo Generation History</h2>
+          </div>
+          {/* Spacer to keep content below fixed header */}
+          <div className="h-0"></div>
+
+          {/* Main Loader */}
+          {loading && logoHistoryEntries.length === 0 && (
+            <div className="flex items-center justify-center ">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                <div className="text-white text-lg">Loading your generation history...</div>
+              </div>
+            </div>
+          )}
+
+          {/* No History State */}
+          {!loading && logoHistoryEntries.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+                <div className="text-white text-lg">No logos generated yet</div>
+                <div className="text-white/60 text-sm max-w-md">
+                  Create your first AI-generated logo using the interface below
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* History Entries - Grouped by Date */}
+          {logoHistoryEntries.length > 0 && (
+            <div className=" space-y-8  ">
+              {sortedDates.map((date) => (
+                <div key={date} className="space-y-4">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-white/60"
+                      >
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                      </svg>
+                    </div>
+                    <h3 className="text-sm font-medium text-white/70">
+                      {new Date(date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </h3>
+                  </div>
+
+                  {/* All Images for this Date - Horizontal Layout */}
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    {/* Prepend local preview tiles at the start of today's row to push images right */}
+                    {date === todayKey && localGeneratingEntries.length > 0 && (
+                      <>
+                        {localGeneratingEntries[0].images.map((image: any, idx: number) => (
+                          <div key={`local-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                            {localGeneratingEntries[0].status === 'generating' ? (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                  <div className="text-xs text-white/60">Generating...</div>
+                                </div>
+                              </div>
+                            ) : localGeneratingEntries[0].status === 'failed' ? (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                                <div className="flex flex-col items-center gap-2">
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                  </svg>
+                                  <div className="text-xs text-red-400">Failed</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative w-full h-full">
+                                <Image
+                                  src={image.url || image.originalUrl || '/placeholder-logo.png'}
+                                  alt={localGeneratingEntries[0].prompt}
+                                  fill
+                                  loading="lazy"
+                                  className="object-cover"
+                                  sizes="192px"
+                                />
+                                <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Logo</div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Regular history entries */}
+                    {groupedByDate[date].map((entry: any) => 
+                      (entry.images || []).map((image: any) => (
+                        <div
+                          key={`${entry.id}-${image.id}`}
+                          data-image-id={`${entry.id}-${image.id}`}
+                          onClick={() => setPreviewEntry(entry)}
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                        >
+                          {entry.status === "generating" ? (
+                            // Loading frame
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-white/60">
+                                  Generating...
+                                </div>
+                              </div>
+                            </div>
+                          ) : entry.status === "failed" ? (
+                            // Error frame
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                              <div className="flex flex-col items-center gap-2">
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  className="text-red-400"
+                                >
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                </svg>
+                                <div className="text-xs text-red-400">Failed</div>
+                              </div>
+                            </div>
+                          ) : (
+                            // Completed logo
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={image.url || image.originalUrl || '/placeholder-logo.png'}
+                                alt={entry.prompt}
+                                fill
+                                loading="lazy"
+                                className="object-cover transition-transform group-hover:scale-105"
+                                sizes="192px"
+                                onLoad={() => {
+                                  setTimeout(() => {
+                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
+                                    if (shimmer) shimmer.style.opacity = '0';
+                                  }, 100);
+                                }}
+                              />
+                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                            </div>
+                          )}
+                          
+                          {/* Logo badge */}
+                          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                            Logo
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Load More Indicator */}
+          {hasMore && loading && logoHistoryEntries.length > 0 && (
+            <div className="flex items-center justify-center py-10">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                <div className="text-sm text-white/60">Loading more logos...</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Input Section */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[780px] z-[60]">
         <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
@@ -293,10 +531,10 @@ const InputBox = () => {
               )}
               <button
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || isGenerating}
+                disabled={!prompt.trim() || isGeneratingLocally}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition-colors"
               >
-                {isGenerating ? 'Generating...' : 'Generate Logo'}
+                {isGeneratingLocally ? 'Generating Logo...' : 'Generate Logo'}
               </button>
             </div>
           </div>
@@ -307,144 +545,6 @@ const InputBox = () => {
         </div>
       </div>
 
-      {/* History Section */}
-      <div className="max-w-7xl mx-auto pt-20">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white mb-2">Logo Generation History</h2>
-          <p className="text-white/60">Your generated logos will appear here</p>
-        </div>
-
-        {logoHistoryEntries.length === 0 && historyLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-              <div className="text-white text-lg">Loading your logo generations...</div>
-            </div>
-          </div>
-        ) : logoHistoryEntries.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-              <Image
-                src="/icons/imagegenerationwhite.svg"
-                alt="Logo Generation"
-                width={48}
-                height={48}
-                className="opacity-50"
-              />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">No logos generated yet</h3>
-            <p className="text-white/60">Start by typing a prompt above to generate your first logo</p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {sortedDates.map((date) => (
-              <div key={date} className="space-y-4">
-                {/* Date Header */}
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="text-white/60"
-                    >
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-sm font-medium text-white/70">
-                    {new Date(date).toLocaleDateString('en-US', { 
-                      weekday: 'short', 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })}
-                  </h3>
-                </div>
-
-                {/* All Logo Images for this Date - Horizontal Layout */}
-                <div className="flex flex-wrap gap-3 ml-9">
-                  {groupedByDate[date].map((entry: HistoryEntry) => 
-                    entry.images.map((image, imageIndex) => (
-                      <div
-                        key={`${entry.id}-${image.id}`}
-                        data-image-id={`${entry.id}-${image.id}`}
-                        onClick={() => handleImageClick(entry)}
-                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                      >
-                        {entry.status === 'generating' ? (
-                          // Loading frame
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">
-                                Generating...
-                              </div>
-                            </div>
-                          </div>
-                        ) : entry.status === 'failed' ? (
-                          // Error frame
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                            <div className="flex flex-col items-center gap-2">
-                              <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                className="text-red-400"
-                              >
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                              <div className="text-xs text-red-400">Failed</div>
-                            </div>
-                          </div>
-                        ) : image.url ? (
-                          // Completed logo with shimmer loading
-                          <div className="relative w-full h-full">
-                            <Image
-                              src={image.url}
-                              alt={`Generated logo ${imageIndex + 1}`}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-200"
-                              sizes="192px"
-                              onLoad={() => {
-                                // Remove shimmer when image loads
-                                setTimeout(() => {
-                                  const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
-                                  if (shimmer) {
-                                    shimmer.style.opacity = '0';
-                                  }
-                                }, 100);
-                              }}
-                            />
-                            {/* Shimmer loading effect */}
-                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                          </div>
-                        ) : (
-                          // No image available
-                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                            <div className="text-xs text-white/60">No image</div>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {hasMoreHistory && historyLoading && logoHistoryEntries.length > 0 && (
-          <div className="flex items-center justify-center py-10">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-              <div className="text-sm text-white/60">Loading more logos...</div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Image Preview Modal */}
       {previewEntry && (
         <LogoImagePreview
@@ -453,7 +553,7 @@ const InputBox = () => {
           entry={previewEntry}
         />
       )}
-    </div>
+    </>
   );
 };
 

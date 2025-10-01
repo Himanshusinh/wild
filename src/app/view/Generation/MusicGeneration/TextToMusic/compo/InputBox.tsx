@@ -28,6 +28,19 @@ const InputBox = () => {
     audio: any;
   } | null>(null);
 
+  // Local preview state for immediate UI feedback
+  const [localMusicPreview, setLocalMusicPreview] = useState<any>(null);
+  const todayKey = new Date().toDateString();
+
+  // Auto-clear local preview after completion/failure
+  useEffect(() => {
+    if (!localMusicPreview) return;
+    if (localMusicPreview.status === 'completed' || localMusicPreview.status === 'failed') {
+      const t = setTimeout(() => setLocalMusicPreview(null), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [localMusicPreview]);
+
   // Get user ID from Redux state (adjust based on your auth setup)
   const userId = useAppSelector((state: any) => state.auth?.user?.uid || 'anonymous');
 
@@ -145,6 +158,19 @@ const InputBox = () => {
     setErrorMessage(undefined);
     setResultUrl(undefined);
 
+    // Create local preview immediately for UI feedback
+    setLocalMusicPreview({
+      id: `music-loading-${Date.now()}`,
+      prompt: payload.prompt,
+      model: payload.model,
+      generationType: 'text-to-music',
+      images: [{ id: 'music-loading', url: '', originalUrl: '' }],
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      imageCount: 1,
+      status: 'generating'
+    });
+
     // Create loading history entry for Redux (with temporary ID)
     const tempId = Date.now().toString();
     const loadingEntry = {
@@ -258,6 +284,13 @@ const InputBox = () => {
       // Set result URL for audio player
       setResultUrl(audioUrl);
 
+      // Update local preview to completed
+      setLocalMusicPreview((prev: any) => prev ? ({
+        ...prev,
+        status: 'completed',
+        images: [{ id: 'music-completed', url: audioUrl, originalUrl: audioUrl }]
+      }) : prev);
+
       // Show success notification
       dispatch(addNotification({
         type: 'success',
@@ -291,6 +324,12 @@ const InputBox = () => {
           console.error('❌ Firebase error update failed:', firebaseError);
         }
       }
+
+      // Update local preview to failed
+      setLocalMusicPreview((prev: any) => prev ? ({
+        ...prev,
+        status: 'failed'
+      }) : prev);
 
       // Update Redux entry with failed status
       dispatch(updateHistoryEntry({
@@ -355,6 +394,39 @@ const InputBox = () => {
             </div>
           )}
 
+          {/* If no row for today yet, render one with preview */}
+          {localMusicPreview && !groupedByDate[todayKey] && (
+            <div className="space-y-4">
+              {/* Date Header */}
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="text-white/60"
+                  >
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                  </svg>
+                </div>
+                <h3 className="text-sm font-medium text-white/70">
+                  {new Date(todayKey).toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </h3>
+              </div>
+
+              {/* All Music Tracks for this Date - Horizontal Layout */}
+              <div className="flex flex-wrap gap-3 ml-9">
+                <MusicTileFromPreview preview={localMusicPreview} />
+              </div>
+            </div>
+          )}
+
           {/* History Entries - Grouped by Date */}
           {historyEntries.length > 0 && (
             <div className="space-y-8">
@@ -385,6 +457,8 @@ const InputBox = () => {
 
                   {/* All Music Tracks for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-9">
+                    {/* Prepend local preview to today's row to push items right */}
+                    {date === todayKey && localMusicPreview && <MusicTileFromPreview preview={localMusicPreview} />}
                     {groupedByDate[date].map((entry: any) => 
                       (entry.audios || entry.images || []).map((audio: any) => (
                         <div
@@ -512,3 +586,43 @@ const InputBox = () => {
 };
 
 export default InputBox;
+
+// Helper component for music preview tile
+const MusicTileFromPreview = ({ preview }: { preview: any }) => (
+  <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 flex-shrink-0">
+    {preview.status === 'generating' ? (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+          <div className="text-xs text-white/60">Composing...</div>
+        </div>
+      </div>
+    ) : preview.status === 'failed' ? (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+        <div className="flex flex-col items-center gap-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+          </svg>
+          <div className="text-xs text-red-400">Failed</div>
+        </div>
+      </div>
+    ) : (
+      <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center relative">
+        {/* Song Logo/Icon */}
+        <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+          <Music4 className="w-8 h-8 text-white/80" />
+        </div>
+        
+        {/* Play button overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
+          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    )}
+    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Music</div>
+  </div>
+);

@@ -1335,7 +1335,7 @@ export default function SignInForm() {
       )}
 
       {/* Debug: Test Cookie Button - Always visible for debugging */}
-      <div className="text-center mb-4">
+      {/* <div className="text-center mb-4">
         <button
           type="button"
           onClick={testCookieSetting}
@@ -1344,14 +1344,14 @@ export default function SignInForm() {
           🧪 Test Cookie Setting (Debug)
         </button>
         <p className="text-xs text-gray-400 mt-1">Click to test if cookies work in this browser</p>
-      </div>
+      </div> */}
 
       {/* Cookies Settings - Individual Div - Only show when not on OTP screen, username screen, or login screen */}
-      {!otpSent && !showUsernameForm && !showLoginForm && (
+      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
         <div className="text-center mb-12">
           <span className="text-[#4285F4] text-xs">Cookies Settings</span>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

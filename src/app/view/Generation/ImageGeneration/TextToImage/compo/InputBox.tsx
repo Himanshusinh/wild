@@ -48,6 +48,18 @@ const InputBox = () => {
   } | null>(null);
   const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
+  // Local, ephemeral entry to mimic history-style preview while generating
+  const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
+
+  // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
+  useEffect(() => {
+    const entry = localGeneratingEntries[0] as any;
+    if (!entry) return;
+    if (entry.status === 'completed' || entry.status === 'failed') {
+      const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [localGeneratingEntries]);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
@@ -229,6 +241,8 @@ const InputBox = () => {
   const sortedDates = Object.keys(groupedByDate).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
   );
+  // Today key in the same format used for grouping
+  const todayKey = new Date().toDateString();
   const theme = useAppSelector((state: any) => state.ui?.theme || "dark");
   const uploadedImages = useAppSelector(
     (state: any) => state.generation?.uploadedImages || []
@@ -346,7 +360,26 @@ const InputBox = () => {
       return;
     }
 
-    // No local history writes; backend tracks history
+    // Create a local history-style loading entry that mirrors the Logo flow
+    const tempEntryId = `loading-${Date.now()}`;
+    const tempEntry: HistoryEntry = {
+      id: tempEntryId,
+      prompt,
+      model: selectedModel,
+      generationType: 'text-to-image',
+      images: Array.from({ length: imageCount }, (_, index) => ({
+        id: `loading-${index}`,
+        url: '',
+        originalUrl: ''
+      })),
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      imageCount: imageCount,
+      status: 'generating'
+    } as any;
+    setLocalGeneratingEntries([tempEntry]);
+
+    // No local writes to global history; backend tracks persistent history
 
     let firebaseHistoryId: string | undefined;
 
@@ -796,6 +829,20 @@ const InputBox = () => {
         //   })
         // );
 
+        // Update the local loading entry with completed images
+        try {
+          const completedEntry: HistoryEntry = {
+            ...(localGeneratingEntries[0] || tempEntry),
+            id: (localGeneratingEntries[0]?.id || tempEntryId),
+            images: result.images,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount: result.images.length,
+          } as any;
+          setLocalGeneratingEntries([completedEntry]);
+        } catch {}
+
         // Show success notification
         dispatch(
           addNotification({
@@ -821,6 +868,20 @@ const InputBox = () => {
             output_format: 'jpeg',
             generationType: 'text-to-image',
           })).unwrap();
+
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
 
           dispatch(addNotification({ type: 'success', message: `Generated ${result.images?.length || 1} image(s) successfully!` }));
           clearInputs();
@@ -944,6 +1005,20 @@ const InputBox = () => {
             generateImages(generationPayload)
           ).unwrap();
 
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
           // History is persisted by backend; no local completed entry needed
 
           // Update the loading entry with completed data
@@ -976,6 +1051,11 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
+      // Mark local preview as failed
+      setLocalGeneratingEntries((prev) => prev.map((e) => ({
+        ...e,
+        status: 'failed'
+      })));
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
@@ -1042,7 +1122,7 @@ const InputBox = () => {
 
   return (
     <>
-      {historyEntries.length > 0 && (
+      {(historyEntries.length > 0 || localGeneratingEntries.length > 0) && (
         <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
@@ -1061,6 +1141,8 @@ const InputBox = () => {
                 </div>
               </div>
             )}
+
+            {/* Local preview will be appended to today's row inside the map below */}
 
             {/* History Entries - Grouped by Date */}
             <div className=" space-y-8  ">
@@ -1091,6 +1173,40 @@ const InputBox = () => {
 
                   {/* All Images for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-9">
+                    {/* Prepend local preview tiles at the start of today's row to push images right */}
+                    {date === todayKey && localGeneratingEntries.length > 0 && (
+                      <>
+                        {localGeneratingEntries[0].images.map((image: any, idx: number) => (
+                          <div key={`local-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                            {localGeneratingEntries[0].status === 'generating' ? (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                                  <div className="text-xs text-white/60">Generating...</div>
+                                </div>
+                              </div>
+                            ) : localGeneratingEntries[0].status === 'failed' ? (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                                <div className="flex flex-col items-center gap-2">
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                  </svg>
+                                  <div className="text-xs text-red-400">Failed</div>
+                                </div>
+                              </div>
+                            ) : image.url ? (
+                              <div className="relative w-full h-full">
+                                <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-cover" sizes="192px" />
+                              </div>
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                                <div className="text-xs text-white/60">No image</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    )}
                     {groupedByDate[date].map((entry: HistoryEntry) =>
                       entry.images.map((image: any) => (
                         <div
