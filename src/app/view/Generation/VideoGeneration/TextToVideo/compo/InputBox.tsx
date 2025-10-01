@@ -235,6 +235,9 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
 
   // Get history entries for video generation
@@ -494,7 +497,7 @@ const InputBox = () => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
-      dispatch(loadMoreHistory({ filters: {}, paginationParams: { limit: 50 } }));
+      dispatch(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 30 } }));
     }
   }, [historyEntries, hasMore, loading, dispatch]);
 
@@ -619,30 +622,45 @@ const InputBox = () => {
     setPage(1);
   }, []);
 
-  // Ensure all history (all generation types) is loaded for this page
+  // Ensure only video history is loaded for this page
   useEffect(() => {
     dispatch(clearFilters());
-    dispatch(loadHistory({ filters: {}, paginationParams: { limit: 50 } }));
+    // Initial load: 50 entries of all video types (mode=video groups T2V/I2V/V2V)
+    dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
   }, [dispatch]);
 
-  // Handle scroll to load more history
+  // Mark user scroll
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
-        if (hasMore && !loading) {
-          const nextPage = page + 1;
-          setPage(nextPage);
-          // Load more without forcing a single generationType; rely on store filters
-          dispatch(loadMoreHistory({ 
-            filters: {}, 
-            paginationParams: { limit: 50 } 
-          }));
-        }
-      }
-    };
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll as any);
+  }, []);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+  // IntersectionObserver-based load more for video history
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) return;
+      if (!hasMore || loading || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      const nextPage = page + 1;
+      setPage(nextPage);
+      try {
+        await (dispatch as any)(loadMoreHistory({ 
+          filters: { mode: 'video' } as any, 
+          paginationParams: { limit: 10 } 
+        })).unwrap();
+      } catch (e) {
+        console.error('[Video] IO loadMore error', e);
+      } finally {
+        loadingMoreRef.current = false;
+      }
+    }, { root: null, threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [hasMore, loading, page, dispatch]);
 
   // Handle references upload
@@ -823,7 +841,8 @@ const InputBox = () => {
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
               resolution: selectedResolution
-            })
+            }),
+            generationType: "text-to-video"
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
@@ -886,7 +905,8 @@ const InputBox = () => {
                 type: "character", 
                 image: [references[0]] 
               }] 
-            })
+            }),
+            generationType: "image-to-video"
           };
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
@@ -902,7 +922,8 @@ const InputBox = () => {
               promptText: prompt,
               duration: duration as 5 | 10,
               promptImage: uploadedImages[0]
-            })
+            }),
+            generationType: "image-to-video"
           };
           apiEndpoint = '/api/runway/video';
         }
@@ -933,7 +954,8 @@ const InputBox = () => {
                 type: "image",
                 uri: ref
               })) : undefined,
-            })
+            }),
+            generationType: "video-to-video"
           };
           apiEndpoint = '/api/runway/video';
         }
@@ -1174,7 +1196,7 @@ const InputBox = () => {
       
       // Refresh history to show the new video
       dispatch(clearFilters());
-      dispatch(loadHistory({ filters: {}, paginationParams: { limit: 50 } }));
+      dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
       
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -1509,6 +1531,8 @@ const InputBox = () => {
                   </div>
                 </div>
               )}
+              {/* Sentinel for IO-based infinite scroll */}
+              <div ref={sentinelRef} style={{ height: 1 }} />
             </div>
           </div>
         </div>

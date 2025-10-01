@@ -100,24 +100,43 @@ const ProductWithModelPoseInputBox = () => {
   useEffect(() => {
     dispatch(loadHistory({ 
       filters: { generationType: 'product-generation' }, 
-      paginationParams: { limit: 10 } 
+      paginationParams: { limit: 50 } 
     }));
   }, [dispatch]);
 
-  // Infinite scroll
+  // IntersectionObserver-based infinite scroll
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
+
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
-        if (hasMore && !loading) {
-          dispatch(loadMoreHistory({ 
-            filters: { generationType: 'product-generation' }, 
-            paginationParams: { limit: 10 } 
-          }));
-        }
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll as any);
+  }, []);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) return;
+      if (!hasMore || loading || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      try {
+        await (dispatch as any)(loadMoreHistory({ 
+          filters: { generationType: 'product-generation' }, 
+          paginationParams: { limit: 10 } 
+        })).unwrap();
+      } catch (e) {
+        console.error('[Product] IO loadMore error', e);
+      } finally {
+        loadingMoreRef.current = false;
       }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    }, { root: null, threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
@@ -547,9 +566,9 @@ const ProductWithModelPoseInputBox = () => {
                           )}
                           
                           {/* Product badge */}
-                          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                          {/* <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                             Product
-                          </div>
+                          </div> */}
                         </div>
                       ))
                     )}

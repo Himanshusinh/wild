@@ -66,7 +66,7 @@ const Nav = () => {
       const api = getApiClient()
       await api.post('/api/auth/logout')
     } catch {}
-    window.location.href = '/'
+    window.location.href = '/view/Landingpage'
   }
 
   return (

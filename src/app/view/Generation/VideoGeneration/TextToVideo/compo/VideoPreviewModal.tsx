@@ -48,7 +48,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   };
 
   const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
-  const displayedAspect = preview.entry.frameSize || '—';
+  const displayedAspect = preview.entry.frameSize || '16:9';
 
   // Extract video URL from different possible structures
   let videoUrl = '';
@@ -194,10 +194,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 <span className="opacity-60">Model</span>
                 <span className="opacity-90">{preview.entry.model}</span>
               </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
+              {/* <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
                 <span className="opacity-60">Style</span>
                 <span className="opacity-90">{displayedStyle}</span>
-              </div>
+              </div> */}
               <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
                 <span className="opacity-60">Aspect ratio</span>
                 <span className="opacity-90">{displayedAspect}</span>

@@ -42,7 +42,17 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    return rawPrompt.replace(/^Product:\s*/i, '').trim();
+    let s = String(rawPrompt);
+    s = s.replace(/\[\s*Style:\s*[^\]]+\]/gi, '').trim();
+    s = s.replace(/^(Logo|Sticker|Product)\s*:\s*/i, '').trim();
+    // Match "Create a professional studio product photograph of: X. ..."
+    const m = s.match(/product\s+photograph\s+of\s*:\s*(.+?)(?:\.|$)/i);
+    if (m && m[1]) return m[1].trim();
+    const m2 = s.match(/(?:of)\s*:\s*(.+?)(?:\.|$)/i);
+    if (m2 && m2[1]) return m2[1].trim();
+    const afterColon = s.split(':').slice(1).join(':').trim();
+    if (afterColon) return (afterColon.split('.').shift() || '').trim();
+    return s;
   };
 
   const handleCopyPrompt = async () => {

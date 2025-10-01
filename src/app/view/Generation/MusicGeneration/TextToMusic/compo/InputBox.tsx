@@ -20,9 +20,13 @@ const InputBox = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
+  // Use global history pagination/loading state
+  const storeHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
+  const storeLoading = useAppSelector((s: any) => s.history?.loading || false);
   const [page, setPage] = useState(1);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = React.useRef(false);
+  const hasUserScrolledRef = React.useRef(false);
   const [selectedAudio, setSelectedAudio] = useState<{
     entry: any;
     audio: any;
@@ -79,59 +83,50 @@ const InputBox = () => {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  // Load history on mount
+  // Load history on mount (music only)
   useEffect(() => {
     dispatch(clearFilters());
     dispatch(loadHistory({ 
-      filters: {}, 
-      paginationParams: { limit: 50 } 
+      filters: { generationType: 'text-to-music' }, 
+      paginationParams: { limit: 10 } 
     }));
   }, [dispatch]);
 
-  // Load more history function
-  const loadMoreHistory = async () => {
-    if (loading || !hasMore) return;
-    
-    setLoading(true);
-    try {
-      const result = await dispatch(loadHistory({ 
-        filters: {}, 
-        paginationParams: { 
-          limit: 50,
-          cursor: historyEntries.length > 0 ? {
-            timestamp: historyEntries[historyEntries.length - 1].timestamp,
-            id: historyEntries[historyEntries.length - 1].id
-          } : undefined
-        } 
-      })).unwrap();
-      
-      if (result.entries.length < 50) {
-        setHasMore(false);
-      }
-      setPage(prev => prev + 1);
-    } catch (error) {
-      console.error('Failed to load more history:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Remove unused local loader; rely on Redux loadMoreHistory
 
-  // Handle scroll to load more history - Same as video generation
+  // Mark user scroll
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
-        if (hasMore && !loading) {
-          const nextPage = page + 1;
-          setPage(nextPage);
-          // Load more without forcing a single generationType; rely on store filters
-          // Note: loadMoreHistory is handled by the existing loadHistory action
-        }
-      }
-    };
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll as any);
+  }, []);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loading, page, dispatch]);
+  // IntersectionObserver-based load more
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) return;
+      if (!storeHasMore || storeLoading || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      const nextPage = page + 1;
+      setPage(nextPage);
+      try {
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'text-to-music' },
+          paginationParams: { limit: 10 }
+        } as any)).unwrap();
+      } catch (e) {
+        console.error('[Music] IO loadMore error', e);
+      } finally {
+        loadingMoreRef.current = false;
+      }
+    }, { root: null, threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [storeHasMore, storeLoading, page, dispatch]);
 
   const handleGenerate = async (payload: any) => {
     if (!payload.lyrics.trim()) {
@@ -177,6 +172,7 @@ const InputBox = () => {
       id: tempId,
       prompt: payload.prompt, // This will be the formatted prompt from style/instruments
       model: payload.model,
+      lyrics: payload.lyrics,
       generationType: 'text-to-music' as const,
       images: [], // Will store audio data in this field
       status: "generating" as const,
@@ -256,7 +252,8 @@ const InputBox = () => {
           originalUrl: audioItem.originalUrl || audioUrl,
           storagePath: audioItem.storagePath,
           type: 'audio' // Mark this as audio type
-        }]
+        }],
+        lyrics: payload.lyrics
       };
 
       console.log('🎵 Final audio data for history:', updateData);
@@ -304,8 +301,8 @@ const InputBox = () => {
 
       // Refresh history to show the new music
       dispatch(loadHistory({ 
-        filters: {}, 
-        paginationParams: { limit: 50 } 
+        filters: { generationType: 'text-to-music' }, 
+        paginationParams: { limit: 10 } 
       }));
 
       console.log('✅ Music generation completed successfully');
@@ -370,7 +367,7 @@ const InputBox = () => {
           <div className="h-0"></div>
 
           {/* Main Loader */}
-          {loading && historyEntries.length === 0 && (
+          {storeLoading && historyEntries.length === 0 && (
               <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
@@ -380,7 +377,7 @@ const InputBox = () => {
             )}
 
           {/* No History State */}
-          {!loading && historyEntries.length === 0 && (
+          {!storeLoading && historyEntries.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
@@ -510,9 +507,9 @@ const InputBox = () => {
                               </div>
                               
                               {/* Music track label */}
-                              <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                              {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                                 <span className="text-xs text-white">Music</span>
-                              </div>
+                              </div> */}
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -524,7 +521,7 @@ const InputBox = () => {
               ))}
 
               {/* Scroll Loading Indicator - Same as image/video generation */}
-              {hasMore && loading && (
+              {storeHasMore && storeLoading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
@@ -532,6 +529,7 @@ const InputBox = () => {
                   </div>
                 </div>
               )}
+              <div ref={sentinelRef} style={{ height: 1 }} />
             </div>
           )}
         </div>
@@ -571,13 +569,13 @@ const InputBox = () => {
                 </svg>
               </button>
             </div>
-             <CustomAudioPlayer 
-               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl}
-               prompt={selectedAudio.entry.prompt}
-               model={selectedAudio.entry.model}
-               lyrics={selectedAudio.entry.prompt} // Using prompt as lyrics for now
-               autoPlay={true}
-             />
+            <CustomAudioPlayer 
+              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl}
+              prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
+              model={selectedAudio.entry.model}
+              lyrics={selectedAudio.entry.lyrics}
+              autoPlay={true}
+            />
           </div>
         </div>
       )}

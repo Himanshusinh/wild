@@ -311,11 +311,17 @@ const historySlice = createSlice({
               if (!type || typeof type !== 'string') return '';
               return type.replace(/[_-]/g, '-').toLowerCase();
             };
-            const normalizedFilter = normalizeGenerationType(usedFilters.generationType);
-            state.entries = state.entries.filter(entry => {
-              const normalizedEntryType = normalizeGenerationType(entry.generationType);
-              return normalizedEntryType === normalizedFilter;
-            });
+            const matchesType = (entryType: string | undefined, filterType: string): boolean => {
+              const e = normalizeGenerationType(entryType);
+              const f = normalizeGenerationType(filterType);
+              if (e === f) return true;
+              // Handle synonyms between old/new naming
+              if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
+              return false;
+            };
+            const filterBefore = state.entries.length;
+            state.entries = state.entries.filter(entry => matchesType(entry.generationType as any, usedFilters.generationType as any));
+            try { console.log('[historySlice] filter by type', { requested: usedFilters.generationType, before: filterBefore, after: state.entries.length }); } catch {}
           }
           if (usedFilters.model) {
             state.entries = state.entries.filter(entry => entry.model === usedFilters.model);

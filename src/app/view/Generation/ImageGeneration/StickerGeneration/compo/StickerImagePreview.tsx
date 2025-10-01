@@ -42,7 +42,17 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    return rawPrompt.replace(/^Sticker:\s*/i, '').trim();
+    let s = String(rawPrompt);
+    s = s.replace(/\[\s*Style:\s*[^\]]+\]/gi, '').trim();
+    s = s.replace(/^(Logo|Sticker|Product)\s*:\s*/i, '').trim();
+    // Match "Create a fun and engaging sticker design of: X. ..."
+    const m = s.match(/sticker\s+design\s+of\s*:\s*(.+?)(?:\.|$)/i);
+    if (m && m[1]) return m[1].trim();
+    const m2 = s.match(/(?:of)\s*:\s*(.+?)(?:\.|$)/i);
+    if (m2 && m2[1]) return m2[1].trim();
+    const afterColon = s.split(':').slice(1).join(':').trim();
+    if (afterColon) return (afterColon.split('.').shift() || '').trim();
+    return s;
   };
 
   const handleCopyPrompt = async () => {

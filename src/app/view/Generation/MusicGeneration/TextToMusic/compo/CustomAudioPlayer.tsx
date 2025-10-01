@@ -100,64 +100,58 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
     }
   };
 
+  const promptToShow = (lyrics && lyrics.trim().length > 0) ? lyrics : prompt;
+
   return (
     <div className="w-full">
       {/* Hidden audio element */}
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       
       {/* New Layout: Prompt + Lyrics + Music Box */}
-      <div className="space-y-3">
-        {/* First Line: Input Box Text (Prompt) with Copy Icon */}
-        <div className="flex items-center justify-between">
-          <div className="text-white/90 text-sm font-medium leading-relaxed flex-1">
-            {prompt}
+      <div className="space-y-4">
+        {/* Prompt block with label and copy */}
+        <div className="flex items-start gap-2">
+          <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Prompt</div>
+          <div className="flex-1 bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/90 text-sm leading-relaxed">
+            {promptToShow}
           </div>
           <button
-            onClick={() => copyToClipboard(prompt, 'prompt')}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 ml-2"
+            onClick={() => copyToClipboard(promptToShow, 'prompt')}
+            className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white mt-2"
             title="Copy prompt"
           >
-            {copiedPrompt ? (
-              <Check className="w-4 h-4 text-green-400" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
+            {copiedPrompt ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
           </button>
         </div>
-        
-        {/* Second Line: Lyrics (Single line, extends to screen width) with Copy Icon */}
+
+        {/* Lyrics block with label, copy, and collapse */}
         {lyrics && (
-          <div className="space-y-2">
-            {/* Clickable Lyrics Line */}
-            <div className="flex items-center justify-between">
-              <div 
-                className="text-white/70 text-sm leading-relaxed overflow-hidden flex-1 cursor-pointer hover:text-white/90 transition-colors"
+          <div className="flex items-start gap-2">
+            <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Lyrics</div>
+            <div className="flex-1">
+              <div
+                className="bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/80 text-sm leading-relaxed cursor-pointer hover:bg-white/10"
                 onClick={() => setLyricsExpanded(!lyricsExpanded)}
-                title={lyricsExpanded ? "Click to collapse" : "Click to expand"}
+                title={lyricsExpanded ? 'Click to collapse' : 'Click to expand'}
               >
-                <div className="whitespace-nowrap overflow-x-auto scrollbar-hide">
-                  {lyricsExpanded ? lyrics : (lyrics.length > 50 ? `${lyrics.substring(0, 50)}...` : lyrics)}
-                </div>
-              </div>
-              <button
-                onClick={() => copyToClipboard(lyrics, 'lyrics')}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 ml-2"
-                title="Copy lyrics"
-              >
-                {copiedLyrics ? (
-                  <Check className="w-4 h-4 text-green-400" />
+                {!lyricsExpanded ? (
+                  <div className="whitespace-nowrap overflow-x-auto scrollbar-hide">
+                    {lyrics.length > 80 ? `${lyrics.substring(0, 80)}...` : lyrics}
+                  </div>
                 ) : (
-                  <Copy className="w-4 h-4" />
+                  <div className="max-h-40 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-mono text-[12px] text-white/80">{lyrics}</pre>
+                  </div>
                 )}
-              </button>
-            </div>
-            
-            {/* Expanded Lyrics (shown below when expanded) */}
-            {lyricsExpanded && (
-              <div className="text-white/60 text-xs leading-relaxed bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
-                <pre className="whitespace-pre-wrap font-mono">{lyrics}</pre>
               </div>
-            )}
+            </div>
+            <button
+              onClick={() => copyToClipboard(lyrics, 'lyrics')}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white mt-2"
+              title="Copy lyrics"
+            >
+              {copiedLyrics ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            </button>
           </div>
         )}
         

@@ -165,13 +165,10 @@ const InputBox = () => {
     }
   };
 
-  // Fetch all history pages for text-to-image
+  // Fetch only first page on mount; further pages load on scroll
   const refreshAllHistory = async () => {
     try {
-      let result: any = await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 10 } })).unwrap();
-      while (result && result.hasMore) {
-        result = await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit:10 } })).unwrap();
-      }
+      await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
     } catch { }
   };
 
@@ -199,6 +196,9 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const hasUserScrolledRef = useRef(false);
 
   // Memoize the filtered entries and group by date
   const historyEntries = useAppSelector(
@@ -226,6 +226,8 @@ const InputBox = () => {
     // Use shallowEqual to prevent unnecessary rerenders
     shallowEqual
   );
+
+  // Sentinel element at bottom of list (place near end of render)
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -285,58 +287,57 @@ const InputBox = () => {
 
 
 
-  // Handle scroll to load more history
+  // Mark when the user has actually scrolled (to avoid auto-draining pages on initial mount)
   useEffect(() => {
-    const handleScroll = () => {
-      // Check if we're near the bottom of the history container
-      const historyContainer = document.querySelector('.overflow-y-auto');
-      if (historyContainer) {
-        const scrollTop = historyContainer.scrollTop;
-        const scrollHeight = historyContainer.scrollHeight;
-        const clientHeight = historyContainer.clientHeight;
-        const threshold = scrollHeight - clientHeight - 100;
-
-        console.log('🖼️ Image Generation - Scroll Debug:', {
-          scrollTop,
-          scrollHeight,
-          clientHeight,
-          threshold,
-          hasMore,
-          loading,
-          page
-        });
-
-        if (scrollTop >= threshold) {
-          if (hasMore && !loading) {
-            console.log('🖼️ Image Generation - Scroll threshold reached, loading more...');
-            const nextPage = page + 1;
-            setPage(nextPage);
-            console.log('🖼️ Image Generation - Loading page:', nextPage);
-            dispatch(loadMoreHistory({
-              filters: { generationType: 'text-to-image' },
-              paginationParams: { limit: 10 }
-            }));
-          } else {
-            console.log('🖼️ Image Generation - Scroll threshold reached but:', {
-              hasMore,
-              loading,
-              reason: !hasMore ? 'No more entries' : 'Currently loading'
-            });
-          }
-        }
-      }
+    const onAnyScroll = () => {
+      hasUserScrolledRef.current = true;
     };
-
-    console.log('🖼️ Image Generation - Scroll event listener added');
-    // Listen for scroll on the history container specifically
     const historyContainer = document.querySelector('.overflow-y-auto');
-    if (historyContainer) {
-      historyContainer.addEventListener('scroll', handleScroll);
-      return () => {
-        console.log('🖼️ Image Generation - Scroll event listener removed');
-        historyContainer.removeEventListener('scroll', handleScroll);
-      };
-    }
+    window.addEventListener('scroll', onAnyScroll, { passive: true });
+    if (historyContainer) historyContainer.addEventListener('scroll', onAnyScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onAnyScroll as any);
+      if (historyContainer) historyContainer.removeEventListener('scroll', onAnyScroll as any);
+    };
+  }, []);
+
+  // IntersectionObserver-based infinite scroll (prevents repeated triggers)
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      // Require a user scroll before we begin auto-paginating
+      if (!hasUserScrolledRef.current) {
+        console.log('🖼️ IO: skip loadMore until user scrolls');
+        return;
+      }
+      if (!hasMore || loading || loadingMoreRef.current) {
+        console.log('🖼️ IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+        return;
+      }
+      loadingMoreRef.current = true;
+      const nextPage = page + 1;
+      setPage(nextPage);
+      console.log('🖼️ IO: loadMore start', { nextPage });
+      try {
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'text-to-image' },
+          paginationParams: { limit: 10 }
+        })).unwrap();
+      } catch (e) {
+        console.error('🖼️ IO: loadMore error', e);
+      } finally {
+        loadingMoreRef.current = false;
+      }
+    }, { root: null, rootMargin: '0px', threshold: 0.1 });
+    observer.observe(el);
+    console.log('🖼️ IO: observer attached');
+    return () => {
+      observer.disconnect();
+      console.log('🖼️ IO: observer disconnected');
+    };
   }, [hasMore, loading, page, dispatch]);
 
   const handleGenerate = async () => {
@@ -1519,6 +1520,8 @@ const InputBox = () => {
           </div>
         </div>
       </div>
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} style={{ height: 1 }} />
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} />
     </>

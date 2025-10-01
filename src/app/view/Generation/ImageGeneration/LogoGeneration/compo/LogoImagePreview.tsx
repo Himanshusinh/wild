@@ -42,7 +42,20 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    return rawPrompt.replace(/^Logo:\s*/i, '').trim();
+    let s = String(rawPrompt);
+    // Remove style tags like [Style: ...]
+    s = s.replace(/\[\s*Style:\s*[^\]]+\]/gi, '').trim();
+    // Strip simple prefixes
+    s = s.replace(/^(Logo|Sticker|Product)\s*:\s*/i, '').trim();
+    // Extract from templated prompts e.g. "Create a professional logo for: X. ..."
+    const m = s.match(/create\s+(?:a|an)\s+.*?(?:logo)\b.*?(?:for)\s*:\s*(.+?)(?:\.|$)/i);
+    if (m && m[1]) return m[1].trim();
+    const m2 = s.match(/(?:for)\s*:\s*(.+?)(?:\.|$)/i);
+    if (m2 && m2[1]) return m2[1].trim();
+    // Fallback: take text after first colon until first period
+    const afterColon = s.split(':').slice(1).join(':').trim();
+    if (afterColon) return (afterColon.split('.').shift() || '').trim();
+    return s;
   };
 
   const handleCopyPrompt = async () => {
