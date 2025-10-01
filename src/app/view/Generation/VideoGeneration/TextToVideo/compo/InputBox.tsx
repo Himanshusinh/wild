@@ -892,8 +892,10 @@ const InputBox = () => {
           apiEndpoint = '/api/minimax/video';
         } else {
           // Runway image to video
+          const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
           requestBody = {
             mode: "image_to_video",
+            sku: runwaySku,
             imageToVideo: buildImageToVideoBody({
               model: selectedModel as "gen4_turbo" | "gen3a_turbo",
               ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
@@ -918,8 +920,10 @@ const InputBox = () => {
           return;
         } else {
           // Runway video to video
+          const runwayAlephSku = 'Gen-4 Aleph 10s';
           requestBody = {
             mode: "video_to_video",
+            sku: runwayAlephSku,
             videoToVideo: buildVideoToVideoBody({
               model: "gen4_aleph",
               ratio: convertFrameSizeToRunwayRatio(frameSize) as any,

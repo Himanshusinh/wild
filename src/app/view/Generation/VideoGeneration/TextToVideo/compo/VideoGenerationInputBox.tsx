@@ -259,8 +259,22 @@ const VideoGenerationInputBox: React.FC = () => {
     try {
       firebaseHistoryId = await saveHistoryEntry(historyData);
 
-      // Call video generation API
+      // Prepare SKU for pricing middleware
+      const sku = (() => {
+        if (state.mode === 'image_to_video') {
+          const dur = state.imageToVideo.duration || 10;
+          if (state.imageToVideo.model === 'gen4_turbo') return `Gen-4  Turbo ${dur}s`;
+          if (state.imageToVideo.model === 'gen3a_turbo') return `Gen-3a  Turbo ${dur}s`;
+        } else {
+          // Video-to-Video currently priced as fixed 10s Aleph
+          return 'Gen-4 Aleph 10s';
+        }
+        return '';
+      })();
+
+      // Call video generation API with sku for pricing
       const result = await dispatch(runwayVideo({
+        sku,
         mode: state.mode,
         imageToVideo: state.imageToVideo,
         videoToVideo: state.videoToVideo,

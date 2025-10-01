@@ -1,3 +1,5 @@
+import { getApiClient } from '@/lib/axiosInstance';
+
 export interface RunwayVideoTaskStatus {
   id: string;
   status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'THROTTLED';
@@ -23,18 +25,42 @@ export interface VideoGenerationCallback {
  */
 export async function pollRunwayVideoTaskStatus(taskId: string): Promise<RunwayVideoTaskStatus> {
   try {
-    // Backend provides unified status at /api/runway/status/:id
-    const response = await fetch(`/api/runway/status/${taskId}`, { credentials: 'include' });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch task status: ${response.status}`);
+    // Use centralized API client to hit API gateway (port 5000)
+    const api = getApiClient();
+    const { data } = await api.get(`/api/runway/status/${encodeURIComponent(taskId)}`);
+    const statusData = data?.data || data;
+
+    // Normalize backend-completed payload (history projection) into standard shape
+    if (statusData && statusData.status === 'completed' && (Array.isArray(statusData.videos) || Array.isArray(statusData.images))) {
+      const videoUrls: string[] = Array.isArray(statusData.videos)
+        ? statusData.videos.map((v: any) => v?.url).filter((u: any) => typeof u === 'string' && u.length > 0)
+        : [];
+      const imageUrls: string[] = Array.isArray(statusData.images)
+        ? statusData.images.map((im: any) => im?.url || im?.originalUrl || im).filter((u: any) => typeof u === 'string' && u.length > 0)
+        : [];
+      const outputUrls = videoUrls.length > 0 ? videoUrls : imageUrls;
+
+      const normalized: RunwayVideoTaskStatus = {
+        id: taskId,
+        status: 'SUCCEEDED',
+        createdAt: new Date().toISOString(),
+        output: outputUrls,
+        progress: 1,
+      };
+      console.log('=== RUNWAY VIDEO STATUS POLL (normalized) ===');
+      console.log('Task ID:', taskId);
+      console.log('Status:', normalized.status);
+      console.log('Progress:', normalized.progress);
+      console.log('Output:', normalized.output);
+      return normalized;
     }
-    const data = await response.json();
+
     console.log('=== RUNWAY VIDEO STATUS POLL ===');
     console.log('Task ID:', taskId);
-    console.log('Status:', data.status);
-    console.log('Progress:', data.progress);
-    console.log('Output:', data.output);
-    return data;
+    console.log('Status:', statusData.status);
+    console.log('Progress:', statusData.progress);
+    console.log('Output:', statusData.output);
+    return statusData as RunwayVideoTaskStatus;
   } catch (error) {
     console.error('Error polling Runway video task status:', error);
     throw error;

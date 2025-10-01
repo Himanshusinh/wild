@@ -3,6 +3,46 @@ import { HistoryEntry, HistoryFilters } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { PaginationParams, PaginationResult } from '@/lib/paginationUtils';
 
+// Map UI generation types to backend-expected values
+const mapGenerationTypeForBackend = (type?: string): string | undefined => {
+  if (!type) return type;
+  const normalized = type.toLowerCase();
+  switch (normalized) {
+    case 'logo-generation':
+      return 'logo';
+    case 'image-to-video':
+      return 'image_to_video';
+    case 'video-to-video':
+      return 'video_to_video';
+    default:
+      return type;
+  }
+};
+
+// Map frontend model values to backend SKU identifiers for filtering/history
+const mapModelSkuForBackend = (frontendValue?: string): string | undefined => {
+  if (!frontendValue) return frontendValue;
+  switch (frontendValue) {
+    // Runway
+    case 'gen4_turbo':
+      return 'runway_gen4_turbo';
+    case 'gen3a_turbo':
+      return 'runway_gen3a_turbo';
+    case 'gen4_aleph':
+      return 'runway_gen4_aleph';
+    // MiniMax
+    case 'MiniMax-Hailuo-02':
+      return 'minimax_hailuo_02';
+    case 'I2V-01-Director':
+      return 'minimax_i2v_01_director';
+    case 'S2V-01':
+      return 'minimax_s2v_01';
+    // Default: lowercase and replace non-alphanumerics with underscores
+    default:
+      return String(frontendValue).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  }
+};
+
 interface HistoryState {
   entries: HistoryEntry[];
   loading: boolean;
@@ -10,6 +50,8 @@ interface HistoryState {
   filters: HistoryFilters;
   hasMore: boolean;
   lastLoadedCount: number;
+  inFlight: boolean;
+  currentRequestKey: string | null;
 }
 
 const initialState: HistoryState = {
@@ -19,6 +61,8 @@ const initialState: HistoryState = {
   filters: {},
   hasMore: true,
   lastLoadedCount: 0,
+  inFlight: false,
+  currentRequestKey: null,
 };
 
 // Async thunk for loading history
@@ -32,7 +76,9 @@ export const loadHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = {};
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = filters.generationType;
+      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
+      if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
+      if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (paginationParams?.limit) params.limit = paginationParams.limit;
       if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
       const res = await client.get('/api/generations', { params });
@@ -53,6 +99,26 @@ export const loadHistory = createAsyncThunk(
       return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load history');
+    }
+  },
+  {
+    condition: (
+      { filters, paginationParams }: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
+      { getState }
+    ) => {
+      const state = getState() as { history: HistoryState };
+      const { loading, inFlight, currentRequestKey } = state.history;
+      const key = JSON.stringify({ type: 'load', filters: filters || {}, limit: paginationParams?.limit || 10, cursor: (paginationParams as any)?.cursor?.id });
+      if (loading || inFlight) {
+        try { console.log('[historySlice] loadHistory.condition SKIP: already loading', { currentRequestKey }); } catch {}
+        return false;
+      }
+      if (currentRequestKey === key) {
+        try { console.log('[historySlice] loadHistory.condition SKIP: duplicate key', { key }); } catch {}
+        return false;
+      }
+      try { console.log('[historySlice] loadHistory.condition OK', { key }); } catch {}
+      return true;
     }
   }
 );
@@ -92,7 +158,9 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = filters.generationType;
+      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
+      if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
+      if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
       const res = await client.get('/api/generations', { params });
       const result = res.data?.data || { items: [], nextCursor: undefined };
@@ -114,6 +182,25 @@ export const loadMoreHistory = createAsyncThunk(
       // Keep error for visibility
       console.error('❌ Load more history failed:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load more history');
+    }
+  },
+  {
+    condition: (
+      _args: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
+      { getState }
+    ) => {
+      const state = getState() as { history: HistoryState };
+      const { loading, inFlight, hasMore } = state.history;
+      if (loading || inFlight) {
+        try { console.log('[historySlice] loadMoreHistory.condition SKIP: already loading'); } catch {}
+        return false;
+      }
+      if (!hasMore) {
+        try { console.log('[historySlice] loadMoreHistory.condition SKIP: no more pages'); } catch {}
+        return false;
+      }
+      try { console.log('[historySlice] loadMoreHistory.condition OK'); } catch {}
+      return true;
     }
   }
 );
@@ -195,6 +282,11 @@ const historySlice = createSlice({
       // Load history
       .addCase(loadHistory.pending, (state, action) => {
         state.loading = true;
+        state.inFlight = true;
+        try {
+          const pendingArg = (action as any)?.meta?.arg;
+          state.currentRequestKey = JSON.stringify({ type: 'load', filters: pendingArg?.filters || {}, limit: pendingArg?.paginationParams?.limit || 10, cursor: pendingArg?.paginationParams?.cursor?.id });
+        } catch { state.currentRequestKey = 'unknown'; }
         state.error = null;
         try {
           const pendingArg = (action as any)?.meta?.arg;
@@ -203,6 +295,8 @@ const historySlice = createSlice({
       })
       .addCase(loadHistory.fulfilled, (state, action) => {
         state.loading = false;
+        state.inFlight = false;
+        state.currentRequestKey = null;
         
         // Always sync slice filters with the filters used for this load
         const usedFilters = (action.meta && action.meta.arg && action.meta.arg.filters) || {};
@@ -244,16 +338,25 @@ const historySlice = createSlice({
       })
       .addCase(loadHistory.rejected, (state, action) => {
         state.loading = false;
+        state.inFlight = false;
+        state.currentRequestKey = null;
         state.error = action.payload as string;
         try { console.warn('[historySlice] loadHistory.rejected', { error: state.error }); } catch {}
       })
       // Load more history
       .addCase(loadMoreHistory.pending, (state, action) => {
         state.loading = true;
+        state.inFlight = true;
+        try {
+          const pendingArg = (action as any)?.meta?.arg;
+          state.currentRequestKey = JSON.stringify({ type: 'loadMore', filters: pendingArg?.filters || {}, limit: pendingArg?.paginationParams?.limit || 10 });
+        } catch { state.currentRequestKey = 'unknown'; }
         try { console.log('[historySlice] loadMoreHistory.pending', { currentCount: state.entries.length, currentFilters: state.filters }); } catch {}
       })
       .addCase(loadMoreHistory.fulfilled, (state, action) => {
         state.loading = false;
+        state.inFlight = false;
+        state.currentRequestKey = null;
         
         // Filter out duplicate entries before adding
         const newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
@@ -273,6 +376,8 @@ const historySlice = createSlice({
       })
       .addCase(loadMoreHistory.rejected, (state, action) => {
         state.loading = false;
+        state.inFlight = false;
+        state.currentRequestKey = null;
         state.error = action.payload as string;
         try { console.warn('[historySlice] loadMoreHistory.rejected', { error: state.error }); } catch {}
       })

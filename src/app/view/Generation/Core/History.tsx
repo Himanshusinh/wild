@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
@@ -22,6 +22,8 @@ const History = () => {
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ entry: HistoryEntry; video: any } | null>(null);
+  const didInitialLoadRef = useRef(false);
+  const isFetchingMoreRef = useRef(false);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -73,18 +75,20 @@ const History = () => {
         await autoFillViewport(f);
       }
       setPage(1);
+      didInitialLoadRef.current = true;
     };
     run();
   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
 
   // Fallback: if nothing loaded (e.g., on hard refresh), trigger first page load
   useEffect(() => {
-    if (historyEntries.length === 0) {
+    if (historyEntries.length === 0 && !didInitialLoadRef.current) {
       const base = viewMode === 'global' ? {} : { generationType: currentGenerationType };
       (async () => {
         await loadFirstPage(base);
         await autoFillViewport(base);
         setPage(1);
+        didInitialLoadRef.current = true;
       })();
     }
   }, [loading, historyEntries.length, viewMode, currentGenerationType]);
@@ -109,7 +113,8 @@ const History = () => {
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
-        if (hasMore && !loading) {
+        if (hasMore && !loading && !isFetchingMoreRef.current) {
+          isFetchingMoreRef.current = true;
           const nextPage = page + 1;
           setPage(nextPage);
           const filters = viewMode === 'global' ? {} : { generationType: currentGenerationType };
@@ -118,6 +123,9 @@ const History = () => {
               if (result.payload && result.payload.entries) {
                 setHasMore(result.payload.hasMore);
               }
+            })
+            .finally(() => {
+              isFetchingMoreRef.current = false;
             });
         }
       }
