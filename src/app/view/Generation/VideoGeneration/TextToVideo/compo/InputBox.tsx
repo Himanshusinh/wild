@@ -236,6 +236,9 @@ const InputBox = () => {
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
+  const historyScrollRef = useRef<HTMLDivElement | null>(null);
+  const [historyScrollElement, setHistoryScrollElement] = useState<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
@@ -497,7 +500,7 @@ const InputBox = () => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
-      dispatch(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 30 } }));
+      dispatch(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }));
     }
   }, [historyEntries, hasMore, loading, dispatch]);
 
@@ -629,17 +632,19 @@ const InputBox = () => {
     dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
   }, [dispatch]);
 
-  // Mark user scroll
+  // Mark user scroll inside the scrollable history container
   useEffect(() => {
+    const container = historyScrollElement;
+    if (!container) return;
     const onScroll = () => { hasUserScrolledRef.current = true; };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll as any);
-  }, []);
+    container.addEventListener('scroll', onScroll, { passive: true } as any);
+    return () => { container.removeEventListener('scroll', onScroll as any); };
+  }, [historyScrollElement]);
 
-  // IntersectionObserver-based load more for video history
+  // IntersectionObserver-based load more for video history, using viewport as root
   useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
+    if (!sentinelElement) return;
+    const el = sentinelElement;
     const observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
@@ -658,10 +663,30 @@ const InputBox = () => {
       } finally {
         loadingMoreRef.current = false;
       }
-    }, { root: null, threshold: 0.1 });
+    }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0.1 });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore, loading, page, dispatch]);
+  }, [hasMore, loading, page, dispatch, sentinelElement]);
+
+  // Also mark user scroll on window in case container isn't scroll root
+  useEffect(() => {
+    const onWindowScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onWindowScroll, { passive: true } as any);
+    return () => window.removeEventListener('scroll', onWindowScroll as any);
+  }, []);
+
+  // Auto-fill viewport if content is short (load more until we have enough content)
+  useEffect(() => {
+    const container = historyScrollElement || document.documentElement;
+    if (!container) return;
+    const viewportHeight = window.innerHeight || 0;
+    const contentHeight = container.scrollHeight || 0;
+    if (contentHeight < viewportHeight + 200 && hasMore && !loading && !loadingMoreRef.current) {
+      loadingMoreRef.current = true;
+      (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }))
+        .finally(() => { loadingMoreRef.current = false; });
+    }
+  }, [historyEntries, hasMore, loading, dispatch, historyScrollElement]);
 
   // Handle references upload
   const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1276,7 +1301,7 @@ const InputBox = () => {
   return (
     <>
      {historyEntries.length > 0 && (
-        <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
+        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 "> 
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
@@ -1532,7 +1557,7 @@ const InputBox = () => {
                 </div>
               )}
               {/* Sentinel for IO-based infinite scroll */}
-              <div ref={sentinelRef} style={{ height: 1 }} />
+              <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
             </div>
           </div>
         </div>

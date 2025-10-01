@@ -4,7 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
+import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
 import FilterPopover from '@/components/ui/FilterPopover';
+import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview';
+import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGeneration/compo/LogoImagePreview';
+import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory } from '@/store/slices/historySlice';
@@ -22,6 +26,10 @@ const History = () => {
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ entry: HistoryEntry; video: any } | null>(null);
+  const [audioPreview, setAudioPreview] = useState<{ entry: HistoryEntry; audioUrl: string } | null>(null);
+  const [logoPreviewEntry, setLogoPreviewEntry] = useState<HistoryEntry | null>(null);
+  const [stickerPreviewEntry, setStickerPreviewEntry] = useState<HistoryEntry | null>(null);
+  const [productPreviewEntry, setProductPreviewEntry] = useState<HistoryEntry | null>(null);
   const didInitialLoadRef = useRef(false);
   const isFetchingMoreRef = useRef(false);
 
@@ -235,6 +243,11 @@ const History = () => {
     return url.startsWith('data:video') || /\.(mp4|webm|ogg)(\?|$)/i.test(url);
   };
 
+  const isAudioUrl = (url: string | undefined) => {
+    if (!url) return false;
+    return url.startsWith('data:audio') || /\.(mp3|wav|m4a|ogg|aac|flac)(\?|$)/i.test(url);
+  };
+
   // Group entries by date to mirror TextToImage UI
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
     const dateKey = new Date(entry.timestamp).toDateString();
@@ -295,7 +308,7 @@ const History = () => {
           <span className="text-md text-white/80">{historyEntries.length} generations</span>
           {hasMore && <span className="text-md text-white/80">• Scroll to load more</span>}
         </div>
-        <div className="flex items-center gap-4">
+        {/* <div className="flex items-center gap-4">
           <div className="filter-container relative">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -313,11 +326,11 @@ const History = () => {
           >
             {viewMode === 'global' ? 'Show Feature History' : 'Show Global History'}
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Filter Popover */}
-      <FilterPopover
+      {/* <FilterPopover
         isOpen={showFilters}
         filters={filters}
         sortOrder={sortOrder}
@@ -328,12 +341,12 @@ const History = () => {
         onApplyFilters={applyFilters}
         onClearFilters={clearAllFilters}
         onClose={() => setShowFilters(false)}
-      />
+      /> */}
 
 
 
       {/* Active Filters Summary */}
-      {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
+      {/* {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
         <div className="mb-6 p-4 bg-white/5 backdrop-blur-xl rounded-lg border border-white/10">
           <div className="flex items-center gap-2 mb-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
@@ -367,7 +380,7 @@ const History = () => {
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* History Entries - TextToImage-like UI: date-grouped tiles */}
       {historyEntries.length === 0 ? (
@@ -416,15 +429,36 @@ const History = () => {
 
               {/* Tiles for this date */}
               <div className="flex flex-wrap gap-3 ml-9">
-                {groupedByDate[dateKey].map((entry: HistoryEntry) =>
-                  (entry.images || (entry as any).videos || []).map((media: any, mediaIndex: number) => {
+                {groupedByDate[dateKey].map((entry: HistoryEntry) => {
+                  const mediaItems = [
+                    ...((entry.images || []) as any[]),
+                    ...(((entry as any).videos || []) as any[]),
+                    ...(((entry as any).audios || []) as any[]),
+                  ];
+                  return mediaItems.map((media: any, mediaIndex: number) => {
                     const mediaUrl = media.firebaseUrl || media.url;
                     const video = isVideoUrl(mediaUrl);
+                    const audio = isAudioUrl(mediaUrl);
                     return (
                       <div
-                        key={`${entry.id}-${video ? 'video' : 'image'}-${mediaIndex}`}
+                        key={`${entry.id}-${video ? 'video' : (audio ? 'audio' : 'image')}-${mediaIndex}`}
                         data-image-id={`${entry.id}-${media.id || mediaIndex}`}
-                        onClick={() => (video ? setVideoPreview({ entry, video: media }) : setPreview({ entry, image: media }))}
+                        onClick={() => {
+                          const typeNorm = String(entry.generationType || '').replace(/[_-]/g, '-').toLowerCase();
+                          if (video) {
+                            setVideoPreview({ entry, video: media });
+                          } else if (audio) {
+                            setAudioPreview({ entry, audioUrl: mediaUrl });
+                          } else if (typeNorm === 'logo' || typeNorm === 'logo-generation') {
+                            setLogoPreviewEntry(entry);
+                          } else if (typeNorm === 'sticker-generation') {
+                            setStickerPreviewEntry(entry);
+                          } else if (typeNorm === 'product-generation') {
+                            setProductPreviewEntry(entry);
+                          } else {
+                            setPreview({ entry, image: media });
+                          }
+                        }}
                         className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                       >
                         {entry.status === 'generating' ? (
@@ -463,6 +497,24 @@ const History = () => {
                               <span className="text-xs text-white">Video</span>
                             </div>
                           </div>
+                        ) : audio ? (
+                          <div className="w-full h-full bg-gradient-to-br from-green-900/20 to-blue-900/20 flex items-center justify-center relative">
+                            <div className="w-full h-full bg-black/30 flex items-center justify-center">
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-white/80">
+                                <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z" />
+                              </svg>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                              <span className="text-xs text-white">Audio</span>
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-full h-full relative">
                             {mediaUrl ? (
@@ -490,12 +542,11 @@ const History = () => {
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                       </div>
                     );
-                  })
-                )}
+                  });
+                })}
               </div>
             </div>
           ))}
-
           {/* Loader for scroll loading */}
           {hasMore && loading && (
             <div className="flex items-center justify-center py-8">
@@ -509,6 +560,36 @@ const History = () => {
       )}
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />
+      {logoPreviewEntry && (
+        <LogoImagePreview isOpen={true} onClose={() => setLogoPreviewEntry(null)} entry={logoPreviewEntry} />
+      )}
+      {stickerPreviewEntry && (
+        <StickerImagePreview isOpen={true} onClose={() => setStickerPreviewEntry(null)} entry={stickerPreviewEntry} />
+      )}
+      {productPreviewEntry && (
+        <ProductImagePreview isOpen={true} onClose={() => setProductPreviewEntry(null)} entry={productPreviewEntry} />
+      )}
+      {audioPreview && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setAudioPreview(null)}>
+          <div className="bg-black/80 border border-white/10 rounded-2xl w-full max-w-2xl p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white/90 text-sm font-medium">Audio Preview</h3>
+              <button className="text-white/60 hover:text-white/90" onClick={() => setAudioPreview(null)} aria-label="Close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <CustomAudioPlayer
+              audioUrl={audioPreview.audioUrl}
+              prompt={(audioPreview.entry as any).prompt}
+              model={audioPreview.entry.model}
+              lyrics={(audioPreview.entry as any).lyrics}
+              autoPlay
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

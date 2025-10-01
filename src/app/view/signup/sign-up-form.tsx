@@ -874,12 +874,8 @@ export default function SignInForm() {
 
 
   return (
-    <div className="w-full h-screen flex flex-col p-12 bg-[#1E1E1E] relative overflow-hidden">        
-    <div className="absolute inset-0 bg-gradient-to-l from-gray-900/90 via-transparent to-transparent pointer-events-none"></div>
-
-
-      {/* Header with WildMind Logo - Top Left */}
-      <div className="flex items-center mb-4">
+    <div className="w-full h-screen flex flex-col px-12 bg-[#1E1E1E] relative ">        
+     <div className="flex items-center mt-8 mb-4">
         <Image 
           src={getImageUrl('core','logo')}
           alt="WildMind Logo" 
@@ -888,6 +884,11 @@ export default function SignInForm() {
           className="h-10 w-auto"
         />
       </div>
+    <div className="absolute inset-0 bg-gradient-to-l from-gray-900/90 via-transparent to-transparent pointer-events-none"></div>
+
+
+      {/* Header with WildMind Logo - Top Left */}
+     
        
       {/* Form Content - No scrolling */}
       <div className="flex-1 flex items-center justify-center overflow-hidden">

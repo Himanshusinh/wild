@@ -61,7 +61,7 @@ export default function PageRouter() {
   // Helper: single-page fetch for a given filter (no auto-pagination)
   const fetchFirstPage = async (filtersObj: any) => {
     try {
-      const isVideoMode = !!(filtersObj && (filtersObj.generationType === 'text-to-video' || filtersObj.mode === 'video'));
+      const isVideoMode = !!(filtersObj && (filtersObj.mode === 'video'));
       const isTextToImage = !!(filtersObj && filtersObj.generationType === 'text-to-image');
       const limit = isVideoMode ? 50 : (isTextToImage ? 50 : 50);
       console.log('[PageRouter] fetchFirstPage', { filtersObj, limit });
@@ -135,8 +135,9 @@ export default function PageRouter() {
         // Only load history if we haven't loaded it for this type before
         if (!loadedTypesRef.current.has(currentGenerationType)) {
           isLoadingRef.current = true;
-          const filters = (historyGenerationType === 'text-to-video' || historyGenerationType === 'image-to-video') 
-            ? ({ generationType: 'text-to-video' as any, mode: 'video' } as any)
+          const isVideoPage = ['text-to-video', 'image-to-video', 'video-to-video'].includes(historyGenerationType);
+          const filters = isVideoPage 
+            ? ({ mode: 'video' } as any)
             : ({ generationType: historyGenerationType as any } as any);
           fetchFirstPage(filters)
             .finally(() => {
@@ -146,8 +147,9 @@ export default function PageRouter() {
         } else if (!hasEntriesForType && !isInitialLoadRef.current && !isHistoryLoading) {
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
           isLoadingRef.current = true;
-          const filters = (historyGenerationType === 'text-to-video' || historyGenerationType === 'image-to-video') 
-            ? ({ generationType: 'text-to-video' as any, mode: 'video' } as any)
+          const isVideoPage = ['text-to-video', 'image-to-video', 'video-to-video'].includes(historyGenerationType);
+          const filters = isVideoPage 
+            ? ({ mode: 'video' } as any)
             : ({ generationType: historyGenerationType as any } as any);
           fetchFirstPage(filters)
             .finally(() => {

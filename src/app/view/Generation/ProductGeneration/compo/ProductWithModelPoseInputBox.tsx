@@ -257,17 +257,33 @@ const ProductWithModelPoseInputBox = () => {
       `.trim();
       }
       
-      result = await dispatch(bflGenerate({
-        prompt: backendPrompt,
-        model: selectedModel,
-        n: imageCount,
-        frameSize: frameSize,
-        style: 'product',
-        generationType: 'product-generation',
-        uploadedImages: generationMode === 'product-with-model' ? 
-          [productImage, modelImage].filter((img): img is string => img !== null) : 
-          [productImage].filter((img): img is string => img !== null)
-      })).unwrap();
+      if (selectedModel === 'gemini-25-flash-image') {
+        // Route to FAL (Google Nano Banana) for product images
+        result = await dispatch(falGenerate({
+          prompt: backendPrompt,
+          model: selectedModel,
+          n: imageCount,
+          // FAL is text/image; for product-with-model we pass both if available
+          uploadedImages: generationMode === 'product-with-model' ? 
+            [productImage, modelImage].filter((img): img is string => img !== null) : 
+            [productImage].filter((img): img is string => img !== null),
+          output_format: 'jpeg',
+          generationType: 'product-generation',
+        })).unwrap();
+      } else {
+        // Route to BFL (Flux models)
+        result = await dispatch(bflGenerate({
+          prompt: backendPrompt,
+          model: selectedModel,
+          n: imageCount,
+          frameSize: frameSize,
+          style: 'product',
+          generationType: 'product-generation',
+          uploadedImages: generationMode === 'product-with-model' ? 
+            [productImage, modelImage].filter((img): img is string => img !== null) : 
+            [productImage].filter((img): img is string => img !== null)
+        })).unwrap();
+      }
 
       if (!result.images) {
         throw new Error('No images received from Flux API');

@@ -14,7 +14,8 @@ const ModelsDropdown = () => {
     { name: 'Flux Krea', value: 'flux-krea', description: 'Local model - Product generation only' },
     { name: 'Flux Kontext Dev', value: 'flux-kontext-dev', description: 'Product with model pose only' },
     { name: 'Flux Kontext Pro', value: 'flux-kontext-pro', description: 'API model - Both generation types' },
-    { name: 'Flux Kontext Max', value: 'flux-kontext-max', description: 'API model - Both generation types' }
+    { name: 'Flux Kontext Max', value: 'flux-kontext-max', description: 'API model - Both generation types' },
+    { name: 'Google Nano Banana', value: 'gemini-25-flash-image', description: 'Google FAL image model' }
   ];
 
   const handleDropdownClick = () => {

@@ -81,6 +81,12 @@ function Plans({ isAnnual }: PlansProps) {
               backdrop-blur-md 
               shadow-[0_0_25px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.1)_inset] 
               p-8 py-10 w-full overflow-hidden isolate`}
+
+              // className={`relative text-white rounded-[2rem] 
+              // bg-white/5 
+              // backdrop-blur-md 
+              // shadow-md z-30 border border-white/10
+              // p-8 py-10 w-full overflow-hidden isolate`}
             >
               <h3 className="text-2xl font-semibold m-4 mb-2">{plan.name}</h3>
               <div className="mx-4 min-h-[100px]">

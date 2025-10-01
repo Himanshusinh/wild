@@ -9,6 +9,7 @@ export type GenerationType =
   | 'mockup-generation'
   | 'product-generation'
   | 'ad-generation'
-  | 'live-chat';
+  | 'live-chat'
+  | 'logo-generation';
 
 

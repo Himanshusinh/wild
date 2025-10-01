@@ -1,6 +1,6 @@
 export default function StudentDiscount() {
   return (
-    <div className="relative w-full md:w-[35%] lg:w-[30%] max-w-[500px] min-h-[300px] text-white rounded-[3rem] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md shadow-[0_0_1px_#fff_inset,0_10px_30px_rgba(0,0,0,0.4)] p-10">
+    <div className="relative w-full md:w-[38%] lg:w-[38%] max-w-7xl min-h-[350px] text-white rounded-[3rem] border border-white/10 bg-white/5 p-10">
       <h4 className="text-xl font-semibold">Student Discount</h4>
       <div className="h-px w-20 bg-white/20 my-4" />
       <p className="text-sm text-white/70 leading-relaxed">

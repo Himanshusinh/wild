@@ -177,8 +177,8 @@ const SidePannelFeatures = ({
             </div>
         </div>
         
-        {/* Branding Kit with Dropdown - Commented out for now */}
-        {/* <div className="relative">
+
+         <div className="relative">
             <div
                 ref={brandingRef}
                 onClick={toggleBrandingDropdown}
@@ -190,7 +190,7 @@ const SidePannelFeatures = ({
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
             </div>
 
-            {showBrandingDropdown && (
+           { showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
                     className='absolute left-full top-0 ml-4 bg-black/50 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-50 min-w-[240px]'
@@ -200,7 +200,7 @@ const SidePannelFeatures = ({
                     </div>
                     
                     <div
-                        onClick={() => handleGenerationTypeChange('logo')}
+                        onClick={() => handleGenerationTypeChange('logo-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'logo' ? 'bg-white/15' : ''
                         }`}
@@ -217,14 +217,14 @@ const SidePannelFeatures = ({
                         <span className='text-sm text-white'>Sticker Generation</span>
                     </div>
                     
-                    <div
+                    {/* <div
                         onClick={() => handleGenerationTypeChange('mockup-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
                         }`}
                     >
                         <span className='text-sm text-white'>Mockup Generation</span>
-                    </div>
+                    </div> */}
                     
                     <div
                         onClick={() => handleGenerationTypeChange('product-generation')}
@@ -234,16 +234,16 @@ const SidePannelFeatures = ({
                     >
                         <span className='text-sm text-white'>Product Generation</span>
                     </div>
-                </div>
-            )}
-        </div> */}
+                </div>)}
+            
+        </div> 
         
-        {/* <div>
+         {/* <div>
             <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
                 <Image src="/icons/templateswhite.svg" alt="Templates" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Templates</span>
             </div>
-        </div> */}
+        </div>  */}
         
         <div>
             <div 
