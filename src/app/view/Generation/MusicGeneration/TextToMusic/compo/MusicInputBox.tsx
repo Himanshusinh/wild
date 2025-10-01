@@ -94,8 +94,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     
     const payload = {
       model,
-      prompt: formattedPrompt,
+      // Store the user's actual input as prompt for history; API uses `lyrics` for generation
+      prompt: lyrics.trim(),
       lyrics: lyrics.trim(),
+      // Keep style/instruments only as display controls; provider doesn't need them separately
       audio_setting: { ...audio },
       ...(outputFormat && outputFormat !== "hex" ? { output_format: outputFormat } : {}),
     };
@@ -358,13 +360,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           {/* Lyrics Input - Expandable up to 4 lines */}
           <div className="flex-1">
             <textarea
-              placeholder="Write your lyrics... Use [intro]/[verse]/[chorus]/[bridge]/[outro] tags."
+              placeholder="Write your lyrics...."
               value={lyrics}
               onChange={(e) => {
                 setLyrics(e.target.value);
                 adjustTextareaHeight(e.target);
               }}
-              className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/50 p-3 rounded-lg resize-none overflow-hidden transition-all ${
+              className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 p-3 rounded-lg resize-none overflow-hidden transition-all ${
                 lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
               }`}
               rows={1}
@@ -379,7 +381,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               </p>
             )}
             <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-white/50 text-xs">
+              <p className="text-white/70 text-xs">
                 💡 Use [intro], [verse], [chorus], [bridge], [outro] tags to structure your song
               </p>
               <span className="text-xs text-white/60">({lyricsLen}/600)</span>

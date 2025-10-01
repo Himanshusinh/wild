@@ -235,6 +235,12 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
+  const historyScrollRef = useRef<HTMLDivElement | null>(null);
+  const [historyScrollElement, setHistoryScrollElement] = useState<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
 
   // Get history entries for video generation
@@ -494,7 +500,7 @@ const InputBox = () => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
-      dispatch(loadMoreHistory({ filters: {}, paginationParams: { limit: 50 } }));
+      dispatch(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }));
     }
   }, [historyEntries, hasMore, loading, dispatch]);
 
@@ -619,31 +625,68 @@ const InputBox = () => {
     setPage(1);
   }, []);
 
-  // Ensure all history (all generation types) is loaded for this page
+  // Ensure only video history is loaded for this page
   useEffect(() => {
     dispatch(clearFilters());
-    dispatch(loadHistory({ filters: {}, paginationParams: { limit: 50 } }));
+    // Initial load: 50 entries of all video types (mode=video groups T2V/I2V/V2V)
+    dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
   }, [dispatch]);
 
-  // Handle scroll to load more history
+  // Mark user scroll inside the scrollable history container
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
-        if (hasMore && !loading) {
-          const nextPage = page + 1;
-          setPage(nextPage);
-          // Load more without forcing a single generationType; rely on store filters
-          dispatch(loadMoreHistory({ 
-            filters: {}, 
-            paginationParams: { limit: 50 } 
-          }));
-        }
-      }
-    };
+    const container = historyScrollElement;
+    if (!container) return;
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    container.addEventListener('scroll', onScroll, { passive: true } as any);
+    return () => { container.removeEventListener('scroll', onScroll as any); };
+  }, [historyScrollElement]);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loading, page, dispatch]);
+  // IntersectionObserver-based load more for video history, using viewport as root
+  useEffect(() => {
+    if (!sentinelElement) return;
+    const el = sentinelElement;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) return;
+      if (!hasMore || loading || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      const nextPage = page + 1;
+      setPage(nextPage);
+      try {
+        await (dispatch as any)(loadMoreHistory({ 
+          filters: { mode: 'video' } as any, 
+          paginationParams: { limit: 10 } 
+        })).unwrap();
+      } catch (e) {
+        console.error('[Video] IO loadMore error', e);
+      } finally {
+        loadingMoreRef.current = false;
+      }
+    }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading, page, dispatch, sentinelElement]);
+
+  // Also mark user scroll on window in case container isn't scroll root
+  useEffect(() => {
+    const onWindowScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onWindowScroll, { passive: true } as any);
+    return () => window.removeEventListener('scroll', onWindowScroll as any);
+  }, []);
+
+  // Auto-fill viewport if content is short (load more until we have enough content)
+  useEffect(() => {
+    const container = historyScrollElement || document.documentElement;
+    if (!container) return;
+    const viewportHeight = window.innerHeight || 0;
+    const contentHeight = container.scrollHeight || 0;
+    if (contentHeight < viewportHeight + 200 && hasMore && !loading && !loadingMoreRef.current) {
+      loadingMoreRef.current = true;
+      (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }))
+        .finally(() => { loadingMoreRef.current = false; });
+    }
+  }, [historyEntries, hasMore, loading, dispatch, historyScrollElement]);
 
   // Handle references upload
   const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -823,7 +866,8 @@ const InputBox = () => {
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
               resolution: selectedResolution
-            })
+            }),
+            generationType: "text-to-video"
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
@@ -886,7 +930,8 @@ const InputBox = () => {
                 type: "character", 
                 image: [references[0]] 
               }] 
-            })
+            }),
+            generationType: "image-to-video"
           };
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
@@ -902,7 +947,8 @@ const InputBox = () => {
               promptText: prompt,
               duration: duration as 5 | 10,
               promptImage: uploadedImages[0]
-            })
+            }),
+            generationType: "image-to-video"
           };
           apiEndpoint = '/api/runway/video';
         }
@@ -933,7 +979,8 @@ const InputBox = () => {
                 type: "image",
                 uri: ref
               })) : undefined,
-            })
+            }),
+            generationType: "video-to-video"
           };
           apiEndpoint = '/api/runway/video';
         }
@@ -1174,7 +1221,7 @@ const InputBox = () => {
       
       // Refresh history to show the new video
       dispatch(clearFilters());
-      dispatch(loadHistory({ filters: {}, paginationParams: { limit: 50 } }));
+      dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
       
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -1254,7 +1301,7 @@ const InputBox = () => {
   return (
     <>
      {historyEntries.length > 0 && (
-        <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
+        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 "> 
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
@@ -1509,6 +1556,8 @@ const InputBox = () => {
                   </div>
                 </div>
               )}
+              {/* Sentinel for IO-based infinite scroll */}
+              <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
             </div>
           </div>
         </div>

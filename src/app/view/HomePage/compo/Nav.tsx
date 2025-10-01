@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
+import Image from 'next/image'
 
 interface UserData {
   uid: string
@@ -162,14 +163,17 @@ const Nav = () => {
     <div className='fixed top-4 right-4 z-50'>
       <div className='flex items-center gap-3'>
         {/* Group 1: search + credits inside shared background */}
-        <div className='flex items-center gap-3 rounded-full backdrop-blur-3xl bg-black/30 shadow-lg border border-white/10 px-2 py-1'>
-          <svg className='cursor-pointer p-1' width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+        <div className='flex items-center gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-2 py-1'>
+          {/* <svg className='cursor-pointer p-1' width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
             <path d='M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z' stroke='currentColor' strokeWidth='2' className='text-white/70'/>
             <path d='M21 21l-4.3-4.3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' className='text-white/70'/>
-          </svg>
-          <button className='flex items-center rounded-full bg-white/5 text-white text-lg px-6 py-2 gap-2'>
+          </svg> */}
+          <button className='flex items-center rounded-full text-white text-lg px-6 py-2 gap-2'>
             {loading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
-            <svg className='cursor-pointer' width='26' height='26' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+
+            <Image className='cursor-pointer' src="/icons/coinswhite.svg" alt='logo' width={25} height={25} />
+
+            {/* <svg className='cursor-pointer' width='26' height='26' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <circle cx='12' cy='12' r='9' stroke='#F4D03F' strokeWidth='2' fill='url(#coinGrad)'/>
               <path d='M12 7v10M9 10h6M9 14h6' stroke='#8E6B00' strokeWidth='1.5' strokeLinecap='round'/>
               <defs>  
@@ -178,7 +182,7 @@ const Nav = () => {
                   <stop offset='1' stopColor='#F4D03F'/>
                 </linearGradient>
               </defs>
-            </svg>
+            </svg> */}
           </button>
         </div>
 

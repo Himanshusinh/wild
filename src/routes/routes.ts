@@ -97,10 +97,12 @@ export const FOOTER_NAV_LINKS = {
 
 // Social Media Links
 export const SOCIAL_LINKS = {
-  X: '#',
-  INSTAGRAM: '#',
-  YOUTUBE: '#',
-  BLOG: '#',
+  INSTAGRAM: 'https://www.instagram.com/wildmindai_/',
+  FACEBOOK: 'https://www.facebook.com/profile.php?id=61577831188341',
+  X: 'https://x.com/WildMind_AI',
+  YOUTUBE: 'https://www.youtube.com/@Wild-Mind-2025',
+  THREADS: 'https://www.threads.com/@wildmindai_',
+  LINKEDIN: 'https://www.linkedin.com/company/wild-mind-ai/?viewAsMember=true',
 } as const;
 
 // Type for route parameters

@@ -69,7 +69,7 @@ const SidePannelFeatures = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showBrandingDropdown]);
 
-  const isBrandingActive = pathname?.includes('/logo-generation') || 
+  const isBrandingActive = pathname?.includes('/logo') || 
                            pathname?.includes('/sticker-generation') || 
                            pathname?.includes('/mockup-generation') || 
                            pathname?.includes('/product-generation');
@@ -158,18 +158,27 @@ const SidePannelFeatures = ({
         {/* Wildmind Skit */}
         <div>
             <div 
-                onClick={onWildmindSkitClick}
+                onClick={() => {
+                  try {
+                    if (onViewChange && typeof onViewChange === 'function') {
+                      onViewChange('workflows');
+                    }
+                  } catch (error) {
+                    console.error('Error in workflows click handler:', error);
+                  }
+                  router.push('/view/workflows');
+                }}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
-                  (pathname?.includes('/ad-generation')) ? 'bg-white/10' : ''
+                  (pathname?.includes('/workflows')) ? 'bg-white/10' : ''
                 }`}
             >
                 <Image src="/yy666.png" alt="Wildmind Skit" width={30} height={30} />
-                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>AI Entourage</span>
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Wild Magic</span>
             </div>
         </div>
         
-        {/* Branding Kit with Dropdown */}
-        <div className="relative">
+
+         <div className="relative">
             <div
                 ref={brandingRef}
                 onClick={toggleBrandingDropdown}
@@ -179,17 +188,9 @@ const SidePannelFeatures = ({
             >
                 <Image src="/icons/brandingkitwhite.svg" alt="Branding Kit" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
-                
-                {/* Dropdown Arrow
-                <div className={`ml-auto transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : ''}`}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="6,9 12,15 18,9"></polyline>
-                    </svg>
-                </div> */}
             </div>
 
-            {/* Branding Dropdown Menu */}
-            {showBrandingDropdown && (
+           { showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
                     className='absolute left-full top-0 ml-4 bg-black/50 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-50 min-w-[240px]'
@@ -201,10 +202,9 @@ const SidePannelFeatures = ({
                     <div
                         onClick={() => handleGenerationTypeChange('logo-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
-                            currentGenerationType === 'logo-generation' ? 'bg-white/15' : ''
+                            currentGenerationType === 'logo' ? 'bg-white/15' : ''
                         }`}
                     >
-                        {/* <div className='w-2 h-2 rounded-full bg-blue-400'></div> */}
                         <span className='text-sm text-white'>Logo Generation</span>
                     </div>
                     
@@ -214,19 +214,17 @@ const SidePannelFeatures = ({
                             currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
                         }`}
                     >
-                        {/* <div className='w-2 h-2 rounded-full bg-green-400'></div> */}
                         <span className='text-sm text-white'>Sticker Generation</span>
                     </div>
                     
-                    <div
+                    {/* <div
                         onClick={() => handleGenerationTypeChange('mockup-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
                         }`}
                     >
-                        {/* <div className='w-2 h-2 rounded-full bg-purple-400'></div> */}
                         <span className='text-sm text-white'>Mockup Generation</span>
-                    </div>
+                    </div> */}
                     
                     <div
                         onClick={() => handleGenerationTypeChange('product-generation')}
@@ -234,19 +232,18 @@ const SidePannelFeatures = ({
                             currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
                         }`}
                     >
-                        {/* <div className='w-2 h-2 rounded-full bg-orange-400'></div> */}
                         <span className='text-sm text-white'>Product Generation</span>
                     </div>
-                </div>
-            )}
-        </div>
+                </div>)}
+            
+        </div> 
         
-        <div>
+         {/* <div>
             <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
                 <Image src="/icons/templateswhite.svg" alt="Templates" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Templates</span>
             </div>
-        </div>
+        </div>  */}
         
         <div>
             <div 
@@ -278,7 +275,8 @@ const SidePannelFeatures = ({
             </div>
         </div>
 
-        <div>
+        {/* Bookmarks - Commented out for now */}
+        {/* <div>
             <div
                 onClick={() => {
                   try {
@@ -299,7 +297,7 @@ const SidePannelFeatures = ({
                 />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Bookmarks</span>
             </div>
-        </div>
+        </div> */}
 
 
     </div>

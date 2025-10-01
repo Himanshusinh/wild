@@ -58,15 +58,18 @@ export default function PageRouter() {
   const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef<boolean>(false);
   const effectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Helper: fetch all pages for a given filter
-  const fetchAllHistory = async (filtersObj: any) => {
+  // Helper: single-page fetch for a given filter (no auto-pagination)
+  const fetchFirstPage = async (filtersObj: any) => {
     try {
-      const pageLimit = (filtersObj && filtersObj.generationType === 'text-to-image') ? 10 : 50;
-      let result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: pageLimit } })).unwrap();
-      while (result && result.hasMore) {
-        result = await (dispatch as any)(loadMoreHistory({ filters: filtersObj, paginationParams: { limit: pageLimit } })).unwrap();
-      }
-    } catch {}
+      const isVideoMode = !!(filtersObj && (filtersObj.mode === 'video'));
+      const isTextToImage = !!(filtersObj && filtersObj.generationType === 'text-to-image');
+      const limit = isVideoMode ? 50 : (isTextToImage ? 50 : 50);
+      console.log('[PageRouter] fetchFirstPage', { filtersObj, limit });
+      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit } })).unwrap();
+      console.log('[PageRouter] fetchFirstPage.fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
+    } catch (e) {
+      console.error('[PageRouter] fetchFirstPage.error', e);
+    }
   };
 
 
@@ -132,7 +135,11 @@ export default function PageRouter() {
         // Only load history if we haven't loaded it for this type before
         if (!loadedTypesRef.current.has(currentGenerationType)) {
           isLoadingRef.current = true;
-          fetchAllHistory({ generationType: historyGenerationType as any })
+          const isVideoPage = ['text-to-video', 'image-to-video', 'video-to-video'].includes(historyGenerationType);
+          const filters = isVideoPage 
+            ? ({ mode: 'video' } as any)
+            : ({ generationType: historyGenerationType as any } as any);
+          fetchFirstPage(filters)
             .finally(() => {
               isLoadingRef.current = false;
             });
@@ -140,7 +147,11 @@ export default function PageRouter() {
         } else if (!hasEntriesForType && !isInitialLoadRef.current && !isHistoryLoading) {
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
           isLoadingRef.current = true;
-          fetchAllHistory({ generationType: historyGenerationType as any })
+          const isVideoPage = ['text-to-video', 'image-to-video', 'video-to-video'].includes(historyGenerationType);
+          const filters = isVideoPage 
+            ? ({ mode: 'video' } as any)
+            : ({ generationType: historyGenerationType as any } as any);
+          fetchFirstPage(filters)
             .finally(() => {
               isLoadingRef.current = false;
             });
