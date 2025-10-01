@@ -874,12 +874,12 @@ export default function SignInForm() {
 
 
   return (
-    <div className="w-full min-h-screen flex flex-col p-12 bg-[#1E1E1E] relative">        
+    <div className="w-full h-screen flex flex-col p-12 bg-[#1E1E1E] relative overflow-hidden">        
     <div className="absolute inset-0 bg-gradient-to-l from-gray-900/90 via-transparent to-transparent pointer-events-none"></div>
 
 
       {/* Header with WildMind Logo - Top Left */}
-      <div className="flex items-center mb-6">
+      <div className="flex items-center mb-4">
         <Image 
           src={getImageUrl('core','logo')}
           alt="WildMind Logo" 
@@ -889,34 +889,34 @@ export default function SignInForm() {
         />
       </div>
        
-      {/* Form Content - Page-scrolling */}
-      <div className="flex-1 flex items-start md:items-center justify-center mt-0">
-        <div className="w-full max-w-md space-y-6">
+      {/* Form Content - No scrolling */}
+      <div className="flex-1 flex items-center justify-center overflow-hidden">
+        <div className="w-full max-w-lg space-y-6">
           {/* Welcome Section - Only show when not on OTP screen, username screen, or login screen */}
           {!otpSent && !showUsernameForm && !showLoginForm && (
-            <div className="text-start space-y-2 ml-2">
-              <h1 className="text-3xl font-medium text-white">Welcome to WildMind!</h1>
-              <p className="text-white text-sm font-light">Sign up to access the platform.</p>
+            <div className="text-start space-y-2 mb-4">
+              <h1 className="text-4xl font-semibold text-white">Welcome to WildMind!</h1>
+              <p className="text-white text-base font-light">Sign up to access the platform.</p>
             </div>
           )}
 
           {showUsernameForm ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Title */}
-              <div className="text-start space-y-3">
-                <h1 className="text-3xl font-medium text-white">Verification Successful!</h1>
-                <p className="text-white text-regular">Last step, Make a Unique Username</p>
+              <div className="text-start space-y-2 mb-4">
+                <h1 className="text-4xl font-semibold text-white">Verification Successful!</h1>
+                <p className="text-white text-base font-light">Last step, Make a Unique Username</p>
               </div>
 
               {/* Username Input */}
-              <div className="space-y-3">
-                <label className="text-white font-medium text-lg ml-2">Enter User Name</label>
+              <div className="space-y-1">
+                <label className="text-white font-medium text-lg">Enter User Name</label>
                 <input
                   type="text"
                   placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base"
+                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
                 {/* Live availability feedback */}
@@ -932,37 +932,37 @@ export default function SignInForm() {
               <button 
                 onClick={handleUsernameSubmit} 
                 disabled={!availability.isAvailable}
-                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
               >
                 Access WildMind
               </button>
             </div>
           ) : showRedeemCodeForm ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Title */}
-              <div className="text-start space-y-3">
-                <h1 className="text-3xl font-medium text-white">Welcome to WildMind!</h1>
-                <p className="text-white text-regular">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
+              <div className="text-start space-y-2 mb-4">
+                <h1 className="text-4xl font-semibold text-white">Almost There!</h1>
+                <p className="text-white text-base font-light">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
               </div>
 
               {/* Success Message */}
               {success && (
-                <div className="rounded-xl p-3 bg-emerald-500/20 border border-emerald-500/25">
-                  <p className="text-white text-sm leading-relaxed">{success}</p>
+                <div className="rounded-xl p-4 bg-emerald-500/20 border border-emerald-500/25">
+                  <p className="text-white text-base leading-relaxed">{success}</p>
                 </div>
               )}
 
               {/* Error Message */}
               {error && (
-                <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
-                  <p className="text-white text-sm leading-relaxed">{error}</p>
+                <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
+                  <p className="text-white text-base leading-relaxed">{error}</p>
                 </div>
               )}
 
               {/* Redeem Code Input */}
-              <div className="space-y-3">
-                <label className="text-white font-medium text-lg ml-2">
-                  Redeem Code <span className="text-gray-400 text-sm">(Optional)</span>
+              <div className="space-y-1">
+                <label className="text-white font-medium text-lg">
+                  Redeem Code <span className="text-gray-400 text-base">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -975,7 +975,7 @@ export default function SignInForm() {
                     setError("")
                     setSuccess("")
                   }}
-                  className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base uppercase"
+                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg uppercase"
                 />
                 
                 {/* Validation feedback */}
@@ -998,13 +998,13 @@ export default function SignInForm() {
               </div>
 
               {/* Buttons */}
-              <div className="space-y-3">
+              <div className="space-y-4 mt-6">
                 {/* Validate/Apply Code Button */}
                 {redeemCode && !redeemCodeValidated ? (
                   <button 
                     onClick={handleRedeemCodeValidation}
                     disabled={processing || !redeemCode.trim()}
-                    className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                    className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
                   >
                     {processing ? <LoadingSpinner /> : "Validate Code"}
                   </button>
@@ -1012,7 +1012,7 @@ export default function SignInForm() {
                   <button 
                     onClick={handleRedeemCodeSubmit}
                     disabled={processing}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
                   >
                     {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
                   </button>
@@ -1022,7 +1022,7 @@ export default function SignInForm() {
                 <button 
                   onClick={handleSkipRedeemCode}
                   disabled={processing}
-                  className="w-full bg-[#2e2e2e] hover:bg-[#3e3e3e] border border-[#464646] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                  className="w-full bg-[#2e2e2e] hover:bg-[#3e3e3e] border border-[#464646] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
                 >
                   Continue with Free Plan
                 </button>
@@ -1036,17 +1036,17 @@ export default function SignInForm() {
               </div>
             </div>
           ) : showLoginForm ? (
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-4">
               {/* Title */}
-              <div className="text-start space-y-3">
-                <h1 className="text-3xl font-medium text-white">Welcome back!</h1>
-                <p className="text-white text-base">Enter your Credentials to access your account.</p>
+              <div className="text-start space-y-2 mb-4">
+                <h1 className="text-4xl font-semibold text-white">Welcome back!</h1>
+                <p className="text-white text-base font-light">Enter your Credentials to access your account.</p>
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
-                  <p className="text-white text-sm leading-relaxed">{error}</p>
+                <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
+                  <p className="text-white text-base leading-relaxed">{error}</p>
                 </div>
               )}
 
@@ -1054,48 +1054,48 @@ export default function SignInForm() {
               {isRedirecting ? (
                 <RedirectSpinner />
               ) : success && (
-                <div className="rounded-xl p-3 bg-emerald-500/20 border border-emerald-500/25">
-                  <p className="text-white text-sm leading-relaxed">{success}</p>
+                <div className="rounded-xl p-4 bg-emerald-500/20 border border-emerald-500/25">
+                  <p className="text-white text-base leading-relaxed">{success}</p>
                 </div>
               )}
 
               {/* Email/Username Input */}
-              <div className="space-y-3">
-                <label className="text-white font-regular text-md ">Email address / User Name</label>
+              <div className="space-y-1">
+                <label className="text-white font-medium text-lg">Email address / User Name</label>
                 <input
                   type="text"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base"
+                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
               </div>
 
               {/* Password Input */}
-              <div className="space-y-3">
-                <label className="text-white font-regular text-md ">Password</label>
+              <div className="space-y-1">
+                <label className="text-white font-medium text-lg">Password</label>
                 <input
                   type="password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base"
+                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
               </div>
 
               {/* Remember Me Checkbox */}
-              <div className="flex items-center">
+              <div className="flex items-center mt-6">
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     id="remember"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-[#5AD7FF] bg-[#2e2e2e] border-[#464646] rounded focus:ring-[#5AD7FF] focus:ring-2"
+                    className="w-5 h-5 text-[#5AD7FF] bg-[#2e2e2e] border-[#464646] rounded focus:ring-[#5AD7FF] focus:ring-2"
                   />
-                  <label htmlFor="remember" className="text-sm text-[#A0A0A0]">
+                  <label htmlFor="remember" className="text-base text-[#A0A0A0]">
                     Remember for 30 days
                   </label>
                 </div>
@@ -1105,52 +1105,52 @@ export default function SignInForm() {
               <button 
                 type="submit"
                 disabled={processing}
-                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#464646] py-2 rounded-full font-semibold text-white transition-all duration-200"
+                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#464646] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
               >
                 {processing ? "Logging in..." : "Login"}
               </button>
 
               {/* Separator */}
-              <div className="flex items-center gap-4 my-6">
+              <div className="flex items-center gap-4 my-8">
                 <div className="flex-grow h-px bg-[#464646]"></div>
-                <span className="text-[#A0A0A0] text-sm">or</span>
+                <span className="text-[#A0A0A0] text-base">Or</span>
                 <div className="flex-grow h-px bg-[#464646]"></div>
               </div>
 
               {/* Social Login Button */}
-              <div>
+              <div className="mb-8">
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full bg-[#1a1a1a] text-white font-medium py-2.5 px-4 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
+                  className="w-full bg-[#1a1a1a] text-white font-medium py-4 px-6 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
                 >
-                  <Image src={getImageUrl('core','google')} alt="Google" width={20} height={20} className="w-5 h-5" />
-                  <span className="text-sm">{showLoginForm ? "Sign in with Google" : "Sign up with Google"}</span>
+                  <Image src={getImageUrl('core','google')} alt="Google" width={24} height={24} className="w-6 h-6" />
+                  <span className="text-base">{showLoginForm ? "Sign in with Google" : "Sign up with Google"}</span>
                 </button>
               </div>
 
               {/* Sign Up Link */}
-              <div className="text-center">
-                <span className="text-[#A0A0A0] text-sm">Don&apos;t have an account? </span>
+              <div className="text-center mb-10">
+                <span className="text-[#A0A0A0] text-base">Don&apos;t have an account? </span>
                 <button
                   type="button"
                   onClick={() => setShowLoginForm(false)}
-                  className="text-[#4285F4] underline cursor-pointer text-sm"
+                  className="text-[#4285F4] underline cursor-pointer text-base font-medium"
                 >
                   Sign Up
                 </button>
               </div>
             </form>
           ) : otpSent ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
               {/* Title */}
-              <div className="text-start space-y-3">
-                <h1 className="text-3xl font-medium text-white">Verify code</h1>
-                <p className="text-white text-regular">An authentication code has been sent to your email.</p>
+              <div className="text-start space-y-2 mb-4">
+                <h1 className="text-4xl font-semibold text-white">Verify code</h1>
+                <p className="text-white text-base font-light">An authentication code has been sent to your email.</p>
               </div>
 
               {/* Code Input */}
-              <div className="space-y-3">
+              <div className="space-y-1">
                 <label className="text-white font-medium text-lg">Enter Code</label>
                 <input
                   type="text"
@@ -1160,7 +1160,7 @@ export default function SignInForm() {
                     const value = e.target.value.replace(/\D/g, "").slice(0, 6)
                     setOtp(value)
                   }}
-                  className="w-full px-4 py-2 bg-[#2e2e2e] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-2xl text-white text-base"
+                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
               </div>
@@ -1169,7 +1169,7 @@ export default function SignInForm() {
               <button
                 type="submit"
                 disabled={processing || otp.length < 4}
-                className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 ${
+                className={`w-full py-2 rounded-full font-semibold text-lg transition-all duration-200 ${
                   processing || otp.length < 4
                     ? "bg-[#3A3A3A] text-[#9B9B9B] cursor-not-allowed"
                     : "bg-[#1C303D] hover:bg-[#3367D6] text-white"
@@ -1179,12 +1179,12 @@ export default function SignInForm() {
               </button>
 
               {/* Resend Link */}
-              <div className="text-center">
-                <span className="text-[#A0A0A0] text-sm">Not receive email? </span>
+              <div className="text-center mt-6">
+                <span className="text-[#A0A0A0] text-base">Not receive email? </span>
                 <button 
                   type="button" 
                   onClick={handleResendOtp} 
-                  className="text-[#4285F4] underline cursor-pointer text-sm"
+                  className="text-[#4285F4] underline cursor-pointer text-base font-medium"
                 >
                   Resend
                 </button>
@@ -1192,8 +1192,8 @@ export default function SignInForm() {
 
               {/* Error Message */}
               {error && (
-                <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
-                  <p className="text-white text-sm text-center leading-relaxed">{error}</p>
+                <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
+                  <p className="text-white text-base text-center leading-relaxed">{error}</p>
                 </div>
               )}
               
@@ -1201,63 +1201,63 @@ export default function SignInForm() {
               {isRedirecting ? (
                 <RedirectSpinner />
               ) : success && (
-                <div className="rounded-xl p-3 bg-emerald-500/20 border border-emerald-500/25">
-                  <p className="text-white text-sm text-center leading-relaxed">{success}</p>
+                <div className="rounded-xl p-4 bg-emerald-500/20 border border-emerald-500/25">
+                  <p className="text-white text-base text-center leading-relaxed">{success}</p>
                 </div>
               )}
             </form>
           ) : (
             <>
               {/* Email Form */}
-              <form onSubmit={handleSendOtp} className="space-y-5">
-                <div className="space-y-4 mt-8">
-                  <label className="text-white font-medium text-md ml-2">Email address</label>
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-white font-medium text-lg">Email address</label>
                   <input
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value.trim())}
-                    className="w-full px-4 py-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base"
+                    className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                     required
                   />
                 </div>
 
                 {/* Password Field */}
-                <div className="space-y-4">
-                  <label className="text-white font-medium text-md ml-2">Password</label>
+                <div className="space-y-1">
+                  <label className="text-white font-medium text-lg">Password</label>
                   <input
                     type="password"
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base"
+                    className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                     required
                   />
                 </div>
 
                 {/* Confirm Password Field */}
-                <div className="space-y-4">
-                  <label className="text-white font-medium text-md ml-2">Confirm Password</label>
+                <div className="space-y-1">
+                  <label className="text-white font-medium text-lg">Confirm Password</label>
                   <input
                     type="password"
                     placeholder="Confirm your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base"
+                    className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                     required
                   />
                 </div>
 
                 {/* Terms Checkbox */}
-                <div className="flex items-start space-x-3 ml-2">
+                <div className="flex items-start space-x-3 mt-6">
                   <input
                     type="checkbox"
                     id="terms"
                     checked={termsAccepted}
                     onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-[#5AD7FF] bg-[#2e2e2e] border-[#464646] rounded focus:ring-[#5AD7FF] focus:ring-2"
+                    className="mt-1 w-5 h-5 text-[#5AD7FF] bg-[#2e2e2e] border-[#464646] rounded focus:ring-[#5AD7FF] focus:ring-2"
                   />
-                  <label htmlFor="terms" className="text-sm text-[#A0A0A0]">
+                  <label htmlFor="terms" className="text-base text-[#A0A0A0]">
                     I agree to the{" "}
                     <span className="text-[#5AD7FF] underline cursor-pointer">terms & policy</span>
                   </label>
@@ -1265,15 +1265,15 @@ export default function SignInForm() {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="rounded-xl p-3 bg-red-500/20 border border-red-500/25">
-                    <p className="text-white text-sm leading-relaxed">{error}</p>
+                  <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
+                    <p className="text-white text-base leading-relaxed">{error}</p>
                   </div>
                 )}
 
                 <button
                   type="submit"
                   disabled={processing || !termsAccepted}
-                  className={`w-full mx-auto py-2 rounded-full font-medium text-md transition-all duration-200 ${
+                  className={`w-full mx-auto py-2 rounded-full font-semibold text-lg transition-all duration-200 ${
                     processing || !termsAccepted
                       ? "bg-[#3A3A3A] text-[#9B9B9B] cursor-not-allowed"
                       : "bg-[#1C303D] hover:bg-[#3367D6] text-white"
@@ -1284,31 +1284,31 @@ export default function SignInForm() {
               </form>
 
               {/* Separator */}
-              <div className="flex items-center gap-4 my-6">
+              <div className="flex items-center gap-4 my-8">
                 <div className="flex-grow h-px bg-[#464646]"></div>
-                <span className="text-[#A0A0A0] text-sm">Or</span>
+                <span className="text-[#A0A0A0] text-base">Or</span>
                 <div className="flex-grow h-px bg-[#464646]"></div>
               </div>
 
               {/* Social Login Button */}
-              <div className="mb-6">
+              <div className="mb-8">
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full bg-[#1a1a1a] text-white font-medium py-2.5 px-4 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
+                  className="w-full bg-[#1a1a1a] text-white font-medium py-4 px-6 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
                 >
-                  <Image src={getImageUrl('core','google')} alt="Google" width={20} height={20} className="w-5 h-5" />
-                  <span className="text-sm">{showLoginForm ? "Sign in with Google" : "Sign up with Google"}</span>
+                  <Image src={getImageUrl('core','google')} alt="Google" width={24} height={24} className="w-6 h-6" />
+                  <span className="text-base">{showLoginForm ? "Sign in with Google" : "Sign up with Google"}</span>
                 </button>
               </div>
 
               {/* Already have an account link */}
               <div className="text-center mb-10">
-                <span className="text-[#A0A0A0] text-sm">Already have an account? </span>
+                <span className="text-[#A0A0A0] text-base">Already have an account? </span>
                 <button
                   type="button"
                   onClick={() => setShowLoginForm(true)}
-                  className="text-[#4285F4] underline cursor-pointer text-sm"
+                  className="text-[#4285F4] underline cursor-pointer text-base font-medium"
                 >
                   Sign In
                 </button>

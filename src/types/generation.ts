@@ -1,4 +1,4 @@
-export type ViewType = 'landing' | 'home' | 'generation' | 'history' | 'bookmarks';
+export type ViewType = 'landing' | 'home' | 'generation' | 'history' | 'bookmarks' | 'pricing' | 'workflows';
 
 export type GenerationType =
   | 'text-to-image'

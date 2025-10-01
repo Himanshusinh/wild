@@ -3,6 +3,8 @@
 import React, { useEffect } from 'react';
 import LandingPage from './view/Landingpage/page';
 import HomePage from './view/HomePage/page';
+import PricingPage from './view/pricing/page';
+import WorkflowsPage from './view/workflows/page';
 import MainLayout from './view/Generation/Core/MainLayout';
 import { ViewType, GenerationType } from '@/types/generation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -71,6 +73,20 @@ export default function App() {
     );
   }
 
+  if (currentView === 'pricing') {
+    console.log('🔍 App - Rendering PricingPage');
+    return (
+      <PricingPage />
+    );
+  }
+
+  if (currentView === 'workflows') {
+    console.log('🔍 App - Rendering WorkflowsPage');
+    return (
+      <WorkflowsPage />
+    );
+  }
+
   if (currentView === 'generation') {
     console.log('🔍 App - Rendering MainLayout');
     return (
@@ -84,7 +100,5 @@ export default function App() {
   }
   
   console.log('🔍 App - No matching view, returning null');
-  return null;
-
   return null;
 }
