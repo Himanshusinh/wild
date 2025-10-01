@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getImageUrl } from '@/routes/imageroute'
-import { NAV_ROUTES, FEATURE_ROUTES } from '@/routes/routes'
+import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS } from '@/routes/routes'
 // import {
 //   IconBrandYoutube,
 //   IconBrandInstagram,
@@ -233,33 +233,33 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Facebook
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.X} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       X
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Instagram
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.YOUTUBE} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Youtube
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.LINKEDIN} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       LinkedIn
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Help Center
+                      <Link href={SOCIAL_LINKS.THREADS} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Threads
                       </Link>
                     </li>
                     

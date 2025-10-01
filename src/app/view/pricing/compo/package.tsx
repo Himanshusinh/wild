@@ -1,8 +1,8 @@
 export interface PackageProps {
   packageName: string;
-  activeSince: string;
+  activeSince: string; // ISO or human-readable date string
   credits: number;
-  features: string[];
+  features: ReadonlyArray<string>;
   available: boolean;
 }
 
