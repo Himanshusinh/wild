@@ -168,9 +168,9 @@ const InputBox = () => {
   // Fetch all history pages for text-to-image
   const refreshAllHistory = async () => {
     try {
-      let result: any = await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
+      let result: any = await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 10 } })).unwrap();
       while (result && result.hasMore) {
-        result = await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
+        result = await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit:10 } })).unwrap();
       }
     } catch { }
   };

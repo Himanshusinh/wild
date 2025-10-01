@@ -61,9 +61,10 @@ export default function PageRouter() {
   // Helper: fetch all pages for a given filter
   const fetchAllHistory = async (filtersObj: any) => {
     try {
-      let result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: 50 } })).unwrap();
+      const pageLimit = (filtersObj && filtersObj.generationType === 'text-to-image') ? 10 : 50;
+      let result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: pageLimit } })).unwrap();
       while (result && result.hasMore) {
-        result = await (dispatch as any)(loadMoreHistory({ filters: filtersObj, paginationParams: { limit: 50 } })).unwrap();
+        result = await (dispatch as any)(loadMoreHistory({ filters: filtersObj, paginationParams: { limit: pageLimit } })).unwrap();
       }
     } catch {}
   };

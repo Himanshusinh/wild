@@ -96,12 +96,11 @@ const ProductWithModelPoseInputBox = () => {
     console.log('✅ Set generation mode to: product-only');
   }, [selectedModel]);
 
-  // Load history on mount and handle infinite scroll
+  // Load product-generation history on mount
   useEffect(() => {
-    // Load text-to-image entries since backend stores products under this type
     dispatch(loadHistory({ 
-      filters: { generationType: 'text-to-image' }, 
-      paginationParams: { limit: 50 } 
+      filters: { generationType: 'product-generation' }, 
+      paginationParams: { limit: 10 } 
     }));
   }, [dispatch]);
 
@@ -111,8 +110,8 @@ const ProductWithModelPoseInputBox = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
         if (hasMore && !loading) {
           dispatch(loadMoreHistory({ 
-            filters: { generationType: 'text-to-image' }, 
-            paginationParams: { limit: 50 } 
+            filters: { generationType: 'product-generation' }, 
+            paginationParams: { limit: 10 } 
           }));
         }
       }
@@ -291,8 +290,8 @@ const ProductWithModelPoseInputBox = () => {
 
       // Refresh history to show the new product
       dispatch(loadHistory({ 
-        filters: { generationType: 'text-to-image' }, 
-        paginationParams: { limit: 50 } 
+        filters: { generationType: 'product-generation' }, 
+        paginationParams: { limit: 10 } 
       }));
 
       // Reset local generation state
@@ -332,61 +331,11 @@ const ProductWithModelPoseInputBox = () => {
   // Close preview modal
   const closePreview = () => setPreviewEntry(null);
 
-  // Filter entries for product generation - only show explicit products
-  const productHistoryEntries = historyEntries.filter((entry: any) => {
-    // Primary filter: entries with product-generation generationType
-    if (entry.generationType === 'product-generation') return true;
-    
-    // Secondary filter: entries that are explicitly product-related
-    if (entry.generationType === 'text-to-image') {
-      const prompt = entry.prompt?.toLowerCase() || '';
-      const style = entry.style?.toLowerCase() || '';
-      
-      // Must have explicit product keywords
-      const hasProductKeywords = (
-        prompt.includes('product') ||
-        prompt.includes('studio product') ||
-        prompt.startsWith('product:') ||
-        style === 'product'
-      );
-      
-      // Exclude all non-product content
-      const isNonProduct = (
-        prompt.includes('logo') ||
-        prompt.includes('brand') ||
-        prompt.includes('sticker') ||
-        prompt.includes('business logo') ||
-        prompt.includes('sticker design') ||
-        prompt.includes('business') ||
-        prompt.includes('cat') ||
-        prompt.includes('dog') ||
-        prompt.includes('animal') ||
-        prompt.includes('pet') ||
-        prompt.includes('tiger') ||
-        prompt.includes('lion') ||
-        prompt.includes('kitten') ||
-        prompt.includes('puppy') ||
-        prompt.includes('beard') ||
-        prompt.includes('man') ||
-        prompt.includes('person') ||
-        prompt.includes('human') ||
-        style === 'logo' ||
-        style === 'brand' ||
-        style === 'sticker'
-      );
-      
-      return hasProductKeywords && !isNonProduct;
-    }
-    
-    return false;
-  });
-
-  // Only show entries that are explicitly product-related - no fallback
-  const finalProductEntries = productHistoryEntries;
+  // Filter entries strictly for product-generation only
+  const finalProductEntries = (historyEntries || []).filter((entry: any) => entry.generationType === 'product-generation');
 
   // Debug logging
   console.log('📦 Product Generation - All entries:', historyEntries.length);
-  console.log('📦 Product Generation - Filtered product entries:', productHistoryEntries.length);
   console.log('📦 Product Generation - Final entries:', finalProductEntries.length);
   console.log('📦 Product Generation - Sample entries:', historyEntries.slice(0, 3).map((e: any) => ({ 
     id: e.id, 

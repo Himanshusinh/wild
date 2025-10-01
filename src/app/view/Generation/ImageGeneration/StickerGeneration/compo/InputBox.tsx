@@ -77,10 +77,10 @@ const InputBox = () => {
 
   // Load history on mount and handle infinite scroll
   useEffect(() => {
-    // Load text-to-image entries since most stickers are stored as text-to-image with sticker style/prompt
+    // Load only sticker-generation entries
     dispatch(loadHistory({ 
-      filters: { generationType: 'text-to-image' }, 
-      paginationParams: { limit: 50 } 
+      filters: { generationType: 'sticker-generation' }, 
+      paginationParams: { limit: 10 } 
     }));
   }, [dispatch]);
 
@@ -90,8 +90,8 @@ const InputBox = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
         if (hasMore && !loading) {
           dispatch(loadMoreHistory({ 
-            filters: { generationType: 'text-to-image' }, 
-            paginationParams: { limit: 50 } 
+            filters: { generationType: 'sticker-generation' }, 
+            paginationParams: { limit: 10 } 
           }));
         }
       }
@@ -205,8 +205,8 @@ const InputBox = () => {
 
       // Refresh history to show the new sticker
       dispatch(loadHistory({ 
-        filters: { generationType: 'text-to-image' }, 
-        paginationParams: { limit: 50 } 
+        filters: { generationType: 'sticker-generation' }, 
+        paginationParams: { limit: 10 } 
       }));
 
       // Reset local generation state
@@ -248,33 +248,8 @@ const InputBox = () => {
 
   // Filter entries for sticker generation
   const stickerHistoryEntries = historyEntries.filter((entry: any) => {
-    // Primary filter: entries with sticker-generation generationType
-    if (entry.generationType === 'sticker-generation') return true;
-    
-    // Secondary filter: entries that look like stickers based on prompt or style
-    if (entry.generationType === 'text-to-image') {
-      const prompt = entry.prompt?.toLowerCase() || '';
-      const style = entry.style?.toLowerCase() || '';
-      
-      // Check if it's a sticker-related generation
-      return (
-        prompt.includes('sticker') ||
-        prompt.includes('sticker design') ||
-        prompt.startsWith('sticker:') ||
-        style === 'sticker'
-      ) && !(
-        // Exclude conflicting types
-        prompt.includes('logo') ||
-        prompt.includes('brand') ||
-        prompt.includes('product') ||
-        prompt.includes('business') ||
-        style === 'logo' ||
-        style === 'brand' ||
-        style === 'product'
-      );
-    }
-    
-    return false;
+    // Strictly include only entries persisted as sticker-generation
+    return entry.generationType === 'sticker-generation';
   });
 
   // Debug logging

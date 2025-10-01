@@ -35,6 +35,17 @@ export default function MainLayout({
   const currentView = propCurrentView;
   const currentGenerationType = propCurrentGenerationType;
 
+  // When this layout is used with explicit props (like /history route),
+  // sync the Redux UI state so PageRouter uses the correct view/type.
+  useEffect(() => {
+    if (propCurrentView) {
+      dispatch(setCurrentView(propCurrentView));
+    }
+    if (propCurrentGenerationType) {
+      dispatch(setCurrentGenerationType(propCurrentGenerationType));
+    }
+  }, [dispatch, propCurrentView, propCurrentGenerationType]);
+
   // Sync URL with state on initial load and route changes
   // Only run this logic when MainLayout is the main component (not when used as child)
   useEffect(() => {

@@ -77,10 +77,10 @@ const InputBox = () => {
 
   // Load history on mount and handle infinite scroll
   useEffect(() => {
-    // Load text-to-image entries since most logos are stored as text-to-image with logo style/prompt
+    // Load only logo entries
     dispatch(loadHistory({ 
-      filters: { generationType: 'text-to-image' }, 
-      paginationParams: { limit: 50 } 
+      filters: { generationType: 'logo' }, 
+      paginationParams: { limit: 10 } 
     }));
   }, [dispatch]);
 
@@ -90,8 +90,8 @@ const InputBox = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
         if (hasMore && !loading) {
           dispatch(loadMoreHistory({ 
-            filters: { generationType: 'text-to-image' }, 
-            paginationParams: { limit: 50 } 
+            filters: { generationType: 'logo' }, 
+            paginationParams: { limit: 10 } 
           }));
         }
       }
@@ -205,8 +205,8 @@ const InputBox = () => {
 
       // Refresh history to show the new logo
       dispatch(loadHistory({ 
-        filters: { generationType: 'text-to-image' }, 
-        paginationParams: { limit: 50 } 
+        filters: { generationType: 'logo' }, 
+        paginationParams: { limit: 10 } 
       }));
 
       // Reset local generation state
@@ -248,36 +248,8 @@ const InputBox = () => {
 
   // Filter entries for logo generation
   const logoHistoryEntries = historyEntries.filter((entry: any) => {
-    // Primary filter: explicit logo type
-    if (entry.generationType === 'logo') return true;
-
-    // Secondary filter: entries that are clearly logos based on prompt/style
-    if (entry.generationType === 'text-to-image') {
-      const prompt = (entry.prompt || '').toLowerCase();
-      const style = (entry.style || '').toLowerCase();
-
-      // Exclude any product-like generations first
-      const isProductLike =
-        style === 'product' ||
-        prompt.includes('product') ||
-        prompt.includes('studio product') ||
-        prompt.includes('e-commerce') ||
-        prompt.includes('photograph');
-      if (isProductLike) return false;
-
-      // Consider as logo only if explicit logo intent is present
-      const hasExplicitLogoIntent =
-        style === 'logo' ||
-        /^logo\s*:/i.test(entry.prompt || '') ||
-        /(^|\s)logo(\s|$)/.test(prompt) ||
-        prompt.includes('company logo') ||
-        prompt.includes('business logo') ||
-        prompt.includes('brand logo');
-
-      return hasExplicitLogoIntent;
-    }
-
-    return false;
+    // Strictly include only entries persisted as logo
+    return entry.generationType === 'logo';
   });
 
   // Debug logging
