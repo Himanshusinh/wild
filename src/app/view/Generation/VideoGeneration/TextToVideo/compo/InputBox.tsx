@@ -1534,9 +1534,9 @@ const InputBox = () => {
                                 </div>
                               </div>
                               {/* Video duration or other info */}
-                              <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                              {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                                 <span className="text-xs text-white">Video</span>
-                              </div>
+                              </div> */}
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />

@@ -182,7 +182,7 @@ const SidePannelFeatures = ({
             <div
                 ref={brandingRef}
                 onClick={toggleBrandingDropdown}
-                className={`flex items-center gap-4 p-2 z-100 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
+                className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   isBrandingActive ? 'bg-white/10' : ''
                 }`}
             >
@@ -193,9 +193,9 @@ const SidePannelFeatures = ({
            { showBrandingDropdown && (
                 <div
                     ref={dropdownRef}
-                    className='absolute left-full top-0 ml-4 bg-black/50 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-50 min-w-[240px]'
+                    className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
                 >
-                    <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md'>
+                    <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
                         <span className='text-xs text-white/90 uppercase tracking-wider'>Branding Kit</span>
                     </div>
                     
