@@ -1069,6 +1069,7 @@ export default function SignInForm() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
@@ -1082,6 +1083,7 @@ export default function SignInForm() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
@@ -1214,11 +1216,12 @@ export default function SignInForm() {
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-white font-medium text-lg">Email address</label>
-                  <input
+                <input
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value.trim())}
+                  autoComplete="email"
                     className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                     required
                   />
@@ -1232,6 +1235,7 @@ export default function SignInForm() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
                     className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                     required
                   />
@@ -1245,6 +1249,7 @@ export default function SignInForm() {
                     placeholder="Confirm your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
                     className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                     required
                   />

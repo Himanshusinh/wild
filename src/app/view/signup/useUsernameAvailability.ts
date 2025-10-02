@@ -45,13 +45,24 @@ export function useUsernameAvailability(apiBase = '') {
     const base = (apiBase || DEFAULT_API_BASE).replace(/\/$/, '')
     const url = `${base}/auth/username/check?username=${encodeURIComponent(value)}`
 
-    fetch(url, { signal: controller.signal })
+    fetch(url, { 
+      signal: controller.signal,
+      headers: { 'ngrok-skip-browser-warning': 'true', 'Accept': 'application/json' }
+    })
       .then(async (r) => {
-        const json = await r.json().catch(() => ({}))
-        if (!r.ok) throw new Error(json?.message || 'Request failed')
+        // If response is not JSON, try to handle gracefully
+        let json: any = {}
+        try { json = await r.json() } catch { json = {} }
+        // Non-2xx
+        if (!r.ok) {
+          const msg = (json && (json.message || json.error)) || 'Request failed'
+          throw new Error(msg)
+        }
+        // Expect formatApiResponse shape
         const data: UsernameCheckResult | undefined = json?.data
-        if (!data || typeof data.available !== 'boolean') throw new Error('Malformed response')
-        // Only apply if response matches the latest requested username
+        if (!data || typeof data.available !== 'boolean') {
+          throw new Error('Malformed response from server')
+        }
         if (lastRequestedRef.current !== value) return
         setResult(data)
         setStatus(data.available ? 'available' : 'taken')
