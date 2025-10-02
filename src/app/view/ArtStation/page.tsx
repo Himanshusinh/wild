@@ -34,7 +34,11 @@ export default function ArtStationPage() {
       const url = new URL(`${API_BASE}/api/feed`)
       url.searchParams.set('limit', '10')
       if (!reset && cursor) url.searchParams.set('cursor', cursor)
-      const res = await fetch(url.toString(), { credentials: 'include' })
+      const res = await fetch(url.toString(), { 
+        // Public endpoint: no credentials needed; avoid strict CORS with wildcard
+        credentials: 'omit',
+        headers: { 'ngrok-skip-browser-warning': 'true', 'Accept': 'application/json' }
+      })
       const data = await res.json()
       const payload = data?.data || data
       const newItems: PublicItem[] = payload?.items || []
