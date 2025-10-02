@@ -33,6 +33,22 @@ const SidePannelFeatures = ({
   
 
 
+  const navigateForType = (type: GenerationType) => {
+    switch (type) {
+      case 'text-to-image':
+        router.push('/text-to-image');
+        return;
+      case 'text-to-video':
+        router.push('/text-to-video');
+        return;
+      case 'text-to-music':
+        router.push('/text-to-music');
+        return;
+      default:
+        return;
+    }
+  };
+
   const handleGenerationTypeChange = (type: GenerationType) => {
     try {
       if (onGenerationTypeChange && typeof onGenerationTypeChange === 'function') {
@@ -42,6 +58,7 @@ const SidePannelFeatures = ({
       console.error('Error in handleGenerationTypeChange:', error);
     }
     setShowBrandingDropdown(false);
+    navigateForType(type);
   };
 
   const handleImageGenerationClick = () => {
@@ -200,7 +217,7 @@ const SidePannelFeatures = ({
                     </div>
                     
                     <div
-                        onClick={() => handleGenerationTypeChange('logo-generation')}
+                        onClick={() => router.push('/logo-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'logo' ? 'bg-white/15' : ''
                         }`}
@@ -209,7 +226,7 @@ const SidePannelFeatures = ({
                     </div>
                     
                     <div
-                        onClick={() => handleGenerationTypeChange('sticker-generation')}
+                        onClick={() => router.push('/sticker-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
                         }`}
@@ -227,7 +244,7 @@ const SidePannelFeatures = ({
                     </div> */}
                     
                     <div
-                        onClick={() => handleGenerationTypeChange('product-generation')}
+                        onClick={() => router.push('/product-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
                         }`}
