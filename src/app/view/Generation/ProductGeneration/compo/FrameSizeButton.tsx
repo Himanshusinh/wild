@@ -75,7 +75,7 @@ const FrameSizeButton = () => {
     <div ref={containerRef} className="relative inline-block">
       <button
         onClick={open}
-        className={`h-[32px] px-3 rounded-full text-[13px] font-medium transition flex items-center gap-2 ${
+        className={`h-8 px-3 rounded-full text-md font-medium transition flex items-center  ${
           isDisabled 
             ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
@@ -84,9 +84,12 @@ const FrameSizeButton = () => {
         title={isDisabled ? "Frame size not available for local model" : "Frame size"}
         disabled={isDisabled}
       >
-        <div className="relative rounded-[4px] bg-white/10 ring-1 ring-white/30"
-             style={renderPreviewStyle(FRAME_OPTIONS.find(o => o.id === saved) || FRAME_OPTIONS[0], 22)}>
-          <span className="absolute inset-0 grid place-items-center text-[10px] text-white/90">{saved}</span>
+        <div className="flex items-center gap-2 justify-center">
+          {/* <div
+            className="relative rounded-[2px] ring-1 ring-white/20 bg-transparent"
+            style={renderPreviewStyle(FRAME_OPTIONS.find(o => o.id === saved) || FRAME_OPTIONS[0], 22)}
+          ></div> */}
+          <span className="text-sm text-white/90 whitespace-nowrap text-center justify-center">{saved}</span>
         </div>
       </button>
 
