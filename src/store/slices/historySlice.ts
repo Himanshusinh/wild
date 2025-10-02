@@ -81,6 +81,15 @@ export const loadHistory = createAsyncThunk(
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (paginationParams?.limit) params.limit = paginationParams.limit;
       if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
+      // Sorting support
+      (params as any).sortBy = 'createdAt';
+      if ((filters as any)?.sortOrder) (params as any).sortOrder = (filters as any).sortOrder;
+      // Serialize date range if present (ISO strings)
+      if ((filters as any)?.dateRange && (filters as any).dateRange.start && (filters as any).dateRange.end) {
+        const dr = (filters as any).dateRange as any;
+        (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
+        (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
+      }
       const res = await client.get('/api/generations', { params });
       const result = res.data?.data || { items: [], nextCursor: undefined };
 
@@ -187,6 +196,14 @@ export const loadMoreHistory = createAsyncThunk(
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
+      // Sorting support
+      (params as any).sortBy = 'createdAt';
+      if ((filters as any)?.sortOrder) (params as any).sortOrder = (filters as any).sortOrder;
+      if ((filters as any)?.dateRange && (filters as any).dateRange.start && (filters as any).dateRange.end) {
+        const dr = (filters as any).dateRange as any;
+        (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
+        (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
+      }
       const res = await client.get('/api/generations', { params });
       const result = res.data?.data || { items: [], nextCursor: undefined };
 

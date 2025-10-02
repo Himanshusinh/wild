@@ -40,7 +40,7 @@ const WorkflowsPage: React.FC = () => {
       </div>
 
       {/* Main layout - side panel + content area */}
-      <div className="flex pt-[80px]"> {/* pt-[80px] to account for fixed nav */}
+      <div className="flex pt-10"> {/* pt-[80px] to account for fixed nav */}
         {/* Side Panel - fixed width */}
         <div className="w-[68px] flex-shrink-0">
           <SidePannelFeatures 

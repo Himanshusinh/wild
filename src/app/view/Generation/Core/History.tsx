@@ -38,13 +38,17 @@ const History = () => {
   const [filters, setLocalFilters] = useState<HistoryFilters>({});
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+  const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product'>('all');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateInput, setDateInput] = useState<string>("");
 
   // Debug logs removed for cleaner console
 
   // Helper: load only the first page; more pages load on scroll
   const loadFirstPage = async (filtersObj: any) => {
     try {
-      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: 10 } })).unwrap();
+      const initialLimit = sortOrder === 'asc' ? 30 : 10; // fetch more when showing oldest so viewport fills immediately
+      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
       setHasMore(Boolean(result && result.hasMore));
     } catch { }
   };
@@ -54,7 +58,7 @@ const History = () => {
     try {
       let attempts = 0;
       while (
-        attempts < 3 &&
+        attempts < 10 &&
         hasMore &&
         !loading &&
         (document.documentElement.scrollHeight - window.innerHeight) < 200
@@ -72,12 +76,12 @@ const History = () => {
       // Reset history to ensure a clean initial load on refresh
       dispatch(clearHistory());
       if (viewMode === 'global') {
-        dispatch(setFilters({}));
-        const base = {};
+        const base: any = { sortOrder };
+        dispatch(setFilters(base));
         await loadFirstPage(base);
         await autoFillViewport(base);
       } else {
-        const f = { generationType: currentGenerationType } as any;
+        const f = { generationType: currentGenerationType, sortOrder } as any;
         dispatch(setFilters(f));
         await loadFirstPage(f);
         await autoFillViewport(f);
@@ -92,6 +96,8 @@ const History = () => {
   useEffect(() => {
     if (historyEntries.length === 0 && !didInitialLoadRef.current) {
       const base = viewMode === 'global' ? {} : { generationType: currentGenerationType };
+      if (sortOrder) (base as any).sortOrder = sortOrder;
+      if (dateRange.start && dateRange.end) (base as any).dateRange = { start: dateRange.start, end: dateRange.end };
       (async () => {
         await loadFirstPage(base);
         await autoFillViewport(base);
@@ -103,19 +109,21 @@ const History = () => {
 
   // Handle sort order changes
   useEffect(() => {
-    if (viewMode === 'global' && Object.keys(filters).length > 0) {
-      // Re-apply filters with new sort order
-      const finalFilters = { ...filters, sortOrder };
+    // Re-apply current filters with new sort order and force viewport fill to avoid partial top rows
+    (async () => {
+      const finalFilters = { ...filters, sortOrder } as any;
+      if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
       dispatch(setFilters(finalFilters));
-      (dispatch as any)(loadHistory({
-        filters: finalFilters,
-        paginationParams: { limit: 10 }
-      })).unwrap().then((result: any) => {
-        setHasMore(Boolean(result && result.hasMore));
-      });
+      try {
+        await (dispatch as any)(loadHistory({
+          filters: finalFilters,
+          paginationParams: { limit: 10 }
+        })).unwrap();
+        await autoFillViewport(finalFilters);
+      } catch {}
       setPage(1);
-    }
-  }, [sortOrder, dispatch, filters, viewMode]);
+    })();
+  }, [sortOrder, dispatch]);
 
   // Handle scroll to load more
   useEffect(() => {
@@ -125,8 +133,8 @@ const History = () => {
           isFetchingMoreRef.current = true;
           const nextPage = page + 1;
           setPage(nextPage);
-          const filters = viewMode === 'global' ? {} : { generationType: currentGenerationType };
-          dispatch(loadMoreHistory({ filters, paginationParams: { limit: 10 } }))
+          const baseFilters = { ...filters, sortOrder } as any;
+          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: 10 } }))
             .then((result: any) => {
               if (result.payload && result.payload.entries) {
                 setHasMore(result.payload.hasMore);
@@ -256,7 +264,10 @@ const History = () => {
     return groups;
   }, {} as { [key: string]: HistoryEntry[] });
 
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+    const diff = new Date(b).getTime() - new Date(a).getTime();
+    return sortOrder === 'asc' ? -diff : diff;
+  });
 
   // Header title to mirror TextToImage wording
   const headerTitle = viewMode === 'global'
@@ -294,7 +305,7 @@ const History = () => {
       <div className="h-0"></div>
 
       {/* Controls row (back, count, filters, toggle) */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center  justify-between mb-2">
         <div className="flex items-center gap-2">
           {/* <button
             onClick={handleBackToGeneration}
@@ -308,45 +319,146 @@ const History = () => {
           <span className="text-md text-white/80">{historyEntries.length} generations</span>
           {hasMore && <span className="text-md text-white/80">• Scroll to load more</span>}
         </div>
-        <div className="flex items-center gap-4">
-          <div className="filter-container relative">
+        <div className="flex items-right justify-end gap-2 pr-28 ">
+          {([
+            { key: 'all', label: 'All' },
+            { key: 'images', label: 'Images' },
+            { key: 'videos', label: 'Videos' },
+            { key: 'music', label: 'Music' },
+            { key: 'logo', label: 'Logo' },
+            { key: 'sticker', label: 'Stickers' },
+            { key: 'product', label: 'Products' },
+          ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm flex items-center gap-2"
+              key={key}
+              onClick={async () => {
+                setQuickFilter(key);
+                let f: any = {};
+                switch (key) {
+                  case 'images':
+                    f = { generationType: 'text-to-image' };
+                    break;
+                  case 'videos':
+                    f = { mode: 'video' };
+                    break;
+                  case 'music':
+                    f = { generationType: 'text-to-music' };
+                    break;
+                  case 'logo':
+                    f = { generationType: 'logo-generation' };
+                    break;
+                  case 'sticker':
+                    f = { generationType: 'sticker-generation' };
+                    break;
+                  case 'product':
+                    f = { generationType: 'product-generation' };
+                    break;
+                  default:
+                    f = {};
+                }
+                // Preserve sort order and any date range
+                if (sortOrder) (f as any).sortOrder = sortOrder;
+                if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                setLocalFilters(f);
+                dispatch(setFilters(f));
+                await loadFirstPage(f);
+                await autoFillViewport(f);
+                setPage(1);
+              }}
+              className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'
+                }`}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
-              </svg>
-              Filters
+              {label}
             </button>
+          ))}
+          {/* Sort buttons */}
+          <div className="ml-8 flex items-center gap-2">
+            <button
+              onClick={() => setSortOrder('desc')}
+              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'desc' ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              title="Newest first"
+            >Newest</button>
+            <button
+              onClick={async () => {
+                setSortOrder('asc');
+                // Force full reload so first page starts from oldest consistently
+                const f: any = { ...filters, sortOrder: 'asc' };
+                if (dateRange.start && dateRange.end) {
+                  f.dateRange = { start: (filters as any)?.dateRange?.start || dateRange.start?.toString(), end: (filters as any)?.dateRange?.end || dateRange.end?.toString() };
+                }
+                setLocalFilters(f);
+                dispatch(setFilters(f));
+                await loadFirstPage(f);
+                await autoFillViewport(f);
+                setPage(1);
+              }}
+              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'asc' ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              title="Oldest first"
+            >Oldest</button>
           </div>
-          <button
-            onClick={() => setViewMode(viewMode === 'global' ? 'feature' : 'global')}
-            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm"
-          >
-            {viewMode === 'global' ? 'Show Feature History' : 'Show Global History'}
-          </button>
+          {/* Date picker */}
+          <div className="relative ml-0">
+            <button
+              onClick={() => setShowDatePicker(v => !v)}
+              className={`px-3 py-2 rounded-full text-sm ${dateRange.start ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              title="Filter by date"
+            >Date</button>
+            {showDatePicker && (
+              <div className="absolute right-0 mt-2 z-40 p-3 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/20 shadow-2xl">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={dateInput}
+                    onChange={(e) => setDateInput(e.target.value)}
+                    className="bg-white/10 text-white text-sm rounded px-2 py-1 ring-1 ring-white/20"
+                  />
+                  <button
+                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm"
+                    onClick={async () => {
+                      if (!dateInput) return;
+                      const d = new Date(dateInput + 'T00:00:00');
+                      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                      // Use ISO strings to keep Redux state serializable
+                      setDateRange({ start, end });
+                      const f = { ...filters, dateRange: { start: start.toISOString(), end: end.toISOString() }, sortOrder } as any;
+                      setLocalFilters(f);
+                      dispatch(setFilters(f));
+                      await loadFirstPage(f);
+                      await autoFillViewport(f);
+                      setPage(1);
+                      setShowDatePicker(false);
+                    }}
+                  >Apply</button>
+                  <button
+                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm"
+                    onClick={async () => {
+                      setDateInput('');
+                      setDateRange({ start: null, end: null });
+                      const f: any = { ...filters };
+                      delete (f as any).dateRange;
+                      if (sortOrder) f.sortOrder = sortOrder;
+                      setLocalFilters(f);
+                      dispatch(setFilters(f));
+                      await loadFirstPage(f);
+                      await autoFillViewport(f);
+                      setPage(1);
+                      setShowDatePicker(false);
+                    }}
+                  >Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Filter Popover */}
-      <FilterPopover
-        isOpen={showFilters}
-        filters={filters}
-        sortOrder={sortOrder}
-        dateRange={dateRange}
-        onFilterChange={handleFilterChange}
-        onDateRangeChange={handleDateRangeChange}
-        onSortChange={handleSortChange}
-        onApplyFilters={applyFilters}
-        onClearFilters={clearAllFilters}
-        onClose={() => setShowFilters(false)}
-      />
+      {/* Filter Popover removed in favor of quick filter pills */}
 
 
 
       {/* Active Filters Summary */}
-      {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
+      {/* {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
         <div className="mb-6 p-4 bg-white/5 backdrop-blur-xl rounded-lg border border-white/10">
           <div className="flex items-center gap-2 mb-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
@@ -380,7 +492,7 @@ const History = () => {
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* History Entries - TextToImage-like UI: date-grouped tiles */}
       {historyEntries.length === 0 ? (

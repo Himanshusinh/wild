@@ -39,9 +39,9 @@ const Header: React.FC<HeaderProps> = ({ activeCategory, onCategoryChange, onSea
     <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
       {/* Title Section */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold mb-2 sm:mb-3">
-          Wild Magic
-        </h1>
+        <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+          Coming Soon... 
+        </h3>
         <p className="text-white/80 text-base sm:text-lg md:text-xl">
           Explore AI tools that make your creative process easier and better
         </p>
