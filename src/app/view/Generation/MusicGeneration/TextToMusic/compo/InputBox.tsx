@@ -27,6 +27,7 @@ const InputBox = () => {
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = React.useRef(false);
   const hasUserScrolledRef = React.useRef(false);
+  const didAutoFillRef = React.useRef(false);
   const [selectedAudio, setSelectedAudio] = useState<{
     entry: any;
     audio: any;
@@ -35,6 +36,26 @@ const InputBox = () => {
   // Local preview state for immediate UI feedback
   const [localMusicPreview, setLocalMusicPreview] = useState<any>(null);
   const todayKey = new Date().toDateString();
+
+  // Auto-fill viewport so the page mirrors image/video history behavior
+  const autoFillViewport = async () => {
+    try {
+      if (didAutoFillRef.current) return;
+      let attempts = 0;
+      while (
+        attempts < 3 &&
+        (document.documentElement.scrollHeight - window.innerHeight) < 200 &&
+        (storeHasMore && !storeLoading)
+      ) {
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'text-to-music' },
+          paginationParams: { limit: 10 }
+        } as any)).unwrap();
+        attempts += 1;
+      }
+      didAutoFillRef.current = true;
+    } catch {}
+  };
 
   // Auto-clear local preview after completion/failure
   useEffect(() => {
@@ -86,10 +107,15 @@ const InputBox = () => {
   // Load history on mount (music only)
   useEffect(() => {
     dispatch(clearFilters());
-    dispatch(loadHistory({ 
-      filters: { generationType: 'text-to-music' }, 
-      paginationParams: { limit: 10 } 
-    }));
+    (async () => {
+      try {
+        await (dispatch as any)(loadHistory({ 
+          filters: { generationType: 'text-to-music' }, 
+          paginationParams: { limit: 10 } 
+        })).unwrap();
+        await autoFillViewport();
+      } catch {}
+    })();
   }, [dispatch]);
 
   // Remove unused local loader; rely on Redux loadMoreHistory
@@ -506,10 +532,10 @@ const InputBox = () => {
                                 </div>
                               </div>
                               
-                              {/* Music track label */}
-                              {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                                <span className="text-xs text-white">Music</span>
-                              </div> */}
+                          {/* Music track label */}
+                          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                            <span className="text-xs text-white">Audio</span>
+                          </div>
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />

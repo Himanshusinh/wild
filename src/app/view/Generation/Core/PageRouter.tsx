@@ -61,13 +61,21 @@ export default function PageRouter() {
   // Helper: single-page fetch for a given filter (no auto-pagination)
   const fetchFirstPage = async (filtersObj: any) => {
     try {
+      if (isHistoryLoading) {
+        try { console.log('[PageRouter] fetchFirstPage.skip: store already loading'); } catch {}
+        return;
+      }
       const isVideoMode = !!(filtersObj && (filtersObj.mode === 'video'));
       const isTextToImage = !!(filtersObj && filtersObj.generationType === 'text-to-image');
       const limit = isVideoMode ? 50 : (isTextToImage ? 50 : 50);
       console.log('[PageRouter] fetchFirstPage', { filtersObj, limit });
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit } })).unwrap();
       console.log('[PageRouter] fetchFirstPage.fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
-    } catch (e) {
+    } catch (e: any) {
+      if (e && e.name === 'ConditionError') {
+        try { console.log('[PageRouter] fetchFirstPage.skip: condition aborted'); } catch {}
+        return;
+      }
       console.error('[PageRouter] fetchFirstPage.error', e);
     }
   };
@@ -140,10 +148,16 @@ export default function PageRouter() {
             ? ({ mode: 'video' } as any)
             : ({ generationType: historyGenerationType as any } as any);
           fetchFirstPage(filters)
+            .then(() => {
+              // Only mark as loaded when the fetch actually ran
+              loadedTypesRef.current.add(currentGenerationType);
+            })
+            .catch((_e) => {
+              // If aborted by condition, leave as not-loaded so a later attempt can retry
+            })
             .finally(() => {
               isLoadingRef.current = false;
             });
-          loadedTypesRef.current.add(currentGenerationType);
         } else if (!hasEntriesForType && !isInitialLoadRef.current && !isHistoryLoading) {
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
           isLoadingRef.current = true;

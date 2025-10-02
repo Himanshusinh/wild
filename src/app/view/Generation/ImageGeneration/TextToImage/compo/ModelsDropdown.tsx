@@ -24,13 +24,13 @@ const ModelsDropdown = () => {
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
     // Local models
-    { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
-    { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
-    { name: 'SD 3.5 Large (Local)', value: 'stable-large' },
-    { name: 'SD 3.5 Turbo (Local)', value: 'stable-turbo' },
-    { name: 'SDXL 1.0 (Local)', value: 'stable-xl' },
-    { name: 'Flux Krea (Local)', value: 'flux-krea' },
-    { name: 'Playground SDXL (Local)', value: 'playground' },
+    // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
+    // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
+    // { name: 'SD 3.5 Large (Local)', value: 'stable-large' },
+    // { name: 'SD 3.5 Turbo (Local)', value: 'stable-turbo' },
+    // { name: 'SDXL 1.0 (Local)', value: 'stable-xl' },
+    // { name: 'Flux Krea (Local)', value: 'flux-krea' },
+    // { name: 'Playground SDXL (Local)', value: 'playground' },
   ];
 
   // If user uploaded images, restrict to models which support image inputs
@@ -70,7 +70,7 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           selectedModel !== 'flux-dev' 
             ? 'bg-white text-black' 
             : 'bg-transparent text-white/90 hover:bg-white/5'
@@ -80,7 +80,7 @@ const ModelsDropdown = () => {
         {models.find(m => m.value === selectedModel)?.name || 'Models'}
       </button>
       {activeDropdown === 'models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-3xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {models.map((model) => (
             <button
               key={model.value}

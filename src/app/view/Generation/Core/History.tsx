@@ -308,7 +308,7 @@ const History = () => {
           <span className="text-md text-white/80">{historyEntries.length} generations</span>
           {hasMore && <span className="text-md text-white/80">• Scroll to load more</span>}
         </div>
-        {/* <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4">
           <div className="filter-container relative">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -326,11 +326,11 @@ const History = () => {
           >
             {viewMode === 'global' ? 'Show Feature History' : 'Show Global History'}
           </button>
-        </div> */}
+        </div>
       </div>
 
       {/* Filter Popover */}
-      {/* <FilterPopover
+      <FilterPopover
         isOpen={showFilters}
         filters={filters}
         sortOrder={sortOrder}
@@ -341,12 +341,12 @@ const History = () => {
         onApplyFilters={applyFilters}
         onClearFilters={clearAllFilters}
         onClose={() => setShowFilters(false)}
-      /> */}
+      />
 
 
 
       {/* Active Filters Summary */}
-      {/* {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
+      {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
         <div className="mb-6 p-4 bg-white/5 backdrop-blur-xl rounded-lg border border-white/10">
           <div className="flex items-center gap-2 mb-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
@@ -380,7 +380,7 @@ const History = () => {
             </span>
           </div>
         </div>
-      )} */}
+      )}
 
       {/* History Entries - TextToImage-like UI: date-grouped tiles */}
       {historyEntries.length === 0 ? (
