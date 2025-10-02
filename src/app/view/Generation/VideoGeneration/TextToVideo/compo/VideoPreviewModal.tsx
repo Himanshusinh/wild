@@ -86,6 +86,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       rawVideoUrl = preview.video.originalUrl;
     }
   }
+  const inputVideos = ((preview.entry as any)?.inputVideos || []) as any[];
+  const inputImages = ((preview.entry as any)?.inputImages || []) as any[];
   const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
   const videoUrl = toProxyResourceUrl(videoPath);
 
@@ -172,6 +174,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <p className="text-sm">No video content available</p>
                 </div>
               </div>
+            )}
+            {(((preview.entry as any)?.inputVideos || []) as any[]).some((v: any) => (v?.storagePath && v.storagePath === (preview.video as any)?.storagePath) || (v?.url && v.url === (preview.video as any)?.url)) && (
+              <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
             )}
             
             <button

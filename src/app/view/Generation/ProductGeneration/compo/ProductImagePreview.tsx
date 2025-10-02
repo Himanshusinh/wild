@@ -42,11 +42,45 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    // Handle new backend prompt template
-    const m = rawPrompt.match(/Create a professional studio product photograph of:\s*(.+?)\s*\./i);
+    // Normalize newlines
+    let prompt = rawPrompt.replace(/\r\n/g, '\n').trim();
+
+    // Remove trailing style/metainfo blocks like [Style: realistic]
+    prompt = prompt.replace(/\s*\[[^\]]*\]\s*$/i, '').trim();
+
+    // Primary: take text right after the first ':' up to first period or newline
+    const firstColon = prompt.indexOf(':');
+    if (firstColon !== -1) {
+      let after = prompt.slice(firstColon + 1).trim();
+      // stop at first newline or period
+      const newlineIdx = after.indexOf('\n');
+      const periodIdx = after.indexOf('.');
+      let end = after.length;
+      if (newlineIdx !== -1) end = Math.min(end, newlineIdx);
+      if (periodIdx !== -1) end = Math.min(end, periodIdx);
+      after = after.slice(0, end).replace(/\s*\.$/, '').trim();
+      if (after) return after;
+    }
+
+    // Try precise known product templates (studio or lifestyle)
+    let m = prompt.match(/Create\s+a\s+professional\s+(?:studio|lifestyle)\s+product\s+photograph\s+of:\s*([^\n\.]+?)(?:\s*\.)?(?:\n|$)/i);
     if (m && m[1]) return m[1].trim();
-    // Fallback to original prefix format
-    return rawPrompt.replace(/^Product:\s*/i, '').trim();
+
+    // Generic "Create ...:" pattern – capture only until first period or newline
+    m = prompt.match(/Create[^:]*?:\s*([^\n\.]+?)(?:\s*\.)?(?:\n|$)/i);
+    if (m && m[1]) return m[1].trim();
+
+    // If there is a Goal section, only consider the text before it, then try to grab the last clause after a ':'
+    const beforeGoal = prompt.split(/\n\s*Goal:/i)[0];
+    if (beforeGoal && beforeGoal !== prompt) {
+      const mm = beforeGoal.match(/:\s*([^\n\.]+?)(?:\s*\.)?$/i);
+      if (mm && mm[1]) return mm[1].trim();
+    }
+
+    // Legacy prefix fallback
+    let legacy = prompt.replace(/^Product:\s*/i, '').trim();
+    legacy = legacy.split('\n')[0].replace(/\s*\.$/, '').trim();
+    return legacy;
   };
 
   const handleCopyPrompt = async () => {

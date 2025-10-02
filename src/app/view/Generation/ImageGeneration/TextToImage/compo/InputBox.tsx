@@ -204,18 +204,11 @@ const InputBox = () => {
   const historyEntries = useAppSelector(
     (state: any) => {
       const allEntries = state.history?.entries || [];
-      // Filter for text-to-image only, but exclude logo, sticker, and product entries
-      const filteredEntries = allEntries.filter((entry: any) => 
-        entry.generationType === 'text-to-image' && 
-        !(entry.prompt?.toLowerCase().includes('logo') || 
-          entry.prompt?.startsWith('Logo:') || 
-          entry.style === 'logo') &&
-        !(entry.prompt?.toLowerCase().includes('sticker') ||
-          entry.prompt?.toLowerCase().includes('sticker design') ||
-          entry.style === 'sticker') &&
-        !(entry.prompt?.toLowerCase().includes('product') ||
-          entry.prompt?.toLowerCase().includes('studio product') ||
-          entry.style === 'product')
+      // Show all text-to-image generations. Avoid filtering by prompt keywords
+      // so valid text-to-image generations (that happen to mention logo/sticker/product)
+      // are not accidentally hidden.
+      const filteredEntries = allEntries.filter((entry: any) =>
+        entry.generationType === 'text-to-image'
       );
       console.log('🖼️ Image Generation - All entries:', allEntries.length);
       console.log('🖼️ Image Generation - Filtered entries:', filteredEntries.length);
@@ -1464,7 +1457,7 @@ const InputBox = () => {
               <StyleSelector />
             </div>
             {/* moved previews near upload above */}
-            {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
+            {/* {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
               <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
                 <Button
                   aria-label="Upscale"
@@ -1516,7 +1509,7 @@ const InputBox = () => {
                   </div>
                 </Button>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
