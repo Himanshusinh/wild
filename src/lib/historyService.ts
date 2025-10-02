@@ -397,7 +397,7 @@ function getSampleHistoryData(): HistoryEntry[] {
       id: 'sample-3',
       prompt: 'Cute cartoon cat playing with yarn ball',
       model: 'flux-kontext-pro',
-      generationType: 'logo-generation',
+      generationType: 'logo',
       images: [
         {
           id: 'img-4',
