@@ -27,8 +27,8 @@ const Nav = () => {
   const [isPublic, setIsPublic] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('isPublicGenerations')
-      return stored ? stored === 'true' : false
-    } catch { return false }
+      return stored ? stored === 'true' : true
+    } catch { return true }
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
   
@@ -53,7 +53,7 @@ const Nav = () => {
         try {
           const stored = localStorage.getItem('isPublicGenerations')
           const server = (user && (user as any).isPublic)
-          const next = (stored != null) ? (stored === 'true') : Boolean(server)
+          const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : true)
           setIsPublic(next)
         } catch {}
 

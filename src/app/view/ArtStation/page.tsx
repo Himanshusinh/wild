@@ -133,7 +133,32 @@ export default function ArtStationPage() {
 
           <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
             {cards.map(({ item, media, kind }, idx) => (
-              <div key={`${item.id}-${media.id}-${idx}`} className="break-inside-avoid mb-4" onClick={() => setPreview({ kind, url: media.url, item })}>
+              <div 
+                key={`${item.id}-${media.id}-${idx}`} 
+                className="break-inside-avoid mb-4 cursor-pointer"
+                onClick={() => {
+                  // Navigate to corresponding generation page based on type
+                  const t = (item.generationType || '').toLowerCase()
+                  if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
+                    window.location.href = '/text-to-image'
+                    return
+                  }
+                  if (t === 'text-to-video') {
+                    window.location.href = '/text-to-video'
+                    return
+                  }
+                  if (t === 'product-generation' || t === 'mockup-generation') {
+                    window.location.href = '/product-generation'
+                    return
+                  }
+                  if (t === 'text-to-music') {
+                    window.location.href = '/text-to-music'
+                    return
+                  }
+                  // Fallback: open preview modal
+                  setPreview({ kind, url: media.url, item })
+                }}
+              >
                 <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
                   <div className="relative" style={{ aspectRatio: '4 / 5' }}>
                     {kind === 'video' ? (
