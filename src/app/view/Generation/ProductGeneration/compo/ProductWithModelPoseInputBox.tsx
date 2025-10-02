@@ -354,12 +354,14 @@ GENERATOR HINTS:
         }
       } else {
         // Route to BFL (Flux models)
+        let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
         result = await dispatch(bflGenerate({
           prompt: backendPrompt,
           model: selectedModel,
           n: imageCount,
           frameSize: frameSize,
           style: 'product',
+          isPublic,
           generationType: 'product-generation',
           uploadedImages: generationMode === 'product-with-model' ? 
             [productImage, modelImage].filter((img): img is string => img !== null) : 

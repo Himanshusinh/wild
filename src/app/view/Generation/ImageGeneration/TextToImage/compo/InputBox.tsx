@@ -376,6 +376,9 @@ const InputBox = () => {
     // No local writes to global history; backend tracks persistent history
 
     let firebaseHistoryId: string | undefined;
+    // Read isPublic preference
+    let isPublic = false;
+    try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
 
     try {
       // Check if it's a Runway model
@@ -548,7 +551,8 @@ const InputBox = () => {
               generationType: "text-to-image",
               uploadedImages,
               style,
-              existingHistoryId: firebaseHistoryId
+              existingHistoryId: firebaseHistoryId,
+              isPublic
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
@@ -794,15 +798,15 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
-        const result = await dispatch(
-          generateMiniMaxImages({
+          const result = await dispatch(
+            generateMiniMaxImages({
             prompt: `${prompt} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize,
             imageCount,
             generationType: "text-to-image",
             uploadedImages,
-            style
+              style
           })
         ).unwrap();
 
@@ -861,6 +865,7 @@ const InputBox = () => {
             uploadedImages,
             output_format: 'jpeg',
             generationType: 'text-to-image',
+            isPublic,
           })).unwrap();
 
           // Update the local loading entry with completed images
@@ -939,6 +944,7 @@ const InputBox = () => {
             n: imageCount,
             frameSize,
             style,
+            isPublic,
           })).unwrap();
 
           // History is persisted by backend; no local completed entry needed

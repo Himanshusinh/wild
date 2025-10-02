@@ -14,6 +14,7 @@ export const bflGenerate = createAsyncThunk(
       width?: number;
       height?: number;
       generationType?: string;
+      isPublic?: boolean;
     },
     { rejectWithValue }
   ) => {
