@@ -23,7 +23,9 @@ const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000',
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    // Suppress ngrok browser warning HTML page so API returns JSON
+    'ngrok-skip-browser-warning': 'true'
   }
 })
 

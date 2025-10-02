@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, useEffect } from "react"
 import axios from "axios"
+import axiosInstance from '@/lib/axiosInstance'
 import Image from "next/image"
 import { useUsernameAvailability } from "./useUsernameAvailability"
 import { getImageUrl } from "@/routes/imageroute"
@@ -69,7 +70,7 @@ export default function SignInForm() {
   const [redeemCodeInfo, setRedeemCodeInfo] = useState<any>(null)
 
   // Username live availability (always declared to keep hook order stable)
-  const availability = useUsernameAvailability('http://localhost:5000/api')
+  const availability = useUsernameAvailability(process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : '')
   useEffect(() => {
     availability.setUsername(username)
   }, [username])
@@ -133,7 +134,7 @@ export default function SignInForm() {
     try {
       // Step 1: Send credentials to backend
       console.log("🌐 Step 1: Sending credentials to backend...")
-      const response = await axios.post("http://localhost:5000/api/auth/login", {
+      const response = await axiosInstance.post("/api/auth/login", {
         email: email.trim(),
         password: password
       }, {
@@ -158,7 +159,7 @@ export default function SignInForm() {
         
         // Step 3: Create session
         console.log("🔄 Step 3: Creating session with backend...")
-        await axios.post('http://localhost:5000/api/auth/session', 
+        await axiosInstance.post('/api/auth/session', 
           { idToken: idToken },
           { withCredentials: true }
         )
@@ -260,7 +261,7 @@ export default function SignInForm() {
       console.log("📤 Request data:", requestData)
       
       // Call backend API to start email OTP
-      const response = await axios.post("http://localhost:5000/api/auth/email/start", requestData, {
+      const response = await axiosInstance.post("/api/auth/email/start", requestData, {
         withCredentials: true // Include cookies
       })
       
@@ -326,7 +327,7 @@ export default function SignInForm() {
       console.log("📤 Request data:", requestData)
       
       // Call backend API to verify OTP and create user
-      const response = await axios.post("http://localhost:5000/api/auth/email/verify", requestData, {
+      const response = await axiosInstance.post("/api/auth/email/verify", requestData, {
         withCredentials: true // Include cookies
       })
       
@@ -367,7 +368,7 @@ export default function SignInForm() {
               
               // Create session with the REAL ID token
               console.log("🔄 Creating session with backend using ID token...")
-              const sessionResponse = await axios.post('http://localhost:5000/api/auth/session', 
+              const sessionResponse = await axiosInstance.post('/api/auth/session', 
                 { idToken: actualIdToken }, // Use the converted ID token
                 { withCredentials: true }
               )
@@ -379,7 +380,7 @@ export default function SignInForm() {
                 // Test /api/me immediately to verify it works
                 try {
                   console.log("🧪 Testing /api/auth/me immediately...")
-                  const meResponse = await axios.get('http://localhost:5000/api/auth/me', {
+                  const meResponse = await axiosInstance.get('/api/auth/me', {
                     withCredentials: true
                   })
                   console.log("✅ /api/auth/me SUCCESS:", meResponse.data)
@@ -522,7 +523,7 @@ export default function SignInForm() {
       
       // Step 3: Send to backend
       console.log("📤 Sending to backend /api/auth/google")
-          const response = await axios.post('http://localhost:5000/api/auth/google', {
+        const response = await axiosInstance.post('/api/auth/google', {
         idToken: idToken
       }, {
         withCredentials: true
@@ -550,7 +551,7 @@ export default function SignInForm() {
           const finalIdToken = await userCredential.user.getIdToken()
           
           // Create session
-          await axios.post('http://localhost:5000/api/auth/session', 
+          await axiosInstance.post('/api/auth/session', 
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -616,7 +617,7 @@ export default function SignInForm() {
         console.log("👤 Google user object:", userData)
         
         // Send username to backend
-        const response = await axios.post('http://localhost:5000/api/auth/google/username', {
+        const response = await axiosInstance.post('/api/auth/google/username', {
           uid: userData.uid,
           username: username.trim()
         }, {
@@ -635,7 +636,7 @@ export default function SignInForm() {
           const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
           
-          await axios.post('http://localhost:5000/api/auth/session', 
+          await axiosInstance.post('/api/auth/session', 
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -676,7 +677,7 @@ export default function SignInForm() {
         console.log("📤 Request data:", requestData)
         
         // Set username for the user
-        const response = await axios.post("http://localhost:5000/api/auth/email/username", requestData, {
+        const response = await axiosInstance.post("/api/auth/email/username", requestData, {
           withCredentials: true // Include cookies
         })
         
@@ -713,7 +714,7 @@ export default function SignInForm() {
                
                // Create session with the REAL ID token
                console.log("🔄 Creating session with backend using ID token...")
-               const sessionResponse = await axios.post('http://localhost:5000/api/auth/session', 
+               const sessionResponse = await axiosInstance.post('/api/auth/session', 
                  { idToken: actualIdToken }, // Use the converted ID token
                  { withCredentials: true }
                )
@@ -725,7 +726,7 @@ export default function SignInForm() {
                  // Test /api/me immediately to verify it works
                 try {
                   console.log("🧪 Testing /api/auth/me after username creation...")
-                  const meResponse = await axios.get('http://localhost:5000/api/auth/me', {
+                  const meResponse = await axiosInstance.get('/api/auth/me', {
                     withCredentials: true
                   })
                   console.log("✅ /api/auth/me SUCCESS after username:", meResponse.data)
@@ -804,7 +805,7 @@ export default function SignInForm() {
     setProcessing(true)
 
     try {
-      const response = await axios.post("http://localhost:5000/api/redeem-codes/validate", {
+      const response = await axiosInstance.post("/api/redeem-codes/validate", {
         redeemCode: redeemCode.trim().toUpperCase()
       })
 
@@ -838,7 +839,7 @@ export default function SignInForm() {
     setProcessing(true)
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/redeem-code/apply", {
+      const response = await axiosInstance.post("/api/auth/redeem-code/apply", {
         redeemCode: redeemCode.trim().toUpperCase()
       }, {
         withCredentials: true

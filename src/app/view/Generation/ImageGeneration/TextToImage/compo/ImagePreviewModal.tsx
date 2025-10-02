@@ -25,12 +25,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const toProxyResourceUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
+    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}?ngrok-skip-browser-warning=true` : '';
   };
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}?ngrok-skip-browser-warning=true` : '';
   };
 
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
@@ -46,7 +46,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     try {
       const downloadUrl = toProxyDownloadUrl(url);
       if (!downloadUrl) return;
-      const response = await fetch(downloadUrl, { credentials: 'include' });
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -96,7 +99,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const url = toProxyResourceUrl(selectedImage?.url || preview.image.url);
         if (!url) return;
-        const res = await fetch(url, { credentials: 'include' });
+        const res = await fetch(url, {
+          credentials: 'include',
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
         if (!res.ok) return;
         const blob = await res.blob();
         const obj = URL.createObjectURL(blob);
