@@ -296,6 +296,7 @@ const SidePannelFeatures = ({
                   } catch (error) {
                     console.error('Error in history click handler:', error);
                   }
+                  router.push('/history');
                 }}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${ (pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : '' }`}
             >
