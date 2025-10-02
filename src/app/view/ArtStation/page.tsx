@@ -27,6 +27,26 @@ export default function ArtStationPage() {
   const [preview, setPreview] = useState<{ kind: 'image' | 'video' | 'audio'; url: string; item: PublicItem } | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
+  const navigateForType = (type?: string) => {
+    const t = (type || '').toLowerCase()
+    if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
+      window.location.href = '/text-to-image'
+      return
+    }
+    if (t === 'text-to-video') {
+      window.location.href = '/text-to-video'
+      return
+    }
+    if (t === 'product-generation' || t === 'mockup-generation') {
+      window.location.href = '/product-generation'
+      return
+    }
+    if (t === 'text-to-music') {
+      window.location.href = '/text-to-music'
+      return
+    }
+  }
+
 
   const fetchFeed = async (reset = false) => {
     try {
@@ -133,31 +153,10 @@ export default function ArtStationPage() {
 
           <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
             {cards.map(({ item, media, kind }, idx) => (
-              <div 
-                key={`${item.id}-${media.id}-${idx}`} 
+              <div
+                key={`${item.id}-${media.id}-${idx}`}
                 className="break-inside-avoid mb-4 cursor-pointer"
-                onClick={() => {
-                  // Navigate to corresponding generation page based on type
-                  const t = (item.generationType || '').toLowerCase()
-                  if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
-                    window.location.href = '/text-to-image'
-                    return
-                  }
-                  if (t === 'text-to-video') {
-                    window.location.href = '/text-to-video'
-                    return
-                  }
-                  if (t === 'product-generation' || t === 'mockup-generation') {
-                    window.location.href = '/product-generation'
-                    return
-                  }
-                  if (t === 'text-to-music') {
-                    window.location.href = '/text-to-music'
-                    return
-                  }
-                  // Fallback: open preview modal
-                  setPreview({ kind, url: media.url, item })
-                }}
+                onClick={() => setPreview({ kind, url: media.url, item })}
               >
                 <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
                   <div className="relative" style={{ aspectRatio: '4 / 5' }}>
@@ -179,6 +178,13 @@ export default function ArtStationPage() {
                     <div className="text-white/80 text-xs mb-1">{item.generationType} • {item.model}</div>
                     <div className="text-white/90 text-sm line-clamp-2">{cleanPromptByType(item.prompt, item.generationType)}</div>
                     <div className="text-white/50 text-xs mt-2">{new Date(item.createdAt || item.updatedAt || '').toLocaleString()}</div>
+                    {/* CTA: Open generator for this item type (does not open preview) */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigateForType(item.generationType); }}
+                      className="mt-2 text-[11px] text-white/80 hover:text-white underline"
+                    >
+                      Open in generator
+                    </button>
                   </div>
                 </div>
               </div>
