@@ -73,7 +73,7 @@ export default function Home() {
                 <div className="relative">
                   {/* Save 20% Badge */}
                   {
-                    <div className="absolute -top-6 left-12 bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-3xl whitespace-nowrap">
+                    <div className="absolute -top-6 left-16 bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-3xl whitespace-nowrap">
                       Save 20% on everything
                     </div>
                   }

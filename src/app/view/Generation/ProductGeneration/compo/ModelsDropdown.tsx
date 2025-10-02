@@ -31,12 +31,12 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-1"
+        className="Z-50 h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-1"
       >
         Models
       </button>
       {activeDropdown === 'product-models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/80 backdrop-blur-3xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 Z-50">
           {models.map((model) => (
             <button
               key={model.value}

@@ -279,18 +279,79 @@ GENERATOR HINTS:
       }
       
       if (selectedModel === 'gemini-25-flash-image') {
-        // Route to FAL (Google Nano Banana) for product images
-        result = await dispatch(falGenerate({
+        // Route to FAL (Google Nano Banana) for product images with SSE streaming support
+        const payload = {
           prompt: backendPrompt,
           model: selectedModel,
           n: imageCount,
-          // FAL is text/image; for product-with-model we pass both if available
-          uploadedImages: generationMode === 'product-with-model' ? 
-            [productImage, modelImage].filter((img): img is string => img !== null) : 
-            [productImage].filter((img): img is string => img !== null),
+          uploadedImages: generationMode === 'product-with-model'
+            ? [productImage, modelImage].filter((img): img is string => img !== null)
+            : [productImage].filter((img): img is string => img !== null),
           output_format: 'jpeg',
           generationType: 'product-generation',
-        })).unwrap();
+        } as any;
+
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+        const url = `${apiBase ? apiBase.replace(/\/$/, '') : ''}/api/fal/generate`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`FAL request failed: ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        let aggregatedImages: any[] = [];
+
+        if (contentType.includes('text/event-stream') && response.body) {
+          // Stream SSE updates and progressively update local preview tiles
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            const messages = buffer.split('\n\n');
+            buffer = messages.pop() || '';
+
+            for (const msg of messages) {
+              const trimmed = msg.trim();
+              const dataLine = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : null;
+              if (!dataLine) continue;
+              try {
+                const evt = JSON.parse(dataLine);
+                const incomingUrl = evt.imageUrl || evt.image_url || evt.url || null;
+                if (incomingUrl) {
+                  const imageObj = { id: `fal-${aggregatedImages.length}`, url: incomingUrl, originalUrl: incomingUrl };
+                  aggregatedImages = [...aggregatedImages, imageObj];
+                  setLocalGeneratingEntries(prev => prev.map(e => ({
+                    ...e,
+                    images: aggregatedImages.map((img: any) => ({ id: img.id, url: img.url, originalUrl: img.originalUrl }))
+                  })));
+                }
+                if (evt.type === 'complete' && Array.isArray(evt.images)) {
+                  aggregatedImages = evt.images;
+                }
+              } catch {
+                // ignore parse errors
+              }
+            }
+          }
+
+          result = { images: aggregatedImages, historyId: undefined } as any;
+        } else {
+          // Fallback to JSON response if backend is not streaming
+          const json = await response.json();
+          result = (json?.data || json) as any;
+        }
       } else {
         // Route to BFL (Flux models)
         result = await dispatch(bflGenerate({
@@ -684,7 +745,7 @@ GENERATOR HINTS:
               />
             )}
             {/* Frame size selection - available for all models except flux-krea (which is text-only) */}
-            {selectedModel !== 'flux-krea' && <FrameSizeButton />}
+            {selectedModel !== 'flux-krea' && selectedModel !== 'gemini-25-flash-image' && <FrameSizeButton />}
             <ImageCountButton />
           </div>
         </div>
