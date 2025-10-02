@@ -24,6 +24,12 @@ const Nav = () => {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [avatarFailed, setAvatarFailed] = useState(false)
+  const [isPublic, setIsPublic] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('isPublicGenerations')
+      return stored ? stored === 'true' : false
+    } catch { return false }
+  })
   const dropdownRef = useRef<HTMLDivElement>(null)
   
   // Use Redux credits state
@@ -44,6 +50,12 @@ const Nav = () => {
         const payload = response.data
         const user = payload?.data?.user || payload?.user || payload
         setUserData(user || null)
+        try {
+          const stored = localStorage.getItem('isPublicGenerations')
+          const server = (user && (user as any).isPublic)
+          const next = (stored != null) ? (stored === 'true') : Boolean(server)
+          setIsPublic(next)
+        } catch {}
 
         // Refresh credits from Redux store
         await refreshCredits()
@@ -152,6 +164,27 @@ const Nav = () => {
                     <button className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
                       <span className='text-white text-sm'>Purchase Additional Credits</span>
                     </button>
+
+                    {/* Make generations public toggle */}
+                    <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                      <span className='text-white text-sm'>Make generations public</span>
+                      <button
+                        type='button'
+                        aria-pressed={isPublic}
+                        onClick={async () => {
+                          const next = !isPublic
+                          setIsPublic(next)
+                          try {
+                            const api = getApiClient()
+                            await api.patch('/api/auth/me', { isPublic: next })
+                          } catch {}
+                          try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
+                        }}
+                        className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
+                      >
+                        <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0.5 left-0.5`} />
+                      </button>
+                    </div>
 
                     <div className='border-t border-white/10 my-2'></div>
                     <button onClick={handleLogout} className='w-full text-left py-2 px-3 rounded-lg hover:bg-red-500/20 transition-colors'>

@@ -42,7 +42,11 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   if (!isOpen) return null;
 
-  const selectedImage = entry.images[selectedImageIndex];
+  const inputImages = ((entry as any)?.inputImages || []) as any[];
+  const outputImages = (entry.images || []) as any[];
+  const galleryImages = [...inputImages, ...outputImages];
+  const selectedImage = galleryImages[selectedImageIndex];
+  const isUserUploadSelected = selectedImageIndex < inputImages.length;
   const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
   const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
   const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
@@ -142,6 +146,9 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                 unoptimized
               />
             )}
+            {isUserUploadSelected && (
+              <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
+            )}
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
@@ -197,11 +204,11 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             </div>
 
             {/* Image Thumbnails */}
-            {entry.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <div className="mb-5">
-                <div className="text-sm opacity-80 mb-3">Generated Stickers ({entry.images.length})</div>
+                <div className="text-sm opacity-80 mb-3">Images ({galleryImages.length})</div>
                 <div className="grid grid-cols-2 gap-2">
-                  {entry.images.map((image, index) => (
+                  {galleryImages.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
@@ -218,6 +225,9 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                         className="object-cover"
                         unoptimized
                       />
+                      {index < inputImages.length && (
+                        <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
+                      )}
                       {selectedImageIndex === index && (
                         <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
                           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>

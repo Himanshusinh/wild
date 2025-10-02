@@ -2,6 +2,7 @@
 
 // components/CommunityCreations.tsx
 import React, { useMemo, useState } from "react";
+import { useRouter } from 'next/navigation';
 import Image from "next/image";
 
 /* ---------- Types ---------- */
@@ -164,6 +165,7 @@ export default function CommunityCreations({
   className?: string;
 }) {
   const [active, setActive] = useState<Category>(initialFilter);
+  const router = useRouter();
 
   const filtered = useMemo(() => {
     if (active === "All") return items;
@@ -225,7 +227,7 @@ export default function CommunityCreations({
         <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-black/40 via-black/60 to-transparent z-10 pointer-events-none" />
         
         {/* Clickable text overlay - centered in the gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-[40rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto">
+        <div onClick={() => router.push('/view/ArtStation')} className="absolute bottom-0 left-0 right-0 h-[40rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto">
           <div className="text-center">
             <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
               Explore Art Station

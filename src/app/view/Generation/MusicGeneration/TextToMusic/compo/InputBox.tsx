@@ -239,8 +239,10 @@ const InputBox = () => {
         // Continue with generation even if Firebase save fails
       }
 
-      console.log('🎵 Calling MiniMax music API with payload via thunk:', payload);
-      const result = await dispatch(minimaxMusic(payload)).unwrap();
+      // Add isPublic flag from profile preference
+      let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      console.log('🎵 Calling MiniMax music API with payload via thunk:', { ...payload, isPublic });
+      const result = await dispatch(minimaxMusic({ ...payload, isPublic })).unwrap();
       console.log('🎵 MiniMax music thunk result:', result);
 
       // Backend returns: { historyId, audios: [audioItem], status: 'completed', debitedCredits }

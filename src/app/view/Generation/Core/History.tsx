@@ -542,7 +542,11 @@ const History = () => {
               {/* Tiles for this date */}
               <div className="flex flex-wrap gap-3 ml-9">
                 {groupedByDate[dateKey].map((entry: HistoryEntry) => {
+                  const inputImagesArr = (((entry as any).inputImages) || []) as any[];
+                  const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
                   const mediaItems = [
+                    ...inputImagesArr,
+                    ...inputVideosArr,
                     ...((entry.images || []) as any[]),
                     ...(((entry as any).videos || []) as any[]),
                     ...(((entry as any).audios || []) as any[]),
@@ -551,6 +555,7 @@ const History = () => {
                     const mediaUrl = media.firebaseUrl || media.url;
                     const video = isVideoUrl(mediaUrl);
                     const audio = isAudioUrl(mediaUrl);
+                    const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
                     return (
                       <div
                         key={`${entry.id}-${video ? 'video' : (audio ? 'audio' : 'image')}-${mediaIndex}`}
@@ -596,6 +601,11 @@ const History = () => {
                             ) : (
                               <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">Video not available</span>
+                              </div>
+                            )}
+                            {isUserUpload && (
+                              <div className="absolute top-2 left-2 bg-white/15 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/20">
+                                User upload
                               </div>
                             )}
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -646,6 +656,11 @@ const History = () => {
                             ) : (
                               <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">Image not available</span>
+                              </div>
+                            )}
+                            {isUserUpload && (
+                              <div className="absolute top-2 left-2 bg-white/15 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/20">
+                                User upload
                               </div>
                             )}
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />

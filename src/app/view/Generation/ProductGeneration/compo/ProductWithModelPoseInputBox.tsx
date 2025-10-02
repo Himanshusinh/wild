@@ -201,60 +201,81 @@ const ProductWithModelPoseInputBox = () => {
       
       if (generationMode === 'product-with-model') {
         // Product with model pose case
-        backendPrompt = `
-      Use the provided reference model image as the main subject. 
-      MAINTAIN THE MODEL'S IDENTITY EXACTLY: same face geometry, skin tone, age appearance, body proportions, height, gender, hairstyle/hairline, facial hair, eye color, and distinctive facial features. 
-      Do NOT change ethnicity, age, gender, facial structure, or body shape. Do NOT beautify, slim, or morph the model. Do NOT add or remove tattoos, scars, moles, piercings, or accessories unless explicitly requested.
-      
-      Create a professional product photograph featuring: ${prompt}.
-      • If wearable (clothing, eyewear, footwear, jewelry, bag), place the product naturally ON the model with correct fit and physics (realistic fabric drape, proper strap tension, no clipping, believable weight).  
-      • If handheld or used, pose the model interacting with it naturally (correct finger placement and count, believable grip, no occlusion of key product features).  
-      • Ensure the product is the hero: accurate scale, true-to-life color, correct materials and textures (leather grain, knit weave, brushed metal, glass reflections), crisp branding if allowed.  
-      
-      Photography direction (studio-grade):
-      • Composition: product-forward hero framing; keep the model's face intact and recognizable; leave safe margins for cropping.  
-      • Posing: confident, natural, non-exaggerated; avoid awkward limb angles; do not block the product.  
-      • Lighting: soft three-point studio setup (soft key, gentle fill, subtle rim); clean highlights and controlled shadows; no blown whites or crushed blacks.  
-      • Background: e-commerce-ready neutral/studio backdrop (white/off-white/light gray) unless a lifestyle scene is explicitly requested in ${prompt}; keep background uncluttered.  
-      • Focus & Detail: tack-sharp edges, stitching, seams, fasteners (zips, buttons, buckles), surface textures; realistic micro-contrast.  
-      • Color Accuracy: neutral white balance, no unwanted color cast; exact product color reproduction.  
-      • Realism: physically plausible shadows/reflections, correct perspective, natural contact points; no floating artifacts.
-      
-      Output intent:
-      • Editorial yet commercial product photo for e-commerce and marketing.  
-      • No extra props unless they directly support the product.  
-      • No text, no watermark, no borders, no frames, no mockups.  
-      • High resolution, clean edges, centered composition.
-      
-      If multiple angles are implied, prioritize: front hero, 3/4 view, close-up texture/detail, functional detail (zip/closure/port), interior view (bags/shoes/jackets). Keep the SAME model identity across angles.
-      
-      AVOID: blurry, low-res, pixelated, jpeg artifacts, overexposed, underexposed, heavy vignette, strong color cast, banding, posterization, text, watermark, logo overlays, frames, borders, stickers, graphics, extra fingers, missing fingers, fused fingers, warped hands, twisted wrists, broken anatomy, extra limbs, distorted face, changed identity, changed age, changed gender, changed ethnicity, beautified/liquified/slimmed face or body, unreal fabric physics, cloth clipping through body, plastic-looking leather, rubbery materials, melted metal, incorrect reflections, unrealistic shadows, floating product, mismatched perspective, busy/cluttered background, distracting props, extreme fisheye, unrealistic depth of field, oversaturated neon tones.
-      `.trim();
+         backendPrompt =
+`
+Use the provided reference MODEL IMAGE as the main subject.
+
+MODEL FIDELITY — KEEP IDENTITY EXACT:
+• Match 1:1 the model’s face geometry, skin tone, age appearance, body proportions, height, gender, hairstyle/hairline, facial hair, eye color, and distinctive facial features.
+• Do NOT alter ethnicity, age, gender, face structure, or body shape. Do NOT beautify, slim, liquify, or morph.
+• Do NOT add/remove tattoos, scars, moles, piercings, or accessories unless explicitly requested in ${prompt}.
+
+Create a professional product photograph featuring: ${prompt}.
+
+PRODUCT INTERACTION & FIT (if wearable/held):
+• Wearables (clothing, eyewear, footwear, jewelry, bags): correct fit and physics — natural drape, proper strap tension, no cloth/body clipping, believable weight and stretch.
+• Handheld/usage: natural grip and finger count, accurate finger placement, no occlusion of the key product details.
+• The product is the HERO: true scale, exact color, correct materials/textures (leather grain, knit weave, brushed metal, glass reflections); crisp branding if allowed.
+
+PHOTOGRAPHY DIRECTION (studio-grade):
+• Composition: product-forward hero framing; keep the model’s face intact and recognizable; safe margins for crops.
+• Posing: confident, relaxed, non-exaggerated; do not block the product.
+• Lighting: soft three-point studio setup (soft key, gentle fill, subtle rim); controlled highlights, clean speculars, natural shadows; avoid blown whites/crushed blacks.
+• Background: e-commerce neutral (white/off-white/light gray). Only use lifestyle/background scenery if explicitly requested in ${prompt} and keep it minimal.
+• Focus & Detail: tack-sharp edges; show stitching, seams, fasteners (zips, buttons, buckles) and surface micro-texture.
+• Color Accuracy: neutral white balance; no unwanted casts; reproduce exact product color.
+
+REALISM & QUALITY:
+• Physically plausible shadows/reflections, consistent perspective, natural contact points—no floating.
+• High resolution; clean edges; centered, stable geometry.
+
+OUTPUT INTENT:
+• Editorial yet commercial product image suitable for e-commerce and ads.
+• No extra props unless they directly support the product.
+• No text, no watermarks, no frames, no stickers, no overlays.
+
+ANGLE PRIORITY (if multiple views are requested): front hero → 3/4 view → macro texture/detail → functional detail (zip/closure/port) → interior (bags/shoes/jackets). Maintain the SAME MODEL IDENTITY across all views.
+
+NEGATIVE PROMPT — AVOID:
+blurry, low-res, pixelation, JPEG artifacts, over/underexposed, heavy vignette, color cast, banding, posterization, text, watermark, borders, stickers, extra/missing/fused fingers, warped hands, twisted wrists, broken anatomy, distorted/changed face, altered age/gender/ethnicity, beautified/liquified/slimmed body, fake fabric physics, clipping, rubbery leather, melted metal, incorrect reflections, unrealistic shadows, floating product, mismatched perspective, busy/cluttered background, extreme fisheye, unrealistic DoF, neon oversaturation.
+
+MODEL TUNING HINTS (for generators):
+• Tags: studio lighting, photoreal, high-detail, calibrated color, e-commerce.
+• Optional EXIF flavor: 50–85mm portrait, f/5.6–8, ISO 100–200, softbox key.
+`.trim();
+
       } else {
         // Product-only case
-        backendPrompt = `
-      Create a professional studio product photograph of: ${prompt}.
-      Goal: premium, accurate e-commerce presentation.
-      
-      Photography direction (studio-grade):
-      • Composition: centered hero shot with generous negative space; clean margins for cropping.  
-      • Angles: front hero and 3/4 preferred (unless otherwise specified); silhouette and key features must be clearly visible.  
-      • Background: pure white or neutral studio backdrop (light gray/off-white), seamless; minimal gradient at most; no props unless requested.  
-      • Lighting: soft three-point lighting with gentle, grounded shadow; clean speculars for metal/glass/leather; no blowouts.  
-      • Materials & Texture: depict true material properties (leather grain, fabric weave, brushed metal, glass clarity); show fine details like stitching, seams, fasteners, ports.  
-      • Color Accuracy: calibrated white balance; exact product color; no unwanted tint.  
-      • Focus: tack-sharp edges and surfaces; crisp contours; avoid motion blur.  
-      • Realism: accurate scale and perspective, believable contact shadow, plausible reflections; no floating artifacts.
-      
-      Output intent:
-      • E-commerce catalog quality, marketing-ready.  
-      • No text, no watermark, no borders, no frames, no mockups.  
-      • High resolution, clean cut, centered composition.
-      
-      If additional angles are desired, prioritize: front hero, 3/4, side, back, top, macro close-up (texture/logo/closure), functional detail (zip/port/sole/lining), and interior view if applicable. Generate one best hero image unless multiple angles are explicitly requested.
-      
-      AVOID: blurry, low-res, pixelated, jpeg artifacts, overexposed, underexposed, heavy vignette, color cast, banding, posterization, text, watermark, logo overlays, frames, borders, stickers, graphics, plastic-looking materials, fake textures, noisy or dirty background, dust/fingerprints/scratches (unless requested), harsh reflections, unrealistic shadows, floating product, warped geometry, extreme perspective distortion, oversaturated neon tones.
-      `.trim();
+         backendPrompt =
+`
+Create a professional lifestyle product photograph of: ${prompt}.  
+Goal: authentic, attractive product presentation that feels natural and aspirational.
+
+PHOTOGRAPHY DIRECTION (lifestyle-grade):
+• Composition: product is hero but integrated into a natural setting; keep clear visibility of key features while showing real context.  
+• Background: genuine, realistic environment appropriate to the product (e.g. living room, kitchen, office desk, street, café, gym, studio, outdoors). Background should feel authentic, not stock or artificial.  
+• Props: only tasteful, relevant props that enhance realism and context (e.g. coffee cup on desk for a laptop, notebook for a pen, shoes on pavement). No clutter or distractions.  
+• Lighting: natural or styled to fit the scene (soft daylight, window light, warm ambient indoor light, or dramatic accent if product suits). Ensure accurate product colors with controlled highlights/shadows.  
+• Angles: front hero or 3/4 preferred, with environment providing depth. Use shallow depth of field if it supports realism but keep the product tack-sharp.  
+
+MATERIALS & DETAILS:
+• Show true textures (leather grain, fabric weave, glass clarity, brushed metal).  
+• Keep product colors accurate, no color cast.  
+• Ensure realistic scale and perspective, with natural contact shadows/reflections on surfaces.  
+
+OUTPUT INTENT:
+• Marketing-quality product photo for ads, lifestyle websites, and social media.  
+• Engaging, aspirational, and realistic — feels like genuine photography.  
+• No watermarks, text overlays, frames, borders, or artificial mockups.  
+
+NEGATIVE PROMPT — AVOID:
+clean white cutout backgrounds, sterile studio shots, fake 3D renders, floating products, cartoonish look, unrealistic props, over-saturated neon colors, heavy vignette, stock-photo clichés, messy or cluttered environment, warped geometry, blurry focus on product, pixelation, text, stickers, watermarks.
+
+GENERATOR HINTS:
+• Tags: lifestyle photography, photoreal, commercial advertising, natural lighting, high detail.  
+• Optional EXIF flavor: 35–50mm lens, f/2.8–4 for shallow DOF, ISO 200–400, daylight or warm indoor light.
+`.trim();
+
       }
       
       if (selectedModel === 'gemini-25-flash-image') {
@@ -333,12 +354,14 @@ const ProductWithModelPoseInputBox = () => {
         }
       } else {
         // Route to BFL (Flux models)
+        let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
         result = await dispatch(bflGenerate({
           prompt: backendPrompt,
           model: selectedModel,
           n: imageCount,
           frameSize: frameSize,
           style: 'product',
+          isPublic,
           generationType: 'product-generation',
           uploadedImages: generationMode === 'product-with-model' ? 
             [productImage, modelImage].filter((img): img is string => img !== null) : 

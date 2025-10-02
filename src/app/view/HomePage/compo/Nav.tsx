@@ -43,6 +43,12 @@ const Nav = () => {
   const [theme, setTheme] = useState<'dark' | 'light' | 'auto'>('dark')
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [isPublic, setIsPublic] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('isPublicGenerations')
+      return stored ? stored === 'true' : false
+    } catch { return false }
+  })
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -91,6 +97,12 @@ const Nav = () => {
         console.log('Parsed user data:', userData)
         
         setUserData(userData)
+        try {
+          const stored = localStorage.getItem('isPublicGenerations')
+          const server = (userData && (userData as any).isPublic)
+          const next = (stored != null) ? (stored === 'true') : Boolean(server)
+          setIsPublic(next)
+        } catch {}
 
         // Fetch credits/token balance
         try {
@@ -287,6 +299,27 @@ const Nav = () => {
                   >
                     <span className='text-white text-sm'>Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
                   </button>
+
+                  {/* Make generations public toggle */}
+                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                    <span className='text-white text-sm'>Make generations public</span>
+                    <button
+                      type='button'
+                      aria-pressed={isPublic}
+                      onClick={async () => {
+                        const next = !isPublic
+                        setIsPublic(next)
+                        try {
+                          const api = getApiClient()
+                          await api.patch('/api/auth/me', { isPublic: next })
+                        } catch {}
+                        try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
+                      }}
+                      className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
+                    >
+                      <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0.5 left-0.5`} />
+                    </button>
+                  </div>
 
                   {/* Divider */}
                   <div className='border-t border-white/10 my-2'></div>

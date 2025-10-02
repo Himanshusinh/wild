@@ -61,6 +61,7 @@ export const NAV_ROUTES = {
   ABOUT: '/about',
   BOOKMARK:'/view/Bookmark',
   LANDING:'/view/Main',
+  LIVE_CHAT: '/view/Generation/wildmindskit/LiveChat',
 
 } as const;
 

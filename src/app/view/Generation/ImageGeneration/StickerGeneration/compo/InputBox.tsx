@@ -164,6 +164,9 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
 `;
 
 
+      // Read isPublic preference
+      let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+
       if (selectedModel === 'gemini-25-flash-image') {
         // Route to FAL (Google Nano Banana)
         result = await dispatch(falGenerate({
@@ -172,6 +175,7 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
           n: imageCount,
           uploadedImages: [], // Nano Banana is T2I/I2I, but for sticker, we assume T2I for now
           output_format: 'jpeg',
+          isPublic,
           generationType: 'sticker-generation',
         })).unwrap();
       } else {
@@ -182,6 +186,7 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
           n: imageCount,
           frameSize: '1:1',
           style: 'sticker',
+          isPublic,
           generationType: 'sticker-generation'
         })).unwrap();
       }

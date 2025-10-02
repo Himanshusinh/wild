@@ -217,6 +217,9 @@ Typography: If text is included, keep it minimal, modern sans-serif, and well-ba
 Output: High-resolution vector-style logo, plain background, sharp edges.
 `;
 
+      // Read isPublic preference
+      let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+
       if (selectedModel === "gemini-25-flash-image") {
         // Route to FAL (Google Nano Banana)
         result = await dispatch(
@@ -226,6 +229,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
             n: imageCount,
             uploadedImages: [], // Nano Banana is T2I/I2I, but for logo, we assume T2I for now
             output_format: "jpeg",
+            isPublic,
             generationType: "logo",
           })
         ).unwrap();
@@ -238,6 +242,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
             n: imageCount,
             frameSize: "1:1",
             style: "logo",
+            isPublic,
             generationType: "logo",
           })
         ).unwrap();

@@ -68,6 +68,48 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const isLongPrompt = cleanPrompt.length > 280;
 
+  // Build gallery with user uploads first, then generated outputs
+  const inputImages = (((preview.entry as any)?.inputImages) || []) as any[];
+  const outputImages = (preview.entry.images || []) as any[];
+  const galleryImages = React.useMemo(() => [...inputImages, ...outputImages], [inputImages, outputImages]);
+
+  // Select the clicked image as initial selection
+  const initialIndex = React.useMemo(() => {
+    const mUrl = (preview.image as any)?.url;
+    const mPath = (preview.image as any)?.storagePath;
+    const idx = galleryImages.findIndex((im: any) => (mUrl && im?.url === mUrl) || (mPath && im?.storagePath && im.storagePath === mPath));
+    return idx >= 0 ? idx : 0;
+  }, [galleryImages, preview.image]);
+
+  const [selectedIndex, setSelectedIndex] = React.useState<number>(initialIndex);
+  React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
+
+  const selectedImage: any = galleryImages[selectedIndex] || preview.image;
+  const isUserUploadSelected = selectedIndex < inputImages.length;
+
+  const [objectUrl, setObjectUrl] = React.useState<string>('');
+
+  React.useEffect(() => {
+    let revoke: string | null = null;
+    setObjectUrl('');
+    const run = async () => {
+      try {
+        const url = toProxyResourceUrl(selectedImage?.url || preview.image.url);
+        if (!url) return;
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const obj = URL.createObjectURL(blob);
+        revoke = obj;
+        setObjectUrl(obj);
+      } catch {}
+    };
+    run();
+    return () => {
+      try { if (revoke) URL.revokeObjectURL(revoke); } catch {}
+    };
+  }, [selectedImage?.url, preview?.image?.url]);
+
   return (
     <div className="fixed inset-0 z-70 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <button aria-label="Close" onClick={onClose} className="absolute top-3 right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white z-30">
@@ -79,14 +121,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       <div className="relative w-full max-w-[1200px] max-h-[90vh] bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col md:flex-row h-full">
           <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group flex items-center justify-center">
-            {preview.image?.url && (
-              <img src={toProxyResourceUrl(preview.image.url)} alt={preview.entry.prompt} className="max-w-full max-h-full object-contain" />
+            {selectedImage?.url && (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img src={objectUrl || selectedImage.url || toProxyResourceUrl(selectedImage.url)} alt={preview.entry.prompt} className="max-w-full max-h-full object-contain" />
+                {isUserUploadSelected && (
+                  <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
+                )}
+              </div>
             )}
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(toProxyResourceUrl(preview.image.url), '_blank')}
+              onClick={() => window.open(toProxyResourceUrl(selectedImage?.url || preview.image.url), '_blank')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
@@ -100,7 +147,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm opacity-80 text-white font-semibold pt-4 ">Prompt</div>
               <button
-                onClick={() => downloadImage(preview.image.url)}
+                onClick={() => downloadImage(selectedImage?.url || preview.image.url)}
                 className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -156,6 +203,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 <span className="opacity-60">Generated</span>
                 <span className="opacity-90">{new Date(preview.entry.timestamp).toLocaleString()}</span>
               </div>
+              {galleryImages.length > 1 && (
+                <div className="mt-3">
+                  <div className="text-xs opacity-70 mb-2">Images ({galleryImages.length})</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {galleryImages.map((im, idx) => (
+                      <button
+                        key={im.id || idx}
+                        onClick={() => setSelectedIndex(idx)}
+                        className={`relative aspect-square rounded-md overflow-hidden border ${selectedIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
+                      >
+                        <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                        {idx < inputImages.length && (
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

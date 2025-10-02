@@ -204,18 +204,11 @@ const InputBox = () => {
   const historyEntries = useAppSelector(
     (state: any) => {
       const allEntries = state.history?.entries || [];
-      // Filter for text-to-image only, but exclude logo, sticker, and product entries
-      const filteredEntries = allEntries.filter((entry: any) => 
-        entry.generationType === 'text-to-image' && 
-        !(entry.prompt?.toLowerCase().includes('logo') || 
-          entry.prompt?.startsWith('Logo:') || 
-          entry.style === 'logo') &&
-        !(entry.prompt?.toLowerCase().includes('sticker') ||
-          entry.prompt?.toLowerCase().includes('sticker design') ||
-          entry.style === 'sticker') &&
-        !(entry.prompt?.toLowerCase().includes('product') ||
-          entry.prompt?.toLowerCase().includes('studio product') ||
-          entry.style === 'product')
+      // Show all text-to-image generations. Avoid filtering by prompt keywords
+      // so valid text-to-image generations (that happen to mention logo/sticker/product)
+      // are not accidentally hidden.
+      const filteredEntries = allEntries.filter((entry: any) =>
+        entry.generationType === 'text-to-image'
       );
       console.log('🖼️ Image Generation - All entries:', allEntries.length);
       console.log('🖼️ Image Generation - Filtered entries:', filteredEntries.length);
@@ -383,6 +376,9 @@ const InputBox = () => {
     // No local writes to global history; backend tracks persistent history
 
     let firebaseHistoryId: string | undefined;
+    // Read isPublic preference
+    let isPublic = false;
+    try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
 
     try {
       // Check if it's a Runway model
@@ -555,7 +551,8 @@ const InputBox = () => {
               generationType: "text-to-image",
               uploadedImages,
               style,
-              existingHistoryId: firebaseHistoryId
+              existingHistoryId: firebaseHistoryId,
+              isPublic
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
@@ -801,15 +798,15 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
-        const result = await dispatch(
-          generateMiniMaxImages({
+          const result = await dispatch(
+            generateMiniMaxImages({
             prompt: `${prompt} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize,
             imageCount,
             generationType: "text-to-image",
             uploadedImages,
-            style
+              style
           })
         ).unwrap();
 
@@ -868,6 +865,7 @@ const InputBox = () => {
             uploadedImages,
             output_format: 'jpeg',
             generationType: 'text-to-image',
+            isPublic,
           })).unwrap();
 
           // Update the local loading entry with completed images
@@ -946,6 +944,7 @@ const InputBox = () => {
             n: imageCount,
             frameSize,
             style,
+            isPublic,
           })).unwrap();
 
           // History is persisted by backend; no local completed entry needed
@@ -1464,7 +1463,7 @@ const InputBox = () => {
               <StyleSelector />
             </div>
             {/* moved previews near upload above */}
-            {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
+            {/* {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
               <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
                 <Button
                   aria-label="Upscale"
@@ -1516,7 +1515,7 @@ const InputBox = () => {
                   </div>
                 </Button>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
