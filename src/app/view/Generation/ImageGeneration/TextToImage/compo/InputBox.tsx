@@ -336,20 +336,6 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // Check authentication before allowing generation
-    const hasSession = document.cookie.includes('app_session');
-    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
-    
-    if (!hasSession && !hasToken) {
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Please sign in to generate images'
-      }));
-      // Redirect to signup page
-      window.location.href = '/view/signup?next=/text-to-image';
-      return;
-    }
-
     // Clear any previous credit errors
     clearCreditsError();
 
@@ -1141,7 +1127,7 @@ const InputBox = () => {
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
             <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
-              <h2 className="text-xl font-semibold text-white pl-0 ">Image Generation History</h2>
+              <h2 className="text-xl font-semibold text-white pl-0 ">Iamge Generation History</h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>

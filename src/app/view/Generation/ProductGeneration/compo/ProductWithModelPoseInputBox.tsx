@@ -16,6 +16,7 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
   loadMoreHistory,
   loadHistory,
+  clearHistory,
 } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -98,10 +99,20 @@ const ProductWithModelPoseInputBox = () => {
 
   // Load product-generation history on mount
   useEffect(() => {
-    dispatch(loadHistory({ 
-      filters: { generationType: 'product-generation' }, 
-      paginationParams: { limit: 50 } 
-    }));
+    console.log('[Product] useEffect: mount -> clearing and loading product history');
+    (async () => {
+      try {
+        dispatch(clearHistory());
+        console.log('[Product] dispatched clearHistory');
+        const result: any = await (dispatch as any)(loadHistory({ 
+          filters: { generationType: 'product-generation' }, 
+          paginationParams: { limit: 50 } 
+        })).unwrap();
+        console.log('[Product] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
+      } catch (e) {
+        console.error('[Product] initial loadHistory error', e);
+      }
+    })();
   }, [dispatch]);
 
   // IntersectionObserver-based infinite scroll
@@ -121,16 +132,23 @@ const ProductWithModelPoseInputBox = () => {
     const observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      if (!hasMore || loading || loadingMoreRef.current) return;
+      if (!hasUserScrolledRef.current) {
+        console.log('[Product] IO: skip until user scrolls');
+        return;
+      }
+      if (!hasMore || loading || loadingMoreRef.current) {
+        console.log('[Product] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+        return;
+      }
       loadingMoreRef.current = true;
+      console.log('[Product] IO: loadMore start');
       try {
         await (dispatch as any)(loadMoreHistory({ 
           filters: { generationType: 'product-generation' }, 
           paginationParams: { limit: 10 } 
         })).unwrap();
       } catch (e) {
-        console.error('[Product] IO loadMore error', e);
+        console.error('[Product] IO: loadMore error', e);
       } finally {
         loadingMoreRef.current = false;
       }
@@ -552,7 +570,7 @@ GENERATOR HINTS:
           )}
 
           {/* No History State */}
-          {!loading && finalProductEntries.length === 0 && (
+          {!loading && finalProductEntries.length === 0 && localGeneratingEntries.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
