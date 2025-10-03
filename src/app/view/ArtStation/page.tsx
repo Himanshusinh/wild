@@ -81,7 +81,8 @@ export default function ArtStationPage() {
   const fetchFeed = async (reset = false) => {
     try {
       setLoading(true)
-      const url = new URL(`${API_BASE}/api/feed`)
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const url = new URL(`${baseUrl}/api/feed`)
       url.searchParams.set('limit', '50') // Increased limit to get more items
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
