@@ -82,12 +82,12 @@ export default function ArtStationPage() {
     try {
       setLoading(true)
       const url = new URL(`${API_BASE}/api/feed`)
-      url.searchParams.set('limit', '20')
+      url.searchParams.set('limit', '50') // Increased limit to get more items
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
       
-      console.log('Fetching feed:', { reset, cursor, url: url.toString() })
+      console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
       
       const res = await fetch(url.toString(), { 
         credentials: 'omit',
@@ -95,25 +95,35 @@ export default function ArtStationPage() {
       })
       
       if (!res.ok) {
+        const errorText = await res.text()
+        console.error('[ArtStation] Fetch failed:', { status: res.status, statusText: res.statusText, errorText })
         throw new Error(`HTTP ${res.status}: ${res.statusText}`)
       }
       
       const data = await res.json()
+      console.log('[ArtStation] Raw response:', data)
+      
       const payload = data?.data || data
       const newItems: PublicItem[] = payload?.items || []
       const newCursor = payload?.nextCursor || payload?.meta?.nextCursor
       
-      console.log('Feed response:', { 
+      console.log('[ArtStation] Parsed feed response:', { 
         itemsCount: newItems.length, 
         newCursor, 
-        hasMore: payload?.meta?.hasMore 
+        hasMore: payload?.meta?.hasMore,
+        totalItemsSoFar: reset ? newItems.length : items.length + newItems.length
       })
+      
+      // Log sample items to verify data structure
+      if (newItems.length > 0) {
+        console.log('[ArtStation] Sample item:', newItems[0])
+      }
       
       setItems(prev => reset ? newItems : [...prev, ...newItems])
       setCursor(newCursor)
       setError(null)
     } catch (e: any) {
-      console.error('Feed fetch error:', e)
+      console.error('[ArtStation] Feed fetch error:', e)
       setError(e?.message || 'Failed to load feed')
     } finally {
       setLoading(false)
@@ -133,23 +143,23 @@ export default function ArtStationPage() {
       
       // Don't load if already loading, no cursor, or already loading more
       if (loading || loadingMoreRef.current || !cursor) {
-        console.log('Skipping load:', { loading, loadingMore: loadingMoreRef.current, cursor })
+        console.log('[ArtStation] Skipping load:', { loading, loadingMore: loadingMoreRef.current, cursor })
         return
       }
       
-      console.log('Loading more items...')
+      console.log('[ArtStation] Intersection observer triggered - Loading more items...')
       loadingMoreRef.current = true
       
       try {
         await fetchFeed(false)
       } catch (err) {
-        console.error('Error loading more:', err)
+        console.error('[ArtStation] Error loading more:', err)
       } finally {
         loadingMoreRef.current = false
       }
     }, { 
       root: null, 
-      rootMargin: '400px', // Trigger earlier
+      rootMargin: '500px', // Trigger earlier
       threshold: 0.1 
     })
     
@@ -321,6 +331,37 @@ export default function ArtStationPage() {
               )
             })}
           </div>
+
+          {/* Loading indicator */}
+          {loading && items.length > 0 && (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              <p className="text-white/60 mt-2">Loading more...</p>
+            </div>
+          )}
+
+          {/* Initial loading */}
+          {loading && items.length === 0 && (
+            <div className="text-center py-16">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+              <p className="text-white/60 mt-4">Loading Art Station...</p>
+            </div>
+          )}
+
+          {/* No items message */}
+          {!loading && items.length === 0 && !error && (
+            <div className="text-center py-16">
+              <p className="text-white/60 text-lg">No public generations available yet.</p>
+              <p className="text-white/40 text-sm mt-2">Be the first to share your creations!</p>
+            </div>
+          )}
+
+          {/* End message */}
+          {!loading && !cursor && items.length > 0 && (
+            <div className="text-center py-8">
+              <p className="text-white/40 text-sm">You've reached the end</p>
+            </div>
+          )}
 
           <div ref={sentinelRef} style={{ height: 1 }} />
 

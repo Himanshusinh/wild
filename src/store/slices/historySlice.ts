@@ -94,16 +94,19 @@ export const loadHistory = createAsyncThunk(
       const result = res.data?.data || { items: [], nextCursor: undefined };
 
       // Normalize dates so UI always has a valid timestamp (ISO)
-      const items = (result.items || []).map((it: any) => {
-        const created = it?.createdAt || it?.updatedAt || it?.timestamp;
-        const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
-        const timestamp = iso || new Date().toISOString();
-        return {
-          ...it,
-          timestamp,
-          createdAt: it?.createdAt || timestamp,
-        };
-      });
+      // Filter out failed generations
+      const items = (result.items || [])
+        .filter((it: any) => it?.status !== 'failed') // Filter out failed generations
+        .map((it: any) => {
+          const created = it?.createdAt || it?.updatedAt || it?.timestamp;
+          const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
+          const timestamp = iso || new Date().toISOString();
+          return {
+            ...it,
+            timestamp,
+            createdAt: it?.createdAt || timestamp,
+          };
+        });
       const nextCursor = result.nextCursor;
       return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
@@ -208,16 +211,19 @@ export const loadMoreHistory = createAsyncThunk(
       const result = res.data?.data || { items: [], nextCursor: undefined };
 
       // Normalize dates so UI always has a valid timestamp (ISO)
-      const items = (result.items || []).map((it: any) => {
-        const created = it?.createdAt || it?.updatedAt || it?.timestamp;
-        const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
-        const timestamp = iso || new Date().toISOString();
-        return {
-          ...it,
-          timestamp,
-          createdAt: it?.createdAt || timestamp,
-        };
-      });
+      // Filter out failed generations
+      const items = (result.items || [])
+        .filter((it: any) => it?.status !== 'failed') // Filter out failed generations
+        .map((it: any) => {
+          const created = it?.createdAt || it?.updatedAt || it?.timestamp;
+          const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
+          const timestamp = iso || new Date().toISOString();
+          return {
+            ...it,
+            timestamp,
+            createdAt: it?.createdAt || timestamp,
+          };
+        });
       const nextCursor = result.nextCursor;
       return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
     } catch (error) {
