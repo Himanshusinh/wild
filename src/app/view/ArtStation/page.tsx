@@ -222,18 +222,42 @@ export default function ArtStationPage() {
     const seenMedia = new Set<string>()
     const seenItem = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image'|'video'|'audio' }[] = []
+    
+    console.log('[ArtStation] Building cards from filteredItems:', filteredItems.length)
+    
     for (const it of filteredItems) {
-      if (seenItem.has(it.id)) continue
+      if (seenItem.has(it.id)) {
+        console.log('[ArtStation] Skipping duplicate item:', it.id)
+        continue
+      }
+      
       // Prefer videos, then images, then audios for the tile
       const candidate = (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
       const kind: 'image'|'video'|'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
-      if (!candidate?.url) continue
+      
+      if (!candidate?.url) {
+        console.log('[ArtStation] Item has no media URL:', { 
+          id: it.id, 
+          hasVideos: !!it.videos?.length, 
+          hasImages: !!it.images?.length, 
+          hasAudios: !!it.audios?.length,
+          candidate 
+        })
+        continue
+      }
+      
       const key = candidate.storagePath || candidate.url
-      if (seenMedia.has(key)) continue
+      if (seenMedia.has(key)) {
+        console.log('[ArtStation] Skipping duplicate media:', key)
+        continue
+      }
+      
       seenMedia.add(key)
       seenItem.add(it.id)
       out.push({ item: it, media: candidate, kind })
     }
+    
+    console.log('[ArtStation] Final cards count:', out.length)
     return out
   }, [filteredItems])
 
