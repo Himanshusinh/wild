@@ -817,6 +817,17 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      setError('Please sign in to generate videos');
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/text-to-video';
+      return;
+    }
+
     console.log('🚀 Starting video generation with:');
     console.log('🚀 - Selected model:', selectedModel);
     console.log('🚀 - Generation mode:', generationMode);

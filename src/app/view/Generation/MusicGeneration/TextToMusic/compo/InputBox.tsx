@@ -160,6 +160,17 @@ const InputBox = () => {
       return;
     }
 
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      setErrorMessage('Please sign in to generate music');
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/text-to-music';
+      return;
+    }
+
     // Clear any previous credit errors
     clearCreditsError();
 

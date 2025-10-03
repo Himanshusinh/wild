@@ -336,6 +336,20 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Please sign in to generate images'
+      }));
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/text-to-image';
+      return;
+    }
+
     // Clear any previous credit errors
     clearCreditsError();
 

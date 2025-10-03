@@ -155,6 +155,22 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Please sign in to generate logos",
+        })
+      );
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/logo-generation';
+      return;
+    }
+
     // Set local generation state immediately
     setIsGeneratingLocally(true);
 
