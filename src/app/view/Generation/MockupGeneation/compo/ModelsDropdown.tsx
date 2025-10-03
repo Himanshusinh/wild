@@ -4,6 +4,7 @@ import React from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel } from '@/store/slices/generationSlice';
 import { toggleDropdown } from '@/store/slices/uiSlice';
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 const ModelsDropdown = () => {
   const dispatch = useAppDispatch();
@@ -16,6 +17,16 @@ const ModelsDropdown = () => {
     { name: 'Flux Kontext [MAX]', value: 'flux-kontext-max', description: 'High-quality sticker designs' },
     { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'Ultra-detailed stickers' }
   ];
+
+  // Add credits information to models
+  const modelsWithCredits = models.map(model => {
+    const creditInfo = getModelCreditInfo(model.value);
+    return {
+      ...model,
+      credits: creditInfo.credits,
+      displayName: creditInfo.hasCredits ? `${model.name} (${creditInfo.displayText})` : model.name
+    };
+  });
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('mockup-models'));
@@ -36,7 +47,7 @@ const ModelsDropdown = () => {
       </button>
       {activeDropdown === 'mockup-models' && (
         <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-          {models.map((model) => (
+          {modelsWithCredits.map((model) => (
             <button
               key={model.value}
               onClick={(e) => {
@@ -45,7 +56,12 @@ const ModelsDropdown = () => {
               }}
               className="w-full px-4 py-2 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
             >
-              <span>{model.name}</span>
+              <div className="flex flex-col items-start">
+                <span className="font-medium">{model.name}</span>
+                {model.credits && (
+                  <span className="text-xs text-blue-400 mt-0.5">{model.credits} credits</span>
+                )}
+              </div>
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               )}

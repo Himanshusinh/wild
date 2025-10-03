@@ -2070,6 +2070,8 @@ const InputBox = () => {
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   generationMode={generationMode}
+                  selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
+                  selectedResolution={selectedModel.includes("MiniMax") ? selectedResolution : undefined}
                 />
 
                 {/* Dynamic Controls Based on Model Capabilities */}

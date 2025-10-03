@@ -62,6 +62,7 @@ export default function SignInForm() {
   const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   
   // Redeem code states
   const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
@@ -74,6 +75,9 @@ export default function SignInForm() {
   useEffect(() => {
     availability.setUsername(username)
   }, [username])
+
+  // Check for capital letters in username
+  const hasCapitalLetters = /[A-Z]/.test(username)
 
   // Test cookie setting function
   const testCookieSetting = () => {
@@ -605,6 +609,7 @@ export default function SignInForm() {
     
     setError("")
     setProcessing(true)
+    setIsUsernameSubmitting(true)
     
     try {
       // Check if this is a Google user
@@ -791,6 +796,7 @@ export default function SignInForm() {
     } finally {
       console.log("🏁 Username submission process completed")
       setProcessing(false)
+      setIsUsernameSubmitting(false)
     }
   }
 
@@ -921,22 +927,31 @@ export default function SignInForm() {
                   className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
                   required
                 />
-                {/* Live availability feedback */}
-                <UsernameAvailabilityFeedback 
-                  status={availability.status}
-                  result={availability.result}
-                  error={availability.error}
-                  onSuggestion={setUsername}
-                />
+                {/* Capital letters validation */}
+                {hasCapitalLetters && (
+                  <div className="rounded-xl p-2 bg-red-500/20 border border-red-500/25">
+                    <p className="text-white text-xs">Capital letters are not allowed in usernames. Please use lowercase letters only.</p>
+                  </div>
+                )}
+
+                {/* Live availability feedback - only show if no capital letters */}
+                {!hasCapitalLetters && (
+                  <UsernameAvailabilityFeedback 
+                    status={availability.status}
+                    result={availability.result}
+                    error={availability.error}
+                    onSuggestion={setUsername}
+                  />
+                )}
               </div>
 
               {/* Access WildMind Button */}
               <button 
                 onClick={handleUsernameSubmit} 
-                disabled={!availability.isAvailable}
+                disabled={!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting}
                 className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
               >
-                Access WildMind
+                {isUsernameSubmitting ? <LoadingSpinner /> : "Access WildMind"}
               </button>
             </div>
           ) : showRedeemCodeForm ? (

@@ -4,6 +4,7 @@ import React from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel } from '@/store/slices/generationSlice';
 import { toggleDropdown } from '@/store/slices/uiSlice';
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 const ModelsDropdown = () => {
   const dispatch = useAppDispatch();
@@ -17,6 +18,16 @@ const ModelsDropdown = () => {
     { name: 'Flux Pro 1.1', value: 'flux-pro-1.1', description: 'Ultra-detailed stickers' },
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image', description: 'Google FAL image model' }
   ];
+
+  // Add credits information to models
+  const modelsWithCredits = models.map(model => {
+    const creditInfo = getModelCreditInfo(model.value);
+    return {
+      ...model,
+      credits: creditInfo.credits,
+      displayName: creditInfo.hasCredits ? `${model.name} (${creditInfo.displayText})` : model.name
+    };
+  });
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('models'));
@@ -37,7 +48,7 @@ const ModelsDropdown = () => {
       </button>
       {activeDropdown === 'models' && (
         <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-          {models.map((model) => (
+          {modelsWithCredits.map((model) => (
             <button
               key={model.value}
               onClick={(e) => {
@@ -49,6 +60,9 @@ const ModelsDropdown = () => {
               <div className="flex flex-col">
                 <span className="font-medium">{model.name}</span>
                 <span className="text-xs text-white/60 mt-0.5">{model.description}</span>
+                {model.credits && (
+                  <span className="text-xs text-blue-400 mt-0.5">{model.credits} credits</span>
+                )}
               </div>
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
