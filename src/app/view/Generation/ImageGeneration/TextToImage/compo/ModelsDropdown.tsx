@@ -5,6 +5,7 @@ import { Cpu } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 const ModelsDropdown = () => {
   const dispatch = useAppDispatch();
@@ -33,9 +34,20 @@ const ModelsDropdown = () => {
     // { name: 'Playground SDXL (Local)', value: 'playground' },
   ];
 
+  // Add credits information to models
+  const modelsWithCredits = models.map(model => {
+    const creditInfo = getModelCreditInfo(model.value);
+    return {
+      ...model,
+      credits: creditInfo.credits,
+      displayName: creditInfo.hasCredits ? `${model.name} (${creditInfo.displayText})` : model.name
+    };
+  });
+
   // If user uploaded images, restrict to models which support image inputs
+  let filteredModels = modelsWithCredits;
   if (uploadedImages.length > 0) {
-    models = models.filter(m => 
+    filteredModels = modelsWithCredits.filter(m => 
       m.value.startsWith('flux-kontext') || 
       m.value === 'gen4_image' || 
       m.value === 'gen4_image_turbo' ||
@@ -77,11 +89,11 @@ const ModelsDropdown = () => {
         }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
-        {models.find(m => m.value === selectedModel)?.name || 'Models'}
+        {filteredModels.find(m => m.value === selectedModel)?.displayName || filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
       </button>
       {activeDropdown === 'models' && (
         <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-3xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-          {models.map((model) => (
+          {filteredModels.map((model) => (
             <button
               key={model.value}
               onClick={(e) => {
@@ -95,7 +107,12 @@ const ModelsDropdown = () => {
                   : 'text-white/90 hover:bg-white/10'
               }`}
             >
-              <span>{model.name}</span>
+              <div className="flex flex-col">
+                <span>{model.name}</span>
+                {model.credits && (
+                  <span className="text-xs opacity-70">{model.credits} credits</span>
+                )}
+              </div>
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>
               )}

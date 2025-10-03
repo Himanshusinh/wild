@@ -2,17 +2,22 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, Play, Image as ImageIcon, Cpu, Sparkles } from "lucide-react";
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 interface VideoModelsDropdownProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
   generationMode: "text_to_video" | "image_to_video" | "video_to_video";
+  selectedDuration?: string;
+  selectedResolution?: string;
 }
 
 const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   selectedModel,
   onModelChange,
   generationMode,
+  selectedDuration = "5s",
+  selectedResolution = "512P",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -55,6 +60,25 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const availableModels = getAvailableModels();
   const selectedModelInfo = availableModels.find(model => model.value === selectedModel);
 
+  // Add credits information to models
+  const modelsWithCredits = availableModels.map(model => {
+    const creditInfo = getModelCreditInfo(model.value, selectedDuration, selectedResolution);
+    // Debug logging for Gen-4 Turbo and Gen-3a Turbo
+    if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
+      console.log(`Credit debug for ${model.value}:`, {
+        selectedDuration,
+        selectedResolution,
+        credits: creditInfo.credits,
+        displayText: creditInfo.displayText
+      });
+    }
+    return {
+      ...model,
+      credits: creditInfo.credits,
+      displayText: creditInfo.displayText
+    };
+  });
+
   // Auto-select first available model if current selection is invalid
   useEffect(() => {
     if (availableModels.length > 0 && !availableModels.find(model => model.value === selectedModel)) {
@@ -73,7 +97,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
-        {selectedModelInfo?.label || selectedModel}
+        {(() => {
+          const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
+          if (currentModel?.credits) {
+            return `${currentModel.label} (${currentModel.displayText})`;
+          }
+          return selectedModelInfo?.label || selectedModel;
+        })()}
       </button>
       {isOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
@@ -83,7 +113,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
              generationMode === "image_to_video" ? "Image → Video Models" : "Video → Video Models"}
           </div>
           
-          {availableModels.map((model) => (
+          {modelsWithCredits.map((model) => (
             <button
               key={model.value}
               onClick={() => {
@@ -104,6 +134,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   )}
                 </div>
                 <span className="text-xs opacity-70">{model.description}</span>
+                {model.credits && (
+                  <span className="text-xs text-blue-400 mt-0.5">{model.displayText}</span>
+                )}
               </div>
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>
