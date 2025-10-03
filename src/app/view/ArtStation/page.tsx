@@ -36,6 +36,7 @@ export default function ArtStationPage() {
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
+  const [currentUid, setCurrentUid] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const navigateForType = (type?: string) => {
@@ -67,6 +68,30 @@ export default function ArtStationPage() {
       }, 2000) // Hide after 2 seconds
     } catch (err) {
       console.error('Failed to copy prompt:', err)
+    }
+  }
+
+  const confirmDelete = async (item: PublicItem) => {
+    try {
+      const who = item?.createdBy?.uid || ''
+      const currentUid = (typeof window !== 'undefined' && (localStorage.getItem('user') && (() => { try { return JSON.parse(localStorage.getItem('user') as string)?.uid } catch { return null } })())) as string | null
+      if (!currentUid || who !== currentUid) {
+        alert('You can delete only your own generation')
+        return
+      }
+      const ok = confirm('Delete this generation permanently? This cannot be undone.')
+      if (!ok) return
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const res = await fetch(`${baseUrl}/api/generations/${item.id}`, { method: 'DELETE', credentials: 'include' })
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Delete failed')
+      }
+      setItems(prev => prev.filter(i => i.id !== item.id))
+      if (preview?.item?.id === item.id) setPreview(null)
+    } catch (e) {
+      console.error('Delete error', e)
+      alert('Failed to delete generation')
     }
   }
 
@@ -170,6 +195,16 @@ export default function ArtStationPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        const u = JSON.parse(userStr)
+        setCurrentUid(u?.uid || null)
+      }
+    } catch {}
+  }, [])
 
   useEffect(() => {
     try {
@@ -427,7 +462,7 @@ export default function ArtStationPage() {
                           <div className="text-white text-sm font-medium">{item.createdBy?.displayName || item.createdBy?.username || 'User'}</div>
                         </div>
                         
-                        {/* Like Button */}
+                        {/* Like Button and Delete (owner only) */}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
                           className="p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
@@ -436,6 +471,21 @@ export default function ArtStationPage() {
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                           </svg>
                         </button>
+                        {currentUid && item.createdBy?.uid === currentUid && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
+                            className="p-2 rounded-full bg-red-600/80 hover:bg-red-600 text-white transition-colors"
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6" />
+                              <path d="M14 11v6" />
+                              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                     
@@ -484,8 +534,23 @@ export default function ArtStationPage() {
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={() => setPreview(null)}>
                 <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-                  <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
+                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+                  <div className="flex items-center gap-2 text-white/70 text-sm">
+                    <span>{preview.item.model}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Delete (owner only) */}
+                    {currentUid && preview.item.createdBy?.uid === currentUid && (
+                      <button
+                        title="Delete"
+                        className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm"
+                        onClick={() => confirmDelete(preview.item)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
+                  </div>
                 </div>
 
                 {/* Content */}
