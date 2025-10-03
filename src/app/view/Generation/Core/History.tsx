@@ -306,14 +306,6 @@ const History = () => {
       {/* Spacer below fixed header */}
       <div className="h-0"></div>
       <div className="relative mt-6">
-        {overlayLoading && (
-          <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center ">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-              <div className="text-white text-lg">Loading generations...</div>
-            </div>
-          </div>
-        )}
 
         {/* Controls row (back, count, filters, toggle) */}
         <div className="flex items-center justify-between mb-4">
@@ -388,12 +380,12 @@ const History = () => {
               {label}
             </button>
           ))}
-          {pillLoading && (
+          {/* {pillLoading && (
             <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
               <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
               Loading generations...
             </div>
-          )}
+          )} */}
           {/* Sort buttons */}
           <div className="ml-8 flex items-center gap-2">
             <button
@@ -454,7 +446,7 @@ const History = () => {
                     }}
                   >Apply</button>
                   <button
-                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm"
+                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm z-100"
                     onClick={async () => {
                       setDateInput('');
                       setDateRange({ start: null, end: null });
@@ -518,7 +510,7 @@ const History = () => {
       )} */}
 
         {/* History Entries - TextToImage-like UI: date-grouped tiles */}
-      {historyEntries.length === 0 ? (
+      {(historyEntries.length === 0 && !overlayLoading && !loading) ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 text-white/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -542,7 +534,7 @@ const History = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-8 relative">
+        <div className="space-y-8 relative min-h-[300px]">
           {overlayLoading && (
             <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
@@ -550,7 +542,7 @@ const History = () => {
                 <div className="text-white text-lg">Loading generations...</div>
               </div>
             </div>
-          )}
+          )}  
           {sortedDates.map((dateKey) => (
             <div key={dateKey} className="space-y-4">
               {/* Date Header */}
