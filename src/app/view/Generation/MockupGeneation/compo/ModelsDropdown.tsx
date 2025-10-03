@@ -59,7 +59,7 @@ const ModelsDropdown = () => {
               <div className="flex flex-col items-start">
                 <span className="font-medium">{model.name}</span>
                 {model.credits && (
-                  <span className="text-xs text-blue-400 mt-0.5">{model.credits} credits</span>
+                  <span className="text-xs opacity-70 mt-0.5">{model.credits} credits</span>
                 )}
               </div>
               {selectedModel === model.value && (

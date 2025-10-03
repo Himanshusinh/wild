@@ -61,7 +61,7 @@ const ModelsDropdown = () => {
                 <span className="font-medium">{model.name}</span>
                 <span className="text-xs text-white/60 mt-0.5">{model.description}</span>
                 {model.credits && (
-                  <span className="text-xs text-blue-400 mt-0.5">{model.credits} credits</span>
+                  <span className="text-xs opacity-70 mt-0.5">{model.credits} credits</span>
                 )}
               </div>
               {selectedModel === model.value && (
