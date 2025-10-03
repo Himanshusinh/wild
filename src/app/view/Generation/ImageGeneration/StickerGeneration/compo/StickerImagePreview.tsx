@@ -40,6 +40,11 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
+  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
+  };
+
   if (!isOpen) return null;
 
   const inputImages = ((entry as any)?.inputImages || []) as any[];
@@ -195,8 +200,8 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
-              onClick={() => window.open(selectedImage.url, '_blank')}
+              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => window.open(toFrontendProxyResourceUrl(selectedImagePath || selectedImage?.url), '_blank')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />

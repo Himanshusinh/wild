@@ -26,6 +26,7 @@ export default function ArtStationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
+  const [hasMore, setHasMore] = useState<boolean>(true)
   const [preview, setPreview] = useState<{ kind: 'image' | 'video' | 'audio'; url: string; item: PublicItem } | null>(null)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
@@ -166,7 +167,20 @@ export default function ArtStationPage() {
     
     observer.observe(el)
     return () => observer.disconnect()
-  }, [cursor, loading])
+  }, [hasMore, loading])
+
+  // Auto-fill viewport on initial loads so the page has enough content to scroll
+  useEffect(() => {
+    const needMore = () => (document.documentElement.scrollHeight - window.innerHeight) < 800
+    const run = async () => {
+      let guard = 0
+      while (!loading && hasMore && needMore() && guard < 5) {
+        await fetchFeed(false)
+        guard += 1
+      }
+    }
+    run()
+  }, [items, hasMore, loading])
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''
