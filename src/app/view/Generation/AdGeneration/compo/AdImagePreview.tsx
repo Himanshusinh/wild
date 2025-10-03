@@ -43,147 +43,160 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-70 flex items-center justify-center p-4">
-      <div className="bg-white/10 backdrop-blur-md rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden border border-white/20">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/20">
-          <h3 className="text-lg font-semibold text-white">Video Ad Preview</h3>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Preview */}
-            <div className="lg:col-span-2">
-              <div className="bg-black/20 rounded-lg overflow-hidden">
-                {entry.images[selectedImageIndex] && (
-                  <video
-                    src={entry.images[selectedImageIndex].url}
-                    controls
-                    className="w-full h-auto"
-                    poster={entry.images[selectedImageIndex].url}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                )}
-              </div>
-            </div>
-
-            {/* Sidebar Info */}
-            <div className="space-y-4">
-              {/* Prompt */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm opacity-80">Prompt</div>
-                {/* existing download or buttons remain */}
-              </div>
-              <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
-                <div className="flex items-start gap-2">
-                  <div className={`opacity-90 leading-relaxed flex-1 max-w-[280px] break-words whitespace-pre-wrap ${isPromptExpanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-40 overflow-hidden'}`}>{userPrompt}</div>
-                  {/* keep existing copy button if present; if not, add a simple copy */}
-                </div>
-                {!isPromptExpanded && isLongPrompt && (
-                  <div className="pointer-events-none absolute left-3 right-3 bottom-10 h-10 bg-gradient-to-t from-black/30 to-transparent" />
-                )}
-                {isLongPrompt && (
-                  <button
-                    onClick={() => setIsPromptExpanded(v => !v)}
-                    className="mt-2 text-xs text-white/80 hover:text-white underline"
-                  >
-                    {isPromptExpanded ? 'See less' : 'See more'}
-                  </button>
-                )}
-              </div>
-
-              {/* Model & Settings */}
-              <div>
-                <h4 className="text-white font-medium mb-2">Details</h4>
-                <div className="bg-white/5 rounded-lg p-3 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Model:</span>
-                    <span className="text-white text-sm">{entry.model}</span>
-                  </div>
-                  {entry.frameSize && (
-                    <div className="flex justify-between">
-                      <span className="text-white/60 text-sm">Resolution:</span>
-                      <span className="text-white text-sm">{entry.frameSize}</span>
-                    </div>
-                  )}
-                  {entry.style && (
-                    <div className="flex justify-between">
-                      <span className="text-white/60 text-sm">Settings:</span>
-                      <span className="text-white text-sm">{entry.style}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Generated:</span>
-                    <span className="text-white text-sm">
-                      {new Date(entry.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div>
-                <h4 className="text-white font-medium mb-2">Actions</h4>
-                <div className="space-y-2">
-                  {entry.images[selectedImageIndex] && (
-                    <>
-                      <button
-                        onClick={() => handleDownload(
-                          entry.images[selectedImageIndex].url,
-                          `ad-${entry.id}-${selectedImageIndex}.mp4`
-                        )}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm transition-colors"
-                      >
-                        Download Video
-                      </button>
-                      <button
-                        onClick={() => handleOpenInNewTab(entry.images[selectedImageIndex].url)}
-                        className="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg text-sm transition-colors"
-                      >
-                        Open in New Tab
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
+        <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+          {/* Media */}
+          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+            {entry.images[selectedImageIndex] && (
+              <video
+                src={entry.images[selectedImageIndex].url}
+                controls
+                className="w-full h-auto max-w-full max-h-full"
+                poster={entry.images[selectedImageIndex].url}
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
+            <button
+              aria-label="Fullscreen"
+              title="Fullscreen"
+              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              onClick={() => window.open(entry.images[selectedImageIndex]?.url, '_blank')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M3 9V5a2 2 0 0 1 2-2h4" />
+                <path d="M21 9V5a2 2 0 0 0-2-2h-4" />
+                <path d="M21 15v4a2 2 0 0 1-2 2h-4" />
+                <path d="M3 15v4a2 2 0 0 0 2 2h4" />
+              </svg>
+            </button>
           </div>
 
-          {/* Thumbnails */}
-          {entry.images.length > 1 && (
-            <div className="mt-6">
-              <h4 className="text-white font-medium mb-3">Generated Videos</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {entry.images.map((image, index) => (
-                  <div
-                    key={image.id}
-                    onClick={() => setSelectedImageIndex(index)}
-                    className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedImageIndex === index
-                        ? 'border-blue-500'
-                        : 'border-white/20 hover:border-white/40'
-                    }`}
-                  >
-                    <video
-                      src={image.url}
-                      className="w-full h-24 object-cover"
-                      muted
-                    />
-                  </div>
-                ))}
+          {/* Sidebar */}
+          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+            {/* Action Buttons */}
+            <div className="mb-4 flex gap-2">
+              <button
+                onClick={() => handleOpenInNewTab(entry.images[selectedImageIndex]?.url)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M12 3v12" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M5 19h14" />
+                </svg>
+                Download
+              </button>
+
+              <button
+                onClick={() => handleOpenInNewTab(entry.images[selectedImageIndex]?.url)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                  <polyline points="16,6 12,2 8,6" />
+                  <line x1="12" y1="2" x2="12" y2="15" />
+                </svg>
+                Share
+              </button>
+            </div>
+
+            {/* Prompt */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+                <span>Prompt</span>
+                <button 
+                  onClick={handleCopyPrompt}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  title="Copy prompt"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white/60 hover:text-white">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                  </svg>
+                </button>
+              </div>
+              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+                {userPrompt}
               </div>
             </div>
-          )}
+            
+            {/* Date */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
+            </div>
+
+            {/* Details */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white text-sm">{entry.model}</span>
+                </div>
+                {entry.frameSize && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white text-sm">{entry.frameSize}</span>
+                  </div>
+                )}
+                {entry.style && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Style:</span>
+                    <span className="text-white text-sm">{entry.style}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Format:</span>
+                  <span className="text-white text-sm">Video Ad</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Gallery */}
+            {entry.images.length > 1 && (
+              <div className="mb-4">
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({entry.images.length})</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {entry.images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImageIndex(index)}
+                      className={`relative aspect-video rounded-md overflow-hidden border transition-all ${
+                        selectedImageIndex === index 
+                          ? 'border-white ring-2 ring-white/30' 
+                          : 'border-white/20 hover:border-white/40'
+                      }`}
+                    >
+                      <video
+                        src={image.url}
+                        className="w-full h-full object-cover"
+                        muted
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <div className="mt-6">
+              <button 
+                onClick={onClose}
+                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
