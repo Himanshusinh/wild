@@ -74,11 +74,11 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
         const obj = URL.createObjectURL(blob);
         revokeUrl = obj;
         setSelectedImageObjectUrl(obj);
-      } catch {}
+      } catch { }
     };
     doFetch();
     return () => {
-      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch {}
+      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch { }
       controller.abort();
     };
   }, [selectedImagePath]);
@@ -113,30 +113,30 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
       const downloadUrl = toProxyDownloadUrl(selectedImagePath);
       if (!downloadUrl) return;
-      
+
       const response = await fetch(downloadUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
       const fileName = (selectedImagePath || 'logo').split('/').pop() || `logo-${Date.now()}.png`;
-      
+
       const file = new File([blob], fileName, { type: blob.type });
-      
+
       await navigator.share({
         title: 'Wild Mind AI Generated Logo',
         text: `Check out this AI-generated logo!\n${getUserPrompt(entry.prompt).substring(0, 100)}...`,
         files: [file]
       });
-      
+
       console.log('Image shared successfully');
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Share cancelled by user');
         return;
       }
-      
+
       console.error('Share failed:', error);
       try {
         await navigator.clipboard.writeText(url);
@@ -150,14 +150,14 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    
+
     // Handle the new backend prompt format
     // The backend prompt starts with "Create a professional, modern logo for: [USER_PROMPT]"
     const backendPromptMatch = rawPrompt.match(/Create a professional, modern logo for:\s*(.+?)\s*\./i);
     if (backendPromptMatch && backendPromptMatch[1]) {
       return backendPromptMatch[1].trim();
     }
-    
+
     // Fallback to old format (remove "Logo:" prefix)
     return rawPrompt.replace(/^Logo:\s*/i, '').trim();
   };
@@ -189,11 +189,11 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           {/* Media */}
           <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {selectedImage && (
-              <Image 
-                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl} 
-                alt={entry.prompt} 
-                fill 
-                className="object-contain" 
+              <Image
+                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
+                alt={entry.prompt}
+                fill
+                className="object-contain"
                 unoptimized
               />
             )}
@@ -216,7 +216,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+          <div className="px-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[60vh] md:h-full md:w-[34%] overflow-y-none">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <button
@@ -240,7 +240,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             <div className="mb-4">
               <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
                 <span>Prompt</span>
-                <button 
+                <button
                   onClick={handleCopyPrompt}
                   className="p-1 hover:bg-white/10 rounded transition-colors"
                   title="Copy prompt"
@@ -251,11 +251,11 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                   </svg>
                 </button>
               </div>
-              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words borde">
                 {getUserPrompt(entry.prompt)}
               </div>
             </div>
-            
+
             {/* Date */}
             <div className="mb-4">
               <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
@@ -286,11 +286,10 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${
-                        selectedImageIndex === index 
-                          ? 'border-white ring-2 ring-white/30' 
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${selectedImageIndex === index
+                          ? 'border-white ring-2 ring-white/30'
                           : 'border-white/20 hover:border-white/40'
-                      }`}
+                        }`}
                     >
                       <Image
                         src={(image as any)?.url}
@@ -310,7 +309,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
             {/* Action Button */}
             <div className="mt-6">
-              <button 
+              <button
                 onClick={onClose}
                 className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
               >
