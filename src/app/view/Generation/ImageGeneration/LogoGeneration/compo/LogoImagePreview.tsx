@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { X, Download, ExternalLink, Copy, Check } from 'lucide-react';
+import { X, Download, ExternalLink, Copy, Check, Share } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 
 interface LogoImagePreviewProps {
@@ -98,6 +98,51 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     }
   };
 
+  const shareImage = async (url: string) => {
+    try {
+      if (!navigator.share) {
+        await navigator.clipboard.writeText(url);
+        alert('Image URL copied to clipboard!');
+        return;
+      }
+
+      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
+      if (!downloadUrl) return;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      
+      const blob = await response.blob();
+      const fileName = (selectedImagePath || 'logo').split('/').pop() || `logo-${Date.now()}.png`;
+      
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      await navigator.share({
+        title: 'Wild Mind AI Generated Logo',
+        text: `Check out this AI-generated logo!\n${getUserPrompt(entry.prompt).substring(0, 100)}...`,
+        files: [file]
+      });
+      
+      console.log('Image shared successfully');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Share cancelled by user');
+        return;
+      }
+      
+      console.error('Share failed:', error);
+      try {
+        await navigator.clipboard.writeText(url);
+        alert('Sharing not supported. Image URL copied to clipboard!');
+      } catch (copyError) {
+        console.error('Copy failed:', copyError);
+        alert('Unable to share image. Please try downloading instead.');
+      }
+    }
+  };
+
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
     
@@ -178,6 +223,14 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
               >
                 <Download className="h-4 w-4" />
                 <span className="text-sm">Download</span>
+              </button>
+
+              <button
+                onClick={() => shareImage(selectedImage?.url)}
+                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+              >
+                <Share className="h-4 w-4" />
+                <span className="text-sm">Share</span>
               </button>
             </div>
 

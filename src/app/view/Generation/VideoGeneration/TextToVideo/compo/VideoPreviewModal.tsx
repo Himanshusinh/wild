@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Share } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 
 interface VideoPreviewModalProps {
@@ -67,6 +68,58 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       window.URL.revokeObjectURL(objectUrl);
     } catch (e) {
       console.error('Download failed:', e);
+    }
+  };
+
+  const shareVideo = async (url: any) => {
+    if (typeof url !== 'string') {
+      console.error('Invalid URL for share:', url);
+      return;
+    }
+
+    try {
+      if (!navigator.share) {
+        await navigator.clipboard.writeText(url);
+        alert('Video URL copied to clipboard!');
+        return;
+      }
+
+      const path = toProxyPath((preview.video as any)?.storagePath || url);
+      const downloadUrl = toProxyDownloadUrl(path || url);
+      if (!downloadUrl) return;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      
+      const blob = await response.blob();
+      const baseName = (path || 'video').split('/').pop() || `video-${Date.now()}.mp4`;
+      const fileName = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `video-${Date.now()}.mp4`;
+      
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      await navigator.share({
+        title: 'Wild Mind AI Generated Video',
+        text: `Check out this AI-generated video!\n${getCleanPrompt(preview.entry.prompt).substring(0, 100)}...`,
+        files: [file]
+      });
+      
+      console.log('Video shared successfully');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Share cancelled by user');
+        return;
+      }
+      
+      console.error('Share failed:', error);
+      try {
+        await navigator.clipboard.writeText(url);
+        alert('Sharing not supported. Video URL copied to clipboard!');
+      } catch (copyError) {
+        console.error('Copy failed:', copyError);
+        alert('Unable to share video. Please try downloading instead.');
+      }
     }
   };
 
@@ -214,6 +267,14 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 <span className="text-sm">
                   {videoUrl && videoUrl.startsWith('data:image/') ? 'Download Image' : 'Download Video'}
                 </span>
+              </button>
+
+              <button
+                onClick={() => shareVideo(videoUrl)}
+                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+              >
+                <Share className="h-4 w-4" />
+                <span className="text-sm">Share</span>
               </button>
             </div>
             

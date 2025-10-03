@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { Share } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 
 interface ImagePreviewModalProps {
@@ -62,6 +63,79 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       URL.revokeObjectURL(objectUrl);
     } catch (e) {
       console.error('Download failed:', e);
+    }
+  };
+
+  const shareImage = async (url: string) => {
+    try {
+      // Check if the Web Share API is available
+      if (!navigator.share) {
+        // Fallback: Copy image URL to clipboard
+        await copyToClipboard(url);
+        alert('Image URL copied to clipboard!');
+        return;
+      }
+
+      // Fetch the image as a blob
+      const downloadUrl = toProxyDownloadUrl(url);
+      if (!downloadUrl) return;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      
+      const blob = await response.blob();
+      const fileName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
+      
+      // Create a File from the blob
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      // Use Web Share API
+      await navigator.share({
+        title: 'Wild Mind AI Generated Image',
+        text: `Check out this AI-generated image!\n${cleanPrompt.substring(0, 100)}...`,
+        files: [file]
+      });
+      
+      console.log('Image shared successfully');
+    } catch (error: any) {
+      // Handle user cancellation gracefully
+      if (error.name === 'AbortError') {
+        console.log('Share cancelled by user');
+        return;
+      }
+      
+      // Fallback to copying URL
+      console.error('Share failed:', error);
+      try {
+        await copyToClipboard(url);
+        alert('Sharing not supported. Image URL copied to clipboard!');
+      } catch (copyError) {
+        console.error('Copy failed:', copyError);
+        alert('Unable to share image. Please try downloading instead.');
+      }
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+      }
+      document.body.removeChild(textArea);
     }
   };
 
@@ -163,6 +237,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </svg>
                 <span className="text-sm">Download</span>
               </button>
+              
+              <button
+                onClick={() => shareImage(selectedImage?.url || preview.image.url)}
+                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+              >
+                <Share className="h-4 w-4" />
+                <span className="text-sm">Share</span>
+              </button>
+              
             </div>
             <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
               <div className="flex items-start gap-2">

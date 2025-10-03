@@ -82,20 +82,38 @@ export default function ArtStationPage() {
     try {
       setLoading(true)
       const url = new URL(`${API_BASE}/api/feed`)
-      url.searchParams.set('limit', '10')
-      if (!reset && cursor) url.searchParams.set('cursor', cursor)
+      url.searchParams.set('limit', '20')
+      if (!reset && cursor) {
+        url.searchParams.set('cursor', cursor)
+      }
+      
+      console.log('Fetching feed:', { reset, cursor, url: url.toString() })
+      
       const res = await fetch(url.toString(), { 
-        // Public endpoint: no credentials needed; avoid strict CORS with wildcard
         credentials: 'omit',
         headers: { 'ngrok-skip-browser-warning': 'true', 'Accept': 'application/json' }
       })
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+      
       const data = await res.json()
       const payload = data?.data || data
       const newItems: PublicItem[] = payload?.items || []
+      const newCursor = payload?.nextCursor || payload?.meta?.nextCursor
+      
+      console.log('Feed response:', { 
+        itemsCount: newItems.length, 
+        newCursor, 
+        hasMore: payload?.meta?.hasMore 
+      })
+      
       setItems(prev => reset ? newItems : [...prev, ...newItems])
-      setCursor(payload?.nextCursor)
+      setCursor(newCursor)
       setError(null)
     } catch (e: any) {
+      console.error('Feed fetch error:', e)
       setError(e?.message || 'Failed to load feed')
     } finally {
       setLoading(false)
@@ -108,17 +126,33 @@ export default function ArtStationPage() {
   useEffect(() => {
     if (!sentinelRef.current) return
     const el = sentinelRef.current
+    
     const observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0]
       if (!entry.isIntersecting) return
-      if (!cursor || loading || loadingMoreRef.current) return
+      
+      // Don't load if already loading, no cursor, or already loading more
+      if (loading || loadingMoreRef.current || !cursor) {
+        console.log('Skipping load:', { loading, loadingMore: loadingMoreRef.current, cursor })
+        return
+      }
+      
+      console.log('Loading more items...')
       loadingMoreRef.current = true
+      
       try {
         await fetchFeed(false)
+      } catch (err) {
+        console.error('Error loading more:', err)
       } finally {
         loadingMoreRef.current = false
       }
-    }, { root: null, rootMargin: '200px', threshold: 0 })
+    }, { 
+      root: null, 
+      rootMargin: '400px', // Trigger earlier
+      threshold: 0.1 
+    })
+    
     observer.observe(el)
     return () => observer.disconnect()
   }, [cursor, loading])
