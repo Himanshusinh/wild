@@ -78,7 +78,16 @@ const Nav = () => {
       const api = getApiClient()
       await api.post('/api/auth/logout')
     } catch {}
-    window.location.href = '/view/Landingpage'
+    // Hard redirect to clear history and prevent back navigation
+    if (typeof window !== 'undefined') {
+      try {
+        history.pushState(null, document.title, location.href)
+        window.addEventListener('popstate', () => {
+          history.pushState(null, document.title, location.href)
+        })
+      } catch {}
+      window.location.replace('/view/Landingpage')
+    }
   }
 
   return (

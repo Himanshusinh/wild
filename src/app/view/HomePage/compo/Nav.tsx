@@ -150,12 +150,20 @@ const Nav = () => {
       const api = getApiClient()
       await api.post('/api/auth/logout')
       
-      // Redirect to landing page
-      window.location.href = '/'
+      // Clear history stack: prevent navigating back into the app
+      if (typeof window !== 'undefined') {
+        try {
+          history.pushState(null, document.title, location.href)
+          window.addEventListener('popstate', () => {
+            history.pushState(null, document.title, location.href)
+          })
+        } catch {}
+        window.location.replace('/view/Landingpage')
+      }
     } catch (error) {
       console.error('Logout error:', error)
       // Still redirect even if API call fails
-      window.location.href = '/'
+      if (typeof window !== 'undefined') window.location.replace('/view/Landingpage')
     }
   }
 

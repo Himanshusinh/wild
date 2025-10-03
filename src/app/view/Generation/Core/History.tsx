@@ -23,6 +23,8 @@ const History = () => {
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
   const [viewMode, setViewMode] = useState<'global' | 'feature'>('global');
   const [hasMore, setHasMore] = useState(true);
+  const [pillLoading, setPillLoading] = useState(false);
+  const [overlayLoading, setOverlayLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ entry: HistoryEntry; video: any } | null>(null);
@@ -276,7 +278,7 @@ const History = () => {
       ? 'Image Generation History'
       : `${getGenerationTypeLabel(currentGenerationType)} History`);
 
-  if (loading && historyEntries.length === 0) {
+  if (loading && historyEntries.length === 0 && !overlayLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -303,9 +305,18 @@ const History = () => {
       </div>
       {/* Spacer below fixed header */}
       <div className="h-0"></div>
+      <div className="relative mt-6">
+        {overlayLoading && (
+          <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center ">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              <div className="text-white text-lg">Loading generations...</div>
+            </div>
+          </div>
+        )}
 
-      {/* Controls row (back, count, filters, toggle) */}
-      <div className="flex items-center  justify-between mb-2">
+        {/* Controls row (back, count, filters, toggle) */}
+        <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           {/* <button
             onClick={handleBackToGeneration}
@@ -333,6 +344,8 @@ const History = () => {
               key={key}
               onClick={async () => {
                 setQuickFilter(key);
+                setPillLoading(true);
+                setOverlayLoading(true);
                 let f: any = {};
                 switch (key) {
                   case 'images':
@@ -361,9 +374,13 @@ const History = () => {
                 if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
                 setLocalFilters(f);
                 dispatch(setFilters(f));
+                // Immediately clear current list so previous category tiles do not linger
+                dispatch(clearHistory());
                 await loadFirstPage(f);
                 await autoFillViewport(f);
                 setPage(1);
+                setPillLoading(false);
+                setOverlayLoading(false);
               }}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'
                 }`}
@@ -371,6 +388,12 @@ const History = () => {
               {label}
             </button>
           ))}
+          {pillLoading && (
+            <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
+              <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              Loading generations...
+            </div>
+          )}
           {/* Sort buttons */}
           <div className="ml-8 flex items-center gap-2">
             <button
@@ -451,9 +474,9 @@ const History = () => {
             )}
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Filter Popover removed in favor of quick filter pills */}
+        {/* Filter Popover removed in favor of quick filter pills */}
 
 
 
@@ -494,7 +517,7 @@ const History = () => {
         </div>
       )} */}
 
-      {/* History Entries - TextToImage-like UI: date-grouped tiles */}
+        {/* History Entries - TextToImage-like UI: date-grouped tiles */}
       {historyEntries.length === 0 ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 text-white/20">
@@ -519,7 +542,15 @@ const History = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
+          {overlayLoading && (
+            <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                <div className="text-white text-lg">Loading generations...</div>
+              </div>
+            </div>
+          )}
           {sortedDates.map((dateKey) => (
             <div key={dateKey} className="space-y-4">
               {/* Date Header */}
@@ -685,6 +716,7 @@ const History = () => {
           )}
         </div>
       )}
+      </div>
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />
       {logoPreviewEntry && (

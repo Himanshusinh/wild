@@ -57,6 +57,24 @@ const LandingPage: React.FC = () => {
   const [loadGallery, setLoadGallery] = React.useState(false)
   const [loadFAQ, setLoadFAQ] = React.useState(false)
   
+  // Prevent navigating back into protected routes after logout
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handlePop = () => {
+      // Always stay on landing page if user came here after logout
+      if (window.location.pathname.toLowerCase().includes('/view/landingpage')) {
+        history.pushState(null, document.title, window.location.href)
+      }
+    }
+    try {
+      history.pushState(null, document.title, window.location.href)
+      window.addEventListener('popstate', handlePop)
+    } catch {}
+    return () => {
+      window.removeEventListener('popstate', handlePop)
+    }
+  }, [])
+  
   // Carousel items
   const carouselItems = carouselCards.map((card, index) => (
     <Card
