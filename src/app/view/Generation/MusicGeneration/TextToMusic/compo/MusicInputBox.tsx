@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addNotification } from '@/store/slices/uiSlice';
 import { Music4, ChevronDown, Volume2, FileText, Palette, Guitar } from "lucide-react";
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 // Music styles and instruments for dropdowns
 const MUSIC_STYLES = [
@@ -153,28 +154,34 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   };
 
   // Dropdown Components
-  const MusicModelsDropdown = () => (
-    <div className="relative dropdown-container">
-      <button
-        onClick={() => setModelOpen(!modelOpen)}
-        className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
-      >
-        <Music4 className="w-4 h-4" />
-        {model}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
-      </button>
-      {modelOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
-          <button 
-            onClick={() => { setModel("music-1.5"); setModelOpen(false); }} 
-            className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 text-white/90"
-          >
-            music-1.5
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  const MusicModelsDropdown = () => {
+    const creditInfo = getModelCreditInfo("music-1.5");
+    return (
+      <div className="relative dropdown-container">
+        <button
+          onClick={() => setModelOpen(!modelOpen)}
+          className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        >
+          <Music4 className="w-4 h-4" />
+          {creditInfo.hasCredits ? `${model} (${creditInfo.displayText})` : model}
+          <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        </button>
+        {modelOpen && (
+          <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
+            <button 
+              onClick={() => { setModel("music-1.5"); setModelOpen(false); }} 
+              className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 text-white/90 flex items-center justify-between"
+            >
+              <span>music-1.5</span>
+              {creditInfo.hasCredits && (
+                <span className="text-xs opacity-70">{creditInfo.displayText}</span>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const StyleDropdown = () => (
     <div className="relative dropdown-container">

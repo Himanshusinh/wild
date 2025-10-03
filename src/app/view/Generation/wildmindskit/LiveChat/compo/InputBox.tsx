@@ -6,6 +6,7 @@ import { setPrompt, setUploadedImages, setSelectedModel, setLastGeneratedImages,
 import { addNotification } from "@/store/slices/uiSlice";
 import { addAndSaveHistoryEntry } from "@/store/slices/historySlice";
 import { HistoryEntry, GeneratedImage, LiveChatMessage } from "@/types/history";
+import { saveLiveChatSession } from '@/lib/historyService';
 import Image from "next/image";
 import LiveChatModelsDropdown from "./LiveChatModelsDropdown";
 import { useEffect } from 'react';

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { X, Download, ExternalLink, Copy, Check } from 'lucide-react';
+import { X, Download, ExternalLink, Copy, Check, Share } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 
 interface StickerImagePreviewProps {
@@ -100,6 +100,51 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     }
   };
 
+  const shareImage = async (url: string) => {
+    try {
+      if (!navigator.share) {
+        await navigator.clipboard.writeText(url);
+        alert('Image URL copied to clipboard!');
+        return;
+      }
+
+      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
+      if (!downloadUrl) return;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      
+      const blob = await response.blob();
+      const fileName = (selectedImagePath || 'sticker').split('/').pop() || `sticker-${Date.now()}.png`;
+      
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      await navigator.share({
+        title: 'Wild Mind AI Generated Sticker',
+        text: `Check out this AI-generated sticker!\n${getUserPrompt(entry.prompt).substring(0, 100)}...`,
+        files: [file]
+      });
+      
+      console.log('Image shared successfully');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Share cancelled by user');
+        return;
+      }
+      
+      console.error('Share failed:', error);
+      try {
+        await navigator.clipboard.writeText(url);
+        alert('Sharing not supported. Image URL copied to clipboard!');
+      } catch (copyError) {
+        console.error('Copy failed:', copyError);
+        alert('Unable to share image. Please try downloading instead.');
+      }
+    }
+  };
+
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
     // New backend prompt format
@@ -129,19 +174,17 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const isLongPrompt = (userPrompt || '').length > 280;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <button 
-        aria-label="Close" 
-        onClick={onClose} 
-        className="absolute top-3 right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white z-30"
-      >
-        <X className="h-5 w-5" />
-      </button>
-      
-      <div className="relative w-full max-w-[1200px] max-h-[90vh] bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-col md:flex-row h-full">
-          {/* Main Image Display */}
-          <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Content */}
+        <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+          {/* Media */}
+          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image 
                 src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl} 
@@ -169,57 +212,80 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             </button>
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-full md:w-[380px] p-5 md:p-6 bg-white/5 backdrop-blur-xl border-l border-white/10 text-white overflow-y-auto">
-            {/* Prompt Section */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm opacity-80">Prompt</div>
+          {/* Sidebar */}
+          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+            {/* Action Buttons */}
+            <div className="mb-4 flex gap-2">
               <button
                 onClick={handleDownload}
-                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <Download className="h-4 w-4" />
-                <span className="text-sm">Download</span>
+                Download
+              </button>
+
+              <button
+                onClick={() => shareImage(selectedImage?.url)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+              >
+                <Share className="h-4 w-4" />
+                Share
               </button>
             </div>
 
-            {/* Prompt Text */}
-            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
-              <div className="flex items-start gap-2">
-                <div className={`opacity-90 leading-relaxed flex-1 max-w-[280px] break-words whitespace-pre-wrap ${isPromptExpanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-40 overflow-hidden'}`}>{userPrompt}</div>
-                <button
+            {/* Prompt */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+                <span>Prompt</span>
+                <button 
                   onClick={handleCopyPrompt}
-                  className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
                   title="Copy prompt"
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white/60 hover:text-white">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                  </svg>
                 </button>
               </div>
-              {!isPromptExpanded && isLongPrompt && (
-                <div className="pointer-events-none absolute left-3 right-3 bottom-10 h-10 bg-gradient-to-t from-black/30 to-transparent" />
-              )}
-              {isLongPrompt && (
-                <button
-                  onClick={() => setIsPromptExpanded(v => !v)}
-                  className="mt-2 text-xs text-white/80 hover:text-white underline"
-                >
-                  {isPromptExpanded ? 'See less' : 'See more'}
-                </button>
-              )}
+              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+                {getUserPrompt(entry.prompt)}
+              </div>
+            </div>
+            
+            {/* Date */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
             </div>
 
-            {/* Image Thumbnails */}
+            {/* Details */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white text-sm">{entry.model}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Format:</span>
+                  <span className="text-white text-sm">Sticker</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Gallery */}
             {galleryImages.length > 1 && (
-              <div className="mb-5">
-                <div className="text-sm opacity-80 mb-3">Images ({galleryImages.length})</div>
+              <div className="mb-4">
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Stickers ({galleryImages.length})</div>
                 <div className="grid grid-cols-2 gap-2">
                   {galleryImages.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${
                         selectedImageIndex === index 
-                          ? 'border-blue-500 ring-2 ring-blue-500/30' 
+                          ? 'border-white ring-2 ring-white/30' 
                           : 'border-white/20 hover:border-white/40'
                       }`}
                     >
@@ -233,35 +299,20 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                       {index < inputImages.length && (
                         <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
                       )}
-                      {selectedImageIndex === index && (
-                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        </div>
-                      )}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Metadata Section */}
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Model</span>
-                <span className="opacity-90">{entry.model}</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Type</span>
-                <span className="opacity-90">Sticker Generation</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Images</span>
-                <span className="opacity-90">{entry.imageCount} sticker{entry.imageCount > 1 ? 's' : ''}</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Generated</span>
-                <span className="opacity-90">{new Date(entry.timestamp).toLocaleString()}</span>
-              </div>
+            {/* Action Button */}
+            <div className="mt-6">
+              <button 
+                onClick={onClose}
+                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+              >
+                Close Preview
+              </button>
             </div>
           </div>
         </div>

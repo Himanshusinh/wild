@@ -40,7 +40,7 @@ type GenerationTypeLocal = SharedGenerationType;
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height }: {
+    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic }: {
       prompt: string;
       model: string;
       imageCount: number;
@@ -50,6 +50,7 @@ export const generateImages = createAsyncThunk(
       uploadedImages?: string[];
       width?: number;
       height?: number;
+      isPublic?: boolean;
     },
     { rejectWithValue }
   ) => {
@@ -68,6 +69,7 @@ export const generateImages = createAsyncThunk(
         uploadedImages,
         clientRequestId,
         ...(width && height ? { width, height } : {}),
+        ...(typeof isPublic === 'boolean' ? { isPublic } : {})
       });
       const payload = data?.data || data;
       // Trigger credits refresh after successful charge
@@ -82,7 +84,7 @@ export const generateImages = createAsyncThunk(
   }
 );
 
-// Live chat specific generate (flux-kontext only)
+// Live chat specific generate (supports both flux-kontext and Google Nano Banana)
 export const generateLiveChatImage = createAsyncThunk(
   'generation/generateLiveChatImage',
   async (
@@ -96,7 +98,11 @@ export const generateLiveChatImage = createAsyncThunk(
   ) => {
     try {
       const api = getApiClient();
-      const { data } = await api.post('/api/bfl/generate', { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
+      // Use different endpoints based on model
+      const isGoogleNano = model === 'gemini-25-flash-image';
+      const endpoint = isGoogleNano ? '/api/fal/generate' : '/api/bfl/generate';
+      
+      const { data } = await api.post(endpoint, { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
       const payload = data?.data || data;
       requestCreditsRefresh();
       return { images: payload.images, requestId: payload.requestId };
@@ -110,13 +116,14 @@ export const generateLiveChatImage = createAsyncThunk(
 export const generateRunwayImages = createAsyncThunk(
   'generation/generateRunwayImages',
   async (
-    { prompt, model, ratio, generationType, uploadedImages, style }: {
+    { prompt, model, ratio, generationType, uploadedImages, style, isPublic }: {
       prompt: string;
       model: string;
       ratio: string;
       generationType: GenerationTypeLocal;
       uploadedImages?: string[];
       style?: string;
+      isPublic?: boolean;
     },
     { rejectWithValue }
   ) => {
@@ -133,7 +140,8 @@ export const generateRunwayImages = createAsyncThunk(
         ratio,
         uploadedImages,
         generationType,
-        style
+        style,
+        ...(typeof isPublic === 'boolean' ? { isPublic } : {})
       });
       const payload = data?.data || data;
       // Runway charges may occur async, but backend computes cost on start
@@ -154,7 +162,7 @@ export const generateRunwayImages = createAsyncThunk(
 export const generateMiniMaxImages = createAsyncThunk(
   'generation/generateMiniMaxImages',
   async (
-    { prompt, model, aspect_ratio, width, height, imageCount, generationType, uploadedImages, style }: {
+    { prompt, model, aspect_ratio, width, height, imageCount, generationType, uploadedImages, style, isPublic }: {
       prompt: string;
       model: string;
       aspect_ratio?: string;
@@ -164,6 +172,7 @@ export const generateMiniMaxImages = createAsyncThunk(
       generationType: GenerationTypeLocal;
       uploadedImages?: string[];
       style?: string;
+      isPublic?: boolean;
     },
     { rejectWithValue }
   ) => {
@@ -182,7 +191,8 @@ export const generateMiniMaxImages = createAsyncThunk(
         response_format: 'url',
         prompt_optimizer: true,
         generationType,
-        style
+        style,
+        ...(typeof isPublic === 'boolean' ? { isPublic } : {})
       };
 
       // Add aspect ratio or width/height

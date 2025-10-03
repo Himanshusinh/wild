@@ -94,7 +94,7 @@ const InputBox = () => {
         setSelectedModel("gen4_aleph"); // Runway model for video→video
       }
     }
-    
+   
     // Clear camera movements when generation mode changes
     setSelectedCameraMovements([]);
   }, [generationMode, selectedModel]);
@@ -132,7 +132,7 @@ const InputBox = () => {
       // Note: MiniMax models don't support custom aspect ratios - they use fixed resolutions
       setFrameSize("16:9"); // Default aspect ratio (not used for MiniMax)
       setDuration(5); // Default duration (not used for MiniMax)
-      
+     
       // Set appropriate MiniMax defaults based on model
       if (selectedModel === "MiniMax-Hailuo-02") {
         setSelectedResolution("1080P");
@@ -153,13 +153,13 @@ const InputBox = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!event.target) return;
-      
+     
       const target = event.target as Element;
       if (!target.closest('.dropdown-container')) {
         setResolutionDropdownOpen(false);
         setDurationDropdownOpen(false);
       }
-      
+     
       // Close camera movement popup
       if (cameraMovementPopupOpen && !target.closest('.camera-movement-container')) {
         setCameraMovementPopupOpen(false);
@@ -176,7 +176,7 @@ const InputBox = () => {
     console.log('🔄 - From:', selectedModel);
     console.log('🔄 - To:', newModel);
     console.log('🔄 - Generation mode:', generationMode);
-    
+   
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
       // Text→Video: Only MiniMax models support this
@@ -246,41 +246,41 @@ const InputBox = () => {
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
-    
+   
     // Helper function to normalize generationType (handle both underscore and hyphen patterns)
     const normalizeGenerationType = (generationType: string | undefined): string => {
       if (!generationType) return '';
       // Convert both underscore and hyphen to a standard format for comparison
       return generationType.replace(/[_-]/g, '-').toLowerCase();
     };
-    
+   
     // Helper function to check if an entry is a video type
     const isVideoType = (entry: any): boolean => {
       const normalizedType = normalizeGenerationType(entry?.generationType);
-      return normalizedType === 'text-to-video' || 
-             normalizedType === 'image-to-video' || 
+      return normalizedType === 'text-to-video' ||
+             normalizedType === 'image-to-video' ||
              normalizedType === 'video-to-video';
     };
-    
+   
     // Helper function to check if an entry has video URLs
     const isVideoUrl = (url: string | undefined): boolean => {
       return !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
     };
-    
+   
     // Get entries that are explicitly declared as video types
     const declaredVideoTypes = allEntries.filter(isVideoType);
-    
+   
     // Get entries that have video URLs (fallback for entries that might not have correct generationType)
-    const urlVideoTypes = allEntries.filter((entry: any) => 
+    const urlVideoTypes = allEntries.filter((entry: any) =>
       Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
     );
-    
+   
     // Merge both sets, removing duplicates by ID
     const byId: Record<string, any> = {};
-    [...declaredVideoTypes, ...urlVideoTypes].forEach((e: any) => { 
-      byId[e.id] = e; 
+    [...declaredVideoTypes, ...urlVideoTypes].forEach((e: any) => {
+      byId[e.id] = e;
     });
-    
+   
     const mergedEntries = Object.values(byId);
 
     // Count entries by normalized generationType for debugging
@@ -309,7 +309,7 @@ const InputBox = () => {
       rawGenerationTypes,
       normalizedCounts: countsAll,
     });*/
-    
+   
     // Debug: Show which entries are being filtered and why
     if (mergedEntries.length < allEntries.length) {
       const filteredOut = allEntries.filter((entry: any) => !mergedEntries.some((merged: any) => merged.id === entry.id));
@@ -321,14 +321,14 @@ const InputBox = () => {
         prompt: entry.prompt?.substring(0, 50) + '...'
       })));*/
     }
-    
+   
     // Sort by timestamp (newest first) to ensure consistent ordering
     const sortedMergedEntries = mergedEntries.sort((a: any, b: any) => {
       const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
       const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
       return timestampB - timestampA; // Descending order (newest first)
     });
-    
+   
     // Debug: Show the order of entries after sorting
     if (sortedMergedEntries.length > 0) {
       /*console.log('[VideoPage] Entry order after sorting:', sortedMergedEntries.slice(0, 3).map((entry: any, index: number) => ({
@@ -339,7 +339,7 @@ const InputBox = () => {
         prompt: entry.prompt?.substring(0, 30) + '...'
       })));*/
     }
-    
+   
     return sortedMergedEntries;
   }, shallowEqual);
 
@@ -354,7 +354,7 @@ const InputBox = () => {
   }, {});
 
   // Sort dates in descending order (newest first)
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
   );
   // Today key for injecting local preview into today's row
@@ -383,9 +383,9 @@ const InputBox = () => {
           getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
           getHistoryEntries({ generationType: 'video_to_video' as any }, { limit: 20 })
         ]);
-        
+       
         if (!isMounted) return;
-        
+       
         // Combine all results and remove duplicates by ID
         const allResults = [
           ...(textToVideo.data || []),
@@ -394,21 +394,21 @@ const InputBox = () => {
           ...(videoToVideoHyphen.data || []),
           ...(videoToVideoUnderscore.data || [])
         ];
-        
+       
         const byId: Record<string, any> = {};
         allResults.forEach((entry: any) => {
           byId[entry.id] = entry;
         });
-        
+       
         const combined = Object.values(byId);
-        
+       
         // Sort by timestamp (newest first) to ensure proper ordering
         const sortedCombined = combined.sort((a: any, b: any) => {
           const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
           const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
           return timestampB - timestampA; // Descending order (newest first)
         });
-        
+       
         setExtraVideoEntries(sortedCombined);
         console.log('[VideoPage] fetched extra video entries:', {
           total: sortedCombined.length,
@@ -434,18 +434,18 @@ const InputBox = () => {
     historyEntries.forEach((e: any) => { byId[e.id] = e; });
     extraVideoEntries.forEach((e: any) => { byId[e.id] = e; });
     const list = Object.values(byId);
-    
+   
     // Sort by timestamp (newest first) to match global history behavior
     const sortedList = list.sort((a: any, b: any) => {
       const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
       const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
       return timestampB - timestampA; // Descending order (newest first)
     });
-    
+   
     /*console.log('[VideoPage] display entries count:', sortedList.length);
     console.log('[VideoPage] first entry timestamp:', sortedList[0]?.timestamp || 'none');
     console.log('[VideoPage] last entry timestamp:', sortedList[sortedList.length - 1]?.timestamp || 'none');*/
-    
+   
     // Debug: Show the complete order of display entries
     if (sortedList.length > 0) {
       console.log('[VideoPage] Complete display order:', sortedList.map((entry: any, index: number) => ({
@@ -461,7 +461,7 @@ const InputBox = () => {
         hasImages: !!entry.images,
         hasVideos: !!entry.videos
       })));
-      
+     
       // Debug: Check each entry's video/image structure
       sortedList.forEach((entry: any, index: number) => {
         console.log(`[VideoPage] Entry ${index + 1} detailed structure:`, {
@@ -478,7 +478,7 @@ const InputBox = () => {
         });
       });
     }
-    
+   
     return sortedList as any[];
   }, [historyEntries, extraVideoEntries]);
 
@@ -490,13 +490,13 @@ const InputBox = () => {
       if (!generationType) return '';
       return generationType.replace(/[_-]/g, '-').toLowerCase();
     };
-    
+   
     const counts = (historyEntries || []).reduce((acc: any, e: any) => {
       const normalized = normalizeGenerationType(e.generationType);
       acc[normalized] = (acc[normalized] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+   
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
@@ -540,12 +540,12 @@ const InputBox = () => {
     if (!taskId || taskId.trim() === '') {
       throw new Error('Invalid taskId provided to waitForMiniMaxVideoCompletion');
     }
-    
+   
     console.log('⏳ Starting MiniMax video completion polling for task:', taskId);
-    
+   
     const maxAttempts = 60; // 5 minutes with 5-second intervals
     let attempts = 0;
-    
+   
     const api = getApiClient();
     while (attempts < maxAttempts) {
       try {
@@ -580,9 +580,9 @@ const InputBox = () => {
           } catch (fileError) {
             console.warn('⚠️ File retrieval failed, but video generation was successful. Video should be available in database.');
             // Return success status even if file retrieval fails - the video is already in the database
-            return { 
-              status: 'Success', 
-              download_url: null, 
+            return {
+              status: 'Success',
+              download_url: null,
               videos: null,
               note: 'Video generated successfully and stored in database'
             };
@@ -609,7 +609,7 @@ const InputBox = () => {
         attempts++;
       }
     }
-    
+   
     console.error('⏰ MiniMax video completion timeout after', maxAttempts, 'attempts');
     throw new Error('MiniMax video generation timeout');
   };
@@ -654,9 +654,9 @@ const InputBox = () => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
-        await (dispatch as any)(loadMoreHistory({ 
-          filters: { mode: 'video' } as any, 
-          paginationParams: { limit: 10 } 
+        await (dispatch as any)(loadMoreHistory({
+          filters: { mode: 'video' } as any,
+          paginationParams: { limit: 10 }
         })).unwrap();
       } catch (e) {
         console.error('[Video] IO loadMore error', e);
@@ -698,7 +698,7 @@ const InputBox = () => {
 
     Array.from(files).forEach((file) => {
       if (newReferences.length >= maxReferences) return;
-      
+     
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -718,7 +718,7 @@ const InputBox = () => {
       }
     });
 
-    // Reset input 
+    // Reset input
     event.target.value = '';
   };
 
@@ -858,7 +858,7 @@ const InputBox = () => {
         // Text to video generation (MiniMax models)
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
           // Text-to-video: No image requirements (pure text generation)
-          
+         
           requestBody = {
             model: selectedModel,
             prompt: prompt,
@@ -882,38 +882,38 @@ const InputBox = () => {
           setError("Please upload at least one image");
           return;
         }
-        
+       
         if (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
           // MiniMax image to video - validate specific requirements
-          
+         
           // I2V-01-Director: Always requires first frame image
           if (selectedModel === "I2V-01-Director" && uploadedImages.length === 0) {
             setError("I2V-01-Director requires a first frame image");
             return;
           }
-          
+         
           // S2V-01: Requires subject reference image (character image)
           if (selectedModel === "S2V-01" && references.length === 0) {
             setError("S2V-01 requires a subject reference image (character image)");
             return;
           }
-          
+         
           // MiniMax-Hailuo-02: first_frame_image required for 512P, optional for 768P/1080P
           if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) {
             setError("MiniMax-Hailuo-02 requires a first frame image for 512P resolution");
             return;
           }
-          
+         
           requestBody = {
-            model: selectedModel, 
+            model: selectedModel,
             prompt: prompt,
             // MiniMax-Hailuo-02: Include duration and resolution, first_frame_image based on requirements
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
               resolution: selectedResolution,
               // first_frame_image is required for 512P, optional for 768P/1080P
-              ...(uploadedImages.length > 0 && { 
-                first_frame_image: uploadedImages[0] 
+              ...(uploadedImages.length > 0 && {
+                first_frame_image: uploadedImages[0]
               }),
               // last_frame_image is optional for supported resolutions
               ...(lastFrameImage && (selectedResolution === "768P" || selectedResolution === "1080P") && {
@@ -921,15 +921,15 @@ const InputBox = () => {
               })
             }),
             // I2V-01-Director: Always requires first_frame_image
-            ...(selectedModel === "I2V-01-Director" && { 
-              first_frame_image: uploadedImages[0] 
+            ...(selectedModel === "I2V-01-Director" && {
+              first_frame_image: uploadedImages[0]
             }),
             // S2V-01: Uses subject_reference instead of first_frame_image
-            ...(selectedModel === "S2V-01" && { 
-              subject_reference: [{ 
-                type: "character", 
-                image: [references[0]] 
-              }] 
+            ...(selectedModel === "S2V-01" && {
+              subject_reference: [{
+                type: "character",
+                image: [references[0]]
+              }]
             }),
             generationType: "image-to-video"
           };
@@ -959,7 +959,7 @@ const InputBox = () => {
           setError("Please upload a video");
           return;
         }
-        
+       
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
           // MiniMax models don't support video to video
           setError("MiniMax models don't support video to video generation");
@@ -1010,7 +1010,7 @@ const InputBox = () => {
       console.log('📤 API Endpoint being used:', apiEndpoint);
       console.log('📤 Is this a MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
       console.log('📤 Is this a Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
-      
+     
       // Debug MiniMax specific fields
       if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
         console.log('📤 MiniMax Debug Info:');
@@ -1020,14 +1020,14 @@ const InputBox = () => {
         console.log('📤 - First frame image:', !!requestBody.first_frame_image);
         console.log('📤 - Subject reference:', requestBody.subject_reference);
         console.log('📤 - Prompt length:', requestBody.prompt?.length || 0);
-        
+       
         if (selectedModel === "S2V-01") {
           console.log('📤 S2V-01 specific debug:');
           console.log('📤 - References array length:', references.length);
           console.log('📤 - Subject reference structure:', JSON.stringify(requestBody.subject_reference, null, 2));
         }
       }
-      
+     
       const api = getApiClient();
       let result: any;
       try {
@@ -1042,7 +1042,7 @@ const InputBox = () => {
         throw new Error(`HTTP ${e?.response?.status || 500}: ${msg}`);
       }
       console.log('📥 API response:', result);
-      
+     
       // Debug MiniMax response structure
       if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
         console.log('📥 MiniMax Response Debug:');
@@ -1066,7 +1066,7 @@ const InputBox = () => {
       console.log('🔍 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
       console.log('🔍 - Has taskId?', !!result.taskId);
       console.log('🔍 - Result object:', result);
-      
+     
       if ((selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && !result.taskId) {
         console.error('❌ MiniMax API response missing taskId:', result);
         throw new Error('MiniMax API response missing taskId');
@@ -1081,11 +1081,11 @@ const InputBox = () => {
         console.log('🎬 TaskId length:', result.taskId ? result.taskId.length : 'undefined');
         console.log('🎬 Using MiniMax status checking for model:', selectedModel);
         console.log('🎬 Model type:', selectedModel);
-        
+       
         // Poll for completion like Runway
         const videoResult = await waitForMiniMaxVideoCompletion(result.taskId, { historyId: result.historyId });
         console.log('🎬 MiniMax video result received:', videoResult);
-        
+       
         if (videoResult.status === 'Success') {
           // Video generation completed successfully
           if (videoResult.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
@@ -1094,7 +1094,7 @@ const InputBox = () => {
             console.log('✅ MiniMax video completed with Zata URL:', videoUrl);
             console.log('📹 Video storage path:', videoResult.videos[0].storagePath);
             console.log('📹 Original URL:', videoResult.videos[0].originalUrl);
-            
+           
             // Store video data for later use
             window.miniMaxVideoData = videoResult.videos[0];
           } else if (videoResult.download_url) {
@@ -1133,21 +1133,21 @@ const InputBox = () => {
 
       // Handle video data from backend response
       let firebaseVideo;
-      
+     
       // Check if we have video data from MiniMax response (prefer this over videoUrl)
       if ((window as any).miniMaxVideoData) {
         const videoData = (window as any).miniMaxVideoData;
         console.log('🎬 Using video data from backend response:', videoData);
-        
+       
         firebaseVideo = {
           id: videoData.id,
           url: videoData.url, // This is the Zata URL
           firebaseUrl: videoData.url, // Same as URL since it's already in our storage
           originalUrl: videoData.originalUrl
         };
-        
+       
         console.log('✅ Video data processed from backend:', firebaseVideo);
-        
+       
         // Clean up the temporary storage
         delete (window as any).miniMaxVideoData;
       } else if (videoUrl) {
@@ -1158,7 +1158,7 @@ const InputBox = () => {
           url: videoUrl,
           originalUrl: videoUrl
         };
-        
+       
         // IMPORTANT: Avoid browser-side fetch of third-party URL (CORS).
         // If URL already points to our storage (returned from backend with history_id), use it directly.
         const isOurStorage = /zata\.ai\//i.test(videoUrl) || /firebasestorage\.googleapis\.com/i.test(videoUrl);
@@ -1218,11 +1218,11 @@ const InputBox = () => {
       // Confirm credit transaction as successful
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
-      
+     
       // Refresh history to show the new video
       dispatch(clearFilters());
       dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
-      
+     
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
         try {
@@ -1233,7 +1233,7 @@ const InputBox = () => {
             getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
             getHistoryEntries({ generationType: 'video_to_video' as any }, { limit: 20 })
           ]);
-          
+         
           const allResults = [
             ...(textToVideo.data || []),
             ...(imageToVideoHyphen.data || []),
@@ -1241,19 +1241,19 @@ const InputBox = () => {
             ...(videoToVideoHyphen.data || []),
             ...(videoToVideoUnderscore.data || [])
           ];
-          
+         
           const byId: Record<string, any> = {};
           allResults.forEach((entry: any) => {
             byId[entry.id] = entry;
           });
-          
+         
           const combined = Object.values(byId);
           const sortedCombined = combined.sort((a: any, b: any) => {
             const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
             const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
             return timestampB - timestampA;
           });
-          
+         
           setExtraVideoEntries(sortedCombined);
           console.log('[VideoPage] refreshed extra video entries after generation:', sortedCombined.length);
         } catch (e) {
@@ -1302,7 +1302,7 @@ const InputBox = () => {
     <>
      {historyEntries.length > 0 && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
-          <div className="py-6 pl-4 "> 
+          <div className="py-6 pl-4 ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
             <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation History</h2>
@@ -1382,11 +1382,11 @@ const InputBox = () => {
                       </svg>
                     </div>
                     <h3 className="text-sm font-medium text-white/70">
-                      {new Date(date).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
+                      {new Date(date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
                       })}
                     </h3>
                   </div>
@@ -1453,7 +1453,7 @@ const InputBox = () => {
                         videosIsArray: Array.isArray(entry.videos),
                         videosContent: entry.videos
                       });
-                      
+                     
                       return mediaItems.map((video: any) => (
                         <div
                           key={`${entry.id}-${video.id}`}
@@ -1492,8 +1492,8 @@ const InputBox = () => {
                             <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
                               {(video.firebaseUrl || video.url) ? (
                                 <div className="relative w-full h-full">
-                                  <video 
-                                    src={video.firebaseUrl || video.url} 
+                                  <video
+                                    src={video.firebaseUrl || video.url}
                                     className="w-full h-full object-cover"
                                     muted
                                     onLoadedData={(e) => {
@@ -1507,7 +1507,7 @@ const InputBox = () => {
                                         ctx.drawImage(videoElement, 0, 0);
                                         // You could use this canvas as thumbnail if needed
                                       }
-                                      
+                                     
                                       // Remove shimmer when video loads
                                       setTimeout(() => {
                                         const shimmer = document.querySelector(`[data-video-id="${entry.id}-${video.id}"] .shimmer`) as HTMLElement;
@@ -1562,7 +1562,7 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      
+     
       {/* Main Input Box */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
         <div className={`rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${
@@ -1584,7 +1584,7 @@ const InputBox = () => {
                 }`}
                 rows={1}
               style={{
-                  minHeight: '24px', 
+                  minHeight: '24px',
                   maxHeight: '96px',
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
@@ -1628,14 +1628,14 @@ const InputBox = () => {
                             </svg>
                           </button>
                         </div>
-                        
+                       
                         <div className="text-xs text-white/60 mb-3 text-center">
                           Click a movement to select it, then add to your prompt
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 mb-3">
                           {[
-                            "Tilt up", "Tilt down", "Pan left", "Pan right", 
+                            "Tilt up", "Tilt down", "Pan left", "Pan right",
                             "Zoom in", "Zoom out", "Push in", "Push out",
                             "Rotate left", "Rotate right", "Dolly in", "Dolly out"
                           ].map((movement) => (
@@ -1689,15 +1689,15 @@ const InputBox = () => {
                 {/* References Upload (for video-to-video and S2V-01 character reference) */}
               {(generationMode === "video_to_video" || (generationMode === "image_to_video" && selectedModel === "S2V-01")) && (
                 <div className="relative">
-                  <label 
+                  <label
                     className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${
                       (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                       (generationMode === "video_to_video" && references.length >= 4)
-                        ? 'opacity-50 cursor-not-allowed' 
+                        ? 'opacity-50 cursor-not-allowed'
                         : ''
                     }`}
-                    title={generationMode === "image_to_video" && selectedModel === "S2V-01" 
-                      ? `Character Reference (${references.length}/1)` 
+                    title={generationMode === "image_to_video" && selectedModel === "S2V-01"
+                      ? `Character Reference (${references.length}/1)`
                       : `References (${references.length}/4)`
                     }
                   >
@@ -1706,11 +1706,11 @@ const InputBox = () => {
                       className={`transition-all duration-200 ${
                         (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                         (generationMode === "video_to_video" && references.length >= 4)
-                          ? 'text-gray-400' 
+                          ? 'text-gray-400'
                           : 'text-green-400 hover:text-green-300 hover:scale-110'
                       }`}
                     />
-                    
+                   
                     {/* References Count Badge */}
                     {references.length > 0 && (
                       <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
@@ -1731,13 +1731,13 @@ const InputBox = () => {
                                (generationMode === "video_to_video" && references.length >= 4)}
                     />
                   </label>
-                  
+                 
                   {/* References Preview Popup */}
                   {references.length > 0 && (
                     <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
                       <div className="text-xs text-white/60 mb-2">
-                        {generationMode === "image_to_video" && selectedModel === "S2V-01" 
-                          ? `Character Reference (${references.length}/1)` 
+                        {generationMode === "image_to_video" && selectedModel === "S2V-01"
+                          ? `Character Reference (${references.length}/1)`
                           : `References (${references.length}/4)`
                         }
                       </div>
@@ -1745,8 +1745,8 @@ const InputBox = () => {
                         {references.map((ref, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                              <img 
-                                src={ref} 
+                              <img
+                                src={ref}
                                 alt={`Reference ${index + 1}`}
                                 className="w-full h-full object-cover"
                               />
@@ -1769,10 +1769,10 @@ const InputBox = () => {
               )}
 
               {/* Image Upload for Runway Models (image-to-video only) */}
-              {generationMode === "image_to_video" && 
+              {generationMode === "image_to_video" &&
                !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && (
                 <div className="relative">
-                  <label 
+                  <label
                     className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                     title="Upload Image"
                   >
@@ -1797,7 +1797,7 @@ const InputBox = () => {
               {/* MiniMax Image Uploads - Consolidated (Image-to-Video only) */}
               {generationMode === "image_to_video" && (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "I2V-01-Director") && (
                 <div className="relative">
-                  <label 
+                  <label
                     className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                     title={selectedModel === "MiniMax-Hailuo-02" ? "Upload First Frame Image" : "Upload First Frame Image (Required)"}
                   >
@@ -1815,7 +1815,7 @@ const InputBox = () => {
                       onChange={handleImageUpload}
                     />
                   </label>
-                  
+                 
                   {/* Model Requirements Helper */}
                   {/* <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
                     <div className="text-xs text-white/80 mb-2 font-medium">Model Requirements:</div>
@@ -1837,7 +1837,7 @@ const InputBox = () => {
               {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) - Image-to-Video only */}
               {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
                 <div className="relative">
-                  <label 
+                  <label
                     className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                     title="Upload Last Frame Image (Optional)"
                   >
@@ -1847,8 +1847,8 @@ const InputBox = () => {
                       width={22}
                       height={22}
                       className={`transition-all duration-200 ${
-                        lastFrameImage 
-                          ? 'text-green-400 hover:text-green-300 hover:scale-110' 
+                        lastFrameImage
+                          ? 'text-green-400 hover:text-green-300 hover:scale-110'
                           : 'text-white/60 hover:text-white/80 hover:scale-110'
                       }`}
                     />
@@ -1859,15 +1859,15 @@ const InputBox = () => {
                       onChange={handleLastFrameImageUpload}
                     />
                   </label>
-                  
+                 
                   {/* Last Frame Image Preview */}
                   {lastFrameImage && (
                     <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
                       <div className="text-xs text-white/60 mb-2">Last Frame Image</div>
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                          <img 
-                            src={lastFrameImage} 
+                          <img
+                            src={lastFrameImage}
                             alt="Last Frame"
                             className="w-full h-full object-cover"
                           />
@@ -1890,7 +1890,7 @@ const InputBox = () => {
               {/* Video Upload (only for video-to-video) */}
               {generationMode === "video_to_video" && (
                 <div className="relative">
-                  <label 
+                  <label
                     className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                     title="Upload Video"
                   >
@@ -1918,7 +1918,7 @@ const InputBox = () => {
             <button
               onClick={handleGenerate}
                 disabled={(() => {
-                  const disabled = isGenerating || !prompt.trim() || 
+                  const disabled = isGenerating || !prompt.trim() ||
                     // Mode-specific validations
                     (generationMode === "image_to_video" && selectedModel !== "S2V-01" && uploadedImages.length === 0) ||
                     (generationMode === "video_to_video" && !uploadedVideo) ||
@@ -1926,7 +1926,7 @@ const InputBox = () => {
                     (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
                     (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
                     (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0);
-                  
+                 
                   // Debug logging for S2V-01
                   if (selectedModel === "S2V-01") {
                     console.log('🔍 S2V-01 Validation Debug:', {
@@ -1937,7 +1937,7 @@ const InputBox = () => {
                       disabled
                     });
                   }
-                  
+                 
                   return disabled;
                 })()}
               className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
@@ -1956,7 +1956,7 @@ const InputBox = () => {
                 <div className="flex gap-2">
                   {uploadedImages.map((image, index) => (
                     <div key={index} className="relative group">
-                      <div 
+                      <div
                         className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                         onClick={() => {
                           const previewEntry: HistoryEntry = {
@@ -1975,8 +1975,8 @@ const InputBox = () => {
                           setPreview({ entry: previewEntry, video: image });
                         }}
                       >
-                        <img 
-                          src={image} 
+                        <img
+                          src={image}
                           alt={`Uploaded ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
@@ -2001,7 +2001,7 @@ const InputBox = () => {
               <div className="mb-3">
                 <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
                 <div className="relative group">
-                  <div 
+                  <div
                     className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                     onClick={() => {
                       const previewEntry: HistoryEntry = {
@@ -2056,20 +2056,22 @@ const InputBox = () => {
                   {generationMode === "image_to_video" ? "Image → Video" : "Video → Video"}
                 </span>
                 <span className="px-2 py-1 bg-white/10 rounded-md">
-                  Model: {selectedModel === "gen4_turbo" ? "Gen-4 Turbo" : 
-                          selectedModel === "gen3a_turbo" ? "Gen-3a Turbo" : 
+                  Model: {selectedModel === "gen4_turbo" ? "Gen-4 Turbo" :
+                          selectedModel === "gen3a_turbo" ? "Gen-3a Turbo" :
                           selectedModel === "gen4_aleph" ? "Gen-4 Aleph" : selectedModel}
                 </span>
               </div> */}
-              
+             
 
 
               {/* Dropdowns */}
               <div className="flex items-center gap-2">
-                <VideoModelsDropdown 
+                <VideoModelsDropdown
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   generationMode={generationMode}
+                  selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
+                  selectedResolution={selectedModel.includes("MiniMax") ? selectedResolution : undefined}
                 />
 
                 {/* Dynamic Controls Based on Model Capabilities */}
@@ -2091,20 +2093,20 @@ const InputBox = () => {
                       </>
                     );
                   }
-                  
+                 
                   // Runway Models: Full customization
                   if (!(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01")) {
                     return (
                       <>
                         {/* Aspect Ratio - Always shown for Runway models */}
-                        <VideoFrameSizeDropdown 
+                        <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
                         />
                         {/* Duration - For image→video and text→video modes */}
                         {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown 
+                          <VideoDurationDropdown
                             selectedDuration={duration}
                             onDurationChange={setDuration}
                           />
@@ -2112,7 +2114,7 @@ const InputBox = () => {
                       </>
                     );
                   }
-                  
+                 
                   // MiniMax-Hailuo-02: Configurable resolution and duration
                   if (selectedModel === "MiniMax-Hailuo-02") {
                     return (
@@ -2125,8 +2127,8 @@ const InputBox = () => {
                               <button
                                 onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
                                 className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-                                  selectedResolution !== '1080P' 
-                                    ? 'bg-white text-black' 
+                                  selectedResolution !== '1080P'
+                                    ? 'bg-white text-black'
                                     : 'bg-transparent text-white/90 hover:bg-white/5'
                                 }`}
                               >
@@ -2208,8 +2210,8 @@ const InputBox = () => {
                               <button
                                 onClick={() => setDurationDropdownOpen(!durationDropdownOpen)}
                                 className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-                                  selectedMiniMaxDuration !== 6 
-                                    ? 'bg-white text-black' 
+                                  selectedMiniMaxDuration !== 6
+                                    ? 'bg-white text-black'
                                     : 'bg-transparent text-white/90 hover:bg-white/5'
                                 }`}
                               >
@@ -2250,7 +2252,7 @@ const InputBox = () => {
                       </>
                     );
                   }
-                  
+                 
                   return null;
                 })()}
 

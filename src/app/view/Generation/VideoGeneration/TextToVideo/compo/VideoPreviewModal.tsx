@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Share } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 
 interface VideoPreviewModalProps {
@@ -76,6 +77,58 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
   };
 
+  const shareVideo = async (url: any) => {
+    if (typeof url !== 'string') {
+      console.error('Invalid URL for share:', url);
+      return;
+    }
+
+    try {
+      if (!navigator.share) {
+        await navigator.clipboard.writeText(url);
+        alert('Video URL copied to clipboard!');
+        return;
+      }
+
+      const path = toProxyPath((preview.video as any)?.storagePath || url);
+      const downloadUrl = toProxyDownloadUrl(path || url);
+      if (!downloadUrl) return;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      
+      const blob = await response.blob();
+      const baseName = (path || 'video').split('/').pop() || `video-${Date.now()}.mp4`;
+      const fileName = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `video-${Date.now()}.mp4`;
+      
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      await navigator.share({
+        title: 'Wild Mind AI Generated Video',
+        text: `Check out this AI-generated video!\n${getCleanPrompt(preview.entry.prompt).substring(0, 100)}...`,
+        files: [file]
+      });
+      
+      console.log('Video shared successfully');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Share cancelled by user');
+        return;
+      }
+      
+      console.error('Share failed:', error);
+      try {
+        await navigator.clipboard.writeText(url);
+        alert('Sharing not supported. Video URL copied to clipboard!');
+      } catch (copyError) {
+        console.error('Copy failed:', copyError);
+        alert('Unable to share video. Please try downloading instead.');
+      }
+    }
+  };
+
   const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
   const displayedAspect = preview.entry.frameSize || '16:9';
 
@@ -131,16 +184,17 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const isLongPrompt = cleanPrompt.length > 280;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <button aria-label="Close" onClick={onClose} className="absolute top-3 right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white z-30">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <path d="M18 6L6 18" />
-          <path d="M6 6l12 12" />
-        </svg>
-      </button>
-      <div className="relative w-full max-w-[1200px] max-h-[90vh] bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-col md:flex-row h-full">
-          <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Content */}
+        <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+          {/* Media */}
+          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {videoUrl && videoUrl.length > 0 ? (
               videoUrl.startsWith('data:image/') ? (
                 <img 
@@ -188,7 +242,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
               onClick={() => {
                 if (rawVideoUrl && typeof rawVideoUrl === 'string') {
                   const target = (preview.video as any)?.storagePath || rawVideoUrl;
@@ -204,71 +258,95 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               </svg>
             </button>
           </div>
-          
-          <div className="w-full md:w-[380px] p-5 md:p-6 bg-white/5 backdrop-blur-xl border-l border-white/10 text-white overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm opacity-80">Prompt</div>
+
+          {/* Sidebar */}
+          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+            {/* Action Buttons */}
+            <div className="mb-4 flex gap-2">
               <button
                 onClick={() => downloadVideo(videoUrl)}
-                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                   <path d="M12 3v12" />
                   <path d="M7 10l5 5 5-5" />
                   <path d="M5 19h14" />
                 </svg>
-                <span className="text-sm">
-                  {videoUrl && videoUrl.startsWith('data:image/') ? 'Download Image' : 'Download Video'}
-                </span>
+                {videoUrl && videoUrl.startsWith('data:image/') ? 'Download Image' : 'Download Video'}
+              </button>
+              
+              <button
+                onClick={() => shareVideo(videoUrl)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+              >
+                <Share className="h-4 w-4" />
+                Share
               </button>
             </div>
-            
-            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10 relative">
-              <div className="flex items-start gap-2">
-                <div className={`opacity-90 leading-relaxed flex-1 max-w-[280px] break-words whitespace-pre-wrap ${isPromptExpanded ? 'max-h-60 overflow-y-auto pr-1' : 'max-h-40 overflow-hidden'}`}>{cleanPrompt}</div>
-                <button
+
+            {/* Prompt */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+                <span>Prompt</span>
+                <button 
                   onClick={() => {
                     navigator.clipboard.writeText(cleanPrompt);
                   }}
-                  className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
                   title="Copy prompt"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white/60 hover:text-white">
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                     <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                   </svg>
                 </button>
               </div>
-              {!isPromptExpanded && isLongPrompt && (
-                <div className="pointer-events-none absolute left-3 right-3 bottom-10 h-10 bg-gradient-to-t from-black/30 to-transparent" />
-              )}
-              {isLongPrompt && (
-                <button
-                  onClick={() => setIsPromptExpanded(v => !v)}
-                  className="mt-2 text-xs text-white/80 hover:text-white underline"
-                >
-                  {isPromptExpanded ? 'See less' : 'See more'}
-                </button>
-              )}
+              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+                {cleanPrompt}
+              </div>
             </div>
             
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Model</span>
-                <span className="opacity-90">{preview.entry.model}</span>
+            {/* Date */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleString()}</div>
+            </div>
+            
+            {/* Details */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white text-sm">{preview.entry.model}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Style:</span>
+                  <span className="text-white text-sm">{displayedStyle}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Aspect ratio:</span>
+                  <span className="text-white text-sm">{displayedAspect}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Duration:</span>
+                  <span className="text-white text-sm">{(preview.entry as any).duration || '—'}s</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Format:</span>
+                  <span className="text-white text-sm">Video</span>
+                </div>
               </div>
-              {/* <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Style</span>
-                <span className="opacity-90">{displayedStyle}</span>
-              </div> */}
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Aspect ratio</span>
-                <span className="opacity-90">{displayedAspect}</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Generated</span>
-                <span className="opacity-90">{new Date(preview.entry.timestamp).toLocaleString()}</span>
-              </div>
+            </div>
+
+            {/* Action Button */}
+            <div className="mt-6">
+              <button 
+                onClick={onClose}
+                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+              >
+                Close Preview
+              </button>
             </div>
           </div>
         </div>

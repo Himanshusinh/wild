@@ -16,7 +16,7 @@ interface UIState {
 }
 
 const initialState: UIState = {
-  currentView: 'landing',
+  currentView: 'home', // Default to home instead of landing
   currentGenerationType: 'text-to-image',
   activeDropdown: null,
   sidebarExpanded: false,

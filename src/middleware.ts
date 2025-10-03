@@ -36,22 +36,40 @@ export function middleware(req: NextRequest) {
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
 
+  // Temporary bypass when backend runs on ngrok (cookie is on ngrok domain and not visible here)
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const bypassForNgrok = /ngrok/i.test(apiBase);
+  if (bypassForNgrok) {
+    return res;
+  }
+
+  // Dev bypass: when frontend runs on localhost and API is on a different domain (e.g., ngrok),
+  // the httpOnly session cookie is scoped to the API domain and is not visible here.
+  // Allow navigation without enforcing the cookie in non-production environments.
+  const host = req.headers.get('host') || '';
+  if (process.env.NODE_ENV !== 'production' || host.includes('localhost')) {
+    return res;
+  }
+
   // Allow public pages
   const isPublic = (
     pathname === '/' ||
     pathname.startsWith('/view/Landingpage') ||
+    pathname.startsWith('/view/HomePage') ||
     pathname.startsWith('/view/ArtStation') ||
     pathname.startsWith('/view/signup') ||
     pathname.startsWith('/view/signin') ||
-    pathname.startsWith('/view/forgot-password')
+    pathname.startsWith('/view/forgot-password') ||
+    pathname.startsWith('/view/pricing') ||
+    pathname.startsWith('/view/workflows')
   );
   if (isPublic) return res;
 
-  // Require session cookie for all other matched routes
+  // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
   const hasSession = req.cookies.get('app_session');
   if (!hasSession) {
     const url = req.nextUrl.clone();
-    url.pathname = '/view/Landingpage';
+    url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }

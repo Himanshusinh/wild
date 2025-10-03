@@ -13,22 +13,18 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
 
 export default function App() {
   const dispatch = useAppDispatch();
-  const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'landing');
+  const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home'); // Default to 'home' instead of 'landing'
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
   
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
 
-  // Check if user has visited before (stored in localStorage) - only on first load
+  // Always default to home page on first load
   useEffect(() => {
-    if (isFirstLoad.current) {
-      const hasVisited = localStorage.getItem('wild-mind-visited');
-      console.log('🔍 App - First load check:', { hasVisited, currentView });
-      if (hasVisited && currentView === 'landing') {
-        console.log('🔍 App - Setting currentView to home due to localStorage');
-        dispatch(setCurrentView('home'));
-      }
+    if (isFirstLoad.current && currentView === 'landing') {
+      console.log('🔍 App - Setting currentView to home on first load');
+      dispatch(setCurrentView('home'));
       isFirstLoad.current = false;
     }
   }, [dispatch, currentView]); // Only run once on mount
