@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, MessageCircle } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
+import { useAppDispatch } from '@/store/hooks';
+import axiosInstance from '@/lib/axiosInstance';
+import { removeHistoryEntry } from '@/store/slices/historySlice';
 
 interface StickerImagePreviewProps {
   isOpen: boolean;
@@ -18,6 +21,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const dispatch = useAppDispatch();
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -127,6 +131,18 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      onClose();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      alert('Failed to delete generation');
+    }
+  };
+
   const shareImage = async () => {
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -188,8 +204,12 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
       <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <div className="text-white/70 text-sm">{entry.model}</div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm" onClick={handleDelete}>Delete</button>
+            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         {/* Content */}
