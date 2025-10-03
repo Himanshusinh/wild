@@ -254,6 +254,19 @@ const SidePannelFeatures = ({
                 </div>)}
             
         </div> 
+
+        {/* Art Station */}
+        <div>
+            <div 
+                onClick={() => router.push('/view/ArtStation')}
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
+                  (pathname?.includes('/ArtStation')) ? 'bg-white/10' : ''
+                }`}
+            >
+                <Image src="/icons/imagegenerationwhite.svg" alt="Art Station" width={30} height={30} />
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
+            </div>
+        </div>
         
          {/* <div>
             <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
