@@ -24,6 +24,7 @@ export default function ArtStationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
+  const [hasMore, setHasMore] = useState<boolean>(true)
   const [preview, setPreview] = useState<{ kind: 'image' | 'video' | 'audio'; url: string; item: PublicItem } | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
@@ -32,14 +33,29 @@ export default function ArtStationPage() {
     try {
       setLoading(true)
       const url = new URL(`${API_BASE}/api/feed`)
-      url.searchParams.set('limit', '10')
+      url.searchParams.set('limit', '20')
       if (!reset && cursor) url.searchParams.set('cursor', cursor)
       const res = await fetch(url.toString(), { credentials: 'include' })
       const data = await res.json()
       const payload = data?.data || data
-      const newItems: PublicItem[] = payload?.items || []
-      setItems(prev => reset ? newItems : [...prev, ...newItems])
-      setCursor(payload?.nextCursor)
+      const meta = payload?.meta || {}
+      const normalizeDate = (d: any) => typeof d === 'string' ? d : (d && typeof d === 'object' && typeof d._seconds === 'number' ? new Date(d._seconds * 1000).toISOString() : undefined)
+      const newItems: PublicItem[] = (payload?.items || []).map((it: any) => ({
+        ...it,
+        createdAt: normalizeDate(it?.createdAt) || it?.createdAt,
+        updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
+      }))
+      setItems(prev => {
+        if (reset) return newItems
+        const map = new Map<string, PublicItem>()
+        prev.forEach(it => map.set(it.id, it))
+        newItems.forEach(it => map.set(it.id, it))
+        return Array.from(map.values())
+      })
+      const nextCur = meta?.nextCursor ?? payload?.nextCursor
+      setCursor(nextCur)
+      const inferredHasMore = typeof meta?.hasMore === 'boolean' ? meta.hasMore : Boolean(nextCur)
+      setHasMore(inferredHasMore)
       setError(null)
     } catch (e: any) {
       setError(e?.message || 'Failed to load feed')
@@ -57,7 +73,7 @@ export default function ArtStationPage() {
     const observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0]
       if (!entry.isIntersecting) return
-      if (!cursor || loading || loadingMoreRef.current) return
+      if (!hasMore || loading || loadingMoreRef.current) return
       loadingMoreRef.current = true
       try {
         await fetchFeed(false)
@@ -67,7 +83,20 @@ export default function ArtStationPage() {
     }, { root: null, rootMargin: '200px', threshold: 0 })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [cursor, loading])
+  }, [hasMore, loading])
+
+  // Auto-fill viewport on initial loads so the page has enough content to scroll
+  useEffect(() => {
+    const needMore = () => (document.documentElement.scrollHeight - window.innerHeight) < 800
+    const run = async () => {
+      let guard = 0
+      while (!loading && hasMore && needMore() && guard < 5) {
+        await fetchFeed(false)
+        guard += 1
+      }
+    }
+    run()
+  }, [items, hasMore, loading])
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''

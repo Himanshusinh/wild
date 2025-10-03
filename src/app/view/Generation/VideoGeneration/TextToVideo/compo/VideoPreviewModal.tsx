@@ -35,6 +35,12 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
+  const toFrontendProxyResourceUrl = (urlOrPath: any) => {
+    if (!urlOrPath || typeof urlOrPath !== 'string') return '';
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+  };
+
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
     const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
     return match?.[1]?.trim();
@@ -185,8 +191,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() => {
                 if (rawVideoUrl && typeof rawVideoUrl === 'string') {
-                  const path = toProxyPath((preview.video as any)?.storagePath || rawVideoUrl);
-                  window.open(toProxyResourceUrl(path), '_blank');
+                  const target = (preview.video as any)?.storagePath || rawVideoUrl;
+                  window.open(toFrontendProxyResourceUrl(target), '_blank');
                 }
               }}
             >

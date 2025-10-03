@@ -40,6 +40,12 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
     }
   };
 
+  const toFrontendProxyResourceUrl = (urlOrPath?: string) => {
+    if (!urlOrPath) return '';
+    const path = urlOrPath.replace(/^https?:\/\/[^/]+\/devstoragev1\//, '');
+    return `/api/proxy/resource/${encodeURIComponent(path)}`;
+  };
+
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
     // Normalize newlines
@@ -127,7 +133,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(selectedImage.url, '_blank')}
+              onClick={() => window.open(toFrontendProxyResourceUrl(selectedImage.url), '_blank')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
