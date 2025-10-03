@@ -174,7 +174,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             >
               <span>music-1.5</span>
               {creditInfo.hasCredits && (
-                <span className="text-xs text-blue-400">{creditInfo.displayText}</span>
+                <span className="text-xs opacity-70">{creditInfo.displayText}</span>
               )}
             </button>
           </div>
