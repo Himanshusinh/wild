@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { X, Download, ExternalLink, Copy, Check, Share } from 'lucide-react';
+import { X, Download, ExternalLink, Copy, Check, Share, MessageCircle } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 
 interface StickerImagePreviewProps {
@@ -100,58 +100,69 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     }
   };
 
-  const shareImage = async (url: string) => {
+  const exportForWhatsApp = async (single?: boolean) => {
     try {
-      if (!navigator.share) {
-        await navigator.clipboard.writeText(url);
-        alert('Image URL copied to clipboard!');
-        return;
-      }
+      const imgs = (entry.images || []).map((im: any) => ({ url: im?.url || im?.originalUrl })).filter((i: any) => i.url);
+      if (imgs.length === 0) return;
+      const body: any = {
+        name: 'WildMind Stickers',
+        author: (entry as any)?.createdBy?.username || 'WildMind AI',
+        images: single ? [imgs[selectedImageIndex] || imgs[0]] : imgs,
+        single: Boolean(single || imgs.length === 1),
+        coverIndex: 0,
+      };
+      const res = await (await import('@/lib/axiosInstance')).default.post('/api/stickers/export', body, { responseType: 'blob' } as any);
+      const blob = res.data as Blob;
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      const contentType = res.headers['content-type'] || '';
+      a.download = contentType.includes('zip') ? 'whatsapp-pack.zip' : 'sticker.webp';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Export failed:', e);
+    }
+  };
 
-      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
-      if (!downloadUrl) return;
-      
-      const response = await fetch(downloadUrl, {
-        credentials: 'include',
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      });
-      
-      const blob = await response.blob();
-      const fileName = (selectedImagePath || 'sticker').split('/').pop() || `sticker-${Date.now()}.png`;
-      
-      const file = new File([blob], fileName, { type: blob.type });
-      
-      await navigator.share({
-        title: 'Wild Mind AI Generated Sticker',
-        text: `Check out this AI-generated sticker!\n${getUserPrompt(entry.prompt).substring(0, 100)}...`,
-        files: [file]
-      });
-      
-      console.log('Image shared successfully');
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('Share cancelled by user');
+  const shareImage = async () => {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const shareUrl = `${origin}/view/ArtStation?gen=${entry.id}`;
+      if (navigator.share) {
+        await navigator.share({
+          title: 'WildMind Art Station',
+          text: getUserPrompt(entry.prompt),
+          url: shareUrl
+        });
         return;
       }
-      
-      console.error('Share failed:', error);
-      try {
-        await navigator.clipboard.writeText(url);
-        alert('Sharing not supported. Image URL copied to clipboard!');
-      } catch (copyError) {
-        console.error('Copy failed:', copyError);
-        alert('Unable to share image. Please try downloading instead.');
-      }
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Public link copied to clipboard!');
+    } catch (e) {
+      console.error('Share failed:', e);
     }
   };
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    // New backend prompt format
-    const m = rawPrompt.match(/Create a fun and engaging sticker design of:\s*(.+?)\s*\./i);
-    if (m && m[1]) return m[1].trim();
-    // Fallback to older prefix style
-    return rawPrompt.replace(/^Sticker:\s*/i, '').trim();
+    const normalized = rawPrompt.replace(/\r\n/g, '\n').trim();
+    // New backend prompt formats (capture after the first colon up to period/newline)
+    const m1 = normalized.match(/Create\s+a\s+.*?sticker.*?of:\s*([^\n\.]+)(?:[\n\.]|$)/i);
+    if (m1 && m1[1]) return m1[1].trim();
+    // Fallback: old format
+    const m2 = normalized.match(/^Sticker:\s*([^\n\.]+)(?:[\n\.]|$)/i);
+    if (m2 && m2[1]) return m2[1].trim();
+    // Generic: take text after first ':' up to first period/newline
+    const c = normalized.indexOf(':');
+    if (c !== -1) {
+      const after = normalized.slice(c + 1);
+      const cut = after.search(/[\n\.]/);
+      return (cut !== -1 ? after.slice(0, cut) : after).trim();
+    }
+    return normalized;
   };
 
   const handleCopyPrompt = async () => {
@@ -225,11 +236,19 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
               </button>
 
               <button
-                onClick={() => shareImage(selectedImage?.url)}
+                onClick={() => shareImage()}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <Share className="h-4 w-4" />
                 Share
+              </button>
+              <button
+                onClick={() => exportForWhatsApp(false)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-400/40 bg-emerald-600/20 hover:bg-emerald-600/30 text-sm"
+                title="Export for WhatsApp"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
               </button>
             </div>
 

@@ -155,7 +155,16 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
               </button>
 
               <button
-                onClick={() => shareImage(selectedImage?.url)}
+                onClick={() => {
+                  if (navigator.share && selectedImage?.url) {
+                    navigator.share({
+                      title: 'Check out this image',
+                      url: selectedImage.url,
+                    });
+                  } else if (selectedImage?.url) {
+                    window.prompt('Copy and share this image URL:', selectedImage.url);
+                  }
+                }}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <Share className="h-4 w-4" />

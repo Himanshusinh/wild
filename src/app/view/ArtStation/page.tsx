@@ -28,10 +28,14 @@ export default function ArtStationPage() {
   const [cursor, setCursor] = useState<string | undefined>()
   const [hasMore, setHasMore] = useState<boolean>(true)
   const [preview, setPreview] = useState<{ kind: 'image' | 'video' | 'audio'; url: string; item: PublicItem } | null>(null)
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
+  const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
+  const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const navigateForType = (type?: string) => {
@@ -84,7 +88,7 @@ export default function ArtStationPage() {
       setLoading(true)
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
       const url = new URL(`${baseUrl}/api/feed`)
-      url.searchParams.set('limit', '50') // Increased limit to get more items
+      url.searchParams.set('limit', '20')
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
@@ -92,8 +96,7 @@ export default function ArtStationPage() {
       console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
       
       const res = await fetch(url.toString(), { 
-        credentials: 'omit',
-        headers: { 'ngrok-skip-browser-warning': 'true', 'Accept': 'application/json' }
+        credentials: 'include'
       })
       
       if (!res.ok) {
@@ -106,8 +109,14 @@ export default function ArtStationPage() {
       console.log('[ArtStation] Raw response:', data)
       
       const payload = data?.data || data
-      const newItems: PublicItem[] = payload?.items || []
-      const newCursor = payload?.nextCursor || payload?.meta?.nextCursor
+      const meta = payload?.meta || {}
+      const normalizeDate = (d: any) => typeof d === 'string' ? d : (d && typeof d === 'object' && typeof d._seconds === 'number' ? new Date(d._seconds * 1000).toISOString() : undefined)
+      const newItems: PublicItem[] = (payload?.items || []).map((it: any) => ({
+        ...it,
+        createdAt: normalizeDate(it?.createdAt) || it?.createdAt,
+        updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
+      }))
+      const newCursor = meta?.nextCursor || payload?.nextCursor
       
       console.log('[ArtStation] Parsed feed response:', { 
         itemsCount: newItems.length, 
@@ -121,9 +130,39 @@ export default function ArtStationPage() {
         console.log('[ArtStation] Sample item:', newItems[0])
       }
       
-      setItems(prev => reset ? newItems : [...prev, ...newItems])
+      setItems(prev => {
+        if (reset) return newItems
+        const map = new Map<string, PublicItem>()
+        prev.forEach(it => map.set(it.id, it))
+        newItems.forEach(it => map.set(it.id, it))
+        return Array.from(map.values())
+      })
       setCursor(newCursor)
+      const inferredHasMore = typeof meta?.hasMore === 'boolean' ? meta.hasMore : Boolean(newCursor)
+      setHasMore(inferredHasMore)
       setError(null)
+
+      // Open deep-linked generation once when it appears
+      if (deepLinkId) {
+        const pool = reset ? newItems : [...items, ...newItems]
+        const found = pool.find(i => i.id === deepLinkId)
+        if (found) {
+          const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
+          const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
+          if (media?.url) {
+            setSelectedImageIndex(0)
+            setSelectedVideoIndex(0)
+            setSelectedAudioIndex(0)
+            setPreview({ kind, url: media.url, item: found })
+            setDeepLinkId(null)
+          } else if (inferredHasMore) {
+            // keep fetching until we get the media
+            await fetchFeed(false)
+          }
+        } else if (inferredHasMore) {
+          await fetchFeed(false)
+        }
+      }
     } catch (e: any) {
       console.error('[ArtStation] Feed fetch error:', e)
       setError(e?.message || 'Failed to load feed')
@@ -132,7 +171,14 @@ export default function ArtStationPage() {
     }
   }
 
-  useEffect(() => { fetchFeed(true) }, [])
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const gen = params.get('gen')
+      if (gen) setDeepLinkId(gen)
+    } catch {}
+    fetchFeed(true)
+  }, [])
 
   // Infinite scroll observer
   useEffect(() => {
@@ -181,6 +227,30 @@ export default function ArtStationPage() {
     }
     run()
   }, [items, hasMore, loading])
+
+  // Resolve deep link after data loads; fetch more until found or no more
+  useEffect(() => {
+    if (!deepLinkId) return
+    // try to find in current items
+    const found = items.find(i => i.id === deepLinkId)
+    if (found) {
+      const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
+      const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
+      if (media?.url) {
+        setSelectedImageIndex(0)
+        setSelectedVideoIndex(0)
+        setSelectedAudioIndex(0)
+        setPreview({ kind, url: media.url, item: found })
+        setDeepLinkId(null)
+      }
+      return
+    }
+    // Not found; load more if available and not currently loading
+    if (hasMore && !loading) {
+      fetchFeed(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, deepLinkId, hasMore, loading])
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''
@@ -313,7 +383,7 @@ export default function ArtStationPage() {
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           <div className="columns-1 sm:columns-2 md:columns-4 lg:columns-4 xl:columns-4 gap-2">
-            {cards.map(({ item, media, kind }, idx) => {
+             {cards.map(({ item, media, kind }, idx) => {
               // Clean aspect ratios for organized grid
               const ratios = ['1/1', '4/3', '3/4', '16/9', '9/16', '2/1', '1/2', '3/2', '2/3']
               const randomRatio = ratios[idx % ratios.length]
@@ -328,7 +398,12 @@ export default function ArtStationPage() {
                   className="break-inside-avoid mb-2 cursor-pointer group relative"
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
-                  onClick={() => setPreview({ kind, url: media.url, item })}
+                   onClick={() => {
+                     setSelectedImageIndex(0)
+                     setSelectedVideoIndex(0)
+                     setSelectedAudioIndex(0)
+                     setPreview({ kind, url: media.url, item })
+                   }}
                 >
                   <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
                     <div style={{ aspectRatio: randomRatio }}>
@@ -345,7 +420,7 @@ export default function ArtStationPage() {
                         {/* Profile Section */}
                         <div className="flex items-center gap-2">
                           {item.createdBy?.photoURL ? (
-                            <img src={item.createdBy.photoURL} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full" />
+                            <img src={`/api/proxy/external?url=${encodeURIComponent(item.createdBy.photoURL)}`} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-white/20" />
                           )}
@@ -407,7 +482,7 @@ export default function ArtStationPage() {
           {/* Preview Modals */}
           {preview && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-              <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+                <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
                   <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
@@ -417,21 +492,33 @@ export default function ArtStationPage() {
                 <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
                   {/* Media */}
                   <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1">
-                    {preview.kind === 'image' && (
-                      <div className="relative w-full h-full">
-                        <Image src={preview.url} alt={preview.item.prompt || ''} fill className="object-contain" />
-                      </div>
-                    )}
-                    {preview.kind === 'video' && (
-                      <div className="relative w-full h-full">
-                        <video src={preview.url} className="w-full h-full" controls autoPlay />
-                      </div>
-                    )}
-                    {preview.kind === 'audio' && (
-                      <div className="p-6">
-                        <CustomAudioPlayer audioUrl={preview.url} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
-                      </div>
-                    )}
+                    {(() => {
+                      const images = (preview.item.images || []) as any[]
+                      const videos = (preview.item.videos || []) as any[]
+                      const audios = (preview.item as any).audios || []
+                      if (preview.kind === 'image') {
+                        const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                        return (
+                          <div className="relative w-full h-full">
+                            <Image src={img.url} alt={preview.item.prompt || ''} fill className="object-contain" />
+                          </div>
+                        )
+                      }
+                      if (preview.kind === 'video') {
+                        const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
+                        return (
+                          <div className="relative w-full h-full">
+                            <video src={vid.url} className="w-full h-full" controls autoPlay />
+                          </div>
+                        )
+                      }
+                      const au = audios[selectedAudioIndex] || audios[0] || { url: preview.url }
+                      return (
+                        <div className="p-6">
+                          <CustomAudioPlayer audioUrl={au.url} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Sidebar */}
@@ -441,7 +528,7 @@ export default function ArtStationPage() {
                       <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Creator</div>
                       <div className="flex items-center gap-2">
                         {preview.item.createdBy?.photoURL ? (
-                          <img src={preview.item.createdBy.photoURL} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
+                          <img src={`/api/proxy/external?url=${encodeURIComponent(preview.item.createdBy.photoURL)}`} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-white/20" />
                         )}
@@ -488,6 +575,63 @@ export default function ArtStationPage() {
                       </button>
                     </div>
                     
+                    {/* Images Thumbnails */}
+                    {preview.item.images && preview.item.images.length > 1 && (
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Images ({preview.item.images.length})</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {preview.item.images.map((im: any, idx: number) => (
+                            <button
+                              key={im.id || idx}
+                              onClick={() => setSelectedImageIndex(idx)}
+                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
+                            >
+                              <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Videos Thumbnails */}
+                    {preview.item.videos && preview.item.videos.length > 1 && (
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({preview.item.videos.length})</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {preview.item.videos.map((vd: any, idx: number) => (
+                            <button
+                              key={vd.id || idx}
+                              onClick={() => setSelectedVideoIndex(idx)}
+                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedVideoIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
+                            >
+                              <video src={vd.url} className="w-full h-full object-cover" muted />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Audios List */}
+                    {(preview.item as any).audios && (preview.item as any).audios.length > 1 && (
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Tracks ({(preview.item as any).audios.length})</div>
+                        <div className="space-y-2">
+                          {((preview.item as any).audios as any[]).map((au: any, idx: number) => (
+                            <button
+                              key={au.id || idx}
+                              onClick={() => setSelectedAudioIndex(idx)}
+                              className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-white/10' : 'border-white/20 hover:border-white/30'}`}
+                            >
+                              <div className="flex items-center gap-2 text-sm text-white/90">
+                                <span className="inline-block w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
+                                <span>Track {idx + 1}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Details */}
                     <div className="mb-4">
                       <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>

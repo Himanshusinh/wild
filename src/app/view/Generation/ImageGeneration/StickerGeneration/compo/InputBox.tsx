@@ -201,28 +201,56 @@ const InputBox = () => {
       let result;
 
       // Build the same backend prompt regardless of model
-      const backendPrompt = `
-Create a fun and engaging sticker design of: ${prompt}.  
+      const backendPrompt = (p: string) => `
+      Create a FUN, BOLD sticker of: ${p}.
+      
+      Canvas & Background:
+      - Square canvas (1:1), PALE PLAIN background strictly for preview ONLY; final output must be TRANSPARENT (no gradients, no textures, no photos).
+      - Keep a clean silhouette with a **thick, even outline** around the subject. Leave ~16px visual margin from edges.
+      
+      Style:
+      - Colorful, vector/cartoon style with smooth curves and high contrast.
+      - Semi-flat shading (simple highlights + shadows), no photorealism.
+      - Add tiny accents (sparkles, motion lines, emoji chips) only if they enhance clarity.
+      
+      Framing & Readability:
+      - Subject must be centered, fill the canvas without touching edges.
+      - Silhouette readable at 64–96 px (app sticker size).
+      
+      Output (VERY IMPORTANT):
+      - **Transparent background** (alpha), **no drop shadows baked into background**.
+      - Edges should be crisp and anti-aliased (no halo).
+      - Provide at least 1024×1024 master PNG with transparency; safe to downscale to **512×512 WEBP** under **100 KB**.
+      
+      Usability tags:
+      - WhatsApp/Telegram/iMessage ready
+      - Clear thick outline (~6–12 px @1024 base)
+      - Minimal background clutter
+      
+      Subject constraints (use the prompt literally):
+      - Focus ONLY on: ${p}
+      - Include visual elements that clearly represent "${p}".
+      - Do not introduce unrelated props or scenes that are not in "${p}".
+      
+      Negative Prompt:
+      - No complex backgrounds, no textures, no 3D renders, no photo mashups, no tiny unreadable text, no muted/low-contrast palettes.
+      
+      Review checklist before export:
+      - Alpha background ✅  |  Strong outline ✅  |  Clean silhouette ✅  |  Centered with margin ✅  |  Clearly depicts "${p}" ✅
+      `;
+      
 
-Style: Bold, colorful, cartoon or vector style with clean outlines. Use exaggerated shapes, smooth shading, and vibrant colors.  
-Focus: Must be eye-catching and playful, with a clear silhouette that stands out at small sizes.  
-Usability: Suitable for social media, messaging apps, and decorative use. Transparent background preferred.  
-
-Art direction: Emphasize expressive character, humor, or charm. Keep the design simple but dynamic, with strong contrast and minimal background clutter.  
-Details: Use thick outlines, smooth curves, and a flat or semi-flat aesthetic. Add fun accents like sparkles, emojis, or motion lines if relevant.  
-
--- Negative Prompt: avoid photorealism, avoid complex backgrounds, avoid muted colors, avoid excessive text, avoid messy details, avoid 3D rendering.  
-Output: High-resolution, sticker-style illustration, transparent background, bold and crisp edges.
-`;
 
 
       // Read isPublic preference
       let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
 
+      const builtPrompt = backendPrompt(prompt);
+
       if (selectedModel === 'gemini-25-flash-image') {
         // Route to FAL (Google Nano Banana)
         result = await dispatch(falGenerate({
-          prompt: backendPrompt,
+          prompt: builtPrompt,
           model: selectedModel,
           n: imageCount,
           uploadedImages: [], // Nano Banana is T2I/I2I, but for sticker, we assume T2I for now
@@ -233,7 +261,7 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
       } else {
         // Route to BFL (Flux models)
         result = await dispatch(bflGenerate({
-          prompt: backendPrompt,
+          prompt: builtPrompt,
           model: selectedModel,
           n: imageCount,
           frameSize: '1:1',
