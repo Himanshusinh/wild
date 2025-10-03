@@ -1300,7 +1300,7 @@ const InputBox = () => {
 
   return (
     <>
-     {historyEntries.length > 0 && (
+     {(historyEntries.length > 0 || localVideoPreview) && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
           {/* History Header - Fixed during scroll */}
@@ -1320,8 +1320,53 @@ const InputBox = () => {
               </div>
             )}
 
-            {/* History Entries - Grouped by Date */}
-            <div className="space-y-8">
+              {/* Local preview block for today when no row exists yet */}
+              {localVideoPreview && !groupedByDate[todayKey] && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                      </svg>
+                    </div>
+                    <h3 className="text-sm font-medium text-white/70">
+                      {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                      {localVideoPreview.status === 'generating' ? (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                            <div className="text-xs text-white/60">Generating...</div>
+                          </div>
+                        </div>
+                      ) : localVideoPreview.status === 'failed' ? (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                          <div className="flex flex-col items-center gap-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                            </svg>
+                            <div className="text-xs text-red-400">Failed</div>
+                          </div>
+                        </div>
+                      ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                        <div className="relative w-full h-full">
+                          <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                          <div className="text-xs text-white/60">No preview</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* History Entries - Grouped by Date */}
+              <div className="space-y-8">
               {/* If there's a local preview and no row for today, render a dated block for today */}
               {localVideoPreview && !groupedByDate[todayKey] && (
                 <div className="space-y-4">
