@@ -17,6 +17,7 @@ import {
   loadMoreHistory,
   loadHistory,
   clearHistory,
+  clearFilters,
 } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -103,6 +104,7 @@ const ProductWithModelPoseInputBox = () => {
     (async () => {
       try {
         dispatch(clearHistory());
+        dispatch(clearFilters());
         console.log('[Product] dispatched clearHistory');
         const result: any = await (dispatch as any)(loadHistory({ 
           filters: { generationType: 'product-generation' }, 
@@ -696,6 +698,7 @@ GENERATOR HINTS:
                       (entry.images || []).map((image: any) => (
                         <div
                           key={`${entry.id}-${image.id}`}
+                          data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreviewEntry(entry)}
                           className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
@@ -726,14 +729,24 @@ GENERATOR HINTS:
                               </div>
                             </div>
                           ) : (
-                            // Completed product
-                            <Image
-                              src={image.url || image.originalUrl || '/placeholder-product.png'}
-                              alt={entry.prompt}
-                              fill
-                              className="object-cover transition-transform group-hover:scale-105"
-                              sizes="192px"
-                            />
+                            // Completed product with shimmer loading (match TextToImage)
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={image.url || image.originalUrl || '/placeholder-product.png'}
+                                alt={entry.prompt}
+                                fill
+                                className="object-cover transition-transform group-hover:scale-105"
+                                sizes="192px"
+                                onLoad={() => {
+                                  setTimeout(() => {
+                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
+                                    if (shimmer) shimmer.style.opacity = '0';
+                                  }, 100);
+                                }}
+                              />
+                              {/* Shimmer loading effect */}
+                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                            </div>
                           )}
                           
                           {/* Product badge */}

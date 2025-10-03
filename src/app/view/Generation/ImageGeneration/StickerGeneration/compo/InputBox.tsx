@@ -17,6 +17,7 @@ import {
   loadMoreHistory,
   loadHistory,
   clearHistory,
+  clearFilters,
 } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -85,6 +86,7 @@ const InputBox = () => {
     (async () => {
       try {
         dispatch(clearHistory());
+        dispatch(clearFilters());
         console.log('[Sticker] dispatched clearHistory');
         const result: any = await (dispatch as any)(loadHistory({ 
           filters: { generationType: 'sticker-generation' }, 
