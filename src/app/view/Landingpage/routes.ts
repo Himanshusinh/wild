@@ -98,82 +98,82 @@ export const imageRoutes: FolderImageRoutes = {
 
     // Features images
     features: {
-        textToImage: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ftext%20to%20image.png?alt=media&token=c4d520f4-9634-4337-a12d-f1c7be8c98dc',
-        imageToImage: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fimage%20to%20image.png?alt=media&token=0e50eeb8-768a-4b87-bb0f-38b9e05aad0b',
-        sticker: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fsticker.png?alt=media&token=8486b4d6-5f0e-4ffc-a7bb-f5883c5835dd',
-        characterGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fcharacter%20gen.png?alt=media&token=22643ce1-885a-4625-8655-d608e1fcd228',
-        characterSwap: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fchatracter%20swap.png?alt=media&token=18a0cdb6-09a5-4ed7-a2d4-4d49fcb844fa',
-        inpaint: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fin%20paint.png?alt=media&token=97d8fd17-252a-4edf-9945-8dec84615838',
-        livePortrait: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Flive%20portrtait.png?alt=media&token=d2f96342-4466-4309-bfcc-e55f6e438d82',
-        facialExp: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ffacial%20expe.png?alt=media&token=9f512ef5-ba55-4d51-aeb5-b66ee2e9728c',
-        imageUpscale: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fimage%20upscale.png?alt=media&token=6f225b2d-5f49-419e-a2f0-493dd27af9ca',
-        backgroundRemo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fbackground%20remo.png?alt=media&token=da167d22-ca8e-4c90-a990-2fefb1394edb',
-        logoGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Flogo%20generation.png?alt=media&token=b502d6b3-0522-487d-84b2-748bf2e8ced1',
-        productDisplay: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fprouct%20display.png?alt=media&token=af61604f-415a-4fff-bcd5-ccf6dab64d2c',
-        mockup: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fmockup.png?alt=media&token=308c6101-51e6-4f23-be23-a3025bd9b545',
-        productWithModels: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2FProduct%20with%20Models.png?alt=media&token=8c34d7fe-5cc1-4df8-be18-01acd0238c9f',
-        textToVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ftext%20to%20video.png?alt=media&token=c6f16395-285d-4c42-89bd-7dd745fab145',
-        imageToVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fimage%20to%20video.png?alt=media&token=85fbb1f5-eafc-455f-ad2e-c93e278ed356',
-        faceSwap: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fface%20swap.png?alt=media&token=6c560f62-7921-477f-a579-f500aad3f972',
-        characterSwapVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fcharcater%20swap.png?alt=media&token=77ad1588-b999-4cd3-8aca-3caf0e74bf48',
-        vfx: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fvfx.png?alt=media&token=d41d05a7-eda1-4ce2-a776-389cace09742',
-        videoEnhancement: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fvideo%20enhancement.png?alt=media&token=bc376eed-5163-44f2-83b7-e853f9d9cea9',
-        textToMusic: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ftext%20to%20music.png?alt=media&token=518a37b2-38ee-4e22-8b98-09e20db0a064',
-        audioToMusic: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Faudio%20to%20music.png?alt=media&token=fa6b39e2-2efb-4c79-b17e-cf828232a92b',
-        lyricsToMusic: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Flyrics%20to%20music.png?alt=media&token=c8933ad7-5ee5-4383-8b4b-a8e8c7ca1bca',
-        storyboard: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fstoryboard.png?alt=media&token=470a35e1-cb15-4772-b57c-48c5b36746a2',
-        filmGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ffilm%20generation.png?alt=media&token=fc605be6-7659-4da1-8221-89ad63f6f47f',
-        comicGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Fcomic%20generation.png?alt=media&token=a11dd9e5-c0de-4f13-954c-7367eadb2ea1',
-        textTo3d: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ftextto3d.png?alt=media&token=0d574ba4-b404-4a96-b692-88441f1cdcd9',
-        imageTo3d: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeatures%2Ftext%20to%203d.png?alt=media&token=1247f7f9-9d3d-45aa-9626-03e9e69cbf7f'
+        textToImage: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Ftext-to-image.jpg?alt=media&token=c76fa518-01dd-4890-a805-815a50e30e74',
+        imageToImage: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fimage-to-image.jpg?alt=media&token=cbfb426b-3f6c-4bd4-86b3-5e8629ab5d31',
+        sticker: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fsticker.jpg?alt=media&token=9980efe3-042b-4bd1-8af8-2ea7383af5c8',
+        characterGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fcharacter-gen.jpg?alt=media&token=b3a3ad1a-659d-449d-994f-70603a274b59',
+        characterSwap: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fchatracter-swap.jpg?alt=media&token=98c0fb1c-35f9-42ac-898f-067868099f36',
+        inpaint: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fin-paint.jpg?alt=media&token=b821106b-709b-46e0-881b-c6de4ba21bc7',
+        livePortrait: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Flive-portrtait.jpg?alt=media&token=bca4942a-4da8-44c0-ae98-ada5be32defd',
+        facialExp: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Ffacial-expe.jpg?alt=media&token=a50bc580-4159-4723-a346-eed73d3a902e',
+        backgroundRemo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fbackground-remo.jpg?alt=media&token=2417465e-4d0b-45af-b717-a653a541c835',
+        logoGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Flogo-generation.jpg?alt=media&token=8e6b7772-49ab-45ef-b635-a20895a8874a',
+        productDisplay: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fprouct-display.jpg?alt=media&token=e0f622eb-99f7-45d4-8eae-813db23a5358',
+        mockup: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fmockup.jpg?alt=media&token=ed5f3083-e811-4f4a-9e07-f5f86d000356',
+        productWithModels: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2FProduct-with-Models.jpg?alt=media&token=3e498bdc-7504-4988-a747-b973d184f89c',
+        textToVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fimage-to-video.jpg?alt=media&token=ee52ae15-2dc1-43b4-bbee-72aefb617869',
+        imageToVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fimage-to-video.jpg?alt=media&token=ee52ae15-2dc1-43b4-bbee-72aefb617869',
+        faceSwap: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fface-swap.jpg?alt=media&token=85944f49-2bb5-4274-b654-f0b874da141a',
+        characterSwapVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fchatracter-swap.jpg?alt=media&token=98c0fb1c-35f9-42ac-898f-067868099f36',
+        vfx: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fvfx.jpg?alt=media&token=fa4b549f-4f3d-4845-9811-dbe7d5b1c547',
+        videoEnhancement: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fvideo-enhancement.jpg?alt=media&token=2d7a05e4-8ff1-4939-b047-2bb2b0157a6d',
+        textToMusic: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Ftext-to-music.jpg?alt=media&token=e6b3fb10-b352-49b1-8561-e05bbd931130',
+        audioToMusic: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Faudio-to-music.jpg?alt=media&token=a6fb8210-b064-4f09-997f-76ea87aeed51',
+        lyricsToMusic: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Flyrics-to-music.jpg?alt=media&token=5e52271f-d351-4dfe-bc02-332023f1f94e',
+        storyboard: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fstoryboard.jpg?alt=media&token=c8bd06c5-bc94-4207-b22d-2ef6e1a824c4',
+        filmGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Ffilm-generation.jpg?alt=media&token=7e6ab8b4-e7d9-4edc-81bb-b11e4fa86d69',
+        textTo3d: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Ftext-to-3d.jpg?alt=media&token=629f3384-89d4-4871-9e45-f6bb10a718e9',
+        imageTo3d: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Ftextto3d.jpg?alt=media&token=aa35b907-6ae7-4b8e-895b-a98d1284a758',
+        comicGeneration : "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fcomic-generation.jpg?alt=media&token=8d6b0253-b6e9-4bbd-99d7-5d7716f8839a",
+        imageUpscale : "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeatures%2Fimage-upscale.jpg?alt=media&token=397a05e4-8e18-4f3e-8a3b-a8f46efbe6bf"
     },
 
     // Workflow images
     workflow: {
-        designing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fdeisgning.jpg?alt=media&token=9d92ceb5-dbfe-4abc-8218-f4e1a7c0040c',
-        filmMaking: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Ffilm%20making.jpg?alt=media&token=7d912929-3afe-4541-9db2-7056bedee05a',
-        printing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fprinting.jpg?alt=media&token=9fe8da8f-a149-4729-aeff-59e8a983a6c6',
-        branding: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fbranding.jpg?alt=media&token=5e897f52-dfc0-48f2-963c-bf588e99dd7f',
-        contentCreation: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fcontent%20creation.jpg?alt=media&token=da971075-1380-48ce-8954-5ef194ec3e73',
-        artDirection: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fart%20direction.jpg?alt=media&token=63f4b18d-0e97-41c0-b4a5-aad2fe4f0e9f',
-        marketing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fmarketing.jpg?alt=media&token=b7913e44-e7d9-45f8-88f8-595a80f8b1d3',
-        photography: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fworkflow%2Fphotography.jpg?alt=media&token=20fb8b4c-e9c5-47d1-844f-b9f4c52fd415'
+        designing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fdeisgning.jpg?alt=media&token=82557ce3-f36f-4adf-9516-ab9dd67642b4',
+        filmMaking: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Ffilm-making.jpg?alt=media&token=727a3eb8-6160-4e7a-bb54-4cd6d6d264ce',
+        printing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fprinting.jpg?alt=media&token=a5ded5f2-6ee7-4c38-92e6-e62cd9a98049',
+        branding: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fbranding.jpg?alt=media&token=3389f33c-62c7-4f70-935a-e2da758d6f39',
+        contentCreation: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fcontent-creation.jpg?alt=media&token=c2acfb29-2e5a-4615-957e-6a0deebf9d7a',
+        artDirection: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fart-direction.jpg?alt=media&token=cd98c85a-dadc-464b-bd50-f0ba9a44fadf',
+        marketing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fmarketing.jpg?alt=media&token=4be74f48-a856-45b1-bea9-db60b67d7b37',
+        photography: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fphotography.jpg?alt=media&token=a83a6852-f4c4-43c5-81f3-ac78c6824f0d'
     },
 
     // Feature category images
     featureCategory: {
-        imageGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeaturecategory%2Fimage%20gen.png?alt=media&token=e690e65c-d54b-4817-bb0b-bcbc9d4f6b38',
-        videoGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeaturecategory%2Fvideo%20generation.png?alt=media&token=456dc491-4d65-4044-a364-3694253ae881',
-        brand: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeaturecategory%2Fbrand.png?alt=media&token=2104ccbb-b578-43f6-b1a2-a8cc61926e17',
-        audioGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeaturecategory%2Faudio%20g.png?alt=media&token=6b529a2d-fe57-446b-9e66-994485713223',
-        filming: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeaturecategory%2Ffilming.png?alt=media&token=0156cb3b-a83b-4b8f-a7a0-de3bdccea5bd',
-        '3dGen': 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Ffeaturecategory%2F3d.png?alt=media&token=efe1a021-586e-405c-9446-9f1d5626d39e'
+        imageGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeaturescatagory%2Fimage-gen.jpg?alt=media&token=d0acb4e2-f3b2-4cd3-9b7e-063ffe45e442',
+        videoGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeaturescatagory%2Fvideo-generation.jpg?alt=media&token=1cab2391-4715-4440-9b5a-d0881320ace5',
+        brand: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeaturescatagory%2Fbrand.jpg?alt=media&token=15e0580d-8cc3-450e-9336-bf09875ac3ae',
+        audioGen: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeaturescatagory%2Faudio-g.jpg?alt=media&token=124f87dc-9cac-4fab-a692-c23bfe2daaba',
+        filming: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeaturescatagory%2Ffilming.jpg?alt=media&token=e176aaba-6d0f-4b00-9445-bb34c80b7450',
+        '3dGen': 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Ffeaturescatagory%2F3d.jpg?alt=media&token=e2daab08-687f-4b8d-b866-630f5b57f24f'
     },
 
     // Hero parallax images
     heroParallax: {
-        hero1: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F01.png?alt=media&token=9a3ccb9c-37cf-42be-b947-6c16e95e6df8',
-        hero3: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F03.png?alt=media&token=41df1532-6218-4f46-ba71-f45b78a0d9b5',
-        hero4: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F04.png?alt=media&token=25444d08-1fc0-45c2-a58d-d73580ea1d95',
-        hero5: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F05.png?alt=media&token=7792178d-b3ff-4f71-ba98-3d50e8077e13',
-        hero6: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F06.png?alt=media&token=45000860-9659-4753-89dd-c96df02ebb37',
-        hero7: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F07.png?alt=media&token=f37dc21e-6431-47a5-bec2-87c2cd46452b',
-        hero8: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F08.png?alt=media&token=a9e28726-31c6-4d86-90a7-eb7bc0b3a191',
-        hero9: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F09.png?alt=media&token=983036fc-929b-4dc5-8ba8-b7aa3abcdcf2',
-        hero10: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F10.png?alt=media&token=d21ea473-8a0d-4409-b219-2ecfc4a788e6',
-        hero11: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F11.png?alt=media&token=a146137c-7424-4646-bd85-e962a1fac153',
-        hero12: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F12.png?alt=media&token=9110eb32-a0dd-4dcb-9e9b-437e12e3fe9b',
-        hero13: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F13.png?alt=media&token=f71f2ac6-bd1f-4c78-bc8c-30b8a781f546',
-        hero14: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F14.png?alt=media&token=b51529aa-8b95-409e-a2d9-bb74912ae40e',
-        hero15: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F15.png?alt=media&token=792aa4a8-576e-4827-9e36-824caaf6556b',
-        hero16: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fheroparallax%2F16.png?alt=media&token=b4aaff1a-2d1a-48ad-9890-6e9268f469f0'
+        hero1: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F01.jpg?alt=media&token=1bc68638-d1d8-48b7-9f91-99eb471e3101',
+        hero3: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F03.jpg?alt=media&token=21108bdd-17ba-47f3-9063-0096f06a92b4',
+        hero4: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F04.jpg?alt=media&token=effb0258-6e26-4765-ad7b-50d743f281e7',
+        hero5: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F05.jpg?alt=media&token=dfd47617-166c-4d24-a511-80a9255b3b50',
+        hero6: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F06.jpg?alt=media&token=8f46f11a-b300-44ac-9d5f-709211b9ef45',
+        hero7: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F08.jpg?alt=media&token=3b844060-4bc5-43ee-b0fa-130fad0fd25a',
+        hero8: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F09.jpg?alt=media&token=b6b65df7-046d-4ebf-b48f-c96415e1e181',
+        hero9: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F10.jpg?alt=media&token=2c311119-52ff-4afb-8564-3157496e500f',
+        hero10: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F12.jpg?alt=media&token=72af5765-3fd9-4666-ae49-59dbb93fc74b',
+        hero11: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F11.jpg?alt=media&token=c24834b1-06d3-41cc-8852-e353eccca7f4',
+        hero12: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F13.jpg?alt=media&token=c3c2219f-a601-4814-9543-b6b936204364',
+        hero13: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F14.jpg?alt=media&token=dafb6316-a996-4bc2-bdb2-d4395fccd30f',
+        hero14: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex12.jpg?alt=media&token=71b30242-8617-4437-8e59-b6b0a40ab589',
+        hero15: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex2.jpg?alt=media&token=f0ef5806-af7e-460c-b710-e28d9284ea55',
+        hero16: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex3.jpg?alt=media&token=09f28b25-8635-4ce9-ba5b-1050118b496a'
     },
 
     // Subscribe images
     subscribe: {
-        updates: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsubscribe%2Fupdates.png?alt=media&token=1621cc22-2e80-4a0e-8975-d738310a5471',
-        promo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsubscribe%2Fpromo.png?alt=media&token=8497d01d-85c4-48ca-8c30-27da9e1d4fbd',
-        news: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsubscribe%2Fneswsl.png?alt=media&token=57d0ddeb-6c33-487a-a69e-9eb4c3ab00bf'
+        updates: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fsubscribe%2Fupdates.jpg?alt=media&token=2f973589-eeaa-446d-b1e1-e4ec9b0086d6',
+        promo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fsubscribe%2Fpromo.jpg?alt=media&token=c0b34a2f-9da2-4a5c-bd03-5227c07a0277',
+        news: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fsubscribe%2Fneswsl.jpg?alt=media&token=efe3c4b8-94b1-4472-a4aa-b66c160f6736'
     },
 
     // Pricing images
