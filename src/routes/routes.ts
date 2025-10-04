@@ -10,7 +10,8 @@ export const APP_ROUTES = {
   HOME: '/view/HomePage',
   LANDING: '/',
   SIGNUP:'/view/signup',
-  LOGIN: '/view/signup' // Login uses the same page with different form state
+  LOGIN: '/view/signup', // Login uses the same page with different form state
+  ACCOUNT_MANAGEMENT: '/view/account-management'
 } as const;
 
 // Feature Routes
@@ -62,7 +63,7 @@ export const NAV_ROUTES = {
   BOOKMARK:'/view/Bookmark',
   LANDING:'/view/Main',
   LIVE_CHAT: '/view/Generation/wildmindskit/LiveChat',
-
+  ACCOUNT_MANAGEMENT: '/view/account-management',
 } as const;
 
 // Legal Routes
