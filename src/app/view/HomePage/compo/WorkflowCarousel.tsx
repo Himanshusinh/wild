@@ -86,9 +86,9 @@ export default function WorkflowCarousel({
         >
           {items.map((item) => (
             <section key={item.id} className="min-w-full pt-4 px-6 md:pl-0 md:pr-12 md:pt-6 md:pb-12 lg:pl-0 lg:pr-12 lg:pt-6 lg:pb-12">
-              <article className="relative rounded-3xl ring-white/10 bg-white/5 px-4 md:pl-8 md:pr-[600px] lg:pr-[680px] py-12 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-8 items-stretch">
+              <article className="relative rounded-3xl ring-white/10 bg-white/5 px-4 md:pl-8 py-12 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-8 items-stretch">
                 {/* Left: text */}
-                <div className="flex-1 -mt-4 md:-mt-8 lg:-mt-16">
+                <div className="flex-1 md:max-w-[calc(100%-650px)] lg:max-w-[calc(100%-720px)] -mt-4 md:-mt-8 lg:-mt-16">
                   <h3 className="text-white text-4xl md:text-[35px] font-medium mb-6 mt-4">
                     {item.title}
                   </h3>
@@ -97,13 +97,13 @@ export default function WorkflowCarousel({
                       {item.subtitle}
                     </div>
                   )}
-                  <p className="text-white leading-relaxed mb-4 max-w-[600px] lg:max-w-[800px] md:max-w-[600px] mt-4 text-lg text-justify">
+                  <p className="text-white leading-relaxed mb-4 max-w-full mt-4 text-lg text-justify">
                     {item.description}
                   </p>
                 </div>
 
                 {/* Right: image */}
-                <div className="relative md:absolute md:right-8 lg:right-8 md:top-0 md:bottom-0 md:w-[600px] lg:w-[700px] h-[220px] md:h-auto">
+                <div className="relative md:absolute md:right-8 lg:right-8 md:top-0 md:bottom-0 md:w-[600px] lg:w-[700px] h-[220px] md:h-auto flex-shrink-0">
                   <div className="absolute inset-x-0 top-2 bottom-2 md:top-4 md:bottom-4 lg:top-6 lg:bottom-6 rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black/20">
                     <Image
                       src={item.image}
