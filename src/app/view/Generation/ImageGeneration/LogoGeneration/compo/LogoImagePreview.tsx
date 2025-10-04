@@ -21,8 +21,8 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 }) => {
   console.log('LogoImagePreview', entry);
   const [copied, setCopied] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const dispatch = useAppDispatch();
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -86,6 +86,18 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
       controller.abort();
     };
   }, [selectedImagePath]);
+
+  const handleDelete = async () => {
+    try {
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      onClose();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      alert('Failed to delete generation');
+    }
+  };
 
   const handleDownload = async () => {
     try {
@@ -180,17 +192,6 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     window.open(selectedImage.url, '_blank');
   };
 
-  const handleDelete = async () => {
-    try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
-      onClose();
-    } catch (e) {
-      console.error('Delete failed:', e);
-      alert('Failed to delete generation');
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>

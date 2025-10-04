@@ -107,10 +107,6 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
     window.open(selectedImage.url, '_blank');
   };
 
-  const userPrompt = getUserPrompt(entry.prompt);
-  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
-  const isLongPrompt = (userPrompt || '').length > 280;
-
   const handleDelete = async () => {
     try {
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
@@ -122,6 +118,11 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
       alert('Failed to delete generation');
     }
   };
+
+  const userPrompt = getUserPrompt(entry.prompt);
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const isLongPrompt = (userPrompt || '').length > 280;
+
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>

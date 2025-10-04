@@ -60,6 +60,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
+
   const getCleanPrompt = (promptText: string): string => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
   };

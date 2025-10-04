@@ -55,6 +55,18 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
   };
 
+  const handleDelete = async () => {
+    try {
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${preview.entry.id}`);
+      try { dispatch(removeHistoryEntry(preview.entry.id)); } catch {}
+      onClose();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      alert('Failed to delete generation');
+    }
+  };
+
   const downloadVideo = async (url: any) => {
     if (typeof url !== 'string') {
       console.error('Invalid URL for download:', url);
@@ -187,17 +199,6 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const isLongPrompt = cleanPrompt.length > 280;
 
-  const handleDelete = async () => {
-    try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${preview.entry.id}`);
-      try { dispatch(removeHistoryEntry(preview.entry.id)); } catch {}
-      onClose();
-    } catch (e) {
-      console.error('Delete failed:', e);
-      alert('Failed to delete generation');
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
@@ -205,10 +206,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
           <div className="text-white/70 text-sm">{preview.entry.model}</div>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm" onClick={handleDelete}>Delete</button>
-            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
-          </div>
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm" onClick={handleDelete}>Delete</button>
+              <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+            </div>
         </div>
 
         {/* Content */}

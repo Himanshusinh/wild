@@ -84,6 +84,18 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     };
   }, [selectedImagePath]);
 
+  const handleDelete = async () => {
+    try {
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      onClose();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      alert('Failed to delete generation');
+    }
+  };
+
   const handleDownload = async () => {
     try {
       const downloadUrl = toProxyDownloadUrl(selectedImagePath);
@@ -131,17 +143,6 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
-      onClose();
-    } catch (e) {
-      console.error('Delete failed:', e);
-      alert('Failed to delete generation');
-    }
-  };
 
   const shareImage = async () => {
     try {

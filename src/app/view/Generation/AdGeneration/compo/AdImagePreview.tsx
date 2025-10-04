@@ -1,6 +1,9 @@
 "use client";
 import React, { useState } from 'react';
 import { HistoryEntry } from '@/types/history';
+import { useAppDispatch } from '@/store/hooks';
+import axiosInstance from '@/lib/axiosInstance';
+import { removeHistoryEntry } from '@/store/slices/historySlice';
 
 interface AdImagePreviewProps {
   entry: HistoryEntry;
@@ -12,6 +15,7 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
   const userPrompt = (entry.prompt || '').replace(/^Ad:\s*/i, '').trim();
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const isLongPrompt = userPrompt.length > 280;
+  const dispatch = useAppDispatch();
 
   const handleDownload = async (imageUrl: string, filename: string) => {
     try {
@@ -27,6 +31,18 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading image:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      onClose();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      alert('Failed to delete generation');
     }
   };
 
@@ -46,8 +62,12 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
       <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <div className="text-white/70 text-sm">{entry.model}</div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm" onClick={handleDelete}>Delete</button>
+            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         {/* Content */}
