@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { useCredits } from '../../../../hooks/useCredits'
@@ -34,6 +35,7 @@ const Nav = () => {
   
   // Use Redux credits state
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits()
+  const router = useRouter()
   
   // Debug logging
   React.useEffect(() => {
@@ -90,6 +92,17 @@ const Nav = () => {
     }
   }
 
+  // Redirect functions for pricing page
+  const handleUpgradePlan = () => {
+    router.push('/view/pricing')
+    setShowDropdown(false)
+  }
+
+  const handlePurchaseCredits = () => {
+    router.push('/view/pricing')
+    setShowDropdown(false)
+  }
+
   return (
     <div className='fixed top-1 left-18 right-4 z-40  '>
       <div className='flex justify-between items-center m-3'>
@@ -129,7 +142,7 @@ const Nav = () => {
                 <div className='p-4'>
                   {/* Header */}
                   <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
-                    <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
+                    <div className='w-12 h-12  rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
                       {(!loading && userData?.photoURL && !avatarFailed) ? (
                         <img src={userData.photoURL} alt='avatar' referrerPolicy='no-referrer' onError={() => setAvatarFailed(true)} className='w-full h-full object-cover' />
                       ) : (
@@ -139,9 +152,9 @@ const Nav = () => {
                     <div className='flex-1'>
                       <div className='text-white font-semibold text-lg'>{loading ? 'Loading...' : (userData?.username || 'User')}</div>
                       <div className='text-gray-300 text-sm'>{loading ? 'Loading...' : (userData?.email || 'user@example.com')}</div>
-                      {userData?.metadata?.accountStatus && (
+                      {/* {userData?.metadata?.accountStatus && (
                         <div className='text-green-400 text-xs mt-1'>{userData.metadata.accountStatus.toUpperCase()}</div>
-                      )}
+                      )} */}
                     </div>
                   </div>
 
@@ -167,10 +180,16 @@ const Nav = () => {
                       <span className='text-gray-300 text-sm'>{userData?.plan || 'Free'}</span>
                     </div>
 
-                    <button className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                    <button 
+                      onClick={handleUpgradePlan}
+                      className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    >
                       <span className='text-white text-sm'>Upgrade Plan</span>
                     </button>
-                    <button className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                    <button 
+                      onClick={handlePurchaseCredits}
+                      className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    >
                       <span className='text-white text-sm'>Purchase Additional Credits</span>
                     </button>
 
