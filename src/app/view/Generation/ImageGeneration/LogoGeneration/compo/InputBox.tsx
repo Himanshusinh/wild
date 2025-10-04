@@ -649,9 +649,9 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           )}
 
                           {/* Logo badge */}
-                          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                          {/* <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                             Logo
-                          </div>
+                          </div> */}
                       </div>
                     ))
                   )}

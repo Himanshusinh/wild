@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
@@ -50,6 +51,7 @@ const Nav = () => {
     } catch { return false }
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   // Close dropdown when clicking outside
   useOutsideClick(dropdownRef, () => {
@@ -177,6 +179,18 @@ const Nav = () => {
     const nextIndex = (currentIndex + 1) % themes.length
     setTheme(themes[nextIndex])
   }
+
+  // Redirect functions for pricing page
+  const handleUpgradePlan = () => {
+    router.push('/view/pricing')
+    setShowDropdown(false)
+  }
+
+  const handlePurchaseCredits = () => {
+    router.push('/view/pricing')
+    setShowDropdown(false)
+  }
+
   console.log(userData?.photoURL)
 
   return (
@@ -258,11 +272,11 @@ const Nav = () => {
                     <div className='text-gray-300 text-sm'>
                       {loading ? 'Loading...' : (userData?.email || 'user@example.com')}
                     </div>
-                    {userData?.metadata?.accountStatus && (
+                    {/* {userData?.metadata?.accountStatus && (
                       <div className='text-green-400 text-xs mt-1'>
                         {userData.metadata.accountStatus.toUpperCase()}
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
 
@@ -291,12 +305,18 @@ const Nav = () => {
                   </div>
 
                   {/* Upgrade Plan */}
-                  <button className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                  <button 
+                    onClick={handleUpgradePlan}
+                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                  >
                     <span className='text-white text-sm'>Upgrade Plan</span>
                   </button>
 
                   {/* Purchase Credits */}
-                  <button className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                  <button 
+                    onClick={handlePurchaseCredits}
+                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                  >
                     <span className='text-white text-sm'>Purchase Additional Credits</span>
                   </button>
 

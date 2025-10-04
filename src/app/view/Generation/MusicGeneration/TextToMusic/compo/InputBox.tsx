@@ -547,7 +547,7 @@ const InputBox = () => {
                               
                           {/* Music track label */}
                           <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                            <span className="text-xs text-white">Audio</span>
+                            {/* <span className="text-xs text-white">Audio</span> */}
                           </div>
                             </div>
                           )}

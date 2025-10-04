@@ -75,12 +75,12 @@ const ModelsDropdown = () => {
       >
         {(() => {
           const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
-          return currentModel?.name || 'Models';
+          return currentModel?.displayName || currentModel?.name || 'Models';
         })()}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
           {modelsWithCredits.map((model) => (
             <button
               key={model.value}
