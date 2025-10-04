@@ -15,9 +15,6 @@ interface ImagePreviewModalProps {
 
 const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose }) => {
   const dispatch = useAppDispatch();
-  
-  if (!preview) return null;
-
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
   const toProxyPath = (urlOrPath: string | undefined) => {
@@ -33,6 +30,56 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     const path = toProxyPath(urlOrPath);
     return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}?ngrok-skip-browser-warning=true` : '';
   };
+  
+  // Move all hooks to the top before any conditional returns
+  const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
+  const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
+  const [objectUrl, setObjectUrl] = React.useState<string>('');
+  
+  // Build gallery with user uploads first, then generated outputs
+  const inputImages = React.useMemo(() => ((preview as any)?.inputImages) || [], [preview]);
+  const outputImages = React.useMemo(() => preview?.entry?.images || [], [preview]);
+  const galleryImages = React.useMemo(() => [...inputImages, ...outputImages], [inputImages, outputImages]);
+
+  // Select the clicked image as initial selection
+  const initialIndex = React.useMemo(() => {
+    if (!preview) return 0;
+    const mUrl = (preview.image as any)?.url;
+    const mPath = (preview.image as any)?.storagePath;
+    const idx = galleryImages.findIndex((im: any) => (mUrl && im?.url === mUrl) || (mPath && im?.storagePath && im.storagePath === mPath));
+    return idx >= 0 ? idx : 0;
+  }, [galleryImages, preview]);
+
+  React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
+
+  React.useEffect(() => {
+    if (!preview) return;
+    
+    let revoke: string | null = null;
+    setObjectUrl('');
+    const run = async () => {
+      try {
+        const selectedImage = galleryImages[selectedIndex] || preview.image;
+        const url = toProxyResourceUrl(selectedImage?.url || preview.image.url);
+        if (!url) return;
+        const res = await fetch(url, {
+          credentials: 'include',
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const obj = URL.createObjectURL(blob);
+        revoke = obj;
+        setObjectUrl(obj);
+      } catch {}
+    };
+    run();
+    return () => {
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [selectedIndex, preview, galleryImages, toProxyResourceUrl]);
+
+  if (!preview) return null;
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
@@ -165,53 +212,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
   const displayedAspect = preview.entry.frameSize || '—';
   const cleanPrompt = getCleanPrompt(preview.entry.prompt);
-  const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const isLongPrompt = cleanPrompt.length > 280;
-
-  // Build gallery with user uploads first, then generated outputs
-  const inputImages = (((preview.entry as any)?.inputImages) || []) as any[];
-  const outputImages = (preview.entry.images || []) as any[];
-  const galleryImages = React.useMemo(() => [...inputImages, ...outputImages], [inputImages, outputImages]);
-
-  // Select the clicked image as initial selection
-  const initialIndex = React.useMemo(() => {
-    const mUrl = (preview.image as any)?.url;
-    const mPath = (preview.image as any)?.storagePath;
-    const idx = galleryImages.findIndex((im: any) => (mUrl && im?.url === mUrl) || (mPath && im?.storagePath && im.storagePath === mPath));
-    return idx >= 0 ? idx : 0;
-  }, [galleryImages, preview.image]);
-
-  const [selectedIndex, setSelectedIndex] = React.useState<number>(initialIndex);
-  React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
 
   const selectedImage: any = galleryImages[selectedIndex] || preview.image;
   const isUserUploadSelected = selectedIndex < inputImages.length;
-
-  const [objectUrl, setObjectUrl] = React.useState<string>('');
-
-  React.useEffect(() => {
-    let revoke: string | null = null;
-    setObjectUrl('');
-    const run = async () => {
-      try {
-        const url = toProxyResourceUrl(selectedImage?.url || preview.image.url);
-        if (!url) return;
-        const res = await fetch(url, {
-          credentials: 'include',
-          headers: { 'ngrok-skip-browser-warning': 'true' }
-        });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const obj = URL.createObjectURL(blob);
-        revoke = obj;
-        setObjectUrl(obj);
-      } catch {}
-    };
-    run();
-    return () => {
-      try { if (revoke) URL.revokeObjectURL(revoke); } catch {}
-    };
-  }, [selectedImage?.url, preview?.image?.url]);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
