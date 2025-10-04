@@ -39,6 +39,7 @@ import {
   Copy,
   Download
 } from 'lucide-react';
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 const VideoGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -411,11 +412,17 @@ const VideoGenerationInputBox: React.FC = () => {
           >
             {state.mode === 'image_to_video' ? (
               <>
-                <option value="gen4_turbo">Gen-4 Turbo</option>
-                <option value="gen3a_turbo">Gen-3a Turbo</option>
+                <option value="gen4_turbo">
+                  Gen-4 Turbo ({getModelCreditInfo('gen4_turbo', '5s')?.credits || 0} credits)
+                </option>
+                <option value="gen3a_turbo">
+                  Gen-3a Turbo ({getModelCreditInfo('gen3a_turbo', '5s')?.credits || 0} credits)
+                </option>
               </>
             ) : (
-              <option value="gen4_aleph">Gen-4 Aleph</option>
+              <option value="gen4_aleph">
+                Gen-4 Aleph ({getModelCreditInfo('gen4_aleph')?.credits || 0} credits)
+              </option>
             )}
           </select>
         </div>

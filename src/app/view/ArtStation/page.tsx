@@ -26,11 +26,17 @@ export default function ArtStationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
+  const [hasMore, setHasMore] = useState<boolean>(true)
   const [preview, setPreview] = useState<{ kind: 'image' | 'video' | 'audio'; url: string; item: PublicItem } | null>(null)
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
+  const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
+  const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
+  const [currentUid, setCurrentUid] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const navigateForType = (type?: string) => {
@@ -65,6 +71,30 @@ export default function ArtStationPage() {
     }
   }
 
+  const confirmDelete = async (item: PublicItem) => {
+    try {
+      const who = item?.createdBy?.uid || ''
+      const currentUid = (typeof window !== 'undefined' && (localStorage.getItem('user') && (() => { try { return JSON.parse(localStorage.getItem('user') as string)?.uid } catch { return null } })())) as string | null
+      if (!currentUid || who !== currentUid) {
+        alert('You can delete only your own generation')
+        return
+      }
+      const ok = confirm('Delete this generation permanently? This cannot be undone.')
+      if (!ok) return
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const res = await fetch(`${baseUrl}/api/generations/${item.id}`, { method: 'DELETE', credentials: 'include' })
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Delete failed')
+      }
+      setItems(prev => prev.filter(i => i.id !== item.id))
+      if (preview?.item?.id === item.id) setPreview(null)
+    } catch (e) {
+      console.error('Delete error', e)
+      alert('Failed to delete generation')
+    }
+  }
+
   const toggleLike = (cardId: string) => {
     setLikedCards(prev => {
       const newSet = new Set(prev)
@@ -81,8 +111,9 @@ export default function ArtStationPage() {
   const fetchFeed = async (reset = false) => {
     try {
       setLoading(true)
-      const url = new URL(`${API_BASE}/api/feed`)
-      url.searchParams.set('limit', '50') // Increased limit to get more items
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const url = new URL(`${baseUrl}/api/feed`)
+      url.searchParams.set('limit', '20')
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
@@ -90,8 +121,7 @@ export default function ArtStationPage() {
       console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
       
       const res = await fetch(url.toString(), { 
-        credentials: 'omit',
-        headers: { 'ngrok-skip-browser-warning': 'true', 'Accept': 'application/json' }
+        credentials: 'include'
       })
       
       if (!res.ok) {
@@ -104,8 +134,14 @@ export default function ArtStationPage() {
       console.log('[ArtStation] Raw response:', data)
       
       const payload = data?.data || data
-      const newItems: PublicItem[] = payload?.items || []
-      const newCursor = payload?.nextCursor || payload?.meta?.nextCursor
+      const meta = payload?.meta || {}
+      const normalizeDate = (d: any) => typeof d === 'string' ? d : (d && typeof d === 'object' && typeof d._seconds === 'number' ? new Date(d._seconds * 1000).toISOString() : undefined)
+      const newItems: PublicItem[] = (payload?.items || []).map((it: any) => ({
+        ...it,
+        createdAt: normalizeDate(it?.createdAt) || it?.createdAt,
+        updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
+      }))
+      const newCursor = meta?.nextCursor || payload?.nextCursor
       
       console.log('[ArtStation] Parsed feed response:', { 
         itemsCount: newItems.length, 
@@ -119,9 +155,39 @@ export default function ArtStationPage() {
         console.log('[ArtStation] Sample item:', newItems[0])
       }
       
-      setItems(prev => reset ? newItems : [...prev, ...newItems])
+      setItems(prev => {
+        if (reset) return newItems
+        const map = new Map<string, PublicItem>()
+        prev.forEach(it => map.set(it.id, it))
+        newItems.forEach(it => map.set(it.id, it))
+        return Array.from(map.values())
+      })
       setCursor(newCursor)
+      const inferredHasMore = typeof meta?.hasMore === 'boolean' ? meta.hasMore : Boolean(newCursor)
+      setHasMore(inferredHasMore)
       setError(null)
+
+      // Open deep-linked generation once when it appears
+      if (deepLinkId) {
+        const pool = reset ? newItems : [...items, ...newItems]
+        const found = pool.find(i => i.id === deepLinkId)
+        if (found) {
+          const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
+          const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
+          if (media?.url) {
+            setSelectedImageIndex(0)
+            setSelectedVideoIndex(0)
+            setSelectedAudioIndex(0)
+            setPreview({ kind, url: media.url, item: found })
+            setDeepLinkId(null)
+          } else if (inferredHasMore) {
+            // keep fetching until we get the media
+            await fetchFeed(false)
+          }
+        } else if (inferredHasMore) {
+          await fetchFeed(false)
+        }
+      }
     } catch (e: any) {
       console.error('[ArtStation] Feed fetch error:', e)
       setError(e?.message || 'Failed to load feed')
@@ -130,7 +196,24 @@ export default function ArtStationPage() {
     }
   }
 
-  useEffect(() => { fetchFeed(true) }, [])
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        const u = JSON.parse(userStr)
+        setCurrentUid(u?.uid || null)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const gen = params.get('gen')
+      if (gen) setDeepLinkId(gen)
+    } catch {}
+    fetchFeed(true)
+  }, [])
 
   // Infinite scroll observer
   useEffect(() => {
@@ -141,9 +224,9 @@ export default function ArtStationPage() {
       const entry = entries[0]
       if (!entry.isIntersecting) return
       
-      // Don't load if already loading, no cursor, or already loading more
-      if (loading || loadingMoreRef.current || !cursor) {
-        console.log('[ArtStation] Skipping load:', { loading, loadingMore: loadingMoreRef.current, cursor })
+      // Don't load if already loading, no more items, or already loading more
+      if (loading || loadingMoreRef.current || !hasMore) {
+        console.log('[ArtStation] Skipping load:', { loading, loadingMore: loadingMoreRef.current, hasMore })
         return
       }
       
@@ -165,7 +248,44 @@ export default function ArtStationPage() {
     
     observer.observe(el)
     return () => observer.disconnect()
-  }, [cursor, loading])
+  }, [hasMore, loading, cursor])
+
+  // Auto-fill viewport on initial loads so the page has enough content to scroll
+  useEffect(() => {
+    const needMore = () => (document.documentElement.scrollHeight - window.innerHeight) < 800
+    const run = async () => {
+      let guard = 0
+      while (!loading && hasMore && needMore() && guard < 5) {
+        await fetchFeed(false)
+        guard += 1
+      }
+    }
+    run()
+  }, [items, hasMore, loading])
+
+  // Resolve deep link after data loads; fetch more until found or no more
+  useEffect(() => {
+    if (!deepLinkId) return
+    // try to find in current items
+    const found = items.find(i => i.id === deepLinkId)
+    if (found) {
+      const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
+      const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
+      if (media?.url) {
+        setSelectedImageIndex(0)
+        setSelectedVideoIndex(0)
+        setSelectedAudioIndex(0)
+        setPreview({ kind, url: media.url, item: found })
+        setDeepLinkId(null)
+      }
+      return
+    }
+    // Not found; load more if available and not currently loading
+    if (hasMore && !loading) {
+      fetchFeed(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, deepLinkId, hasMore, loading])
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''
@@ -298,7 +418,7 @@ export default function ArtStationPage() {
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           <div className="columns-1 sm:columns-2 md:columns-4 lg:columns-4 xl:columns-4 gap-2">
-            {cards.map(({ item, media, kind }, idx) => {
+             {cards.map(({ item, media, kind }, idx) => {
               // Clean aspect ratios for organized grid
               const ratios = ['1/1', '4/3', '3/4', '16/9', '9/16', '2/1', '1/2', '3/2', '2/3']
               const randomRatio = ratios[idx % ratios.length]
@@ -313,7 +433,12 @@ export default function ArtStationPage() {
                   className="break-inside-avoid mb-2 cursor-pointer group relative"
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
-                  onClick={() => setPreview({ kind, url: media.url, item })}
+                   onClick={() => {
+                     setSelectedImageIndex(0)
+                     setSelectedVideoIndex(0)
+                     setSelectedAudioIndex(0)
+                     setPreview({ kind, url: media.url, item })
+                   }}
                 >
                   <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
                     <div style={{ aspectRatio: randomRatio }}>
@@ -330,14 +455,14 @@ export default function ArtStationPage() {
                         {/* Profile Section */}
                         <div className="flex items-center gap-2">
                           {item.createdBy?.photoURL ? (
-                            <img src={item.createdBy.photoURL} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full" />
+                            <img src={`/api/proxy/external?url=${encodeURIComponent(item.createdBy.photoURL)}`} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-white/20" />
                           )}
                           <div className="text-white text-sm font-medium">{item.createdBy?.displayName || item.createdBy?.username || 'User'}</div>
                         </div>
                         
-                        {/* Like Button */}
+                        {/* Like Button and Delete (owner only) */}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
                           className="p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
@@ -346,6 +471,21 @@ export default function ArtStationPage() {
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                           </svg>
                         </button>
+                        {currentUid && item.createdBy?.uid === currentUid && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
+                            className="p-2 rounded-full bg-red-600/80 hover:bg-red-600 text-white transition-colors"
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6" />
+                              <path d="M14 11v6" />
+                              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                     
@@ -381,7 +521,7 @@ export default function ArtStationPage() {
           )}
 
           {/* End message */}
-          {!loading && !cursor && items.length > 0 && (
+          {!loading && !hasMore && items.length > 0 && (
             <div className="text-center py-8">
               <p className="text-white/40 text-sm">You've reached the end</p>
             </div>
@@ -392,31 +532,58 @@ export default function ArtStationPage() {
           {/* Preview Modals */}
           {preview && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-              <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+                <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-                  <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
+                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+                  <div className="flex items-center gap-2 text-white/70 text-sm">
+                    <span>{preview.item.model}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Delete (owner only) */}
+                    {currentUid && preview.item.createdBy?.uid === currentUid && (
+                      <button
+                        title="Delete"
+                        className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm"
+                        onClick={() => confirmDelete(preview.item)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
+                  </div>
                 </div>
 
                 {/* Content */}
                 <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
                   {/* Media */}
                   <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1">
-                    {preview.kind === 'image' && (
-                      <div className="relative w-full h-full">
-                        <Image src={preview.url} alt={preview.item.prompt || ''} fill className="object-contain" />
-                      </div>
-                    )}
-                    {preview.kind === 'video' && (
-                      <div className="relative w-full h-full">
-                        <video src={preview.url} className="w-full h-full" controls autoPlay />
-                      </div>
-                    )}
-                    {preview.kind === 'audio' && (
-                      <div className="p-6">
-                        <CustomAudioPlayer audioUrl={preview.url} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
-                      </div>
-                    )}
+                    {(() => {
+                      const images = (preview.item.images || []) as any[]
+                      const videos = (preview.item.videos || []) as any[]
+                      const audios = (preview.item as any).audios || []
+                      if (preview.kind === 'image') {
+                        const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                        return (
+                          <div className="relative w-full h-full">
+                            <Image src={img.url} alt={preview.item.prompt || ''} fill className="object-contain" />
+                          </div>
+                        )
+                      }
+                      if (preview.kind === 'video') {
+                        const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
+                        return (
+                          <div className="relative w-full h-full">
+                            <video src={vid.url} className="w-full h-full" controls autoPlay />
+                          </div>
+                        )
+                      }
+                      const au = audios[selectedAudioIndex] || audios[0] || { url: preview.url }
+                      return (
+                        <div className="p-6">
+                          <CustomAudioPlayer audioUrl={au.url} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Sidebar */}
@@ -426,7 +593,7 @@ export default function ArtStationPage() {
                       <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Creator</div>
                       <div className="flex items-center gap-2">
                         {preview.item.createdBy?.photoURL ? (
-                          <img src={preview.item.createdBy.photoURL} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
+                          <img src={`/api/proxy/external?url=${encodeURIComponent(preview.item.createdBy.photoURL)}`} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-white/20" />
                         )}
@@ -473,6 +640,63 @@ export default function ArtStationPage() {
                       </button>
                     </div>
                     
+                    {/* Images Thumbnails */}
+                    {preview.item.images && preview.item.images.length > 1 && (
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Images ({preview.item.images.length})</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {preview.item.images.map((im: any, idx: number) => (
+                            <button
+                              key={im.id || idx}
+                              onClick={() => setSelectedImageIndex(idx)}
+                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
+                            >
+                              <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Videos Thumbnails */}
+                    {preview.item.videos && preview.item.videos.length > 1 && (
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({preview.item.videos.length})</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {preview.item.videos.map((vd: any, idx: number) => (
+                            <button
+                              key={vd.id || idx}
+                              onClick={() => setSelectedVideoIndex(idx)}
+                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedVideoIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
+                            >
+                              <video src={vd.url} className="w-full h-full object-cover" muted />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Audios List */}
+                    {(preview.item as any).audios && (preview.item as any).audios.length > 1 && (
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Tracks ({(preview.item as any).audios.length})</div>
+                        <div className="space-y-2">
+                          {((preview.item as any).audios as any[]).map((au: any, idx: number) => (
+                            <button
+                              key={au.id || idx}
+                              onClick={() => setSelectedAudioIndex(idx)}
+                              className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-white/10' : 'border-white/20 hover:border-white/30'}`}
+                            >
+                              <div className="flex items-center gap-2 text-sm text-white/90">
+                                <span className="inline-block w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
+                                <span>Track {idx + 1}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Details */}
                     <div className="mb-4">
                       <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>

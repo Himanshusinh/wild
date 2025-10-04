@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface ResolutionDropdownProps {
   selectedModel: string;
@@ -18,6 +18,7 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get available resolutions based on model
   const getAvailableResolutions = () => {
@@ -42,6 +43,34 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Auto-close dropdown after 5 seconds
+  useEffect(() => {
+    if (isOpen) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      timeoutRef.current = setTimeout(() => {
+        setIsOpen(false);
+      }, 5000);
+    } else {
+      // Clear timeout if dropdown is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isOpen]);
 
   const handleResolutionSelect = (resolution: string) => {
     onResolutionChange(resolution);
@@ -68,7 +97,7 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
           <span className="text-white font-medium">Resolution</span>
           <span className="text-xs text-white/60 mt-0.5">{selectedResolution}</span>
         </div>
-        <ChevronDown
+        <ChevronUp
           className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}

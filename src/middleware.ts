@@ -55,18 +55,21 @@ export function middleware(req: NextRequest) {
   const isPublic = (
     pathname === '/' ||
     pathname.startsWith('/view/Landingpage') ||
+    pathname.startsWith('/view/HomePage') ||
     pathname.startsWith('/view/ArtStation') ||
     pathname.startsWith('/view/signup') ||
     pathname.startsWith('/view/signin') ||
-    pathname.startsWith('/view/forgot-password')
+    pathname.startsWith('/view/forgot-password') ||
+    pathname.startsWith('/view/pricing') ||
+    pathname.startsWith('/view/workflows')
   );
   if (isPublic) return res;
 
-  // Require session cookie for all other matched routes
+  // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
   const hasSession = req.cookies.get('app_session');
   if (!hasSession) {
     const url = req.nextUrl.clone();
-    url.pathname = '/view/Landingpage';
+    url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }

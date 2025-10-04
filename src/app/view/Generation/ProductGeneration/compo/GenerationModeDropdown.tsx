@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { toggleDropdown } from '@/store/slices/uiSlice';
+import { ChevronUp } from 'lucide-react';
 
 interface GenerationModeDropdownProps {
   selectedMode: string;
@@ -19,6 +20,7 @@ const GenerationModeDropdown: React.FC<GenerationModeDropdownProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Define modes based on selected model
   const getModes = () => {
@@ -58,6 +60,29 @@ const GenerationModeDropdown: React.FC<GenerationModeDropdownProps> = ({
     dispatch(toggleDropdown(''));
   };
 
+  // Auto-close dropdown after 5 seconds
+  useEffect(() => {
+    if (activeDropdown === 'product-generation-mode') {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        dispatch(toggleDropdown(''));
+      }, 5000);
+    } else {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [activeDropdown, dispatch]);
+
   // Hide generation mode dropdown for flux-krea since it only supports product generation
   if (!isVisible) return null;
   
@@ -68,9 +93,17 @@ const GenerationModeDropdown: React.FC<GenerationModeDropdownProps> = ({
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="h-[32px] px-4 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-1"
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          selectedMode !== 'product-only'
+            ? 'bg-white text-black'
+            : 'bg-transparent text-white/90 hover:bg-white/5'
+        }`}
       >
-        Generation Mode
+        {(() => {
+          const currentMode = modes.find(m => m.value === selectedMode);
+          return currentMode?.name || 'Generation Mode';
+        })()}
+        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'product-generation-mode' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'product-generation-mode' && (
         <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
@@ -81,14 +114,20 @@ const GenerationModeDropdown: React.FC<GenerationModeDropdownProps> = ({
                 e.stopPropagation();
                 handleModeSelect(mode.value);
               }}
-              className="w-full px-4 py-3 text-left text-white/90 hover:bg-white/10 transition text-[13px] flex items-center justify-between"
+              className={`w-full px-4 py-3 text-left transition text-[13px] flex items-center justify-between ${
+                selectedMode === mode.value
+                  ? 'bg-white text-black'
+                  : 'text-white/90 hover:bg-white/10'
+              }`}
             >
               <div className="flex flex-col">
                 <span className="font-medium">{mode.name}</span>
-                <span className="text-xs text-white/60 mt-0.5">{mode.description}</span>
+                <span className={`text-xs mt-0.5 ${
+                  selectedMode === mode.value ? 'text-black/70' : 'text-white/60'
+                }`}>{mode.description}</span>
               </div>
               {selectedMode === mode.value && (
-                <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
               )}
             </button>
           ))}

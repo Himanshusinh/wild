@@ -1,21 +1,31 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Play, Image as ImageIcon, Cpu, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Play, Image as ImageIcon, Cpu, Sparkles } from "lucide-react";
+import { getModelCreditInfo } from '@/utils/modelCredits';
 
 interface VideoModelsDropdownProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
   generationMode: "text_to_video" | "image_to_video" | "video_to_video";
+  selectedDuration?: string;
+  selectedResolution?: string;
+  onCloseOtherDropdowns?: () => void;
+  onCloseThisDropdown?: () => void;
 }
 
 const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   selectedModel,
   onModelChange,
   generationMode,
+  selectedDuration = "5s",
+  selectedResolution = "512P",
+  onCloseOtherDropdowns,
+  onCloseThisDropdown,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,6 +38,45 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Auto-close dropdown after 5 seconds
+  useEffect(() => {
+    if (isOpen) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      timeoutRef.current = setTimeout(() => {
+        setIsOpen(false);
+      }, 5000);
+    } else {
+      // Clear timeout if dropdown is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isOpen]);
+
+  // Close this dropdown when parent requests it
+  useEffect(() => {
+    if (onCloseThisDropdown && isOpen) {
+      setIsOpen(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  }, [onCloseThisDropdown, isOpen]);
 
   // Get available models based on generation mode
   const getAvailableModels = () => {
@@ -55,6 +104,25 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const availableModels = getAvailableModels();
   const selectedModelInfo = availableModels.find(model => model.value === selectedModel);
 
+  // Add credits information to models
+  const modelsWithCredits = availableModels.map(model => {
+    const creditInfo = getModelCreditInfo(model.value, selectedDuration, selectedResolution);
+    // Debug logging for Gen-4 Turbo and Gen-3a Turbo
+    if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
+      console.log(`Credit debug for ${model.value}:`, {
+        selectedDuration,
+        selectedResolution,
+        credits: creditInfo.credits,
+        displayText: creditInfo.displayText
+      });
+    }
+    return {
+      ...model,
+      credits: creditInfo.credits,
+      displayText: creditInfo.displayText
+    };
+  });
+
   // Auto-select first available model if current selection is invalid
   useEffect(() => {
     if (availableModels.length > 0 && !availableModels.find(model => model.value === selectedModel)) {
@@ -65,7 +133,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   return (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          // Close other dropdowns if they exist
+          if (onCloseOtherDropdowns) {
+            onCloseOtherDropdowns();
+          }
+          setIsOpen(!isOpen);
+        }}
         className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax')
             ? 'bg-white text-black' 
@@ -73,7 +147,14 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
-        {selectedModelInfo?.label || selectedModel}
+        {(() => {
+          const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
+          if (currentModel?.credits) {
+            return `${currentModel.label} (${currentModel.displayText})`;
+          }
+          return selectedModelInfo?.label || selectedModel;
+        })()}
+        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
@@ -83,7 +164,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
              generationMode === "image_to_video" ? "Image → Video Models" : "Video → Video Models"}
           </div>
           
-          {availableModels.map((model) => (
+          {modelsWithCredits.map((model) => (
             <button
               key={model.value}
               onClick={() => {
@@ -104,6 +185,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   )}
                 </div>
                 <span className="text-xs opacity-70">{model.description}</span>
+                {model.credits && (
+                  <span className="text-xs opacity-70 mt-0.5">{model.displayText}</span>
+                )}
               </div>
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>

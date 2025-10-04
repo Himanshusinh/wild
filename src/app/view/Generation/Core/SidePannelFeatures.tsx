@@ -121,8 +121,8 @@ const SidePannelFeatures = ({
               className="w-full h-full"
             />
           </div>
-          <span className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap uppercase'>
-            Wild Mind
+          <span className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap '>
+            WildMind Ai
           </span>
         </div>
 
@@ -262,8 +262,8 @@ const SidePannelFeatures = ({
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${
                   (pathname?.includes('/ArtStation')) ? 'bg-white/10' : ''
                 }`}
-            >
-                <Image src="/icons/imagegenerationwhite.svg" alt="Art Station" width={30} height={30} />
+            >  
+                <Image src="/icons/artstation.svg" alt="Art Station" width={28} height={28} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
             </div>
         </div>
@@ -294,8 +294,8 @@ const SidePannelFeatures = ({
                   (pathname?.includes('/live-chat')) ? 'bg-white/10' : ''
                 }`}
             >
-                <Image src="/icons/imagegenerationwhite.svg" alt="Live Chat" width={30} height={30} />
-                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Chat</span>
+                <Image src="/icons/livecanvas.svg" alt="Live Chat" width={28} height={28} />
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
             </div>
         </div>
         

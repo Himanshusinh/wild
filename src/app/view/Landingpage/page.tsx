@@ -57,6 +57,24 @@ const LandingPage: React.FC = () => {
   const [loadGallery, setLoadGallery] = React.useState(false)
   const [loadFAQ, setLoadFAQ] = React.useState(false)
   
+  // Prevent navigating back into protected routes after logout
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handlePop = () => {
+      // Always stay on landing page if user came here after logout
+      if (window.location.pathname.toLowerCase().includes('/view/landingpage')) {
+        history.pushState(null, document.title, window.location.href)
+      }
+    }
+    try {
+      history.pushState(null, document.title, window.location.href)
+      window.addEventListener('popstate', handlePop)
+    } catch {}
+    return () => {
+      window.removeEventListener('popstate', handlePop)
+    }
+  }, [])
+  
   // Carousel items
   const carouselItems = carouselCards.map((card, index) => (
     <Card
@@ -420,7 +438,7 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* LayoutGrid section */}
-        <div className="px-8 md:px-6 lg:px-8 -mt-4 md:-mt-2 lg:-mt-4">
+        {/* <div className="px-8 md:px-6 lg:px-8 -mt-4 md:-mt-2 lg:-mt-4">
           {loadLayoutGrid ? (
             <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
               <LazyLayoutGrid cards={layoutGridCards} />
@@ -428,7 +446,7 @@ const LandingPage: React.FC = () => {
           ) : (
             <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
           )}
-        </div>
+        </div> */}
 
         {/* Workflows */}
         <div ref={hWorkflowsRef}>
@@ -521,7 +539,7 @@ const LandingPage: React.FC = () => {
         </div>
         
         {/* WorldMap Section */}
-        <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-16 md:mt-12 lg:mt-16" ref={hGlobalRef}>
+        {/* <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-16 md:mt-12 lg:mt-16" ref={hGlobalRef}>
           <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-10 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
             <VariableProximity
               label={'Powering users across the globe, one platform everywhere.'}
@@ -543,7 +561,7 @@ const LandingPage: React.FC = () => {
           ) : (
             <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
           )}
-        </div>
+        </div> */}
 
         {/* Why choose wildmindAI Section */}
         <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28" ref={hWhyRef}>
@@ -730,15 +748,15 @@ const LandingPage: React.FC = () => {
                         scrollEase={0.02}
                         imageGap={0.8}
                         items={[
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg1.png?alt=media&token=636b6993-8838-417a-b40b-9a109675a848', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg2.png?alt=media&token=507a37f0-ef55-4867-ab1f-79b92cb2d2d5', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fimg3.png?alt=media&token=01bc4c52-e552-4a93-8f6c-8e62fdf11930', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex1.png?alt=media&token=def5ff0e-f95d-4622-9987-38b92b4f2982', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex2.png?alt=media&token=ff63ea0e-6335-4b41-87cf-738636039ecb', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex3.png?alt=media&token=f198a71f-2319-4b79-9dcd-d7355161032a', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex4.png?alt=media&token=8c83af98-29a4-44f7-8135-da8aed0ec78d', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex5.png?alt=media&token=4fdb2267-b1f2-4a80-b900-d6631c08378c', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex6.png?alt=media&token=9ffa68a0-a392-4ced-a154-761a8046df86', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex9.jpg?alt=media&token=08712171-a305-4bf5-969d-f8b548a65c81', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex8.jpg?alt=media&token=7deea9d9-80ce-4f43-ab39-25fd93ef5b82', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex7.jpg?alt=media&token=65905b8e-b572-4473-823a-a18306a3666b', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex6.jpg?alt=media&token=afeeeb2a-0a1e-41e2-a1ef-87bd87b87783', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex5.jpg?alt=media&token=e6a9e826-fe91-40fa-8347-2b61d938f468', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex4.jpg?alt=media&token=a383f425-2a12-42c8-ae0d-ad39493ef90e', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex3.jpg?alt=media&token=09f28b25-8635-4ce9-ba5b-1050118b496a', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex2.jpg?alt=media&token=f0ef5806-af7e-460c-b710-e28d9284ea55', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex15.jpg?alt=media&token=f1031ad3-9c87-4ed3-8d47-9f866e2ad783', text: '' },
                         ]}
                       />
                     </React.Suspense>
@@ -756,15 +774,15 @@ const LandingPage: React.FC = () => {
                         autoScrollSpeed={-0.05}
                         imageGap={0.8}
                         items={[
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex7.png?alt=media&token=bc1a7a8f-ebe0-4fd6-9a75-3d0f07414e27', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex8.png?alt=media&token=68dad024-f582-4e6a-9b8a-92f70188252f', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex9.png?alt=media&token=fd980978-cbb2-4039-8b02-307d028635d5', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex10.png?alt=media&token=8cd9bec9-ad65-4807-8189-e60dcc4eb441', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex11.png?alt=media&token=85a8bb76-f450-4db8-9df3-6f4b4eb75166', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex12.png?alt=media&token=65c055c1-d812-40c5-b85e-7e50103f6672', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex13.png?alt=media&token=d8392b12-de19-471b-8902-d1a8e72d3b8f', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex14.png?alt=media&token=230af79c-da11-4eec-b143-b444aaa6c266', text: '' },
-                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fartgallery%2Fex15.png?alt=media&token=64e4d18e-3bb0-471d-839b-656ce06ab0c0', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F01.jpg?alt=media&token=1bc68638-d1d8-48b7-9f91-99eb471e3101', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F03.jpg?alt=media&token=21108bdd-17ba-47f3-9063-0096f06a92b4', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F04.jpg?alt=media&token=effb0258-6e26-4765-ad7b-50d743f281e7', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F05.jpg?alt=media&token=dfd47617-166c-4d24-a511-80a9255b3b50', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F06.jpg?alt=media&token=8f46f11a-b300-44ac-9d5f-709211b9ef45', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F07.jpg?alt=media&token=bec3c6e5-3f1f-4226-a42b-78e15b0b8ee3', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F08.jpg?alt=media&token=3b844060-4bc5-43ee-b0fa-130fad0fd25a', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F09.jpg?alt=media&token=b6b65df7-046d-4ebf-b48f-c96415e1e181', text: '' },
+                          { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2F10.jpg?alt=media&token=2c311119-52ff-4afb-8564-3157496e500f', text: '' },
                         ]}
                       />
                     </React.Suspense>

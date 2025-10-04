@@ -16,6 +16,8 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 import {
   loadMoreHistory,
   loadHistory,
+  clearHistory,
+  clearFilters,
 } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -64,6 +66,9 @@ const InputBox = () => {
   
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
 
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
@@ -75,33 +80,80 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount and handle infinite scroll
+  // Load history on mount
   useEffect(() => {
-    // Load only sticker-generation entries
-    dispatch(loadHistory({ 
-      filters: { generationType: 'sticker-generation' }, 
-      paginationParams: { limit: 10 } 
-    }));
+    console.log('[Sticker] useEffect: mount -> clearing and loading sticker history');
+    (async () => {
+      try {
+        dispatch(clearHistory());
+        dispatch(clearFilters());
+        console.log('[Sticker] dispatched clearHistory');
+        const result: any = await (dispatch as any)(loadHistory({ 
+          filters: { generationType: 'sticker-generation' }, 
+          paginationParams: { limit: 50 } 
+        })).unwrap();
+        console.log('[Sticker] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
+      } catch (e) {
+        console.error('[Sticker] initial loadHistory error', e);
+      }
+    })();
   }, [dispatch]);
 
-  // Infinite scroll
+  // Mark user scroll
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
-        if (hasMore && !loading) {
-          dispatch(loadMoreHistory({ 
-            filters: { generationType: 'sticker-generation' }, 
-            paginationParams: { limit: 10 } 
-          }));
-        }
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll as any);
+  }, []);
+
+  // IntersectionObserver-based infinite scroll
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) {
+        console.log('[Sticker] IO: skip until user scrolls');
+        return;
       }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+      if (!hasMore || loading || loadingMoreRef.current) {
+        console.log('[Sticker] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+        return;
+      }
+      loadingMoreRef.current = true;
+      console.log('[Sticker] IO: loadMore start');
+      try {
+        await (dispatch as any)(loadMoreHistory({ 
+          filters: { generationType: 'sticker-generation' }, 
+          paginationParams: { limit: 10 } 
+        })).unwrap();
+      } catch (e) {
+        console.error('[Sticker] IO: loadMore error', e);
+      } finally {
+        loadingMoreRef.current = false;
+      }
+    }, { root: null, threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Please sign in to generate stickers'
+      }));
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/sticker-generation';
+      return;
+    }
 
     // Set local generation state immediately
     setIsGeneratingLocally(true);
@@ -149,28 +201,56 @@ const InputBox = () => {
       let result;
 
       // Build the same backend prompt regardless of model
-      const backendPrompt = `
-Create a fun and engaging sticker design of: ${prompt}.  
+      const backendPrompt = (p: string) => `
+      Create a FUN, BOLD sticker of: ${p}.
+      
+      Canvas & Background:
+      - Square canvas (1:1), PALE PLAIN background strictly for preview ONLY; final output must be TRANSPARENT (no gradients, no textures, no photos).
+      - Keep a clean silhouette with a **thick, even outline** around the subject. Leave ~16px visual margin from edges.
+      
+      Style:
+      - Colorful, vector/cartoon style with smooth curves and high contrast.
+      - Semi-flat shading (simple highlights + shadows), no photorealism.
+      - Add tiny accents (sparkles, motion lines, emoji chips) only if they enhance clarity.
+      
+      Framing & Readability:
+      - Subject must be centered, fill the canvas without touching edges.
+      - Silhouette readable at 64–96 px (app sticker size).
+      
+      Output (VERY IMPORTANT):
+      - **Transparent background** (alpha), **no drop shadows baked into background**.
+      - Edges should be crisp and anti-aliased (no halo).
+      - Provide at least 1024×1024 master PNG with transparency; safe to downscale to **512×512 WEBP** under **100 KB**.
+      
+      Usability tags:
+      - WhatsApp/Telegram/iMessage ready
+      - Clear thick outline (~6–12 px @1024 base)
+      - Minimal background clutter
+      
+      Subject constraints (use the prompt literally):
+      - Focus ONLY on: ${p}
+      - Include visual elements that clearly represent "${p}".
+      - Do not introduce unrelated props or scenes that are not in "${p}".
+      
+      Negative Prompt:
+      - No complex backgrounds, no textures, no 3D renders, no photo mashups, no tiny unreadable text, no muted/low-contrast palettes.
+      
+      Review checklist before export:
+      - Alpha background ✅  |  Strong outline ✅  |  Clean silhouette ✅  |  Centered with margin ✅  |  Clearly depicts "${p}" ✅
+      `;
+      
 
-Style: Bold, colorful, cartoon or vector style with clean outlines. Use exaggerated shapes, smooth shading, and vibrant colors.  
-Focus: Must be eye-catching and playful, with a clear silhouette that stands out at small sizes.  
-Usability: Suitable for social media, messaging apps, and decorative use. Transparent background preferred.  
-
-Art direction: Emphasize expressive character, humor, or charm. Keep the design simple but dynamic, with strong contrast and minimal background clutter.  
-Details: Use thick outlines, smooth curves, and a flat or semi-flat aesthetic. Add fun accents like sparkles, emojis, or motion lines if relevant.  
-
--- Negative Prompt: avoid photorealism, avoid complex backgrounds, avoid muted colors, avoid excessive text, avoid messy details, avoid 3D rendering.  
-Output: High-resolution, sticker-style illustration, transparent background, bold and crisp edges.
-`;
 
 
       // Read isPublic preference
       let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
 
+      const builtPrompt = backendPrompt(prompt);
+
       if (selectedModel === 'gemini-25-flash-image') {
         // Route to FAL (Google Nano Banana)
         result = await dispatch(falGenerate({
-          prompt: backendPrompt,
+          prompt: builtPrompt,
           model: selectedModel,
           n: imageCount,
           uploadedImages: [], // Nano Banana is T2I/I2I, but for sticker, we assume T2I for now
@@ -181,7 +261,7 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
       } else {
         // Route to BFL (Flux models)
         result = await dispatch(bflGenerate({
-          prompt: backendPrompt,
+          prompt: builtPrompt,
           model: selectedModel,
           n: imageCount,
           frameSize: '1:1',
@@ -335,7 +415,7 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
           )}
 
           {/* No History State */}
-          {!loading && stickerHistoryEntries.length === 0 && (
+          {!loading && stickerHistoryEntries.length === 0 && localGeneratingEntries.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
@@ -352,8 +432,47 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
           )}
 
           {/* History Entries - Grouped by Date */}
-          {stickerHistoryEntries.length > 0 && (
+          {(stickerHistoryEntries.length > 0 || (localGeneratingEntries.length > 0 && !groupedByDate[todayKey])) && (
             <div className=" space-y-8  ">
+              {/* If there is a local preview but no row for today yet, render today's row so the tile appears immediately */}
+              {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
+                <div className="space-y-4">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                    </div>
+                    <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    {localGeneratingEntries[0].images.map((image: any, idx: number) => (
+                      <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                        {localGeneratingEntries[0].status === 'generating' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-white/60">Generating...</div>
+                            </div>
+                          </div>
+                        ) : localGeneratingEntries[0].status === 'failed' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-full">
+                            <Image src={image.url || image.originalUrl || '/placeholder-sticker.png'} alt={localGeneratingEntries[0].prompt} fill loading="lazy" className="object-cover" sizes="192px" />
+                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Sticker</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
@@ -487,6 +606,9 @@ Output: High-resolution, sticker-style illustration, transparent background, bol
               ))}
             </div>
           )}
+
+          {/* Sentinel for infinite scroll */}
+          <div ref={sentinelRef} style={{ height: 1 }} />
 
           {/* Load More Indicator */}
           {hasMore && loading && stickerHistoryEntries.length > 0 && (

@@ -16,6 +16,8 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
   loadMoreHistory,
   loadHistory,
+  clearHistory,
+  clearFilters,
 } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -32,6 +34,7 @@ import FrameSizeButton from './FrameSizeButton';
 import ImageCountButton from './ImageCountButton';
 import ProductImagePreview from './ProductImagePreview';
 import GenerationModeDropdown from './GenerationModeDropdown';
+import { getApiClient } from '@/lib/axiosInstance';
 
 const ProductWithModelPoseInputBox = () => {
   const dispatch = useAppDispatch();
@@ -98,10 +101,21 @@ const ProductWithModelPoseInputBox = () => {
 
   // Load product-generation history on mount
   useEffect(() => {
-    dispatch(loadHistory({ 
-      filters: { generationType: 'product-generation' }, 
-      paginationParams: { limit: 50 } 
-    }));
+    console.log('[Product] useEffect: mount -> clearing and loading product history');
+    (async () => {
+      try {
+        dispatch(clearHistory());
+        dispatch(clearFilters());
+        console.log('[Product] dispatched clearHistory');
+        const result: any = await (dispatch as any)(loadHistory({ 
+          filters: { generationType: 'product-generation' }, 
+          paginationParams: { limit: 50 } 
+        })).unwrap();
+        console.log('[Product] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
+      } catch (e) {
+        console.error('[Product] initial loadHistory error', e);
+      }
+    })();
   }, [dispatch]);
 
   // IntersectionObserver-based infinite scroll
@@ -121,16 +135,23 @@ const ProductWithModelPoseInputBox = () => {
     const observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      if (!hasMore || loading || loadingMoreRef.current) return;
+      if (!hasUserScrolledRef.current) {
+        console.log('[Product] IO: skip until user scrolls');
+        return;
+      }
+      if (!hasMore || loading || loadingMoreRef.current) {
+        console.log('[Product] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+        return;
+      }
       loadingMoreRef.current = true;
+      console.log('[Product] IO: loadMore start');
       try {
         await (dispatch as any)(loadMoreHistory({ 
           filters: { generationType: 'product-generation' }, 
           paginationParams: { limit: 10 } 
         })).unwrap();
       } catch (e) {
-        console.error('[Product] IO loadMore error', e);
+        console.error('[Product] IO: loadMore error', e);
       } finally {
         loadingMoreRef.current = false;
       }
@@ -141,6 +162,20 @@ const ProductWithModelPoseInputBox = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Please sign in to generate product images'
+      }));
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/product-generation';
+      return;
+    }
 
     // Set local generation state immediately
     setIsGeneratingLocally(true);
@@ -279,7 +314,7 @@ GENERATOR HINTS:
       }
       
       if (selectedModel === 'gemini-25-flash-image') {
-        // Route to FAL (Google Nano Banana) for product images with SSE streaming support
+        // Route to FAL (Google Nano Banana) using axios with credentials (required for session cookie)
         const payload = {
           prompt: backendPrompt,
           model: selectedModel,
@@ -291,67 +326,9 @@ GENERATOR HINTS:
           generationType: 'product-generation',
         } as any;
 
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-        const url = `${apiBase ? apiBase.replace(/\/$/, '') : ''}/api/fal/generate`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          throw new Error(`FAL request failed: ${response.status}`);
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        let aggregatedImages: any[] = [];
-
-        if (contentType.includes('text/event-stream') && response.body) {
-          // Stream SSE updates and progressively update local preview tiles
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-
-            const messages = buffer.split('\n\n');
-            buffer = messages.pop() || '';
-
-            for (const msg of messages) {
-              const trimmed = msg.trim();
-              const dataLine = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : null;
-              if (!dataLine) continue;
-              try {
-                const evt = JSON.parse(dataLine);
-                const incomingUrl = evt.imageUrl || evt.image_url || evt.url || null;
-                if (incomingUrl) {
-                  const imageObj = { id: `fal-${aggregatedImages.length}`, url: incomingUrl, originalUrl: incomingUrl };
-                  aggregatedImages = [...aggregatedImages, imageObj];
-                  setLocalGeneratingEntries(prev => prev.map(e => ({
-                    ...e,
-                    images: aggregatedImages.map((img: any) => ({ id: img.id, url: img.url, originalUrl: img.originalUrl }))
-                  })));
-                }
-                if (evt.type === 'complete' && Array.isArray(evt.images)) {
-                  aggregatedImages = evt.images;
-                }
-              } catch {
-                // ignore parse errors
-              }
-            }
-          }
-
-          result = { images: aggregatedImages, historyId: undefined } as any;
-        } else {
-          // Fallback to JSON response if backend is not streaming
-          const json = await response.json();
-          result = (json?.data || json) as any;
-        }
+        const api = getApiClient();
+        const { data } = await api.post('/api/fal/generate', payload, { withCredentials: true });
+        result = (data?.data || data) as any;
       } else {
         // Route to BFL (Flux models)
         let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
@@ -538,7 +515,7 @@ GENERATOR HINTS:
           )}
 
           {/* No History State */}
-          {!loading && finalProductEntries.length === 0 && (
+          {!loading && finalProductEntries.length === 0 && localGeneratingEntries.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
@@ -555,8 +532,47 @@ GENERATOR HINTS:
           )}
 
           {/* History Entries - Grouped by Date */}
-          {finalProductEntries.length > 0 && (
+          {(finalProductEntries.length > 0 || (localGeneratingEntries.length > 0 && !groupedByDate[todayKey])) && (
             <div className=" space-y-8  ">
+              {/* If there is a local preview but no row for today yet, render today's row so the tile appears immediately */}
+              {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
+                <div className="space-y-4">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                    </div>
+                    <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3 ml-9">
+                    {localGeneratingEntries[0].images.map((image: any, idx: number) => (
+                      <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                        {localGeneratingEntries[0].status === 'generating' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-white/60">Generating...</div>
+                            </div>
+                          </div>
+                        ) : localGeneratingEntries[0].status === 'failed' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-full">
+                            <Image src={image.url || image.originalUrl || '/placeholder-product.png'} alt={localGeneratingEntries[0].prompt} fill loading="lazy" className="object-cover" sizes="192px" />
+                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Product</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
@@ -625,6 +641,7 @@ GENERATOR HINTS:
                       (entry.images || []).map((image: any) => (
                         <div
                           key={`${entry.id}-${image.id}`}
+                          data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreviewEntry(entry)}
                           className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
@@ -655,14 +672,24 @@ GENERATOR HINTS:
                               </div>
                             </div>
                           ) : (
-                            // Completed product
-                            <Image
-                              src={image.url || image.originalUrl || '/placeholder-product.png'}
-                              alt={entry.prompt}
-                              fill
-                              className="object-cover transition-transform group-hover:scale-105"
-                              sizes="192px"
-                            />
+                            // Completed product with shimmer loading (match TextToImage)
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={image.url || image.originalUrl || '/placeholder-product.png'}
+                                alt={entry.prompt}
+                                fill
+                                className="object-cover transition-transform group-hover:scale-105"
+                                sizes="192px"
+                                onLoad={() => {
+                                  setTimeout(() => {
+                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
+                                    if (shimmer) shimmer.style.opacity = '0';
+                                  }, 100);
+                                }}
+                              />
+                              {/* Shimmer loading effect */}
+                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                            </div>
                           )}
                           
                           {/* Product badge */}

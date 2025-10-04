@@ -61,16 +61,16 @@ export const imageRoutes: FolderImageRoutes = {
 
     // How to use guide videos
     howToUse: {
-        brandLaunch: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/how%20to%20use%20guide%2FAnimated_Brand_Launch_Billboard_Video.mp4?alt=media&token=6b0db1a7-502d-4b66-95e8-80f9e00be521',
-        mountainLandscape: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/how%20to%20use%20guide%2FMountain_Landscape_Transformation_Video.mp4?alt=media&token=5473b5bd-9fe5-4102-ac4d-ee3e95ce5f94',
+        brandLaunch: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FAnimated%20Brand%20Launch%20Billboard%20Video.mp4?alt=media&token=67d96203-d3b3-4c8d-a8ab-a05e338ac1cf',
+        mountainLandscape: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FMountain%20Landscape%20Transformation%20Video.mp4?alt=media&token=3a31842b-0f74-4685-a243-f41e6d4b5c67',
         realTimeCanvas: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/how%20to%20use%20guide%2FA_picture_of_202508291421.mp4?alt=media&token=8254db96-11de-4c19-a234-cb08c2eccb5e',
-        sceneSetup: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/how%20to%20use%20guide%2FScene_setup_pov_202508291428.mp4?alt=media&token=5e258634-eea9-4448-87f3-e3e4977994a9',
+        sceneSetup: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FScene%20Setup%20Pov%20202508291428.mp4?alt=media&token=523fc3c7-bf14-4824-9260-7801ed1afc1e',
         showcaseDemo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/how%20to%20use%20guide%2FScene_setup_a_202508291433.mp4?alt=media&token=f2bf0bc2-7a10-44bc-a762-e9a259d073c6'
     },
 
     // Header video
     header: {
-        heroVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/xdownloader.com_0xFramer_dcd80.mp4?alt=media&token=0ff649a0-909b-4955-ba56-69bcf6cae65c'
+        heroVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FXdownloader.Com%200Xframer%20Dcd80_2.mp4?alt=media&token=3cca7354-2269-4c7c-b9ac-1c8455032d4d'
     },
 
     // Pricing section

@@ -1,72 +1,55 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setImageCount } from '@/store/slices/generationSlice';
-
-const COUNTS = [1, 2, 3, 4, 6, 8];
+import { Minus, Plus } from 'lucide-react';
 
 const ImageCountButton = () => {
   const dispatch = useAppDispatch();
-  const saved = useAppSelector((s: any) => s.generation?.imageCount || 1);
+  const imageCount = useAppSelector((s: any) => s.generation?.imageCount || 1);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [draft, setDraft] = useState<number>(saved);
-
-  const open = () => {
-    if (isOpen) {
-      setIsOpen(false);
-    } else {
-      setDraft(saved);
-      setIsOpen(true);
+  const handleDecrease = () => {
+    if (imageCount > 1) {
+      dispatch(setImageCount(imageCount - 1));
     }
   };
-  const closeWithoutSave = () => {
-    setDraft(saved);
-    setIsOpen(false);
+
+  const handleIncrease = () => {
+    if (imageCount < 8) {
+      dispatch(setImageCount(imageCount + 1));
+    }
   };
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        closeWithoutSave();
-      }
-    };
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, [isOpen]);
-
   return (
-    <div ref={containerRef} className="relative inline-block">
+    <div className="flex items-center gap-2 bg-transparent rounded-full border border-white/20 p-1">
       <button
-        onClick={open}
-        className="h-[32px] px-3 rounded-full text-white/90 text-[13px] font-medium bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5 transition flex items-center gap-2"
-        aria-label="Image count"
-        title="Image count"
+        onClick={handleDecrease}
+        disabled={imageCount <= 1}
+        className={`w-4 h-4 rounded-full flex items-center justify-center transition ml-2 ${
+          imageCount <= 1 
+            ? 'text-white cursor-not-allowed' 
+            : ' text-white hover:bg-white/20'
+        }`}
       >
-        <span className="text-white/90 text-[13px]">Image</span>
-        <span className="text-white/90 text-[13px]">{saved}</span>
+        <Minus className="w-4 h-4" />
       </button>
-
-      {isOpen && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[90] w-[120px] max-w-[85vw]">
-          <div className="relative rounded-2xl bg-black/80 backdrop-blur-xl ring-1 ring-white/20 shadow-2xl p-2">
-            <div className="flex flex-col gap-1.5 px-1 pb-1 max-h-[220px] overflow-auto">
-              {COUNTS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => { setDraft(c); dispatch(setImageCount(c)); setIsOpen(false); }}
-                  className={`h-[28px] px-2 rounded-lg text-white/90 text-[12px] font-medium transition ring-1 text-center ${saved === c ? 'ring-[#2F6BFF] bg-white/10' : 'ring-white/20 hover:ring-white/30 hover:bg-white/5'}`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      
+      <span className="px-1 text-md font-medium text-white/90  text-center">
+        {imageCount}
+      </span>
+      
+      <button
+        onClick={handleIncrease}
+        disabled={imageCount >= 8}
+        className={`w-4 h-4 rounded-full flex items-center justify-center transition mr-2 ${
+          imageCount >= 8 
+            ? ' text-white cursor-not-allowed' 
+            : ' text-white hover:bg-white/20'
+        }`}
+      >
+        <Plus className="w-4 h-4" />
+      </button>
     </div>
   );
 };

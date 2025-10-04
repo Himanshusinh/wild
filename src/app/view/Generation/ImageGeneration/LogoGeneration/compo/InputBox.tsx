@@ -17,6 +17,7 @@ import {
   loadMoreHistory,
   loadHistory,
   clearHistory,
+  clearFilters,
 } from "@/store/slices/historySlice";
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
@@ -36,7 +37,7 @@ const InputBox = () => {
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || "");
   const selectedModel = useAppSelector(
-    (state: any) => state.generation?.selectedModel || "flux-kontext-pro"
+    (state: any) => state.generation?.selectedModel || "gemini-25-flash-image"
   );
   const imageCount = useAppSelector(
     (state: any) => state.generation?.imageCount || 1
@@ -101,6 +102,7 @@ const InputBox = () => {
     (async () => {
       try {
         dispatch(clearHistory());
+        dispatch(clearFilters());
         console.log('[Logo] dispatched clearHistory');
         const result: any = await (dispatch as any)(loadHistory({ 
           filters: { generationType: 'logo' }, 
@@ -154,6 +156,22 @@ const InputBox = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Please sign in to generate logos",
+        })
+      );
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/logo-generation';
+      return;
+    }
 
     // Set local generation state immediately
     setIsGeneratingLocally(true);
@@ -631,9 +649,9 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           )}
 
                           {/* Logo badge */}
-                          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                          {/* <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                             Logo
-                          </div>
+                          </div> */}
                       </div>
                     ))
                   )}

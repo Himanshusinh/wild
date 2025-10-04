@@ -11,8 +11,10 @@ import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGenerati
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory } from '@/store/slices/historySlice';
+import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory, removeHistoryEntry } from '@/store/slices/historySlice';
+import axiosInstance from '@/lib/axiosInstance';
 import { setCurrentView } from '@/store/slices/uiSlice';
+import { Download, Trash2 } from 'lucide-react';
 
 const History = () => {
   const dispatch = useAppDispatch();
@@ -23,6 +25,8 @@ const History = () => {
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
   const [viewMode, setViewMode] = useState<'global' | 'feature'>('global');
   const [hasMore, setHasMore] = useState(true);
+  const [pillLoading, setPillLoading] = useState(false);
+  const [overlayLoading, setOverlayLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ entry: HistoryEntry; video: any } | null>(null);
@@ -42,6 +46,15 @@ const History = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState<string>("");
 
+  // Selection states
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [showDownloadBar, setShowDownloadBar] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [dragEnd, setDragEnd] = useState<{ x: number; y: number } | null>(null);
+  const [dragBox, setDragBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const wasDraggingRef = useRef(false);
+
   // Debug logs removed for cleaner console
 
   // Helper: load only the first page; more pages load on scroll
@@ -50,7 +63,15 @@ const History = () => {
       const initialLimit = sortOrder === 'asc' ? 30 : 10; // fetch more when showing oldest so viewport fills immediately
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
       setHasMore(Boolean(result && result.hasMore));
-    } catch { }
+    } catch (error) {
+      // Handle condition aborts gracefully
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+        console.log('loadFirstPage aborted - another request in progress');
+      } else {
+        console.error('Error in loadFirstPage:', error);
+      }
+    }
   };
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
@@ -67,30 +88,49 @@ const History = () => {
         setHasMore(Boolean(more && more.hasMore));
         attempts += 1;
       }
-    } catch { }
+    } catch (error) {
+      // Handle condition aborts gracefully
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+        console.log('autoFillViewport aborted - another request in progress');
+      } else {
+        console.error('Error in autoFillViewport:', error);
+      }
+    }
   };
 
   // Load initial history on mount and when view mode changes
   useEffect(() => {
     const run = async () => {
-      // Reset history to ensure a clean initial load on refresh
-      dispatch(clearHistory());
-      if (viewMode === 'global') {
-        const base: any = { sortOrder };
-        dispatch(setFilters(base));
-        await loadFirstPage(base);
-        await autoFillViewport(base);
-      } else {
-        const f = { generationType: currentGenerationType, sortOrder } as any;
-        dispatch(setFilters(f));
-        await loadFirstPage(f);
-        await autoFillViewport(f);
+      try {
+        // Reset history to ensure a clean initial load on refresh
+        dispatch(clearHistory());
+        if (viewMode === 'global') {
+          const base: any = { sortOrder };
+          dispatch(setFilters(base));
+          await loadFirstPage(base);
+          await autoFillViewport(base);
+        } else {
+          const f = { generationType: currentGenerationType, sortOrder } as any;
+          dispatch(setFilters(f));
+          await loadFirstPage(f);
+          await autoFillViewport(f);
+        }
+        setPage(1);
+        didInitialLoadRef.current = true;
+      } catch (error) {
+        // Handle condition aborts gracefully
+        if (error && typeof error === 'object' && 'message' in error && 
+            typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+          console.log('History load aborted - another request in progress');
+        } else {
+          console.error('Error loading history:', error);
+        }
       }
-      setPage(1);
-      didInitialLoadRef.current = true;
     };
     run();
   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
+
 
   // Fallback: if nothing loaded (e.g., on hard refresh), trigger first page load
   useEffect(() => {
@@ -99,10 +139,20 @@ const History = () => {
       if (sortOrder) (base as any).sortOrder = sortOrder;
       if (dateRange.start && dateRange.end) (base as any).dateRange = { start: dateRange.start, end: dateRange.end };
       (async () => {
-        await loadFirstPage(base);
-        await autoFillViewport(base);
-        setPage(1);
-        didInitialLoadRef.current = true;
+        try {
+          await loadFirstPage(base);
+          await autoFillViewport(base);
+          setPage(1);
+          didInitialLoadRef.current = true;
+        } catch (error) {
+          // Handle condition aborts gracefully
+          if (error && typeof error === 'object' && 'message' in error && 
+              typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+            console.log('Fallback history load aborted - another request in progress');
+          } else {
+            console.error('Error in fallback history load:', error);
+          }
+        }
       })();
     }
   }, [loading, historyEntries.length, viewMode, currentGenerationType]);
@@ -168,6 +218,324 @@ const History = () => {
 
   const handleBackToGeneration = () => {
     dispatch(setCurrentView('generation'));
+  };
+
+  // Drag selection functions
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) { // Left mouse button
+      wasDraggingRef.current = false;
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+      setDragEnd({ x: e.clientX, y: e.clientY });
+      setDragBox({
+        left: e.clientX,
+        top: e.clientY,
+        width: 0,
+        height: 0
+      });
+    }
+  };
+
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Check if clicking on empty space (not on images or other interactive elements)
+    const target = e.target as HTMLElement;
+    const isClickingOnImage = target.closest('[data-image-id]');
+    const isClickingOnButton = target.closest('button');
+    const isClickingOnInteractive = target.closest('button, a, input, select, textarea');
+    
+    // Only clear selection if not dragging and clicking on empty space (not on images or buttons)
+    if (!wasDraggingRef.current && 
+        !isClickingOnImage && 
+        !isClickingOnInteractive && 
+        selectedImages.size > 0) {
+      clearSelection();
+    }
+    // Reset the drag flag for next interaction
+    wasDraggingRef.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && dragStart) {
+      wasDraggingRef.current = true;
+      setDragEnd({ x: e.clientX, y: e.clientY });
+      const newDragBox = {
+        left: Math.min(dragStart.x, e.clientX),
+        top: Math.min(dragStart.y, e.clientY),
+        width: Math.abs(e.clientX - dragStart.x),
+        height: Math.abs(e.clientY - dragStart.y)
+      };
+      setDragBox(newDragBox);
+
+      // Update selection in real-time while dragging - only if we have a significant drag
+      if (newDragBox.width > 5 && newDragBox.height > 5) {
+        const newSelected = new Set(selectedImages);
+        const dragRect = newDragBox;
+        
+        // Query all image elements and check intersection
+        const imageElements = document.querySelectorAll('[data-image-id]');
+        imageElements.forEach((element) => {
+          const rect = element.getBoundingClientRect();
+          if (
+            rect.left < dragRect.left + dragRect.width &&
+            rect.right > dragRect.left &&
+            rect.top < dragRect.top + dragRect.height &&
+            rect.bottom > dragRect.top
+          ) {
+            const key = element.getAttribute('data-image-id');
+            if (key) {
+              newSelected.add(key);
+            }
+          }
+        });
+        
+        setSelectedImages(newSelected);
+        setShowDownloadBar(newSelected.size > 0);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    // Selection is already updated in real-time during drag, just clean up
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+    setDragBox(null);
+  };
+
+  const toggleImageSelection = (entryId: string, mediaId: string) => {
+    const key = `${entryId}-${mediaId}`;
+    const newSelected = new Set(selectedImages);
+    
+    if (newSelected.has(key)) {
+      newSelected.delete(key);
+    } else {
+      newSelected.add(key);
+    }
+    
+    setSelectedImages(newSelected);
+    setShowDownloadBar(newSelected.size > 0);
+  };
+
+  const handleImageClick = (e: React.MouseEvent, entry: HistoryEntry, media: any, mediaIndex: number) => {
+    if (isDragging) {
+      e.preventDefault();
+      return;
+    }
+    
+    const key = `${entry.id}-${media.id || mediaIndex}`;
+    const isSelected = selectedImages.has(key);
+    
+    // If image is selected, unselect it instead of opening preview
+    if (isSelected) {
+      e.stopPropagation();
+      const newSelected = new Set(selectedImages);
+      newSelected.delete(key);
+      setSelectedImages(newSelected);
+      setShowDownloadBar(newSelected.size > 0);
+      return;
+    }
+    
+    // If no images are selected, open preview modal as normal
+    if (selectedImages.size === 0) {
+      const mediaUrl = media.firebaseUrl || media.url;
+      const video = isVideoUrl(mediaUrl);
+      const audio = isAudioUrl(mediaUrl);
+      const typeNorm = String(entry.generationType || '').replace(/[_-]/g, '-').toLowerCase();
+      
+      if (video) {
+        setVideoPreview({ entry, video: media });
+      } else if (audio) {
+        setAudioPreview({ entry, audioUrl: mediaUrl });
+      } else if (typeNorm === 'logo' || typeNorm === 'logo-generation') {
+        setLogoPreviewEntry(entry);
+      } else if (typeNorm === 'sticker-generation') {
+        setStickerPreviewEntry(entry);
+      } else if (typeNorm === 'product-generation') {
+        setProductPreviewEntry(entry);
+      } else {
+        setPreview({ entry, image: media });
+      }
+      return;
+    }
+    
+    // If other images are selected, select this one too
+    e.stopPropagation();
+    toggleImageSelection(entry.id, media.id || mediaIndex.toString());
+  };
+
+
+  const clearSelection = () => {
+    setSelectedImages(new Set());
+    setShowDownloadBar(false);
+  };
+
+  const deleteSelectedImages = async () => {
+    try {
+      if (!window.confirm(`Delete ${selectedImages.size} selected item${selectedImages.size !== 1 ? 's' : ''} permanently? This cannot be undone.`)) {
+        return;
+      }
+
+      const deletePromises: Promise<void>[] = [];
+      let successCount = 0;
+      const failedDeletes: string[] = [];
+      
+      historyEntries.forEach((entry: HistoryEntry) => {
+        const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+        mediaItems.forEach((media: any, index: number) => {
+          const key = `${entry.id}-${media.id || index}`;
+          if (selectedImages.has(key)) {
+            deletePromises.push(
+              axiosInstance.delete(`/api/generations/${entry.id}`)
+                .then(() => {
+                  dispatch(removeHistoryEntry(entry.id));
+                  successCount++;
+                  console.log(`Deleted: ${entry.id}`);
+                })
+                .catch(error => {
+                  console.error('Delete failed for', entry.id, error);
+                  failedDeletes.push(entry.id);
+                })
+            );
+          }
+        });
+      });
+
+      console.log(`Starting deletion of ${selectedImages.size} selected items...`);
+      await Promise.all(deletePromises);
+      
+      if (failedDeletes.length > 0) {
+        console.warn(`${failedDeletes.length} deletions failed`);
+        alert(`${failedDeletes.length} items couldn't be deleted. Please try again.`);
+      } else {
+        console.log(`Successfully deleted all ${successCount} items`);
+      }
+      
+      clearSelection();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      alert('Delete failed. Please try again.');
+    }
+  };
+
+  // Helper function to get file type from URL or media
+  const getFileType = (media: any, url: string) => {
+    if (url.includes('video') || url.includes('.mp4') || url.includes('.webm')) return 'video';
+    if (url.includes('audio') || url.includes('.mp3') || url.includes('.wav')) return 'audio';
+    return 'image';
+  };
+
+  // Helper functions to convert URLs to proxy URLs (like preview modals)
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) {
+      return urlOrPath.substring(ZATA_PREFIX.length);
+    }
+    return urlOrPath;
+  };
+
+  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    const path = toProxyPath(urlOrPath);
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
+
+  // Helper function to download single file using proxy URLs
+  const downloadSingleFile = async (url: string, filename: string) => {
+    try {
+      // Convert to proxy URL to avoid CORS issues
+      const proxyUrl = toProxyDownloadUrl(url);
+      if (!proxyUrl) {
+        throw new Error('Unable to create proxy URL');
+      }
+
+      console.log(`Downloading via proxy: ${proxyUrl} (original: ${url})`);
+      
+      const response = await fetch(proxyUrl, { credentials: 'include' });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      a.style.display = 'none';
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      window.URL.revokeObjectURL(objectUrl);
+      return true;
+    } catch (error) {
+      console.error('Download failed:', error);
+      return false;
+    }
+  };
+
+  const downloadSelectedImages = async () => {
+    try {
+      const downloadPromises: Promise<void>[] = [];
+      let downloadCount = 0;
+      const failedDownloads: string[] = [];
+      
+      historyEntries.forEach((entry: HistoryEntry) => {
+        const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+        mediaItems.forEach((media: any, index: number) => {
+          const key = `${entry.id}-${media.id || index}`;
+          if (selectedImages.has(key)) {
+            const url = media.url || media.originalUrl || media.firebaseUrl;
+            
+            if (url) {
+              downloadCount++;
+              const fileType = getFileType(media, url);
+              const extension = fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'png';
+              const filename = `${entry.model}-${entry.id}-${index}.${extension}`;
+              
+              console.log(`Attempting download for ${key}:`, { url, filename, fileType });
+              
+              downloadPromises.push(
+                downloadSingleFile(url, filename)
+                  .then(success => {
+                    if (!success) {
+                      console.error(`Download failed for ${key}:`, url);
+                      failedDownloads.push(key);
+                    } else {
+                      console.log(`Downloaded: ${key}`);
+                    }
+                  })
+                  .catch(error => {
+                    console.error(`Download error for ${key}:`, error);
+                    failedDownloads.push(key);
+                  })
+              );
+            } else {
+              console.warn(`No valid URL found for ${key}`, { media });
+              failedDownloads.push(key);
+            }
+          }
+        });
+      });
+
+      console.log(`Starting download of ${downloadCount} selected items...`);
+      await Promise.all(downloadPromises);
+      
+      if (failedDownloads.length > 0) {
+        console.warn(`${failedDownloads.length} downloads failed`);
+        alert(`${failedDownloads.length} files couldn't be downloaded. Please try downloading them individually.`);
+      } else {
+        console.log(`Successfully downloaded all ${downloadCount} items`);
+      }
+      
+      clearSelection();
+    } catch (error) {
+      console.error('Bulk download failed:', error);
+      alert('Download failed. Please try again.');
+    }
   };
 
   // Filter functions
@@ -276,7 +644,7 @@ const History = () => {
       ? 'Image Generation History'
       : `${getGenerationTypeLabel(currentGenerationType)} History`);
 
-  if (loading && historyEntries.length === 0) {
+  if (loading && historyEntries.length === 0 && !overlayLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -296,17 +664,31 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white p-2">
+    <div className="min-h-screen bg-transparent text-white p-2 select-none">
       {/* Fixed Header to match TextToImage style */}
       <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl">
         <h2 className="text-xl font-semibold text-white">{headerTitle}</h2>
       </div>
       {/* Spacer below fixed header */}
       <div className="h-0"></div>
+      <div 
+        className="relative mt-6"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
 
-      {/* Controls row (back, count, filters, toggle) */}
-      <div className="flex items-center  justify-between mb-2">
+        {/* Controls row (back, count, filters, toggle) */}
+        <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
+          {/* Drag Selection Hint */}
+          {selectedImages.size === 0 && historyEntries.length > 0 && (
+            <div className="px-3 py-1.5 rounded text-white/60 text-sm">
+              Drag to select multiple images
+            </div>
+          )}
+          
           {/* <button
             onClick={handleBackToGeneration}
             className="p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -333,6 +715,8 @@ const History = () => {
               key={key}
               onClick={async () => {
                 setQuickFilter(key);
+                setPillLoading(true);
+                setOverlayLoading(true);
                 let f: any = {};
                 switch (key) {
                   case 'images':
@@ -361,9 +745,13 @@ const History = () => {
                 if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
                 setLocalFilters(f);
                 dispatch(setFilters(f));
+                // Immediately clear current list so previous category tiles do not linger
+                dispatch(clearHistory());
                 await loadFirstPage(f);
                 await autoFillViewport(f);
                 setPage(1);
+                setPillLoading(false);
+                setOverlayLoading(false);
               }}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'
                 }`}
@@ -371,6 +759,12 @@ const History = () => {
               {label}
             </button>
           ))}
+          {/* {pillLoading && (
+            <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
+              <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+              Loading generations...
+            </div>
+          )} */}
           {/* Sort buttons */}
           <div className="ml-8 flex items-center gap-2">
             <button
@@ -431,7 +825,7 @@ const History = () => {
                     }}
                   >Apply</button>
                   <button
-                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm"
+                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm z-100"
                     onClick={async () => {
                       setDateInput('');
                       setDateRange({ start: null, end: null });
@@ -451,9 +845,9 @@ const History = () => {
             )}
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Filter Popover removed in favor of quick filter pills */}
+        {/* Filter Popover removed in favor of quick filter pills */}
 
 
 
@@ -494,8 +888,8 @@ const History = () => {
         </div>
       )} */}
 
-      {/* History Entries - TextToImage-like UI: date-grouped tiles */}
-      {historyEntries.length === 0 ? (
+        {/* History Entries - TextToImage-like UI: date-grouped tiles */}
+      {(historyEntries.length === 0 && !overlayLoading && !loading) ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 text-white/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -519,7 +913,18 @@ const History = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-8">
+        <div 
+          className="space-y-8 relative min-h-[300px]"
+          onClick={handleContainerClick}
+        >
+          {overlayLoading && (
+            <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                <div className="text-white text-lg">Loading generations...</div>
+              </div>
+            </div>
+          )}  
           {sortedDates.map((dateKey) => (
             <div key={dateKey} className="space-y-4">
               {/* Date Header */}
@@ -560,24 +965,23 @@ const History = () => {
                       <div
                         key={`${entry.id}-${video ? 'video' : (audio ? 'audio' : 'image')}-${mediaIndex}`}
                         data-image-id={`${entry.id}-${media.id || mediaIndex}`}
-                        onClick={() => {
-                          const typeNorm = String(entry.generationType || '').replace(/[_-]/g, '-').toLowerCase();
-                          if (video) {
-                            setVideoPreview({ entry, video: media });
-                          } else if (audio) {
-                            setAudioPreview({ entry, audioUrl: mediaUrl });
-                          } else if (typeNorm === 'logo' || typeNorm === 'logo-generation') {
-                            setLogoPreviewEntry(entry);
-                          } else if (typeNorm === 'sticker-generation') {
-                            setStickerPreviewEntry(entry);
-                          } else if (typeNorm === 'product-generation') {
-                            setProductPreviewEntry(entry);
-                          } else {
-                            setPreview({ entry, image: media });
-                          }
-                        }}
-                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                        onClick={(e) => handleImageClick(e, entry, media, mediaIndex)}
+                        className={`relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 transition-all duration-200 cursor-pointer group flex-shrink-0 ${
+                          selectedImages.has(`${entry.id}-${media.id || mediaIndex}`)
+                            ? 'ring-blue-400 ring-2 w-46 h-46 scale-98'
+                            : 'ring-white/10 hover:ring-white/20 w-48 h-48'
+                        }`}
                       >
+                        {/* Selection Indicator */}
+                        {selectedImages.has(`${entry.id}-${media.id || mediaIndex}`) && (
+                          <div className="absolute top-2 left-2 z-20">
+                            <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-blue-400 flex items-center justify-center">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
                         {entry.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                             <div className="flex flex-col items-center gap-2">
@@ -685,6 +1089,94 @@ const History = () => {
           )}
         </div>
       )}
+      </div>
+
+
+      {/* Drag Selection Box */}
+      {isDragging && dragBox && (
+        <div
+          className="fixed pointer-events-none z-50 border-2 border-blue-400 bg-blue-400/20"
+          style={{
+            left: dragBox.left,
+            top: dragBox.top,
+            width: dragBox.width,
+            height: dragBox.height,
+          }}
+        />
+      )}
+
+      {/* Download Bar */}
+
+      {showDownloadBar && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-t border-white/10 p-4">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
+                  <path d="M12 3v12" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M5 19h14" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-white font-medium text-sm">
+                  {selectedImages.size} item{selectedImages.size !== 1 ? 's' : ''} selected
+                </div>
+                <div className="text-white/60 text-xs">
+                  Ready to download
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={clearSelection}
+                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={downloadSelectedImages}
+                className="flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600/80 hover:bg-blue-600/90 text-white text-sm transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                {(() => {
+                  const count = selectedImages.size;
+                  const types = new Set();
+                  historyEntries.forEach((entry: HistoryEntry) => {
+                    const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+                    mediaItems.forEach((media: any, index: number) => {
+                      const key = `${entry.id}-${media.id || index}`;
+                      if (selectedImages.has(key)) {
+                        const url = media.url || media.originalUrl || media.firebaseUrl;
+                        if (url) {
+                          const fileType = getFileType(media, url);
+                          types.add(fileType);
+                        }
+                      }
+                    });
+                  });
+                  
+                  const typeText = types.size === 1 
+                    ? Array.from(types)[0] === 'video' ? 'Videos' 
+                    : Array.from(types)[0] === 'audio' ? 'Audio Files'
+                    : 'Images'
+                    : 'Files';
+                  
+                  return `Download ${count} ${typeText}`;
+                })()}
+              </button>
+              <button
+                onClick={deleteSelectedImages}
+                className="flex items-center gap-2 px-6 py-2 rounded-lg bg-red-600/80 hover:bg-red-600/90 text-white text-sm transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete {selectedImages.size}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />
       {logoPreviewEntry && (

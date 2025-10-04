@@ -2,8 +2,11 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { X, Download, ExternalLink, Copy, Check, Share } from 'lucide-react';
+import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
+import { useAppDispatch } from '@/store/hooks';
+import axiosInstance from '@/lib/axiosInstance';
+import { removeHistoryEntry } from '@/store/slices/historySlice';
 
 interface LogoImagePreviewProps {
   isOpen: boolean;
@@ -18,6 +21,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 }) => {
   console.log('LogoImagePreview', entry);
   const [copied, setCopied] = useState(false);
+  const dispatch = useAppDispatch();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -41,6 +45,11 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
+
+  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
   };
 
   if (!isOpen) return null;
@@ -69,14 +78,26 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
         const obj = URL.createObjectURL(blob);
         revokeUrl = obj;
         setSelectedImageObjectUrl(obj);
-      } catch {}
+      } catch { }
     };
     doFetch();
     return () => {
-      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch {}
+      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch { }
       controller.abort();
     };
   }, [selectedImagePath]);
+
+  const handleDelete = async () => {
+    try {
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      onClose();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      alert('Failed to delete generation');
+    }
+  };
 
   const handleDownload = async () => {
     try {
@@ -108,30 +129,30 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
       const downloadUrl = toProxyDownloadUrl(selectedImagePath);
       if (!downloadUrl) return;
-      
+
       const response = await fetch(downloadUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
       const fileName = (selectedImagePath || 'logo').split('/').pop() || `logo-${Date.now()}.png`;
-      
+
       const file = new File([blob], fileName, { type: blob.type });
-      
+
       await navigator.share({
         title: 'Wild Mind AI Generated Logo',
         text: `Check out this AI-generated logo!\n${getUserPrompt(entry.prompt).substring(0, 100)}...`,
         files: [file]
       });
-      
+
       console.log('Image shared successfully');
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Share cancelled by user');
         return;
       }
-      
+
       console.error('Share failed:', error);
       try {
         await navigator.clipboard.writeText(url);
@@ -145,14 +166,14 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
     if (!rawPrompt) return '';
-    
+
     // Handle the new backend prompt format
     // The backend prompt starts with "Create a professional, modern logo for: [USER_PROMPT]"
     const backendPromptMatch = rawPrompt.match(/Create a professional, modern logo for:\s*(.+?)\s*\./i);
     if (backendPromptMatch && backendPromptMatch[1]) {
       return backendPromptMatch[1].trim();
     }
-    
+
     // Fallback to old format (remove "Logo:" prefix)
     return rawPrompt.replace(/^Logo:\s*/i, '').trim();
   };
@@ -171,26 +192,35 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     window.open(selectedImage.url, '_blank');
   };
 
+
   return (
-    <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <button 
-        aria-label="Close" 
-        onClick={onClose} 
-        className="absolute top-3 right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white z-30"
-      >
-        <X className="h-5 w-5" />
-      </button>
-      
-      <div className="relative w-full max-w-[1200px] max-h-[90vh] bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-col md:flex-row h-full">
-          {/* Main Image Display */}
-          <div className="relative flex-1 min-h-[320px] md:min-h-[600px] bg-transparent group">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
+      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <div className="text-white/70 text-sm">{entry.model}</div>
+          <div className="flex items-center gap-2">
+            <button 
+              className="p-2 rounded-full  text-white transition-colors" 
+              onClick={handleDelete}
+              aria-label="Delete image"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+          {/* Media */}
+          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {selectedImage && (
-              <Image 
-                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl} 
-                alt={entry.prompt} 
-                fill 
-                className="object-contain" 
+              <Image
+                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
+                alt={entry.prompt}
+                fill
+                className="object-contain"
                 unoptimized
               />
             )}
@@ -201,7 +231,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(selectedImageProxyUrl, '_blank')}
+              onClick={() => window.open(toFrontendProxyResourceUrl(selectedImagePath || selectedImage?.url), '_blank')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
@@ -212,58 +242,81 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             </button>
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-full md:w-[380px] p-5 md:p-6 bg-white/5 backdrop-blur-xl border-l border-white/10 text-white overflow-y-auto">
-            {/* Prompt Section */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm opacity-80">Prompt</div>
+          {/* Sidebar */}
+          <div className="px-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[60vh] md:h-full md:w-[34%] overflow-y-none">
+            {/* Action Buttons */}
+            <div className="mb-4 flex gap-2">
               <button
                 onClick={handleDownload}
-                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <Download className="h-4 w-4" />
-                <span className="text-sm">Download</span>
+                Download
               </button>
 
               <button
                 onClick={() => shareImage(selectedImage?.url)}
-                className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/20"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <Share className="h-4 w-4" />
-                <span className="text-sm">Share</span>
+                Share
               </button>
             </div>
 
-            {/* Prompt Text */}
-            <div className="text-sm bg-white/5 backdrop-blur-sm rounded-lg p-3 mb-5 border border-white/10">
-              <div className="flex items-start gap-2">
-                <div className="opacity-90 leading-relaxed flex-1 max-w-[280px] break-words">
-                  {getUserPrompt(entry.prompt)}
-                </div>
+            {/* Prompt */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+                <span>Prompt</span>
                 <button
                   onClick={handleCopyPrompt}
-                  className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white/80 flex-shrink-0 mt-0.5"
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
                   title="Copy prompt"
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white/60 hover:text-white">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                  </svg>
                 </button>
+              </div>
+              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words borde">
+                {getUserPrompt(entry.prompt)}
               </div>
             </div>
 
-            {/* Image Thumbnails */}
+            {/* Date */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
+            </div>
+
+            {/* Details */}
+            <div className="mb-4">
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white text-sm">{entry.model}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/60 text-sm">Format:</span>
+                  <span className="text-white text-sm">Logo</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Gallery */}
             {galleryImages.length > 1 && (
-              <div className="mb-5">
-                <div className="text-sm opacity-80 mb-3">Images ({galleryImages.length})</div>
+              <div className="mb-4">
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Logos ({galleryImages.length})</div>
                 <div className="grid grid-cols-2 gap-2">
                   {galleryImages.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedImageIndex === index 
-                          ? 'border-blue-500 ring-2 ring-blue-500/30' 
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${selectedImageIndex === index
+                          ? 'border-white ring-2 ring-white/30'
                           : 'border-white/20 hover:border-white/40'
-                      }`}
+                        }`}
                     >
                       <Image
                         src={(image as any)?.url}
@@ -275,35 +328,20 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                       {index < inputImages.length && (
                         <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
                       )}
-                      {selectedImageIndex === index && (
-                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        </div>
-                      )}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Metadata Section */}
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Model</span>
-                <span className="opacity-90">{entry.model}</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Type</span>
-                <span className="opacity-90">Logo Generation</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Images</span>
-                <span className="opacity-90">{entry.imageCount} logo{entry.imageCount > 1 ? 's' : ''}</span>
-              </div>
-              <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
-                <span className="opacity-60">Generated</span>
-                <span className="opacity-90">{new Date(entry.timestamp).toLocaleString()}</span>
-              </div>
+            {/* Action Button */}
+            <div className="mt-6">
+              <button
+                onClick={onClose}
+                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+              >
+                Close Preview
+              </button>
             </div>
           </div>
         </div>

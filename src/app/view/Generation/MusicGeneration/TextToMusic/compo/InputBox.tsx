@@ -160,6 +160,17 @@ const InputBox = () => {
       return;
     }
 
+    // Check authentication before allowing generation
+    const hasSession = document.cookie.includes('app_session');
+    const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
+    
+    if (!hasSession && !hasToken) {
+      setErrorMessage('Please sign in to generate music');
+      // Redirect to signup page
+      window.location.href = '/view/signup?next=/text-to-music';
+      return;
+    }
+
     // Clear any previous credit errors
     clearCreditsError();
 
@@ -385,7 +396,7 @@ const InputBox = () => {
   return (
     <>
       {/* History Section - Fixed overlay like image/video generation */}
-      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 scrollbar-hide">
           <div className="py-6 pl-4 "> 
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
@@ -536,7 +547,7 @@ const InputBox = () => {
                               
                           {/* Music track label */}
                           <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                            <span className="text-xs text-white">Audio</span>
+                            {/* <span className="text-xs text-white">Audio</span> */}
                           </div>
                             </div>
                           )}

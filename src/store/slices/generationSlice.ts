@@ -23,7 +23,7 @@ interface GenerationState {
 
 const initialState: GenerationState = {
   prompt: '',
-  selectedModel: 'flux-dev',
+  selectedModel: 'gemini-25-flash-image',
   imageCount: 1,
   frameSize: '1:1',
   style: 'realistic',
@@ -84,7 +84,7 @@ export const generateImages = createAsyncThunk(
   }
 );
 
-// Live chat specific generate (flux-kontext only)
+// Live chat specific generate (supports both flux-kontext and Google Nano Banana)
 export const generateLiveChatImage = createAsyncThunk(
   'generation/generateLiveChatImage',
   async (
@@ -98,7 +98,11 @@ export const generateLiveChatImage = createAsyncThunk(
   ) => {
     try {
       const api = getApiClient();
-      const { data } = await api.post('/api/bfl/generate', { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
+      // Use different endpoints based on model
+      const isGoogleNano = model === 'gemini-25-flash-image';
+      const endpoint = isGoogleNano ? '/api/fal/generate' : '/api/bfl/generate';
+      
+      const { data } = await api.post(endpoint, { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
       const payload = data?.data || data;
       requestCreditsRefresh();
       return { images: payload.images, requestId: payload.requestId };
