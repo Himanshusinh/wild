@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wildmind AI",
+  title: "WildMind",
   description: "Your One-Stop AI-Powered Solution for Visual and Branding Needs",
 };
 

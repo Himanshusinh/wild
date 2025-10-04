@@ -861,7 +861,9 @@ const InputBox = () => {
           const result = await dispatch(falGenerate({
             prompt: `${prompt} [Style: ${style}]`,
             model: selectedModel,
-            n: imageCount,
+            // New schema: num_images + aspect_ratio
+            num_images: imageCount,
+            aspect_ratio: frameSize as any,
             uploadedImages,
             output_format: 'jpeg',
             generationType: 'text-to-image',
