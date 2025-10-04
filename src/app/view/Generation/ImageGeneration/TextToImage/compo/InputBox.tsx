@@ -34,10 +34,12 @@ import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
+import RemoveBgPopup from "./RemoveBgPopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { Button } from "@/components/ui/Button";
 import { useGenerationCredits } from "@/hooks/useCredits";
+import axiosInstance from "@/lib/axiosInstance";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -47,6 +49,7 @@ const InputBox = () => {
     image: any;
   } | null>(null);
   const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
+  const [isRemoveBgOpen, setIsRemoveBgOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -1505,7 +1508,7 @@ const InputBox = () => {
               <StyleSelector />
             </div>
             {/* moved previews near upload above */}
-            {/* {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
+            {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
               <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
                 <Button
                   aria-label="Upscale"
@@ -1539,6 +1542,7 @@ const InputBox = () => {
                   borderRadius="1.5rem"
                   containerClassName="h-10 w-auto"
                   className="bg-black text-white px-4 py-2"
+                  onClick={() => setIsRemoveBgOpen(true)}
                 >
                   <div className="flex items-center gap-2">
                     <svg
@@ -1557,14 +1561,15 @@ const InputBox = () => {
                   </div>
                 </Button>
               </div>
-            )} */}
+            )}
           </div>
         </div>
       </div>
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} style={{ height: 1 }} />
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
-      <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} />
+      <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
+      <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
     </>
   );
 };
