@@ -16,7 +16,7 @@ import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
-import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay } from 'lucide-react';
+import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import { getApiClient } from "@/lib/axiosInstance";
 import { useGenerationCredits } from "@/hooks/useCredits";
@@ -63,6 +63,19 @@ const InputBox = () => {
   const [cameraMovementPopupOpen, setCameraMovementPopupOpen] = useState(false);
   const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
   const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
+  
+  // Timeout refs for auto-close dropdowns
+  const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const durationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // State to trigger closing of models dropdown
+  const [closeModelsDropdown, setCloseModelsDropdown] = useState(false);
+  
+  // State to trigger closing of frame size dropdown
+  const [closeFrameSizeDropdown, setCloseFrameSizeDropdown] = useState(false);
+  
+  // State to trigger closing of duration dropdown
+  const [closeDurationDropdown, setCloseDurationDropdown] = useState(false);
 
   // Credits management - after all state declarations
   const {
@@ -169,6 +182,62 @@ const InputBox = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [cameraMovementPopupOpen]);
+
+  // Auto-close resolution dropdown after 5 seconds
+  useEffect(() => {
+    if (resolutionDropdownOpen) {
+      // Clear any existing timeout
+      if (resolutionTimeoutRef.current) {
+        clearTimeout(resolutionTimeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      resolutionTimeoutRef.current = setTimeout(() => {
+        setResolutionDropdownOpen(false);
+      }, 5000);
+    } else {
+      // Clear timeout if dropdown is closed
+      if (resolutionTimeoutRef.current) {
+        clearTimeout(resolutionTimeoutRef.current);
+        resolutionTimeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (resolutionTimeoutRef.current) {
+        clearTimeout(resolutionTimeoutRef.current);
+      }
+    };
+  }, [resolutionDropdownOpen]);
+
+  // Auto-close duration dropdown after 5 seconds
+  useEffect(() => {
+    if (durationDropdownOpen) {
+      // Clear any existing timeout
+      if (durationTimeoutRef.current) {
+        clearTimeout(durationTimeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      durationTimeoutRef.current = setTimeout(() => {
+        setDurationDropdownOpen(false);
+      }, 5000);
+    } else {
+      // Clear timeout if dropdown is closed
+      if (durationTimeoutRef.current) {
+        clearTimeout(durationTimeoutRef.current);
+        durationTimeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (durationTimeoutRef.current) {
+        clearTimeout(durationTimeoutRef.current);
+      }
+    };
+  }, [durationDropdownOpen]);
 
   // Handle model change with validation
   const handleModelChange = (newModel: string) => {
@@ -2117,6 +2186,30 @@ const InputBox = () => {
                   generationMode={generationMode}
                   selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
                   selectedResolution={selectedModel.includes("MiniMax") ? selectedResolution : undefined}
+                  onCloseOtherDropdowns={() => {
+                    // Close resolution and duration dropdowns
+                    if (resolutionDropdownOpen) {
+                      setResolutionDropdownOpen(false);
+                      if (resolutionTimeoutRef.current) {
+                        clearTimeout(resolutionTimeoutRef.current);
+                        resolutionTimeoutRef.current = null;
+                      }
+                    }
+                    if (durationDropdownOpen) {
+                      setDurationDropdownOpen(false);
+                      if (durationTimeoutRef.current) {
+                        clearTimeout(durationTimeoutRef.current);
+                        durationTimeoutRef.current = null;
+                      }
+                    }
+                    // Close frame size dropdown
+                    setCloseFrameSizeDropdown(true);
+                    setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                    // Close duration dropdown
+                    setCloseDurationDropdown(true);
+                    setTimeout(() => setCloseDurationDropdown(false), 0);
+                  }}
+                  onCloseThisDropdown={closeModelsDropdown ? () => {} : undefined}
                 />
 
                 {/* Dynamic Controls Based on Model Capabilities */}
@@ -2148,12 +2241,30 @@ const InputBox = () => {
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
                         />
                         {/* Duration - For image→video and text→video modes */}
                         {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
                           <VideoDurationDropdown
                             selectedDuration={duration}
                             onDurationChange={setDuration}
+                            onCloseOtherDropdowns={() => {
+                              // Close models dropdown
+                              setCloseModelsDropdown(true);
+                              setTimeout(() => setCloseModelsDropdown(false), 0);
+                              // Close frame size dropdown
+                              setCloseFrameSizeDropdown(true);
+                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            }}
+                            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
                           />
                         )}
                       </>
@@ -2170,7 +2281,20 @@ const InputBox = () => {
                             {/* Resolution Control */}
                             <div className="relative dropdown-container">
                               <button
-                                onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
+                                onClick={() => {
+                                  // Close duration dropdown if open
+                                  if (durationDropdownOpen) {
+                                    setDurationDropdownOpen(false);
+                                    if (durationTimeoutRef.current) {
+                                      clearTimeout(durationTimeoutRef.current);
+                                      durationTimeoutRef.current = null;
+                                    }
+                                  }
+                                  // Close models dropdown
+                                  setCloseModelsDropdown(true);
+                                  setTimeout(() => setCloseModelsDropdown(false), 0);
+                                  setResolutionDropdownOpen(!resolutionDropdownOpen);
+                                }}
                                 className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
                                   selectedResolution !== '1080P'
                                     ? 'bg-white text-black'
@@ -2179,6 +2303,7 @@ const InputBox = () => {
                               >
                                 <TvMinimalPlay className="w-4 h-4 mr-1" />
                                 {selectedResolution}
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
                               </button>
                               {resolutionDropdownOpen && (
                                 <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
@@ -2190,33 +2315,42 @@ const InputBox = () => {
                                           setSelectedResolution("512P");
                                           setResolutionDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                           selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                         }`}
                                       >
-                                        512P
+                                        <span>512P</span>
+                                        {selectedResolution === "512P" && (
+                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                        )}
                                       </button>
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("768P");
                                           setResolutionDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                           selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                         }`}
                                       >
-                                        768P
+                                        <span>768P</span>
+                                        {selectedResolution === "768P" && (
+                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                        )}
                                       </button>
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("1080P");
                                           setResolutionDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                           selectedResolution === "1080P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                         }`}
                                       >
-                                        1080P
+                                        <span>1080P</span>
+                                        {selectedResolution === "1080P" && (
+                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                        )}
                                       </button>
                                     </>
                                   )}
@@ -2227,22 +2361,28 @@ const InputBox = () => {
                                           setSelectedResolution("512P");
                                           setResolutionDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                           selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                         }`}
                                       >
-                                        512P
+                                        <span>512P</span>
+                                        {selectedResolution === "512P" && (
+                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                        )}
                                       </button>
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("768P");
                                           setResolutionDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                           selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                         }`}
                                       >
-                                        768P
+                                        <span>768P</span>
+                                        {selectedResolution === "768P" && (
+                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                        )}
                                       </button>
                                     </>
                                   )}
@@ -2253,7 +2393,20 @@ const InputBox = () => {
                             {/* Duration Control */}
                             <div className="relative dropdown-container">
                               <button
-                                onClick={() => setDurationDropdownOpen(!durationDropdownOpen)}
+                                onClick={() => {
+                                  // Close resolution dropdown if open
+                                  if (resolutionDropdownOpen) {
+                                    setResolutionDropdownOpen(false);
+                                    if (resolutionTimeoutRef.current) {
+                                      clearTimeout(resolutionTimeoutRef.current);
+                                      resolutionTimeoutRef.current = null;
+                                    }
+                                  }
+                                  // Close models dropdown
+                                  setCloseModelsDropdown(true);
+                                  setTimeout(() => setCloseModelsDropdown(false), 0);
+                                  setDurationDropdownOpen(!durationDropdownOpen);
+                                }}
                                 className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
                                   selectedMiniMaxDuration !== 6
                                     ? 'bg-white text-black'
@@ -2262,6 +2415,7 @@ const InputBox = () => {
                               >
                                 <Clock className="w-4 h-4 mr-1" />
                                 {selectedMiniMaxDuration}s
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${durationDropdownOpen ? 'rotate-180' : ''}`} />
                               </button>
                               {durationDropdownOpen && (
                                 <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
@@ -2270,22 +2424,28 @@ const InputBox = () => {
                                       setSelectedMiniMaxDuration(6);
                                       setDurationDropdownOpen(false);
                                     }}
-                                    className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                    className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                       selectedMiniMaxDuration === 6 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                     }`}
                                   >
-                                    6s
+                                    <span>6s</span>
+                                    {selectedMiniMaxDuration === 6 && (
+                                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                                    )}
                                   </button>
                                   <button
                                     onClick={() => {
                                       setSelectedMiniMaxDuration(10);
                                       setDurationDropdownOpen(false);
                                     }}
-                                    className={`w-full px-4 py-2 text-left transition text-[13px] ${
+                                    className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                                       selectedMiniMaxDuration === 10 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
                                     }`}
                                   >
-                                    10s
+                                    <span>10s</span>
+                                    {selectedMiniMaxDuration === 10 && (
+                                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                                    )}
                                   </button>
                                 </div>
                               )}

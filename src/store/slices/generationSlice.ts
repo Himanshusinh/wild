@@ -23,7 +23,7 @@ interface GenerationState {
 
 const initialState: GenerationState = {
   prompt: '',
-  selectedModel: 'flux-dev',
+  selectedModel: 'gemini-25-flash-image',
   imageCount: 1,
   frameSize: '1:1',
   style: 'realistic',

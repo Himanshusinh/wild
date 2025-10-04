@@ -121,8 +121,8 @@ const SidePannelFeatures = ({
               className="w-full h-full"
             />
           </div>
-          <span className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap uppercase'>
-            Wild Mind
+          <span className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap '>
+            WildMind Ai
           </span>
         </div>
 

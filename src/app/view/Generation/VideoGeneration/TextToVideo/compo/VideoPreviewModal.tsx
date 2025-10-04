@@ -32,12 +32,14 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   const toProxyResourceUrl = (urlOrPath: any) => {
     const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/media/${encodeURIComponent(path)}` : '';
+    // Use frontend-origin proxy route to avoid CORS
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
   };
 
   const toProxyDownloadUrl = (urlOrPath: any) => {
     const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+    // Use frontend-origin proxy route to avoid CORS
+    return path ? `/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
   const toFrontendProxyResourceUrl = (urlOrPath: any) => {
