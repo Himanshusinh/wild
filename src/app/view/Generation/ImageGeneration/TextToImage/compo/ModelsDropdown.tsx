@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Cpu, ChevronUp } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel } from '@/store/slices/generationSlice';
@@ -12,6 +12,7 @@ const ModelsDropdown = () => {
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const uploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   let models = [
     { name: 'Flux Kontext Pro', value: 'flux-kontext-pro' },
@@ -59,6 +60,34 @@ const ModelsDropdown = () => {
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('models'));
   };
+
+  // Auto-close dropdown after 5 seconds
+  useEffect(() => {
+    if (activeDropdown === 'models') {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      timeoutRef.current = setTimeout(() => {
+        dispatch(toggleDropdown(''));
+      }, 5000);
+    } else {
+      // Clear timeout if dropdown is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [activeDropdown, dispatch]);
 
   const handleModelSelect = (modelValue: string) => {
     // Toast guidance for models that require image input

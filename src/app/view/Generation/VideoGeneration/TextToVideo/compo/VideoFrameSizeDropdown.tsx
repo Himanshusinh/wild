@@ -1,21 +1,26 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Crop } from "lucide-react";
+import { ChevronDown, ChevronUp, Crop } from "lucide-react";
 
 interface VideoFrameSizeDropdownProps {
   selectedFrameSize: string;
   onFrameSizeChange: (frameSize: string) => void;
   selectedModel: string;
+  onCloseOtherDropdowns?: () => void;
+  onCloseThisDropdown?: () => void;
 }
 
 const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   selectedFrameSize,
   onFrameSizeChange,
   selectedModel,
+  onCloseOtherDropdowns,
+  onCloseThisDropdown,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,6 +33,45 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Auto-close dropdown after 5 seconds
+  useEffect(() => {
+    if (isOpen) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      timeoutRef.current = setTimeout(() => {
+        setIsOpen(false);
+      }, 5000);
+    } else {
+      // Clear timeout if dropdown is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isOpen]);
+
+  // Close this dropdown when parent requests it
+  useEffect(() => {
+    if (onCloseThisDropdown && isOpen) {
+      setIsOpen(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  }, [onCloseThisDropdown, isOpen]);
 
   // Get available frame sizes based on model
   const getAvailableFrameSizes = () => {
@@ -63,7 +107,13 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   return (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          // Close other dropdowns if they exist
+          if (onCloseOtherDropdowns) {
+            onCloseOtherDropdowns();
+          }
+          setIsOpen(!isOpen);
+        }}
         className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           selectedFrameSize !== '16:9' 
             ? 'bg-white text-black' 
@@ -72,6 +122,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
       >
         <Crop className="w-4 h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}
+        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-44 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">

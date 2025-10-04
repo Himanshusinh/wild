@@ -139,7 +139,7 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
                     {lyrics.length > 80 ? `${lyrics.substring(0, 80)}...` : lyrics}
                   </div>
                 ) : (
-                  <div className="max-h-40 overflow-y-auto">
+                  <div className="max-h-40 overflow-y-auto scrollbar-hide">
                     <pre className="whitespace-pre-wrap font-mono text-[12px] text-white/80">{lyrics}</pre>
                   </div>
                 )}

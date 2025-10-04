@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -16,10 +16,39 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const currentStyle = useAppSelector((state: any) => state.generation?.style || 'realistic');
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const [mounted, setMounted] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Auto-close popup after 5 seconds
+  useEffect(() => {
+    if (isOpen) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      timeoutRef.current = setTimeout(() => {
+        onClose();
+      }, 5000);
+    } else {
+      // Clear timeout if popup is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isOpen, onClose]);
 
   const styles = [
     {
