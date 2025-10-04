@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Share } from 'lucide-react';
+import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 import { useAppDispatch } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
@@ -212,19 +212,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [selectedImage?.url, preview?.image?.url]);
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
       <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
           <div className="text-white/70 text-sm">{preview.entry.model}</div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm" onClick={handleDelete}>Delete</button>
+            <button 
+              className="p-2 rounded-full  text-white transition-colors" 
+              onClick={handleDelete}
+              aria-label="Delete image"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
             <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+        <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
           {/* Media */}
           <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {selectedImage?.url && (
