@@ -37,7 +37,7 @@ const InputBox = () => {
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || "");
   const selectedModel = useAppSelector(
-    (state: any) => state.generation?.selectedModel || "flux-kontext-pro"
+    (state: any) => state.generation?.selectedModel || "gemini-25-flash-image"
   );
   const imageCount = useAppSelector(
     (state: any) => state.generation?.imageCount || 1

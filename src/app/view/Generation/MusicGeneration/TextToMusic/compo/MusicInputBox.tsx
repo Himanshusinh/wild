@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addNotification } from '@/store/slices/uiSlice';
-import { Music4, ChevronDown, Volume2, FileText, Palette, Guitar } from "lucide-react";
+import { Music4, ChevronDown, ChevronUp, Volume2, FileText, Palette, Guitar } from "lucide-react";
 import { getModelCreditInfo } from '@/utils/modelCredits';
 
 // Music styles and instruments for dropdowns
@@ -54,6 +54,24 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const [formatOpen, setFormatOpen] = useState(false);
   const [outputFormatOpen, setOutputFormatOpen] = useState(false);
 
+  // Timeout refs for auto-close dropdowns
+  const styleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const instrumentsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const modelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const srTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const brTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const formatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const outputFormatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // States to trigger closing of other dropdowns
+  const [closeStyleDropdown, setCloseStyleDropdown] = useState(false);
+  const [closeInstrumentsDropdown, setCloseInstrumentsDropdown] = useState(false);
+  const [closeModelDropdown, setCloseModelDropdown] = useState(false);
+  const [closeSrDropdown, setCloseSrDropdown] = useState(false);
+  const [closeBrDropdown, setCloseBrDropdown] = useState(false);
+  const [closeFormatDropdown, setCloseFormatDropdown] = useState(false);
+  const [closeOutputFormatDropdown, setCloseOutputFormatDropdown] = useState(false);
+
   // Local generating state for UI demo
   const [localGenerating, setLocalGenerating] = useState(false);
   const dispatch = useAppDispatch();
@@ -74,6 +92,190 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   };
 
   const canGenerate = isLyricsValid(lyrics) && !generating;
+
+  // Auto-close timers for all dropdowns
+  useEffect(() => {
+    if (styleOpen) {
+      if (styleTimeoutRef.current) clearTimeout(styleTimeoutRef.current);
+      styleTimeoutRef.current = setTimeout(() => setStyleOpen(false), 5000);
+    } else {
+      if (styleTimeoutRef.current) {
+        clearTimeout(styleTimeoutRef.current);
+        styleTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (styleTimeoutRef.current) clearTimeout(styleTimeoutRef.current);
+    };
+  }, [styleOpen]);
+
+  useEffect(() => {
+    if (instrumentsOpen) {
+      if (instrumentsTimeoutRef.current) clearTimeout(instrumentsTimeoutRef.current);
+      instrumentsTimeoutRef.current = setTimeout(() => setInstrumentsOpen(false), 5000);
+    } else {
+      if (instrumentsTimeoutRef.current) {
+        clearTimeout(instrumentsTimeoutRef.current);
+        instrumentsTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (instrumentsTimeoutRef.current) clearTimeout(instrumentsTimeoutRef.current);
+    };
+  }, [instrumentsOpen]);
+
+  useEffect(() => {
+    if (modelOpen) {
+      if (modelTimeoutRef.current) clearTimeout(modelTimeoutRef.current);
+      modelTimeoutRef.current = setTimeout(() => setModelOpen(false), 5000);
+    } else {
+      if (modelTimeoutRef.current) {
+        clearTimeout(modelTimeoutRef.current);
+        modelTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (modelTimeoutRef.current) clearTimeout(modelTimeoutRef.current);
+    };
+  }, [modelOpen]);
+
+  useEffect(() => {
+    if (srOpen) {
+      if (srTimeoutRef.current) clearTimeout(srTimeoutRef.current);
+      srTimeoutRef.current = setTimeout(() => setSrOpen(false), 5000);
+    } else {
+      if (srTimeoutRef.current) {
+        clearTimeout(srTimeoutRef.current);
+        srTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (srTimeoutRef.current) clearTimeout(srTimeoutRef.current);
+    };
+  }, [srOpen]);
+
+  useEffect(() => {
+    if (brOpen) {
+      if (brTimeoutRef.current) clearTimeout(brTimeoutRef.current);
+      brTimeoutRef.current = setTimeout(() => setBrOpen(false), 5000);
+    } else {
+      if (brTimeoutRef.current) {
+        clearTimeout(brTimeoutRef.current);
+        brTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (brTimeoutRef.current) clearTimeout(brTimeoutRef.current);
+    };
+  }, [brOpen]);
+
+  useEffect(() => {
+    if (formatOpen) {
+      if (formatTimeoutRef.current) clearTimeout(formatTimeoutRef.current);
+      formatTimeoutRef.current = setTimeout(() => setFormatOpen(false), 5000);
+    } else {
+      if (formatTimeoutRef.current) {
+        clearTimeout(formatTimeoutRef.current);
+        formatTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (formatTimeoutRef.current) clearTimeout(formatTimeoutRef.current);
+    };
+  }, [formatOpen]);
+
+  useEffect(() => {
+    if (outputFormatOpen) {
+      if (outputFormatTimeoutRef.current) clearTimeout(outputFormatTimeoutRef.current);
+      outputFormatTimeoutRef.current = setTimeout(() => setOutputFormatOpen(false), 5000);
+    } else {
+      if (outputFormatTimeoutRef.current) {
+        clearTimeout(outputFormatTimeoutRef.current);
+        outputFormatTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (outputFormatTimeoutRef.current) clearTimeout(outputFormatTimeoutRef.current);
+    };
+  }, [outputFormatOpen]);
+
+  // Mutual exclusion effects
+  useEffect(() => {
+    if (closeStyleDropdown && styleOpen) {
+      setStyleOpen(false);
+      if (styleTimeoutRef.current) {
+        clearTimeout(styleTimeoutRef.current);
+        styleTimeoutRef.current = null;
+      }
+      setCloseStyleDropdown(false);
+    }
+  }, [closeStyleDropdown, styleOpen]);
+
+  useEffect(() => {
+    if (closeInstrumentsDropdown && instrumentsOpen) {
+      setInstrumentsOpen(false);
+      if (instrumentsTimeoutRef.current) {
+        clearTimeout(instrumentsTimeoutRef.current);
+        instrumentsTimeoutRef.current = null;
+      }
+      setCloseInstrumentsDropdown(false);
+    }
+  }, [closeInstrumentsDropdown, instrumentsOpen]);
+
+  useEffect(() => {
+    if (closeModelDropdown && modelOpen) {
+      setModelOpen(false);
+      if (modelTimeoutRef.current) {
+        clearTimeout(modelTimeoutRef.current);
+        modelTimeoutRef.current = null;
+      }
+      setCloseModelDropdown(false);
+    }
+  }, [closeModelDropdown, modelOpen]);
+
+  useEffect(() => {
+    if (closeSrDropdown && srOpen) {
+      setSrOpen(false);
+      if (srTimeoutRef.current) {
+        clearTimeout(srTimeoutRef.current);
+        srTimeoutRef.current = null;
+      }
+      setCloseSrDropdown(false);
+    }
+  }, [closeSrDropdown, srOpen]);
+
+  useEffect(() => {
+    if (closeBrDropdown && brOpen) {
+      setBrOpen(false);
+      if (brTimeoutRef.current) {
+        clearTimeout(brTimeoutRef.current);
+        brTimeoutRef.current = null;
+      }
+      setCloseBrDropdown(false);
+    }
+  }, [closeBrDropdown, brOpen]);
+
+  useEffect(() => {
+    if (closeFormatDropdown && formatOpen) {
+      setFormatOpen(false);
+      if (formatTimeoutRef.current) {
+        clearTimeout(formatTimeoutRef.current);
+        formatTimeoutRef.current = null;
+      }
+      setCloseFormatDropdown(false);
+    }
+  }, [closeFormatDropdown, formatOpen]);
+
+  useEffect(() => {
+    if (closeOutputFormatDropdown && outputFormatOpen) {
+      setOutputFormatOpen(false);
+      if (outputFormatTimeoutRef.current) {
+        clearTimeout(outputFormatTimeoutRef.current);
+        outputFormatTimeoutRef.current = null;
+      }
+      setCloseOutputFormatDropdown(false);
+    }
+  }, [closeOutputFormatDropdown, outputFormatOpen]);
 
   // Keyboard: Ctrl/Cmd + Enter
   useEffect(() => {
@@ -159,12 +361,27 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     return (
       <div className="relative dropdown-container">
         <button
-          onClick={() => setModelOpen(!modelOpen)}
+          onClick={() => {
+            // Close other dropdowns
+            setCloseStyleDropdown(true);
+            setTimeout(() => setCloseStyleDropdown(false), 0);
+            setCloseInstrumentsDropdown(true);
+            setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+            setCloseSrDropdown(true);
+            setTimeout(() => setCloseSrDropdown(false), 0);
+            setCloseBrDropdown(true);
+            setTimeout(() => setCloseBrDropdown(false), 0);
+            setCloseFormatDropdown(true);
+            setTimeout(() => setCloseFormatDropdown(false), 0);
+            setCloseOutputFormatDropdown(true);
+            setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+            setModelOpen(!modelOpen);
+          }}
           className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
         >
           <Music4 className="w-4 h-4" />
           {creditInfo.hasCredits ? `${model} (${creditInfo.displayText})` : model}
-          <ChevronDown className="w-3.5 h-3.5 ml-1" />
+          <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${modelOpen ? 'rotate-180' : ''}`} />
         </button>
         {modelOpen && (
           <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
@@ -186,24 +403,42 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const StyleDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setStyleOpen(!styleOpen)}
+        onClick={() => {
+          // Close other dropdowns
+          setCloseInstrumentsDropdown(true);
+          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+          setCloseModelDropdown(true);
+          setTimeout(() => setCloseModelDropdown(false), 0);
+          setCloseSrDropdown(true);
+          setTimeout(() => setCloseSrDropdown(false), 0);
+          setCloseBrDropdown(true);
+          setTimeout(() => setCloseBrDropdown(false), 0);
+          setCloseFormatDropdown(true);
+          setTimeout(() => setCloseFormatDropdown(false), 0);
+          setCloseOutputFormatDropdown(true);
+          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+          setStyleOpen(!styleOpen);
+        }}
         className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Palette className="w-4 h-4" />
         {selectedStyle}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${styleOpen ? 'rotate-180' : ''}`} />
       </button>
       {styleOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto">
+        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           {MUSIC_STYLES.map((style) => (
             <button
               key={style}
               onClick={() => { setSelectedStyle(style); setStyleOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 ${
-                selectedStyle === style ? "bg-white/10 text-white" : "text-white/90"
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                selectedStyle === style ? "bg-white text-black" : "text-white/90"
               }`}
             >
-              {style}
+              <span>{style}</span>
+              {selectedStyle === style && (
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+              )}
             </button>
           ))}
         </div>
@@ -214,24 +449,42 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const InstrumentsDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setInstrumentsOpen(!instrumentsOpen)}
+        onClick={() => {
+          // Close other dropdowns
+          setCloseStyleDropdown(true);
+          setTimeout(() => setCloseStyleDropdown(false), 0);
+          setCloseModelDropdown(true);
+          setTimeout(() => setCloseModelDropdown(false), 0);
+          setCloseSrDropdown(true);
+          setTimeout(() => setCloseSrDropdown(false), 0);
+          setCloseBrDropdown(true);
+          setTimeout(() => setCloseBrDropdown(false), 0);
+          setCloseFormatDropdown(true);
+          setTimeout(() => setCloseFormatDropdown(false), 0);
+          setCloseOutputFormatDropdown(true);
+          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+          setInstrumentsOpen(!instrumentsOpen);
+        }}
         className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Guitar className="w-4 h-4" />
         {selectedInstruments.includes('None') ? 'None' : `${selectedInstruments.length} selected`}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${instrumentsOpen ? 'rotate-180' : ''}`} />
       </button>
       {instrumentsOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto">
+        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           {INSTRUMENTS.map((instrument) => (
             <button
               key={instrument}
               onClick={() => { toggleInstrument(instrument); setInstrumentsOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 ${
-                selectedInstruments.includes(instrument) ? "bg-white/10 text-white" : "text-white/90"
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                selectedInstruments.includes(instrument) ? "bg-white text-black" : "text-white/90"
               }`}
             >
-              {instrument}
+              <span>{instrument}</span>
+              {selectedInstruments.includes(instrument) && (
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+              )}
             </button>
           ))}
         </div>
@@ -242,12 +495,27 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const SampleRateDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setSrOpen(!srOpen)}
+        onClick={() => {
+          // Close other dropdowns
+          setCloseStyleDropdown(true);
+          setTimeout(() => setCloseStyleDropdown(false), 0);
+          setCloseInstrumentsDropdown(true);
+          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+          setCloseModelDropdown(true);
+          setTimeout(() => setCloseModelDropdown(false), 0);
+          setCloseBrDropdown(true);
+          setTimeout(() => setCloseBrDropdown(false), 0);
+          setCloseFormatDropdown(true);
+          setTimeout(() => setCloseFormatDropdown(false), 0);
+          setCloseOutputFormatDropdown(true);
+          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+          setSrOpen(!srOpen);
+        }}
         className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-4 h-4" />
         {audio.sample_rate}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${srOpen ? 'rotate-180' : ''}`} />
       </button>
       {srOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
@@ -255,11 +523,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               key={sr}
               onClick={() => { setAudio({ ...audio, sample_rate: sr as any }); setSrOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 ${
-                audio.sample_rate === sr ? "bg-white/10 text-white" : "text-white/90"
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                audio.sample_rate === sr ? "bg-white text-black" : "text-white/90"
               }`}
             >
-              {sr}
+              <span>{sr}</span>
+              {audio.sample_rate === sr && (
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+              )}
             </button>
           ))}
         </div>
@@ -270,12 +541,27 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const BitrateDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setBrOpen(!brOpen)}
+        onClick={() => {
+          // Close other dropdowns
+          setCloseStyleDropdown(true);
+          setTimeout(() => setCloseStyleDropdown(false), 0);
+          setCloseInstrumentsDropdown(true);
+          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+          setCloseModelDropdown(true);
+          setTimeout(() => setCloseModelDropdown(false), 0);
+          setCloseSrDropdown(true);
+          setTimeout(() => setCloseSrDropdown(false), 0);
+          setCloseFormatDropdown(true);
+          setTimeout(() => setCloseFormatDropdown(false), 0);
+          setCloseOutputFormatDropdown(true);
+          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+          setBrOpen(!brOpen);
+        }}
         className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-4 h-4" />
         {audio.bitrate}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${brOpen ? 'rotate-180' : ''}`} />
       </button>
       {brOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
@@ -283,11 +569,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               key={br}
               onClick={() => { setAudio({ ...audio, bitrate: br as any }); setBrOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 ${
-                audio.bitrate === br ? "bg-white/10 text-white" : "text-white/90"
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                audio.bitrate === br ? "bg-white text-black" : "text-white/90"
               }`}
             >
-              {br}
+              <span>{br}</span>
+              {audio.bitrate === br && (
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+              )}
             </button>
           ))}
         </div>
@@ -298,12 +587,27 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const FormatDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setFormatOpen(!formatOpen)}
+        onClick={() => {
+          // Close other dropdowns
+          setCloseStyleDropdown(true);
+          setTimeout(() => setCloseStyleDropdown(false), 0);
+          setCloseInstrumentsDropdown(true);
+          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+          setCloseModelDropdown(true);
+          setTimeout(() => setCloseModelDropdown(false), 0);
+          setCloseSrDropdown(true);
+          setTimeout(() => setCloseSrDropdown(false), 0);
+          setCloseBrDropdown(true);
+          setTimeout(() => setCloseBrDropdown(false), 0);
+          setCloseOutputFormatDropdown(true);
+          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+          setFormatOpen(!formatOpen);
+        }}
         className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <FileText className="w-4 h-4" />
         {audio.format.toUpperCase()}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${formatOpen ? 'rotate-180' : ''}`} />
       </button>
       {formatOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-24 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
@@ -311,11 +615,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               key={format}
               onClick={() => { setAudio({ ...audio, format: format as any }); setFormatOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 ${
-                audio.format === format ? "bg-white/10 text-white" : "text-white/90"
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                audio.format === format ? "bg-white text-black" : "text-white/90"
               }`}
             >
-              {format.toUpperCase()}
+              <span>{format.toUpperCase()}</span>
+              {audio.format === format && (
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+              )}
             </button>
           ))}
         </div>
@@ -326,12 +633,27 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const OutputFormatDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => setOutputFormatOpen(!outputFormatOpen)}
+        onClick={() => {
+          // Close other dropdowns
+          setCloseStyleDropdown(true);
+          setTimeout(() => setCloseStyleDropdown(false), 0);
+          setCloseInstrumentsDropdown(true);
+          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+          setCloseModelDropdown(true);
+          setTimeout(() => setCloseModelDropdown(false), 0);
+          setCloseSrDropdown(true);
+          setTimeout(() => setCloseSrDropdown(false), 0);
+          setCloseBrDropdown(true);
+          setTimeout(() => setCloseBrDropdown(false), 0);
+          setCloseFormatDropdown(true);
+          setTimeout(() => setCloseFormatDropdown(false), 0);
+          setOutputFormatOpen(!outputFormatOpen);
+        }}
         className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <FileText className="w-4 h-4" />
         {outputFormat.toUpperCase()}
-        <ChevronDown className="w-3.5 h-3.5 ml-1" />
+        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${outputFormatOpen ? 'rotate-180' : ''}`} />
       </button>
       {outputFormatOpen && (
         <div className="absolute bottom-full left-0 mb-2 w-24 bg-black/85 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/20 py-1">
@@ -339,11 +661,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               key={format}
               onClick={() => { setOutputFormat(format as any); setOutputFormatOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 ${
-                outputFormat === format ? "bg-white/10 text-white" : "text-white/90"
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                outputFormat === format ? "bg-white text-black" : "text-white/90"
               }`}
             >
-              {format.toUpperCase()}
+              <span>{format.toUpperCase()}</span>
+              {outputFormat === format && (
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+              )}
             </button>
           ))}
         </div>
@@ -354,6 +679,37 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   return (
     <div className="w-full max-w-[1200px] rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl p-4">
+      {/* Custom scrollbar styles */}
+      <style jsx>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        /* Hide scrollbars in dropdown menus */
+        .dropdown-container .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .dropdown-container .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        /* Global scrollbar hiding for all dropdowns */
+        .dropdown-container div[class*="overflow-y-auto"] {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .dropdown-container div[class*="overflow-y-auto"]::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       {/* Main Input Section - Compact Layout */}
       <div className="space-y-4">
         {/* Top Row: Style and Instruments */}
@@ -388,8 +744,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               </p>
             )}
             <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-white/70 text-xs">
-                💡 Use [intro], [verse], [chorus], [bridge], [outro] tags to structure your song
+              <p className="text-white/70 text-xs pl-1">
+                Use intro, verse, chorus, bridge, outro tags to structure your song.....
               </p>
               <span className="text-xs text-white/60">({lyricsLen}/600)</span>
             </div>

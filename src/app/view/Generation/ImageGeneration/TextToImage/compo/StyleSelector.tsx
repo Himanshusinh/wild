@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppSelector } from '@/store/hooks';
 import StylePopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -8,8 +8,37 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 const StyleSelector = () => {
   const style = useAppSelector((state: any) => state.generation?.style || 'none');
   const [isStylePopupOpen, setIsStylePopupOpen] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Icons removed: display only text
+
+  // Auto-close popup after 5 seconds
+  useEffect(() => {
+    if (isStylePopupOpen) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 seconds
+      timeoutRef.current = setTimeout(() => {
+        setIsStylePopupOpen(false);
+      }, 5000);
+    } else {
+      // Clear timeout if popup is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isStylePopupOpen]);
 
   return (
     <>
