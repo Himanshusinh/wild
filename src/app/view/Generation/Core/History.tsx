@@ -14,6 +14,7 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory, removeHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { setCurrentView } from '@/store/slices/uiSlice';
+import { Download, Trash2 } from 'lucide-react';
 
 const History = () => {
   const dispatch = useAppDispatch();
@@ -52,7 +53,7 @@ const History = () => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<{ x: number; y: number } | null>(null);
   const [dragBox, setDragBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  const [showDragHint, setShowDragHint] = useState(false);
+  const wasDraggingRef = useRef(false);
 
   // Debug logs removed for cleaner console
 
@@ -62,7 +63,15 @@ const History = () => {
       const initialLimit = sortOrder === 'asc' ? 30 : 10; // fetch more when showing oldest so viewport fills immediately
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
       setHasMore(Boolean(result && result.hasMore));
-    } catch { }
+    } catch (error) {
+      // Handle condition aborts gracefully
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+        console.log('loadFirstPage aborted - another request in progress');
+      } else {
+        console.error('Error in loadFirstPage:', error);
+      }
+    }
   };
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
@@ -79,46 +88,49 @@ const History = () => {
         setHasMore(Boolean(more && more.hasMore));
         attempts += 1;
       }
-    } catch { }
+    } catch (error) {
+      // Handle condition aborts gracefully
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+        console.log('autoFillViewport aborted - another request in progress');
+      } else {
+        console.error('Error in autoFillViewport:', error);
+      }
+    }
   };
 
   // Load initial history on mount and when view mode changes
   useEffect(() => {
     const run = async () => {
-      // Reset history to ensure a clean initial load on refresh
-      dispatch(clearHistory());
-      if (viewMode === 'global') {
-        const base: any = { sortOrder };
-        dispatch(setFilters(base));
-        await loadFirstPage(base);
-        await autoFillViewport(base);
-      } else {
-        const f = { generationType: currentGenerationType, sortOrder } as any;
-        dispatch(setFilters(f));
-        await loadFirstPage(f);
-        await autoFillViewport(f);
+      try {
+        // Reset history to ensure a clean initial load on refresh
+        dispatch(clearHistory());
+        if (viewMode === 'global') {
+          const base: any = { sortOrder };
+          dispatch(setFilters(base));
+          await loadFirstPage(base);
+          await autoFillViewport(base);
+        } else {
+          const f = { generationType: currentGenerationType, sortOrder } as any;
+          dispatch(setFilters(f));
+          await loadFirstPage(f);
+          await autoFillViewport(f);
+        }
+        setPage(1);
+        didInitialLoadRef.current = true;
+      } catch (error) {
+        // Handle condition aborts gracefully
+        if (error && typeof error === 'object' && 'message' in error && 
+            typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+          console.log('History load aborted - another request in progress');
+        } else {
+          console.error('Error loading history:', error);
+        }
       }
-      setPage(1);
-      didInitialLoadRef.current = true;
     };
     run();
   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
 
-  // Show drag hint toast when history loads and user hasn't seen it
-  useEffect(() => {
-    if (historyEntries.length > 0 && !isDragging && selectedImages.size === 0) {
-      const hasSeenHint = localStorage.getItem('history-drag-hint-seen');
-      if (!hasSeenHint) {
-        setShowDragHint(true);
-        // Auto-hide after 5 seconds
-        const timer = setTimeout(() => {
-          setShowDragHint(false);
-          localStorage.setItem('history-drag-hint-seen', 'true');
-        }, 5000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [historyEntries.length, isDragging, selectedImages.size]);
 
   // Fallback: if nothing loaded (e.g., on hard refresh), trigger first page load
   useEffect(() => {
@@ -127,10 +139,20 @@ const History = () => {
       if (sortOrder) (base as any).sortOrder = sortOrder;
       if (dateRange.start && dateRange.end) (base as any).dateRange = { start: dateRange.start, end: dateRange.end };
       (async () => {
-        await loadFirstPage(base);
-        await autoFillViewport(base);
-        setPage(1);
-        didInitialLoadRef.current = true;
+        try {
+          await loadFirstPage(base);
+          await autoFillViewport(base);
+          setPage(1);
+          didInitialLoadRef.current = true;
+        } catch (error) {
+          // Handle condition aborts gracefully
+          if (error && typeof error === 'object' && 'message' in error && 
+              typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+            console.log('Fallback history load aborted - another request in progress');
+          } else {
+            console.error('Error in fallback history load:', error);
+          }
+        }
       })();
     }
   }, [loading, historyEntries.length, viewMode, currentGenerationType]);
@@ -201,6 +223,7 @@ const History = () => {
   // Drag selection functions
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) { // Left mouse button
+      wasDraggingRef.current = false;
       setIsDragging(true);
       setDragStart({ x: e.clientX, y: e.clientY });
       setDragEnd({ x: e.clientX, y: e.clientY });
@@ -213,8 +236,27 @@ const History = () => {
     }
   };
 
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Check if clicking on empty space (not on images or other interactive elements)
+    const target = e.target as HTMLElement;
+    const isClickingOnImage = target.closest('[data-image-id]');
+    const isClickingOnButton = target.closest('button');
+    const isClickingOnInteractive = target.closest('button, a, input, select, textarea');
+    
+    // Only clear selection if not dragging and clicking on empty space (not on images or buttons)
+    if (!wasDraggingRef.current && 
+        !isClickingOnImage && 
+        !isClickingOnInteractive && 
+        selectedImages.size > 0) {
+      clearSelection();
+    }
+    // Reset the drag flag for next interaction
+    wasDraggingRef.current = false;
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging && dragStart) {
+      wasDraggingRef.current = true;
       setDragEnd({ x: e.clientX, y: e.clientY });
       const newDragBox = {
         left: Math.min(dragStart.x, e.clientX),
@@ -642,7 +684,7 @@ const History = () => {
         <div className="flex items-center gap-2">
           {/* Drag Selection Hint */}
           {selectedImages.size === 0 && historyEntries.length > 0 && (
-            <div className="px-2 py-1 rounded text-blue-300 text-xs opacity-60">
+            <div className="px-3 py-1.5 rounded text-white/60 text-sm">
               Drag to select multiple images
             </div>
           )}
@@ -871,7 +913,10 @@ const History = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-8 relative min-h-[300px]">
+        <div 
+          className="space-y-8 relative min-h-[300px]"
+          onClick={handleContainerClick}
+        >
           {overlayLoading && (
             <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
@@ -1061,30 +1106,6 @@ const History = () => {
       )}
 
       {/* Download Bar */}
-      {/* Drag Selection Hint Toast */}
-      {showDragHint && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600/90 backdrop-blur-xl border border-blue-500/30 rounded-lg px-4 py-3 shadow-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-300">
-                <path d="M3 3h18v18H3zM8 8h8M8 12h8M8 16h8" />
-              </svg>
-            </div>
-            <div className="text-white text-sm font-medium">
-              💡 Drag across the page to select multiple images
-            </div>
-            <button
-              onClick={() => {
-                setShowDragHint(false);
-                localStorage.setItem('history-drag-hint-seen', 'true');
-              }}
-              className="text-blue-300 hover:text-white transition-colors ml-2"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
 
       {showDownloadBar && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-t border-white/10 p-4">
@@ -1115,8 +1136,9 @@ const History = () => {
               </button>
               <button
                 onClick={downloadSelectedImages}
-                className="px-6 py-2 rounded-lg bg-blue-600/80 hover:bg-blue-600/90 text-white text-sm transition-colors"
+                className="flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600/80 hover:bg-blue-600/90 text-white text-sm transition-colors"
               >
+                <Download className="h-4 w-4" />
                 {(() => {
                   const count = selectedImages.size;
                   const types = new Set();
@@ -1145,8 +1167,9 @@ const History = () => {
               </button>
               <button
                 onClick={deleteSelectedImages}
-                className="px-6 py-2 rounded-lg bg-red-600/80 hover:bg-red-600/90 text-white text-sm transition-colors"
+                className="flex items-center gap-2 px-6 py-2 rounded-lg bg-red-600/80 hover:bg-red-600/90 text-white text-sm transition-colors"
               >
+                <Trash2 className="h-4 w-4" />
                 Delete {selectedImages.size}
               </button>
             </div>
