@@ -294,8 +294,8 @@ const SidePannelFeatures = ({
                   (pathname?.includes('/live-chat')) ? 'bg-white/10' : ''
                 }`}
             >
-                <Image src="/icons/livechat.svg" alt="Live Chat" width={28} height={28} />
-                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Chat</span>
+                <Image src="/icons/livecanvas.svg" alt="Live Chat" width={28} height={28} />
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
             </div>
         </div>
         

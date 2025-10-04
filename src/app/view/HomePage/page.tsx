@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Nav from './compo/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures';
@@ -13,6 +13,7 @@ import Recentcreation from './compo/Recentcreation'
 import { WobbleCard } from '../Landingpage/components/wobble-card'
 import Image from 'next/image'
 import { getImageUrl } from './routes'
+import WelcomeModal from './compo/WelcomeModal'
 
 import { ViewType, GenerationType } from '@/types/generation';
 
@@ -21,6 +22,7 @@ const HomePage: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
   const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
   const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   const onViewChange = (view: ViewType) => {
     setCurrentView(view);
@@ -49,6 +51,27 @@ const HomePage: React.FC = () => {
   };
 
   console.log('🔍 HomePage - Rendered with state:', { currentView, currentGenerationType });
+
+  // Check for first-time user and show welcome modal
+  useEffect(() => {
+    const checkFirstTimeUser = () => {
+      // Check if user has seen the welcome modal before
+      const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
+
+      if (!hasSeenWelcome) {
+        // Show welcome modal after a short delay
+        const timer = setTimeout(() => {
+          setShowWelcomeModal(true);
+          // Mark as seen
+          localStorage.setItem('hasSeenWelcomeModal', 'true');
+        }, 2000); // 2 second delay
+
+        return () => clearTimeout(timer);
+      }
+    };
+
+    checkFirstTimeUser();
+  }, []);
 
   const CARDS: WorkflowCard[] = [
     {
@@ -207,7 +230,7 @@ const HomePage: React.FC = () => {
       width: 1200,
       height: 1200,
     },
-    
+
   ];
 
   return (
@@ -216,7 +239,7 @@ const HomePage: React.FC = () => {
       {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
         🔍 DEBUG: HomePage Component is Rendering
       </div> */}
-      
+
       {/* Navigation - fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Nav />
@@ -226,7 +249,7 @@ const HomePage: React.FC = () => {
       <div className="flex pt-[80px]"> {/* pt-[80px] to account for fixed nav */}
         {/* Side Panel - fixed width */}
         <div className="w-[68px] flex-shrink-0">
-          <SidePannelFeatures 
+          <SidePannelFeatures
             currentView={currentView}
             onViewChange={onViewChange}
             onGenerationTypeChange={onGenerationTypeChange}
@@ -239,88 +262,88 @@ const HomePage: React.FC = () => {
           <Header />
           <Recentcreation />
           <Second />
-      <main className="min-h-screen bg-black text-white py-10">
-      <div className="w-full px-4 md:px-8 lg:px-12 mt-32">
-        <h2 className="text-white text-4xl md:text-4xl font-medium ml-6 ">Workflow</h2>
-        <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
-      </div>
-    </main>
+          <main className="min-h-screen bg-black text-white py-10">
+            <div className="w-full px-4 md:px-8 lg:px-12 mt-32">
+              <h2 className="text-white text-4xl md:text-4xl font-medium ml-6 ">Workflow</h2>
+              <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
+            </div>
+          </main>
 
-    <main className="min-h-screen bg-black text-white px-4 md:px-8 py-10">
-      <div className="w-full px-4 md:px-8 lg:px-12">
-        <CommunityCreations items={ITEMS} initialFilter="Trending" />
-      </div>
-    </main>
+          <main className="min-h-screen bg-black text-white px-4 md:px-8 py-10">
+            <div className="w-full px-4 md:px-8 lg:px-12">
+              <CommunityCreations items={ITEMS} initialFilter="Trending" />
+            </div>
+          </main>
 
-    {/* WobbleCard Section */}
-    <main className="bg-black text-white px-4 md:px-8 py-6 mb-32 mt-32">
-      <div className="w-full px-4 md:px-8 lg:px-12">
-        <div className="w-full">
-          <WobbleCard 
-            containerClassName="w-full bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]"
-            className="!p-0 !py-0 !h-full !min-h-full"
-          >
-            <div 
-              className="flex w-full h-full min-h-full relative"
-              style={{ height: '100%', minHeight: '500px' }}
-            >
-              {/* Left side content */}
-              <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
-                  <div className="w-full">
-                    <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
-                     Plans That Grow With You
-                    </h2>
-                    <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 text-justify mr-2 font-medium">
-                    Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
-                    </p>
+          {/* WobbleCard Section */}
+          <main className="bg-black text-white px-4 md:px-8 py-6 mb-32 mt-32">
+            <div className="w-full px-4 md:px-8 lg:px-12">
+              <div className="w-full">
+                <WobbleCard
+                  containerClassName="w-full bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]"
+                  className="!p-0 !py-0 !h-full !min-h-full"
+                >
+                  <div
+                    className="flex w-full h-full min-h-full relative"
+                    style={{ height: '100%', minHeight: '500px' }}
+                  >
+                    {/* Left side content */}
+                    <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
+                      <div className="w-full">
+                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                          Plans That Grow With You
+                        </h2>
+                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 text-justify mr-2 font-medium">
+                          Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
+                        </p>
+                      </div>
+
+                      {/* Join Community Button - Bottom Left */}
+                      <button className="font-poppins text-lg font-semibold bg-white text-[#1C303D] font-medium px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
+                        Pricing Plans
+                      </button>
+                    </div>
+
+                    {/* Right side image */}
+                    <div
+                      className="absolute right-0 top-0 w-1/2 h-full"
+                      style={{ height: '100%', minHeight: '500px' }}
+                    >
+                      <Image
+                        src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
+                        alt="AI Art Community"
+                        fill
+                        className="object-cover rounded-r-2xl"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
+                        priority
+                      />
+                    </div>
                   </div>
-                
-                {/* Join Community Button - Bottom Left */}
-                <button className="font-poppins text-lg font-semibold bg-white text-[#1C303D] font-medium px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
-                Pricing Plans
-                </button>
-              </div>
-              
-              {/* Right side image */}
-              <div 
-                className="absolute right-0 top-0 w-1/2 h-full"
-                style={{ height: '100%', minHeight: '500px' }}
-              >
-                <Image
-                  src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
-                  alt="AI Art Community"
-                  fill
-                  className="object-cover rounded-r-2xl"
-                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
-                  priority
-                />
+                </WobbleCard>
               </div>
             </div>
-          </WobbleCard>
-        </div>
-      </div>
-    </main>
+          </main>
 
-    <FooterNew />
+          <FooterNew />
         </div>
       </div>
       {/* Wildmind Skit Popup */}
       {showWildmindSkitPopup && (
         <>
           {/* Overlay */}
-          <div 
+          <div
             className="fixed inset-0 bg-black z-[200] flex items-center justify-center"
             onClick={() => setShowWildmindSkitPopup(false)}
           >
             {/* Popup Content */}
-            <div 
+            <div
               className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-white text-3xl font-bold">Choose Style</h2>
-                <button 
+                <button
                   onClick={() => setShowWildmindSkitPopup(false)}
                   className="text-white hover:text-gray-300 transition-colors"
                 >
@@ -334,7 +357,7 @@ const HomePage: React.FC = () => {
               {/* Features Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {/* Video Ads - Available */}
-                <div 
+                <div
                   onClick={() => {
                     onGenerationTypeChange('ad-generation');
                     setShowWildmindSkitPopup(false);
@@ -344,7 +367,7 @@ const HomePage: React.FC = () => {
                   <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
                     <div className="absolute top-4 right-4">
                       <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div className="text-4xl mb-4">📹</div>
@@ -362,7 +385,7 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* Live Chat - Available */}
-                <div 
+                <div
                   onClick={() => {
                     router.push('/view/Generation/wildmindskit/LiveChat');
                     setShowWildmindSkitPopup(false);
@@ -372,7 +395,7 @@ const HomePage: React.FC = () => {
                   <div className="bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
                     <div className="absolute top-4 right-4">
                       <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div className="text-4xl mb-4">💬</div>
@@ -393,6 +416,12 @@ const HomePage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Welcome Modal */}
+      <WelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+      />
     </div>
   )
 }
