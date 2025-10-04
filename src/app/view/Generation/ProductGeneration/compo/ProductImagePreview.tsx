@@ -22,7 +22,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   const [copied, setCopied] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const dispatch = useAppDispatch();
-
+  
   if (!isOpen) return null;
 
   const selectedImage = entry.images[selectedImageIndex];

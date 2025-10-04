@@ -224,9 +224,9 @@ export default function ArtStationPage() {
       const entry = entries[0]
       if (!entry.isIntersecting) return
       
-      // Don't load if already loading, no cursor, or already loading more
-      if (loading || loadingMoreRef.current || !cursor) {
-        console.log('[ArtStation] Skipping load:', { loading, loadingMore: loadingMoreRef.current, cursor })
+      // Don't load if already loading, no more items, or already loading more
+      if (loading || loadingMoreRef.current || !hasMore) {
+        console.log('[ArtStation] Skipping load:', { loading, loadingMore: loadingMoreRef.current, hasMore })
         return
       }
       
@@ -248,7 +248,7 @@ export default function ArtStationPage() {
     
     observer.observe(el)
     return () => observer.disconnect()
-  }, [hasMore, loading])
+  }, [hasMore, loading, cursor])
 
   // Auto-fill viewport on initial loads so the page has enough content to scroll
   useEffect(() => {
@@ -521,7 +521,7 @@ export default function ArtStationPage() {
           )}
 
           {/* End message */}
-          {!loading && !cursor && items.length > 0 && (
+          {!loading && !hasMore && items.length > 0 && (
             <div className="text-center py-8">
               <p className="text-white/40 text-sm">You've reached the end</p>
             </div>

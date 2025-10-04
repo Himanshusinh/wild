@@ -14,6 +14,7 @@ interface VideoPreviewModalProps {
 
 const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose }) => {
   const dispatch = useAppDispatch();
+  
   if (!preview) return null;
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
