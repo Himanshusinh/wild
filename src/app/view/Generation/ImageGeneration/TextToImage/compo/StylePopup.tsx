@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setStyle } from '@/store/slices/generationSlice';
+import { STYLE_CATALOG } from '@/styles/stylesCatalog';
 
 interface StylePopupProps {
   isOpen: boolean;
@@ -13,7 +14,7 @@ interface StylePopupProps {
 
 const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const dispatch = useAppDispatch();
-  const currentStyle = useAppSelector((state: any) => state.generation?.style || 'realistic');
+  const currentStyle = useAppSelector((state: any) => state.generation?.style || 'none');
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const [mounted, setMounted] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -50,56 +51,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     };
   }, [isOpen, onClose]);
 
-  const styles = [
-    {
-      name: 'Realistic',
-      value: 'realistic',
-      image: '/styles/realistic.jpg',
-      description: 'Photorealistic images with natural lighting'
-    },
-    {
-      name: 'Artistic',
-      value: 'artistic',
-      image: '/styles/artistic.jpg',
-      description: 'Creative artistic interpretation'
-    },
-    {
-      name: 'Cartoon',
-      value: 'cartoon',
-      image: '/styles/cartoon.jpg',
-      description: 'Fun cartoon-style illustrations'
-    },
-    {
-      name: 'Anime',
-      value: 'anime',
-      image: '/styles/anime.jpg',
-      description: 'Japanese anime art style'
-    },
-    {
-      name: 'Abstract',
-      value: 'abstract',
-      image: '/styles/abstract.jpg',
-      description: 'Abstract and conceptual art'
-    },
-    {
-      name: 'Vintage',
-      value: 'vintage',
-      image: '/styles/vintage.jpg',
-      description: 'Retro and vintage aesthetics'
-    },
-    {
-      name: 'Minimalist',
-      value: 'minimalist',
-      image: '/styles/minimalist.jpg',
-      description: 'Clean and simple design'
-    },
-    {
-      name: 'Cyberpunk',
-      value: 'cyberpunk',
-      image: '/styles/cyberpunk.jpg',
-      description: 'Futuristic neon aesthetics'
-    }
-  ];
+  const styles = STYLE_CATALOG;
 
   const handleStyleSelect = (styleValue: string) => {
     dispatch(setStyle(styleValue));
@@ -166,15 +118,10 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
                 >
                   {/* Style Preview Image */}
                   <div className="aspect-square relative bg-gray-200 rounded-lg overflow-hidden">
-                    <div
-                      className="w-full h-full bg-gradient-to-br rounded-lg flex items-center justify-center"
-                      style={{
-                        background: getStyleGradient(style.value)
-                      }}
-                    >
-                      <div className="text-2xl opacity-70">
-                        {getStyleIcon(style.value)}
-                      </div>
+                    <Image src={style.image} alt={style.name} fill sizes="(max-width: 768px) 33vw, 25vw" style={{ objectFit: 'cover' }} />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-2 left-2 text-white/95 text-xs px-2 py-1 rounded bg-black/40 backdrop-blur-sm">
+                      {style.name}
                     </div>
                     
                     {/* Selected Indicator */}
@@ -223,19 +170,6 @@ const getStyleGradient = (style: string) => {
   return gradients[style] || gradients.realistic;
 };
 
-// Helper function to get style-specific icons
-const getStyleIcon = (style: string) => {
-  const icons: { [key: string]: string } = {
-    realistic: '📷',
-    artistic: '🎨',
-    cartoon: '🎭',
-    anime: '🌸',
-    abstract: '🔮',
-    vintage: '📻',
-    minimalist: '⚪',
-    cyberpunk: '🤖'
-  };
-  return icons[style] || '🎨';
-};
+// Icons removed
 
 export default StylePopup;

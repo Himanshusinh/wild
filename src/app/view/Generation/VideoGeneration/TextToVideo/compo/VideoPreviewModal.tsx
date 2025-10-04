@@ -169,31 +169,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
   const videoUrl = toProxyResourceUrl(videoPath);
 
-  const [objectVideoUrl, setObjectVideoUrl] = React.useState<string>('');
-  React.useEffect(() => {
-    let revokeUrl: string | null = null;
-    setObjectVideoUrl('');
-    const path = toProxyPath(videoPath);
-    if (!path) return;
-    const controller = new AbortController();
-    const run = async () => {
-      try {
-        const url = toProxyResourceUrl(path);
-        if (!url) return;
-        const res = await fetch(url, { credentials: 'include', signal: controller.signal });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const obj = URL.createObjectURL(blob);
-        revokeUrl = obj;
-        setObjectVideoUrl(obj);
-      } catch {}
-    };
-    run();
-    return () => {
-      try { if (revokeUrl) URL.revokeObjectURL(revokeUrl); } catch {}
-      controller.abort();
-    };
-  }, [videoPath]);
+  // Stream directly from same-origin proxy for faster start and range support
 
   console.log('Extracted video URL:', videoUrl);
   console.log('Original video object:', preview.video);
@@ -232,10 +208,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   alt={preview.entry.prompt}
                   className="max-w-full max-h-full object-contain"
                 />
-              ) : (objectVideoUrl || videoUrl).startsWith('data:video/') || (objectVideoUrl || videoUrl).startsWith('blob:') || (objectVideoUrl || videoUrl).startsWith('http') ? (
+              ) : videoUrl.startsWith('/api/proxy/media/') || videoUrl.startsWith('blob:') || videoUrl.startsWith('http') ? (
                 <video 
-                  key={objectVideoUrl || videoUrl}
-                  src={objectVideoUrl || videoUrl} 
+                  key={videoUrl}
+                  src={videoUrl} 
                   controls 
                   className="max-w-full max-h-full object-contain"
                   autoPlay={false}
