@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Cpu } from 'lucide-react';
+import { Cpu, ChevronUp } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
@@ -47,9 +47,9 @@ const ModelsDropdown = () => {
   // If user uploaded images, restrict to models which support image inputs
   let filteredModels = modelsWithCredits;
   if (uploadedImages.length > 0) {
-    filteredModels = modelsWithCredits.filter(m => 
-      m.value.startsWith('flux-kontext') || 
-      m.value === 'gen4_image' || 
+    filteredModels = modelsWithCredits.filter(m =>
+      m.value.startsWith('flux-kontext') ||
+      m.value === 'gen4_image' ||
       m.value === 'gen4_image_turbo' ||
       m.value === 'minimax-image-01' ||
       m.value === 'gemini-25-flash-image'
@@ -82,15 +82,19 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedModel !== 'flux-dev' 
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className={`Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${selectedModel !== 'flux-dev'
+          ? 'bg-white text-black'
+          : 'bg-transparent text-white/90 hover:bg-white/5'
+          }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
         {filteredModels.find(m => m.value === selectedModel)?.displayName || filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
+      
+      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
+      
       </button>
+
+      
       {activeDropdown === 'models' && (
         <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-3xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {filteredModels.map((model) => (
@@ -100,12 +104,11 @@ const ModelsDropdown = () => {
                 e.stopPropagation();
                 handleModelSelect(model.value);
               }}
-              
-              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                selectedModel === model.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
+
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                ? 'bg-white text-black'
+                : 'text-white/90 hover:bg-white/10'
+                }`}
             >
               <div className="flex flex-col">
                 <span>{model.name}</span>
@@ -116,6 +119,8 @@ const ModelsDropdown = () => {
               {selectedModel === model.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>
               )}
+
+
             </button>
           ))}
         </div>
