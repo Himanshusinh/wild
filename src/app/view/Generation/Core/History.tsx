@@ -63,7 +63,15 @@ const History = () => {
       const initialLimit = sortOrder === 'asc' ? 30 : 10; // fetch more when showing oldest so viewport fills immediately
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
       setHasMore(Boolean(result && result.hasMore));
-    } catch { }
+    } catch (error) {
+      // Handle condition aborts gracefully
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+        console.log('loadFirstPage aborted - another request in progress');
+      } else {
+        console.error('Error in loadFirstPage:', error);
+      }
+    }
   };
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
@@ -80,27 +88,45 @@ const History = () => {
         setHasMore(Boolean(more && more.hasMore));
         attempts += 1;
       }
-    } catch { }
+    } catch (error) {
+      // Handle condition aborts gracefully
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+        console.log('autoFillViewport aborted - another request in progress');
+      } else {
+        console.error('Error in autoFillViewport:', error);
+      }
+    }
   };
 
   // Load initial history on mount and when view mode changes
   useEffect(() => {
     const run = async () => {
-      // Reset history to ensure a clean initial load on refresh
-      dispatch(clearHistory());
-      if (viewMode === 'global') {
-        const base: any = { sortOrder };
-        dispatch(setFilters(base));
-        await loadFirstPage(base);
-        await autoFillViewport(base);
-      } else {
-        const f = { generationType: currentGenerationType, sortOrder } as any;
-        dispatch(setFilters(f));
-        await loadFirstPage(f);
-        await autoFillViewport(f);
+      try {
+        // Reset history to ensure a clean initial load on refresh
+        dispatch(clearHistory());
+        if (viewMode === 'global') {
+          const base: any = { sortOrder };
+          dispatch(setFilters(base));
+          await loadFirstPage(base);
+          await autoFillViewport(base);
+        } else {
+          const f = { generationType: currentGenerationType, sortOrder } as any;
+          dispatch(setFilters(f));
+          await loadFirstPage(f);
+          await autoFillViewport(f);
+        }
+        setPage(1);
+        didInitialLoadRef.current = true;
+      } catch (error) {
+        // Handle condition aborts gracefully
+        if (error && typeof error === 'object' && 'message' in error && 
+            typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+          console.log('History load aborted - another request in progress');
+        } else {
+          console.error('Error loading history:', error);
+        }
       }
-      setPage(1);
-      didInitialLoadRef.current = true;
     };
     run();
   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
@@ -113,10 +139,20 @@ const History = () => {
       if (sortOrder) (base as any).sortOrder = sortOrder;
       if (dateRange.start && dateRange.end) (base as any).dateRange = { start: dateRange.start, end: dateRange.end };
       (async () => {
-        await loadFirstPage(base);
-        await autoFillViewport(base);
-        setPage(1);
-        didInitialLoadRef.current = true;
+        try {
+          await loadFirstPage(base);
+          await autoFillViewport(base);
+          setPage(1);
+          didInitialLoadRef.current = true;
+        } catch (error) {
+          // Handle condition aborts gracefully
+          if (error && typeof error === 'object' && 'message' in error && 
+              typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
+            console.log('Fallback history load aborted - another request in progress');
+          } else {
+            console.error('Error in fallback history load:', error);
+          }
+        }
       })();
     }
   }, [loading, historyEntries.length, viewMode, currentGenerationType]);
