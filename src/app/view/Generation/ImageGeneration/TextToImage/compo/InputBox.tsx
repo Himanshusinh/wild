@@ -719,7 +719,7 @@ const InputBox = () => {
 
         // 🔍 DEBUG: Check if firebaseHistoryId is valid
         if (!firebaseHistoryId) {
-          console.error('❌ CRITICAL ERROR: firebaseHistoryId is undefined!');
+          console.error('❌ CRITICAL ERROR: firebaseHistoryId is undefined!!');
           console.error('This means the Firebase save failed at the beginning');
           return;
         }
