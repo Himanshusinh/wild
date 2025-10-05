@@ -22,7 +22,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Model selection (clarity upscaler or magic refiner)
-  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner'>('philz1337x/clarity-upscaler');
+  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'>('philz1337x/clarity-upscaler');
 
   // Shared/basic
   const [scaleFactor, setScaleFactor] = useState<number>(2); // clarity only
@@ -234,8 +234,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-white">Model</label>
                         <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
-                        <option value="philz1337x/clarity-upscaler ">Clarity Upscaler</option>
-                        <option value="fermatresearch/magic-image-refiner ">Magic Image Refiner</option>
+                        <option value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
+                        <option value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
+                        <option value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
                       </select>
                     </div>
                     {/* Optional Prompt */}
