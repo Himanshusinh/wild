@@ -147,13 +147,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
-        {(() => {
-          const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
-          if (currentModel?.credits) {
-            return `${currentModel.label} (${currentModel.displayText})`;
-          }
-          return selectedModelInfo?.label || selectedModel;
-        })()}
+        {selectedModelInfo?.label || selectedModel}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (

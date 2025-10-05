@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axiosInstance from '@/lib/axiosInstance';
 import { X } from 'lucide-react';
 
@@ -19,8 +19,21 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
   const [threshold, setThreshold] = useState<number>(0);
   const [backgroundType, setBackgroundType] = useState<string>('rgba');
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => { if (defaultImage) setImage(defaultImage); }, [defaultImage]);
+  // Lock background scroll while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = (document.documentElement as HTMLElement).style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscroll;
+    };
+  }, [isOpen]);
   if (!isOpen) return null;
 
   const run = async () => {
@@ -46,22 +59,60 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60" onClick={onClose} />
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 max-w-2xl w-full" onClick={(e)=>e.stopPropagation()}>
+        <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full" onClick={(e)=>e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <h2 className="text-white text-lg font-semibold">Remove Background</h2>
+            <h2 className="text-white text-md font-semibold">Remove Background</h2>
             <button className="p-2 hover:bg-white/10 rounded" onClick={onClose}><X className="w-5 h-5 text-white"/></button>
           </div>
           <div className="p-4 space-y-4">
+            {/* Hidden file input available in both states */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e)=>{
+                const f = e.currentTarget.files?.[0]; if (!f) return;
+                const max = 2 * 1024 * 1024; if (f.size > max) { alert('Max 2MB'); return; }
+                const fr = new FileReader(); fr.onload = ()=> setImage(String(fr.result||'')); fr.readAsDataURL(f);
+              }}
+            />
             {!image && (
               <div className="rounded-xl p-6 text-center bg-white/5 border border-white/10">
-                <div className="text-white/70 text-sm mb-2">Paste a Data URL here or select a file</div>
-                <input type="file" accept="image/*" onChange={async (e)=>{
-                  const f = e.currentTarget.files?.[0]; if (!f) return;
-                  const max = 2 * 1024 * 1024; if (f.size > max) { alert('Max 2MB'); return; }
-                  const fr = new FileReader(); fr.onload = ()=> setImage(String(fr.result||'')); fr.readAsDataURL(f);
-                }} />
+                {/* <div className="text-white/70 text-sm mb-2">Paste a Data URL here or select a file</div> */}
+                <button
+                  onClick={()=> fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm ring-1 ring-white/20 transition"
+                >
+                  Choose image
+                </button>
+              </div>
+            )}
+            {image && (
+              <div className="rounded-xl p-4 bg-white/5 border border-white/10 flex items-center gap-4">
+                <div className="w-24 h-24 rounded-lg overflow-hidden ring-1 ring-white/20 bg-black/30 flex items-center justify-center">
+                  {/* Preview thumbnail */}
+                  <img src={image} alt="Selected" className="max-w-full max-h-full object-contain" />
+                </div>
+                <div className="flex-1 text-white/80 text-sm">
+                  Image selected. You can adjust options below or pick another image.
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={()=> fileInputRef.current?.click()}
+                    className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Change image
+                  </button>
+                  <button
+                    onClick={()=> setImage(null)}
+                    className="px-3 py-2 rounded-lg bg-red-600/70 hover:bg-red-600 text-white text-sm transition"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

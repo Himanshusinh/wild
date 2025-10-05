@@ -75,7 +75,7 @@ const ModelsDropdown = () => {
       >
         {(() => {
           const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
-          return currentModel?.displayName || currentModel?.name || 'Models';
+          return currentModel?.name || currentModel?.displayName || 'Models';
         })()}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
       </button>

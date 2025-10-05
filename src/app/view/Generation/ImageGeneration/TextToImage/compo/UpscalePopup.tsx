@@ -159,21 +159,33 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
   };
 
   useEffect(() => { if (defaultImage) setUploadedImage(defaultImage); }, [defaultImage]);
+  // Lock background scroll while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = (document.documentElement as HTMLElement).style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscroll;
+    };
+  }, [isOpen]);
   if (!isOpen) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 "
         onClick={onClose}
       />
       
       {/* Main Popup */}
-      <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
-        <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 z-70 flex items-center justify-center p-4 py-auto">
+        <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/20 max-w-4xl w-full max-h-auto overflow-y-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
+          <div className="flex items-center justify-between px-6 py-2 border-b border-white/10 ">
             <h2 className="text-xl font-semibold text-white">Upscale (Clarity)</h2>
             <button
               onClick={onClose}
@@ -184,13 +196,13 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="px-6 py-2">
             {!uploadedImage ? (
-              <div className="rounded-xl p-8 text-center bg-white/5 border border-white/10">
+              <div className="rounded-xl px-8 py-8 text-center bg-white/5 border border-white/10">
                 <div className="max-w-md mx-auto">
-                  <Upload className="w-14 h-14 text-white/40 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">Upload an image</h3>
-                  <p className="text-white/60 mb-6">PNG/JPG/WEBP up to 2 MB</p>
+                  <Upload className="w-12 h-40 text-white/40 mx-auto mb-2" />
+                  <h3 className="text-lg font-medium text-white mb-0">Upload an image</h3>
+                  <p className="text-white/60 mb-8">PNG/JPG/WEBP up to 2 MB</p>
                   <button onClick={() => fileInputRef.current?.click()} className="bg-white text-black px-5 py-2 rounded-lg hover:bg-white/90">Select file</button>
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </div>
@@ -203,8 +215,8 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                   {/* <h3 className="text-lg font-medium text-white">Additional Settings</h3> */}
 
                   {/* Input Image Preview (small) */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Input Image</h3>
+                  <div className="space-y-1">
+                    <h3 className="text-md font-medium text-white">Input Image</h3>
                     <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
                       <Image
                         src={uploadedImage}
@@ -221,61 +233,61 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                     </div>
                     {/* Model */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-white">Model</label>
-                      <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white">
-                        <option value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
-                        <option value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
+                      <label className="text-xs font-medium text-white">Model</label>
+                      <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-black/80 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
+                        <option value="philz1337x/clarity-upscaler ">Clarity Upscaler</option>
+                        <option value="fermatresearch/magic-image-refiner ">Magic Image Refiner</option>
                       </select>
                     </div>
                     {/* Optional Prompt */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-white">Prompt (optional)</label>
-                      <textarea
+                      <label className="text-xs font-medium text-white">Prompt (optional)</label>
+                      <input
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         placeholder="Describe what to enhance or focus on..."
-                        className="w-full min-h-[80px] bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y"
+                        className="w-full  text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y"
                       />
                     </div>
                     {model === 'philz1337x/clarity-upscaler' ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-sm text-white/80">Scale factor</label>
+                        <label className="text-xs text-white/80">Scale factor</label>
                         <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e)=>setScaleFactor(Number(e.target.value)||2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Output</label>
-                        <select value={outputFormat} onChange={(e)=>setOutputFormat(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <label className="text-xs text-white/80">Output</label>
+                        <select value={outputFormat} onChange={(e)=>setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
                           <option value="png">PNG</option>
                           <option value="jpg">JPG</option>
                           <option value="webp">WEBP</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Dynamic</label>
+                        <label className="text-xs text-white/80">Dynamic</label>
                         <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e)=>setDynamic(Number(e.target.value)||6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Sharpen</label>
+                        <label className="text-xs text-white/80">Sharpen</label>
                         <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e)=>setSharpen(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                     </div>
                     ) : (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-sm text-white/80">HDR</label>
+                        <label className="text-xs text-white/80">HDR</label>
                         <input type="number" min={0} max={1} step={0.05} value={hdr} onChange={(e)=>setHdr(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Mask (URL)</label>
+                        <label className="text-xs text-white/80">Mask (URL)</label>
                         <input value={mask} onChange={(e)=>setMask(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Steps</label>
+                        <label className="text-xs text-white/80">Steps</label>
                         <input type="number" min={1} max={100} step={1} value={steps} onChange={(e)=>setSteps(Number(e.target.value)||20)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Scheduler</label>
+                        <label className="text-xs text-white/80">Scheduler</label>
                         <select value={mirScheduler} onChange={(e)=>setMirScheduler(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
                           <option>DDIM</option>
                           <option>DPMSolverMultistep</option>
@@ -284,31 +296,31 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Creativity</label>
+                        <label className="text-xs text-white/80">Creativity</label>
                         <input type="number" min={0} max={1} step={0.05} value={mirCreativity} onChange={(e)=>setMirCreativity(Number(e.target.value)||0.25)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div className="flex items-end gap-2">
                         <input id="guess" type="checkbox" checked={guessMode} onChange={(e)=>setGuessMode(e.target.checked)} />
-                        <label htmlFor="guess" className="text-sm text-white/80">Guess mode</label>
+                        <label htmlFor="guess" className="text-xs text-white/80">Guess mode</label>
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Resolution</label>
-                        <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <label className="text-xs text-white/80">Resolution</label>
+                        <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
                           <option value="original">Original</option>
                           <option value="1024">1024</option>
                           <option value="2048">2048</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Resemblance</label>
+                        <label className="text-xs text-white/80">Resemblance</label>
                         <input type="number" min={0} max={1} step={0.05} value={mirResemblance} onChange={(e)=>setMirResemblance(Number(e.target.value)||0.75)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
-                        <label className="text-sm text-white/80">Guidance scale</label>
+                        <label className="text-xs text-white/80">Guidance scale</label>
                         <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e)=>setGuidanceScale(Number(e.target.value)||7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div className="col-span-2">
-                        <label className="text-sm text-white/80">Negative prompt</label>
+                        <label className="text-xs text-white/80">Negative prompt</label>
                         <input value={mirNegative} onChange={(e)=>setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                     </div>
@@ -552,7 +564,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                 <div className="lg:col-span-2 space-y-6">
                   {/* Upscaled Image */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Upscaled Image</h3>
+                    <h3 className="text-md font-medium text-white">Upscaled Image</h3>
                     {!upscaledImage ? (
                       <div className="aspect-square bg-white/5 rounded-xl border border-white/10 flex items-center justify-center">
                         <div className="text-center">

@@ -117,7 +117,7 @@ const ModelsDropdown = () => {
           }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
-        {filteredModels.find(m => m.value === selectedModel)?.displayName || filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
+        {filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
       
       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
       

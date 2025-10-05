@@ -39,6 +39,9 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
     };
   }, []);
 
+  // Lock background scroll when an inline fullscreen-like overlay is used (optional consumers can wrap in modal)
+  // If desired in this inline player, no-op. Keeping function for parity with other previews when used in modal wrappers.
+
   // Auto-play effect
   useEffect(() => {
     if (autoPlay && audioRef.current) {
