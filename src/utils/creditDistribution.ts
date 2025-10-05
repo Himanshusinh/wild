@@ -33,6 +33,21 @@ export const creditDistributionData: ModelCreditInfo[] = [
     }
   },
   {
+    srNo: 37,
+    modelName: "Seedream v4 (T2I)",
+    priceToPay: 0.06,
+    overCharge: 0.015,
+    userCost: 0.075,
+    creditsPerGeneration: 120,
+    plans: {
+      planA: 82.4,
+      planB: 164.8,
+      planC: 412,
+      planD: 1318.4,
+      free: 27.46666667
+    }
+  },
+  {
     srNo: 2,
     modelName: "FLUX.1 Kontext [max]",
     priceToPay: 0.08,
