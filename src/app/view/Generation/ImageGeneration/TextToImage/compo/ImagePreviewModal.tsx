@@ -397,10 +397,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 onClick={() => {
                   try {
                     const imgUrl = objectUrl || selectedImage?.url || preview.image.url;
-                    const dest = new URL(window.location.origin + '/text-to-image');
-                    dest.searchParams.set('prompt', cleanPrompt);
-                    if (imgUrl) dest.searchParams.set('image', imgUrl);
-                    router.push(dest.toString());
+                    const qs = new URLSearchParams();
+                    qs.set('prompt', cleanPrompt);
+                    if (imgUrl) qs.set('image', imgUrl);
+                    // Hard navigate to ensure route stack switches correctly
+                    window.location.href = `/text-to-image?${qs.toString()}`;
                     onClose();
                   } catch {}
                 }}
