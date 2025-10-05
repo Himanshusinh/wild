@@ -69,10 +69,17 @@ const InputBox = () => {
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=)
   useEffect(() => {
     try {
-      const img = searchParams?.get('image');
-      const prm = searchParams?.get('prompt');
+      const current = new URL(window.location.href);
+      const img = current.searchParams.get('image');
+      const prm = current.searchParams.get('prompt');
       if (img) dispatch(setUploadedImages([img] as any));
       if (prm) dispatch(setPrompt(prm));
+      // Consume params once so a refresh doesn't keep the image selected
+      if (img || prm) {
+        current.searchParams.delete('image');
+        current.searchParams.delete('prompt');
+        window.history.replaceState({}, '', current.toString());
+      }
     } catch {}
   }, [dispatch, searchParams]);
 
@@ -1171,7 +1178,7 @@ const InputBox = () => {
                 </div>
                 <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                    <div key={`local-only-${idx}`} className="relative md:w-48 md:h-48 w-[120px] h-[120px] max-w-[180px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    <div key={`local-only-${idx}`} className="relative md:w-60 md:h-60 md:max-w-[240px] md:max-h-[240px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
@@ -1234,7 +1241,7 @@ const InputBox = () => {
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative md:w-48 md:h-48 w-[120px] h-[120px] max-w-[180px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          <div key={`local-${idx}`} className="relative md:w-60 md:h-60 md:max-w-[240px] md:max-h-[240px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                                 <div className="flex flex-col items-center gap-2">

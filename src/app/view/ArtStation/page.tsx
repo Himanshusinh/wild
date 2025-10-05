@@ -6,7 +6,7 @@ import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import UpscalePopup from '../Generation/ImageGeneration/TextToImage/compo/UpscalePopup'
-import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgpopup'
+import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 
 type PublicItem = {
