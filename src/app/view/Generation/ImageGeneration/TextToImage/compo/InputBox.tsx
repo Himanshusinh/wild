@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
+import RemoveBgPopup from "./RemoveBgPopup";
+
 import {
   setPrompt,
   generateImages,
@@ -34,7 +36,6 @@ import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
-import RemoveBgPopup from "./RemoveBgPopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +45,7 @@ import axiosInstance from "@/lib/axiosInstance";
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     image: any;
@@ -64,16 +66,15 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Prefill uploaded image from query param ?image=<url>
+  // Prefill uploaded image and prompt from query params (?image=, ?prompt=)
   useEffect(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const img = params.get('image');
-      if (img) {
-        dispatch(setUploadedImages([img] as any));
-      }
+      const img = searchParams?.get('image');
+      const prm = searchParams?.get('prompt');
+      if (img) dispatch(setUploadedImages([img] as any));
+      if (prm) dispatch(setPrompt(prm));
     } catch {}
-  }, [dispatch]);
+  }, [dispatch, searchParams]);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
@@ -733,7 +734,7 @@ const InputBox = () => {
 
         // 🔍 DEBUG: Check if firebaseHistoryId is valid
         if (!firebaseHistoryId) {
-          console.error('❌ CRITICAL ERROR: firebaseHistoryId is undefined!');
+          console.error('❌ CRITICAL ERROR: firebaseHistoryId is undefined!!');
           console.error('This means the Firebase save failed at the beginning');
           return;
         }
