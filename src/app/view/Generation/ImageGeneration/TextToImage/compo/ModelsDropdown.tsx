@@ -25,6 +25,7 @@ const ModelsDropdown = () => {
     { name: 'Runway Gen4 Image Turbo', value: 'gen4_image_turbo' },
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
+    { name: 'Seedream v4', value: 'seedream-v4' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },

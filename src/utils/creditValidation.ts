@@ -188,6 +188,7 @@ const getProviderFromModel = (modelName: string): string => {
   if (modelName.toLowerCase().includes('runway') || modelName.toLowerCase().includes('gen-')) return 'runway';
   if (modelName.toLowerCase().includes('minimax')) return 'minimax';
   if (modelName.toLowerCase().includes('google')) return 'google';
+  if (modelName.toLowerCase().includes('seedream')) return 'fal';
   if (modelName.toLowerCase().includes('music')) return 'minimax';
   if (modelName.toLowerCase().includes('veo')) return 'google';
   return 'unknown';

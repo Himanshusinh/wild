@@ -59,7 +59,13 @@ export const generateImages = createAsyncThunk(
       const requestedCount = Math.min(imageCount, 4);
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const api = getApiClient();
-      const { data } = await api.post('/api/bfl/generate', {
+
+      // Decide provider based on model
+      const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
+      const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
+
+      // Build payload
+      const body: any = {
         prompt,
         model,
         n: requestedCount,
@@ -70,7 +76,13 @@ export const generateImages = createAsyncThunk(
         clientRequestId,
         ...(width && height ? { width, height } : {}),
         ...(typeof isPublic === 'boolean' ? { isPublic } : {})
-      });
+      };
+      // For FAL image models, prefer aspect_ratio over frameSize naming
+      if (isFalModel) {
+        if (frameSize) body.aspect_ratio = frameSize;
+      }
+
+      const { data } = await api.post(endpoint, body);
       const payload = data?.data || data;
       // Trigger credits refresh after successful charge
       requestCreditsRefresh();
@@ -99,10 +111,12 @@ export const generateLiveChatImage = createAsyncThunk(
     try {
       const api = getApiClient();
       // Use different endpoints based on model
-      const isGoogleNano = model === 'gemini-25-flash-image';
-      const endpoint = isGoogleNano ? '/api/fal/generate' : '/api/bfl/generate';
+      const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
+      const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
       
-      const { data } = await api.post(endpoint, { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any });
+      const body: any = { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any };
+      if (isFalModel && frameSize) body.aspect_ratio = frameSize;
+      const { data } = await api.post(endpoint, body);
       const payload = data?.data || data;
       requestCreditsRefresh();
       return { images: payload.images, requestId: payload.requestId };

@@ -86,6 +86,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'image',
     provider: 'fal'
   },
+  {
+    frontendValue: 'seedream-v4',
+    creditModelName: 'Seedream v4 (T2I)',
+    generationType: 'image',
+    provider: 'fal'
+  },
 
   // VIDEO GENERATION MODELS
   {
