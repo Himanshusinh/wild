@@ -5,6 +5,9 @@ import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
+import UpscalePopup from '../Generation/ImageGeneration/TextToImage/compo/UpscalePopup'
+import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
+import { Trash2 } from 'lucide-react'
 
 type PublicItem = {
   id: string;
@@ -39,6 +42,8 @@ export default function ArtStationPage() {
   const [currentUid, setCurrentUid] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
+  const [showUpscale, setShowUpscale] = useState(false)
+  const [showRemoveBg, setShowRemoveBg] = useState(false)
   const navigateForType = (type?: string) => {
     const t = (type || '').toLowerCase()
     if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
@@ -383,7 +388,7 @@ export default function ArtStationPage() {
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="fixed top-0 left-0 right-0 z-50"><Nav /></div>
+      <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-[80px]">
         <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => {}} onGenerationTypeChange={() => {}} onWildmindSkitClick={() => {}} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
@@ -531,7 +536,7 @@ export default function ArtStationPage() {
 
           {/* Preview Modals */}
           {preview && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
                 <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
@@ -543,10 +548,11 @@ export default function ArtStationPage() {
                     {currentUid && preview.item.createdBy?.uid === currentUid && (
                       <button
                         title="Delete"
-                        className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm"
+                        className="px-3 py-1.5 rounded-full  text-white text-sm"
                         onClick={() => confirmDelete(preview.item)}
                       >
-                        Delete
+                                      <Trash2 className="w-5 h-5" />
+
                       </button>
                     )}
                     <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
@@ -724,9 +730,32 @@ export default function ArtStationPage() {
                     </div>
                     
                     {/* Action Button */}
-                    <div className="mt-6">
+                    <div className="mt-6 space-y-2">
+                      {preview.item.generationType === 'text-to-image' && preview.kind === 'image' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setShowUpscale(true)}
+                            className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm text-white ring-1 ring-white/20 transition"
+                          >
+                            Upscale
+                          </button>
+                          <button
+                            onClick={() => setShowRemoveBg(true)}
+                            className="flex-1 px-3 py-2 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 text-sm text-white ring-1 ring-white/20 transition"
+                          >
+                            Remove background
+                          </button>
+                        </div>
+                      )}
                       <button 
-                        onClick={() => { setPreview(null); navigateForType(preview.item.generationType); }}
+                        onClick={() => { 
+                          setPreview(null); 
+                          const img = ((preview.item.images || []) as any[])[selectedImageIndex] || (preview.item.images || [])[0] || { url: preview.url };
+                          const url = img?.url || preview.url;
+                          const dest = new URL(window.location.origin + '/text-to-image');
+                          dest.searchParams.set('image', url);
+                          window.location.href = dest.toString();
+                        }}
                         className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
                       >
                         Open in generator
@@ -736,6 +765,32 @@ export default function ArtStationPage() {
                 </div>
               </div>
             </div>
+          )}
+          {preview && preview.kind === 'image' && preview.item.generationType === 'text-to-image' && (
+            <>
+              {showUpscale && (
+                <UpscalePopup
+                  isOpen={showUpscale}
+                  onClose={() => setShowUpscale(false)}
+                  defaultImage={(() => {
+                    const images = (preview.item.images || []) as any[]
+                    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                    return img.url
+                  })()}
+                />
+              )}
+              {showRemoveBg && (
+                <RemoveBgPopup
+                  isOpen={showRemoveBg}
+                  onClose={() => setShowRemoveBg(false)}
+                  defaultImage={(() => {
+                    const images = (preview.item.images || []) as any[]
+                    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                    return img.url
+                  })()}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
