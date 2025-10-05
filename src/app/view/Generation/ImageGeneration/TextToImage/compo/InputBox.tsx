@@ -6,6 +6,8 @@ import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
+import RemoveBgPopup from "./RemoveBgpopup";
+
 import {
   setPrompt,
   generateImages,
@@ -34,7 +36,6 @@ import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
-import RemoveBgPopup from "./RemoveBgPopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { Button } from "@/components/ui/Button";
