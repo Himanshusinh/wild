@@ -59,9 +59,9 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60" onClick={onClose} />
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full" onClick={(e)=>e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60" />
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full">
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <h2 className="text-white text-md font-semibold">Remove Background</h2>
             <button className="p-2 hover:bg-white/10 rounded" onClick={onClose}><X className="w-5 h-5 text-white"/></button>

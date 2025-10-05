@@ -175,10 +175,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop (no outside click to close) */}
       <div 
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 "
-        onClick={onClose}
       />
       
       {/* Main Popup */}
@@ -234,7 +233,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                     {/* Model */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-white">Model</label>
-                      <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-black/80 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
+                        <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
                         <option value="philz1337x/clarity-upscaler ">Clarity Upscaler</option>
                         <option value="fermatresearch/magic-image-refiner ">Magic Image Refiner</option>
                       </select>

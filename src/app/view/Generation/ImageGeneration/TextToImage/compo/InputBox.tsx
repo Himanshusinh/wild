@@ -64,6 +64,17 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
+  // Prefill uploaded image from query param ?image=<url>
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const img = params.get('image');
+      if (img) {
+        dispatch(setUploadedImages([img] as any));
+      }
+    } catch {}
+  }, [dispatch]);
+
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
