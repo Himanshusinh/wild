@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -44,6 +44,7 @@ import axiosInstance from "@/lib/axiosInstance";
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     image: any;
@@ -64,16 +65,15 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Prefill uploaded image from query param ?image=<url>
+  // Prefill uploaded image and prompt from query params (?image=, ?prompt=)
   useEffect(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const img = params.get('image');
-      if (img) {
-        dispatch(setUploadedImages([img] as any));
-      }
+      const img = searchParams?.get('image');
+      const prm = searchParams?.get('prompt');
+      if (img) dispatch(setUploadedImages([img] as any));
+      if (prm) dispatch(setPrompt(prm));
     } catch {}
-  }, [dispatch]);
+  }, [dispatch, searchParams]);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
