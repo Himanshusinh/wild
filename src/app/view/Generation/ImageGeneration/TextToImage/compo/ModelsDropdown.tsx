@@ -124,7 +124,7 @@ const ModelsDropdown = () => {
       </button>
 
       
-      {activeDropdown === 'models' && (
+      {activeDropdown === 'models' && ( 
         <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-3xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {filteredModels.map((model) => (
             <button

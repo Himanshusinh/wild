@@ -1124,10 +1124,10 @@ const InputBox = () => {
     <>
       {(historyEntries.length > 0 || localGeneratingEntries.length > 0) && (
         <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
-          <div className="py-6 pl-4 ">
+          <div className="md:py-6 py-0 md:pl-4 pl-2 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
-              <h2 className="text-xl font-semibold text-white pl-0 ">Iamge Generation History</h2>
+            <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-white/10 backdrop-blur-xl shadow-xl md:pl-6 pl-4 border border-white/10 rounded-2xl ">
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Iamge Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
@@ -1152,9 +1152,9 @@ const InputBox = () => {
                   </div>
                   <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
                 </div>
-                <div className="flex flex-wrap gap-3 ml-9">
+                <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                    <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    <div key={`local-only-${idx}`} className="relative md:w-48 md:h-48 w-[120px] h-[120px] max-w-[180px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
@@ -1212,12 +1212,12 @@ const InputBox = () => {
                   </div>
 
                   {/* All Images for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="flex flex-wrap gap-3 md:ml-9 ml-0">
                     {/* Prepend local preview tiles at the start of today's row to push images right */}
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          <div key={`local-${idx}`} className="relative md:w-48 md:h-48 w-[120px] h-[120px] max-w-[180px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                                 <div className="flex flex-col items-center gap-2">
@@ -1253,7 +1253,7 @@ const InputBox = () => {
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreview({ entry, image })}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative md:w-60 md:h-60 md:max-w-[240px] md:max-h-[240px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
@@ -1283,12 +1283,12 @@ const InputBox = () => {
                             </div>
                           ) : (
                             // Completed image with shimmer loading
-                            <div className="relative w-full h-full">
+                            <div className="relative w-full h-full ">
                               <Image
                                 src={image.url}
                                 alt={entry.prompt}
                                 fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200"
+                                className="object-cover group-hover:scale-105 transition-transform duration-200 "
                                 sizes="192px"
                                 onLoad={() => {
                                   // Remove shimmer when image loads
@@ -1325,11 +1325,11 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[840px] max-w-[95%] z-[60]">
         <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
           <div className="flex items-center gap-0 p-3">
-            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
+            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5 w-full">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -1388,7 +1388,7 @@ const InputBox = () => {
                   height={18}
                   className="opacity-90"
                 />
-                <span className="text-white text-sm">Upload Image </span>
+                <span className="text-white text-sm"> </span>
                 <input
                   type="file"
                   accept="image/*"
