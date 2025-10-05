@@ -41,10 +41,7 @@ const FrameSizeDropdown = () => {
     };
   }, [activeDropdown, dispatch]);
 
-  // Hide frame size dropdown for Google Nano Banana since it doesn't accept aspect ratio parameters
-  if (selectedModel === 'gemini-25-flash-image') {
-    return null;
-  }
+  // Show for all models, including Google Nano Banana (now supports aspect_ratio)
 
   // Model-aware frame size options
   // Common set supported across providers; Runway maps to pixel ratios internally
