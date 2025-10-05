@@ -4,7 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Share, Trash2 } from 'lucide-react';
 import UpscalePopup from './UpscalePopup';
-import RemoveBgPopup from './RemoveBgpopup';
+import RemoveBgPopup from './RemoveBgPopup';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '@/store/hooks';
 import { setUploadedImages } from '@/store/slices/generationSlice';

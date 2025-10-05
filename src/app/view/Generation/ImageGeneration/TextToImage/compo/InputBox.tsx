@@ -6,7 +6,7 @@ import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
-import RemoveBgPopup from "./RemoveBgpopup";
+import RemoveBgPopup from "./RemoveBgPopup";
 
 import {
   setPrompt,
