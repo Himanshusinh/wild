@@ -34,7 +34,7 @@ const Header = () => {
           Introducing Nano Banana by Google!
         </h1>
         <p className="text-lg md:text-xl mb-6 opacity-90">
-          Consistent Superior Editing by Google Gemini, now available in Wild Mind.
+          Consistent Superior Editing by Google Gemini, now available in Wild Mind...
         </p>
         <button 
           onClick={handleTryNowClick}
