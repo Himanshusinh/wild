@@ -22,7 +22,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Model selection (clarity upscaler or magic refiner)
-  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'>('philz1337x/clarity-upscaler');
+  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr'>('philz1337x/clarity-upscaler');
 
   // Shared/basic
   const [scaleFactor, setScaleFactor] = useState<number>(2); // clarity only
@@ -237,6 +237,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                         <option value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
                         <option value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
                         <option value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
+                        <option value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
                       </select>
                     </div>
                     {/* Optional Prompt */}
