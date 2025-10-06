@@ -1169,7 +1169,7 @@ const InputBox = () => {
           <div className="md:py-6 py-0 md:pl-4 pl-2 ">
             {/* History Header - Fixed during scroll */}
             <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-white/10 backdrop-blur-xl shadow-xl md:pl-6 pl-4 border border-white/10 rounded-2xl ">
-              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Iamge Generation </h2>
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
@@ -1422,7 +1422,7 @@ const InputBox = () => {
                   ))}
                 </div>
               )}
-              <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-2">
+              <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0">
                 <Image
                   src="/icons/fileuploadwhite.svg"
                   alt="Attach"

@@ -204,9 +204,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1 space-y-6">
-                <div className="space-y-1">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 ">
+              <div className="lg:col-span-1 space-y-6 ">
+                <div className="space-y-1 ">
                   <h3 className="text-md font-medium text-white">Input Image</h3>
                   <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
                     <Image src={uploadedImage} alt="Original" fill className="object-cover" />
@@ -330,7 +330,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           </div>
 
           {/* Content */}
-          <div className="px-6 py-2">
+          <div className="px-6 py-6">
             {!uploadedImage ? (
               <div className="rounded-xl px-8 py-8 text-center bg-white/5 border border-white/10">
                 <div className="max-w-md mx-auto">

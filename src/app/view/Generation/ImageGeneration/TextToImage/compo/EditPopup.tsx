@@ -31,8 +31,8 @@ const EditPopup: React.FC<Props> = ({ isOpen, onClose, onUpscale, onRemoveBg, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 flex items-center justify-center p-2  " onClick={onClose}>
-      <div className="relative w-[100%] max-w-3xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl " onClick={(e)=>e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60 flex items-center justify-center p-2  " onClick={onClose}>
+      <div className="relative w-[100%] max-w-3xl bg-white/5 backdrop-blur-3xl  ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl " onClick={(e)=>e.stopPropagation()}>
         {/* Header tabs */}
         <div className="px-4 pt-4">
           <div className="text-white/90 text-base font-semibold mb-3">Edit image</div>
@@ -65,12 +65,12 @@ const EditPopup: React.FC<Props> = ({ isOpen, onClose, onUpscale, onRemoveBg, on
             <UpscalePopup inline isOpen={true} onClose={() => {}} />
           </div>
           <div className={`transition-opacity duration-200 ${tab === 'remove' ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'}`}>
-            <div className="text-white/80 mb-3 text-sm">Remove background to get a clean cutout.</div>
+            <div className="text-white/80 mb-3 text-sm pl-4">Remove background to get a clean cutout.</div>
             {/* Render Remove BG tool inline inside this modal */}
             <RemoveBgPopup inline isOpen={true} onClose={() => {}} />
           </div>
           <div className={`transition-opacity duration-200 ${tab === 'resize' ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'}`}>
-            <div className="text-white/80 mb-3 text-sm">Quickly change canvas size/aspect.</div>
+            <div className="text-white/80 mb-3 text-sm pl-4">Quickly change canvas size/aspect.</div>
             <ResizePopup inline isOpen={true} onClose={() => {}} />
           </div>
 

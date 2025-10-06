@@ -429,6 +429,24 @@ const History = () => {
     }
   };
 
+  // Keyboard shortcut: Delete key removes selected items
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ignore when a modal is open or focus is in an input-like element
+      const target = e.target as HTMLElement | null;
+      const tag = (target?.tagName || '').toLowerCase();
+      const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || (target?.getAttribute('contenteditable') === 'true');
+      const anyModalOpen = Boolean(preview || videoPreview || audioPreview || logoPreviewEntry || stickerPreviewEntry || productPreviewEntry);
+      if (isTyping || anyModalOpen) return;
+      if (e.key === 'Delete' && selectedImages.size > 0) {
+        e.preventDefault();
+        deleteSelectedImages();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedImages.size, preview, videoPreview, audioPreview, logoPreviewEntry, stickerPreviewEntry, productPreviewEntry]);
+
   // Helper function to get file type from URL or media
   const getFileType = (media: any, url: string) => {
     const u = url.toLowerCase();
