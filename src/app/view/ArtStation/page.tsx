@@ -410,7 +410,7 @@ export default function ArtStationPage() {
                   onClick={() => setActiveCategory(category)}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
                     activeCategory === category
-                      ? 'bg-[#2D6CFF] border-[#2D6CFF] text-white shadow-sm'
+                      ? 'bg-white border-[#2D6CFF] text-black shadow-sm'
                       : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >
