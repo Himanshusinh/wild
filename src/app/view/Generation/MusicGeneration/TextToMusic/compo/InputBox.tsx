@@ -241,12 +241,7 @@ const InputBox = () => {
         console.log('Using Firebase ID for all operations:', firebaseHistoryId);
       } catch (firebaseError) {
         console.error('❌ Firebase save failed:', firebaseError);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to save generation to history",
-          })
-        );
+        try { const toast = (await import('react-hot-toast')).default; toast.error('Failed to save generation to history'); } catch {}
         // Continue with generation even if Firebase save fails
       }
 
@@ -328,10 +323,7 @@ const InputBox = () => {
       }) : prev);
 
       // Show success notification
-      dispatch(addNotification({
-        type: 'success',
-        message: 'Music generated successfully!'
-      }));
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Music generated successfully!'); } catch {}
 
       // Handle credit success
       if (transactionId) {
@@ -377,12 +369,7 @@ const InputBox = () => {
       }));
 
       setErrorMessage(error.message || 'Music generation failed');
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Music generation failed",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch {}
       
       // Handle credit failure
       if (transactionId) {

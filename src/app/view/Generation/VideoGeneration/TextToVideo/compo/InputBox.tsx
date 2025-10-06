@@ -1330,12 +1330,7 @@ const InputBox = () => {
         }
       }, 1000); // Small delay to ensure backend has updated
 
-      dispatch(
-        addNotification({
-          type: "success",
-          message: "Video generated successfully!",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Video generated successfully!'); } catch {}
 
       // Clear form
       setPrompt("");
@@ -1356,12 +1351,7 @@ const InputBox = () => {
         console.error('❌ Failed to rollback credits:', creditError);
       }
 
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error instanceof Error ? error.message : 'Video generation failed',
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error(error instanceof Error ? error.message : 'Video generation failed'); } catch {}
     } finally {
       setIsGenerating(false);
     }

@@ -22,6 +22,7 @@ import {
   loadMoreHistory,
   loadHistory,
 } from "@/store/slices/historySlice";
+import toast from 'react-hot-toast';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -374,10 +375,7 @@ const InputBox = () => {
       console.log('✅ Credits reserved for image generation:', creditResult);
     } catch (creditError: any) {
       console.error('❌ Credit validation failed:', creditError);
-      dispatch(addNotification({
-        type: 'error',
-        message: creditError.message || 'Insufficient credits for generation'
-      }));
+      toast.error(creditError.message || 'Insufficient credits for generation');
       return;
     }
 
@@ -460,12 +458,7 @@ const InputBox = () => {
             message: firebaseError instanceof Error ? firebaseError.message : 'Unknown error',
             stack: firebaseError instanceof Error ? firebaseError.stack : 'No stack trace'
           });
-          dispatch(
-            addNotification({
-              type: "error",
-              message: "Failed to save generation to history",
-            })
-          );
+          toast.error('Failed to save generation to history');
           return;
         }
 
@@ -805,12 +798,7 @@ const InputBox = () => {
 
         if (successfulResults.length > 0) {
           console.log('Runway generation completed successfully!');
-          dispatch(
-            addNotification({
-              type: "success",
-              message: `Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`,
-            })
-          );
+          toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
           await refreshAllHistory();
 
@@ -869,12 +857,7 @@ const InputBox = () => {
         } catch {}
 
         // Show success notification
-        dispatch(
-          addNotification({
-            type: "success",
-            message: `MiniMax generation completed! Generated ${result.images.length} image(s)`,
-          })
-        );
+        toast.success(`MiniMax generation completed! Generated ${result.images.length} image(s)`);
         clearInputs();
         await refreshAllHistory();
 
@@ -911,7 +894,7 @@ const InputBox = () => {
             setLocalGeneratingEntries([completedEntry]);
           } catch {}
 
-          dispatch(addNotification({ type: 'success', message: `Generated ${result.images?.length || 1} image(s) successfully!` }));
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -927,7 +910,7 @@ const InputBox = () => {
             await handleGenerationFailure(transactionId);
           }
 
-          dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana' }));
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana');
           return;
         }
       } else if (selectedModel === 'seedream-v4') {
@@ -963,7 +946,7 @@ const InputBox = () => {
             setLocalGeneratingEntries([completedEntry]);
           } catch {}
 
-          dispatch(addNotification({ type: 'success', message: `Generated ${result.images?.length || 1} image(s) successfully!` }));
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -974,7 +957,7 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Seedream' }));
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream');
           return;
         }
       } else {
@@ -1036,13 +1019,7 @@ const InputBox = () => {
           // Server already finalized Firebase when historyId is provided
 
           // Show success notification
-          dispatch(
-            addNotification({
-              type: 'success',
-              message: `Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''
-                } successfully!`,
-            })
-          );
+          toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -1109,13 +1086,8 @@ const InputBox = () => {
           // );
 
           // Show success notification
-          dispatch(
-            addNotification({
-              type: "success",
-              message: `Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
-                } successfully!`,
-            })
-          );
+          toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
+            } successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -1169,15 +1141,7 @@ const InputBox = () => {
       }
 
       // Show error notification
-      dispatch(
-        addNotification({
-          type: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to generate images",
-        })
-      );
+      toast.error(error instanceof Error ? error.message : 'Failed to generate images');
     }
   };
 
@@ -1480,10 +1444,7 @@ const InputBox = () => {
                     const oversizedFiles = files.filter(file => file.size > maxSize);
 
                     if (oversizedFiles.length > 0) {
-                      dispatch(addNotification({
-                        type: "error",
-                        message: `Image(s) too large. Maximum size is 2MB per image. ${oversizedFiles.length} file(s) exceed the limit.`,
-                      }));
+                      toast.error(`Image(s) too large. Maximum size is 2MB per image. ${oversizedFiles.length} file(s) exceed the limit.`);
                       // Clear the input
                       if (inputEl) inputEl.value = "";
                       return;

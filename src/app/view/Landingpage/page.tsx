@@ -31,6 +31,7 @@ import { GenerationType } from '@/types/generation';
 
 const LandingPage: React.FC = () => {
   const router = useRouter()
+  const logoutToastShown = React.useRef(false)
   const proximityContainerRef = React.useRef<HTMLDivElement | null>(null)
   const hKnowRef = React.useRef<HTMLDivElement | null>(null)
   const hFeaturesRef = React.useRef<HTMLDivElement | null>(null)
@@ -57,9 +58,26 @@ const LandingPage: React.FC = () => {
   const [loadGallery, setLoadGallery] = React.useState(false)
   const [loadFAQ, setLoadFAQ] = React.useState(false)
   
-  // Prevent navigating back into protected routes after logout
+  // Show logout toast on entry and prevent navigating back into protected routes after logout
   React.useEffect(() => {
     if (typeof window === 'undefined') return
+    try {
+      const key = 'toastMessage'
+      const flag = localStorage.getItem(key)
+      const search = new URLSearchParams(window.location.search)
+      const queryFlag = search.get('toast')
+      if (!logoutToastShown.current && (flag === 'LOGOUT_SUCCESS' || queryFlag === 'LOGOUT_SUCCESS')) {
+        logoutToastShown.current = true
+        import('react-hot-toast').then(m => m.default.success('Logged out'))
+        try { localStorage.removeItem(key) } catch {}
+        // Clean the query param without reload
+        if (queryFlag) {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('toast')
+          window.history.replaceState({}, '', url.toString())
+        }
+      }
+    } catch {}
     const handlePop = () => {
       // Always stay on landing page if user came here after logout
       if (window.location.pathname.toLowerCase().includes('/view/landingpage')) {

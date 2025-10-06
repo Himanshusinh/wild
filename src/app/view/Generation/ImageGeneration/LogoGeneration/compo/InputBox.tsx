@@ -189,12 +189,7 @@ const InputBox = () => {
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
     
     if (!hasSession && !hasToken) {
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Please sign in to generate logos",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Please sign in to generate logos'); } catch {}
       // Redirect to signup page
       window.location.href = '/view/signup?next=/logo-generation';
       return;
@@ -214,12 +209,7 @@ const InputBox = () => {
       console.log("✅ Credits reserved for logo generation:", creditResult);
     } catch (creditError: any) {
       console.error("❌ Credit validation failed:", creditError);
-      dispatch(
-        addNotification({
-          type: "error",
-          message: creditError.message || "Insufficient credits for generation",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error(creditError.message || 'Insufficient credits for generation'); } catch {}
       setIsGeneratingLocally(false);
       return;
     }
@@ -313,14 +303,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       dispatch(setPrompt(""));
 
       // Show success notification
-      dispatch(
-        addNotification({
-          type: "success",
-          message: `Successfully generated ${imageCount} logo${
-            imageCount > 1 ? "s" : ""
-          }!`,
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.success(`Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`); } catch {}
 
       // Handle credit success
       if (transactionId) {
@@ -348,12 +331,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       })));
 
       // Show error notification
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error.message || "Logo generation failed",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error(error.message || 'Logo generation failed'); } catch {}
 
       // Handle credit failure
       if (transactionId) {

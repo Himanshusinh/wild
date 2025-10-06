@@ -171,10 +171,7 @@ const InputBox = () => {
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
     
     if (!hasSession && !hasToken) {
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Please sign in to generate stickers'
-      }));
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Please sign in to generate stickers'); } catch {}
       // Redirect to signup page
       window.location.href = '/view/signup?next=/sticker-generation';
       return;
@@ -194,10 +191,7 @@ const InputBox = () => {
       console.log('✅ Credits reserved for sticker generation:', creditResult);
     } catch (creditError: any) {
       console.error('❌ Credit validation failed:', creditError);
-      dispatch(addNotification({
-        type: 'error',
-        message: creditError.message || 'Insufficient credits for generation'
-      }));
+      try { const toast = (await import('react-hot-toast')).default; toast.error(creditError.message || 'Insufficient credits for generation'); } catch {}
       setIsGeneratingLocally(false);
       return;
     }
@@ -316,10 +310,7 @@ const InputBox = () => {
       dispatch(setPrompt(''));
 
       // Show success notification
-      dispatch(addNotification({
-        type: 'success',
-        message: `Successfully generated ${imageCount} sticker${imageCount > 1 ? 's' : ''}!`
-      }));
+      try { const toast = (await import('react-hot-toast')).default; toast.success(`Successfully generated ${imageCount} sticker${imageCount > 1 ? 's' : ''}!`); } catch {}
 
       // Handle credit success
       if (transactionId) {
@@ -346,10 +337,7 @@ const InputBox = () => {
       })));
 
       // Show error notification
-      dispatch(addNotification({
-        type: 'error',
-        message: error.message || 'Sticker generation failed'
-      }));
+      try { const toast = (await import('react-hot-toast')).default; toast.error(error.message || 'Sticker generation failed'); } catch {}
 
       // Handle credit failure
       if (transactionId) {

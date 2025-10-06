@@ -9,6 +9,7 @@ import { getImageUrl } from "@/routes/imageroute"
 import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
 import { APP_ROUTES } from '../../../routes/routes'
+import toast from 'react-hot-toast'
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 7) => {
@@ -174,17 +175,16 @@ export default function SignInForm() {
         localStorage.setItem("user", JSON.stringify(user))
         localStorage.setItem("authToken", idToken)
 
-        // Show redirect spinner and clear form
-        setIsRedirecting(true)
+        // Persist toast flag for next page (faster redirect)
+        try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
+        setIsRedirecting(false)
         setEmail("")
         setPassword("")
 
-        // Redirect to home page or specified redirect
-        setTimeout(() => {
-          const redirectUrl = redirect || APP_ROUTES.HOME
-          console.log("🏠 Redirecting to:", redirectUrl)
-          window.location.href = redirectUrl
-        }, 2000)
+        // Redirect immediately with optional query flag for safety
+        const redirectUrl = (redirect || APP_ROUTES.HOME) + '?toast=LOGIN_SUCCESS'
+        console.log("🏠 Redirecting to:", redirectUrl)
+        window.location.href = redirectUrl
 
       } else {
         console.error("❌ Login failed:", response.data?.message)
@@ -277,6 +277,7 @@ export default function SignInForm() {
       if (response.data && response.data.data && response.data.data.sent) {
         console.log("✅ OTP sent successfully!")
         setOtpSent(true)
+        toast.success(`OTP sent to ${email.trim()}`)
         setError("")
         setSuccess(`OTP sent to ${email.trim()}`)
       } else {
@@ -405,10 +406,12 @@ export default function SignInForm() {
           } catch (conversionError: any) {
             console.error("❌ Token conversion error:", conversionError)
             setError("Authentication failed. Please try again.")
+            toast.error('Authentication failed. Please try again.')
           }
         } else {
           console.error("❌ No custom token found in response")
           setError("Authentication failed. Please try again.")
+          toast.error('Authentication failed. Please try again.')
         }
       }
     } catch (error: any) {
@@ -545,6 +548,7 @@ export default function SignInForm() {
           // Store user data temporarily
           sessionStorage.setItem("tempGoogleUser", JSON.stringify(userData))
           setSuccess("Google account connected! Please choose a username.")
+          toast.success('Google account connected! Choose a username')
           setShowUsernameForm(true)
 
         } else {
@@ -561,6 +565,7 @@ export default function SignInForm() {
           )
 
           console.log("✅ Session created, redirecting...")
+          toast.success('Logged in successfully')
 
           // Store user profile only; rely on httpOnly cookie for auth
           localStorage.setItem("user", JSON.stringify(userData))
@@ -660,6 +665,7 @@ export default function SignInForm() {
           setShowUsernameForm(false)
           setShowRedeemCodeForm(true)
           setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
+          toast.success('Account created successfully')
         }
 
       } else {
