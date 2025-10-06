@@ -12,6 +12,7 @@ import {
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
+import { setFilters } from '@/store/slices/historySlice';
 import { useGenerationCredits } from '@/hooks/useCredits';
 import {
   loadMoreHistory,
@@ -83,19 +84,39 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount
+  // Load history on mount (scoped to sticker-generation)
   useEffect(() => {
     console.log('[Sticker] useEffect: mount -> loading sticker history');
     (async () => {
       try {
         setInitialLoading(true);
-        const result: any = await (dispatch as any)(loadHistory({ 
-          // load without strict type so we don't miss records with variant names
-          paginationParams: { limit: 50 } 
+        const baseFilters: any = { generationType: 'sticker-generation' };
+        // Set filters early so other observers (PageRouter) show correct type immediately
+        dispatch(setFilters(baseFilters));
+        dispatch(clearHistory());
+        await (dispatch as any)(loadHistory({ 
+          filters: baseFilters,
+          paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('[Sticker] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
-      } catch (e) {
-        console.error('[Sticker] initial loadHistory error', e);
+        let attempts = 0;
+        while (
+          attempts < 6 &&
+          (document.documentElement.scrollHeight - window.innerHeight) < 240
+        ) {
+          const more: any = await (dispatch as any)(loadMoreHistory({
+            filters: baseFilters,
+            paginationParams: { limit: 10 }
+          })).unwrap();
+          if (!more?.hasMore) break;
+          attempts += 1;
+        }
+        console.log('[Sticker] initial loadHistory fulfilled');
+      } catch (e: any) {
+        if (e && e.name === 'ConditionError') {
+          // benign: another in-flight request finished first
+        } else {
+          console.error('[Sticker] initial loadHistory error', e);
+        }
       } finally {
         setInitialLoading(false);
         setHasInitiallyLoaded(true);
@@ -348,10 +369,10 @@ const InputBox = () => {
   // Close preview modal
   const closePreview = () => setPreviewEntry(null);
 
-  // Filter entries for sticker generation (be tolerant to naming)
+  // Filter entries for sticker generation (tolerant to naming)
   const stickerHistoryEntries = historyEntries.filter((entry: any) => {
-    const normalize = (t: string | undefined) => (t ? t.replace(/[_-]/g, '-').toLowerCase() : '');
-    const e = normalize(entry.generationType);
+    const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+    const e = normalize(entry?.generationType);
     return e === 'sticker' || e === 'sticker-generation' || e === 'sticker-gen';
   });
   

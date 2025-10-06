@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
+import { NAV_ROUTES } from '../../../../routes/routes'
 import Image from 'next/image'
 
 interface UserData {
@@ -348,6 +349,17 @@ const Nav = () => {
                       <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0.5 left-0.5`} />
                     </button>
                   </div>
+
+                  {/* Account Settings */}
+                  <button 
+                    onClick={() => {
+                      router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)
+                      setShowDropdown(false)
+                    }}
+                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                  >
+                    <span className='text-white text-sm'>Account Settings</span>
+                  </button>
 
                   {/* Divider */}
                   <div className='border-t border-white/10 my-2'></div>

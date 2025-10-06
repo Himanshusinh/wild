@@ -19,6 +19,7 @@ import {
   clearHistory,
   clearFilters,
 } from "@/store/slices/historySlice";
+import { setFilters } from '@/store/slices/historySlice';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -102,19 +103,38 @@ const ProductWithModelPoseInputBox = () => {
     console.log('✅ Set generation mode to: product-only');
   }, [selectedModel]);
 
-  // Load product-generation history on mount
+  // Load product-generation history on mount (scoped)
   useEffect(() => {
     console.log('[Product] useEffect: mount -> loading product history');
     (async () => {
       try {
         setInitialLoading(true);
-        const result: any = await (dispatch as any)(loadHistory({ 
-          // load broadly to include any variant types
-          paginationParams: { limit: 50 } 
+        const baseFilters: any = { generationType: 'product-generation' };
+        dispatch(setFilters(baseFilters));
+        dispatch(clearHistory());
+        await (dispatch as any)(loadHistory({ 
+          filters: baseFilters,
+          paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('[Product] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
-      } catch (e) {
-        console.error('[Product] initial loadHistory error', e);
+        let attempts = 0;
+        while (
+          attempts < 6 &&
+          (document.documentElement.scrollHeight - window.innerHeight) < 240
+        ) {
+          const more: any = await (dispatch as any)(loadMoreHistory({
+            filters: baseFilters,
+            paginationParams: { limit: 10 }
+          })).unwrap();
+          if (!more?.hasMore) break;
+          attempts += 1;
+        }
+        console.log('[Product] initial loadHistory fulfilled');
+      } catch (e: any) {
+        if (e && e.name === 'ConditionError') {
+          // benign overlap
+        } else {
+          console.error('[Product] initial loadHistory error', e);
+        }
       } finally {
         setInitialLoading(false);
         setHasInitiallyLoaded(true);
@@ -431,10 +451,10 @@ GENERATOR HINTS:
   // Close preview modal
   const closePreview = () => setPreviewEntry(null);
 
-  // Filter entries for product generation (tolerant to naming)
+  // Filter entries for product generation (tolerant only)
   const finalProductEntries = (historyEntries || []).filter((entry: any) => {
-    const normalize = (t: string | undefined) => (t ? t.replace(/[_-]/g, '-').toLowerCase() : '');
-    const e = normalize(entry.generationType);
+    const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+    const e = normalize(entry?.generationType);
     return e === 'product' || e === 'product-generation' || e === 'product-gen';
   });
   

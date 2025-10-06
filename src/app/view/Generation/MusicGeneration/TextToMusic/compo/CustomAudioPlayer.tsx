@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Music4, Copy, Check } from 'lucide-react';
+import { Play, Pause, Music4, Copy, Check, Download } from 'lucide-react';
 
 interface CustomAudioPlayerProps {
   audioUrl: string;
@@ -105,6 +105,125 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
 
   const promptToShow = (lyrics && lyrics.trim().length > 0) ? lyrics : prompt;
 
+  // Helpers to infer extension from URL or data URI
+  const getExtensionFromMime = (mime: string): string | null => {
+    const map: Record<string, string> = {
+      'audio/mpeg': 'mp3',
+      'audio/mp3': 'mp3',
+      'audio/wav': 'wav',
+      'audio/x-wav': 'wav',
+      'audio/ogg': 'ogg',
+      'audio/aac': 'aac',
+      'audio/mp4': 'm4a',
+      'audio/flac': 'flac',
+      'audio/L16': 'pcm',
+      'audio/pcm': 'pcm',
+      'audio/raw': 'pcm',
+    };
+    return map[mime] || null;
+  };
+
+  const getExtensionFromUrl = (url: string): string | null => {
+    try {
+      if (!url) return null;
+      if (url.startsWith('data:')) {
+        const m = url.match(/^data:([^;]+);/);
+        if (m && m[1]) return getExtensionFromMime(m[1]);
+        return null;
+      }
+      const clean = url.split('?')[0].split('#')[0];
+      const last = (clean.split('/').pop() || '').toLowerCase();
+      const idx = last.lastIndexOf('.');
+      if (idx > 0 && idx < last.length - 1) {
+        const ext = last.substring(idx + 1);
+        const allowed = new Set(['mp3','wav','m4a','ogg','aac','flac','pcm']);
+        if (allowed.has(ext)) return ext;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const ext = getExtensionFromUrl(audioUrl) || 'mp3';
+      const filename = `${model || 'audio'}-${Date.now()}.${ext}`;
+
+      // Proxy helpers (match History.tsx behavior)
+      const toProxyPath = (urlOrPath: string | undefined) => {
+        if (!urlOrPath) return '';
+        const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+        if (urlOrPath.startsWith(ZATA_PREFIX)) {
+          return urlOrPath.substring(ZATA_PREFIX.length);
+        }
+        return urlOrPath;
+      };
+      const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+        const path = toProxyPath(urlOrPath);
+        return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+      };
+
+      const proxyUrl = toProxyDownloadUrl(audioUrl);
+      const downloadUrl = proxyUrl || audioUrl;
+
+      const response = await fetch(downloadUrl, { credentials: 'include' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      // Fallback 1: attempt direct link to proxy with download attribute
+      try {
+        const toProxyPath = (urlOrPath: string | undefined) => {
+          if (!urlOrPath) return '';
+          const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+          if (urlOrPath.startsWith(ZATA_PREFIX)) {
+            return urlOrPath.substring(ZATA_PREFIX.length);
+          }
+          return urlOrPath;
+        };
+        const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+          const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+          const path = toProxyPath(urlOrPath);
+          return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+        };
+        const proxyUrl = toProxyDownloadUrl(audioUrl);
+        if (proxyUrl) {
+          const a = document.createElement('a');
+          a.href = proxyUrl;
+          a.download = `${model || 'audio'}-${Date.now()}.${getExtensionFromUrl(audioUrl) || 'mp3'}`;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return;
+        }
+        throw new Error('No proxy URL');
+      } catch {
+        // Fallback 2: open original URL (last resort)
+        const a = document.createElement('a');
+        a.href = audioUrl;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    }
+  };
+
+  const fileTypeLabel = (getExtensionFromUrl(audioUrl) || 'mp3').toUpperCase();
+
   return (
     <div className="w-full">
       {/* Hidden audio element */}
@@ -112,7 +231,8 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
       
       {/* New Layout: Prompt + Lyrics + Music Box */}
       <div className="space-y-4">
-        {/* Prompt block with label and copy */}
+        {/* Prompt block with label and copy */
+        }
         <div className="flex items-start gap-2">
           <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Prompt</div>
           <div className="flex-1 bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/90 text-sm leading-relaxed">
@@ -124,6 +244,21 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
             title="Copy prompt"
           >
             {copiedPrompt ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Download button under copy icon */}
+        <div className="flex justify-end items-center gap-2 -mt-2">
+          {/* File type label (left of download) */}
+          <span className="px-2 py-0.5 rounded bg-white/10 ring-1 ring-white/15 text-white/70 text-[10px] tracking-wide">
+            {fileTypeLabel}
+          </span>
+          <button
+            onClick={handleDownload}
+            className="mt-1 inline-flex items-center p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/80 ring-1 ring-white/15"
+            title="Download audio"
+          >
+            <Download className="w-4 h-4" />
           </button>
         </div>
 

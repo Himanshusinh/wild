@@ -42,7 +42,7 @@ const History = () => {
   const [filters, setLocalFilters] = useState<HistoryFilters>({});
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
-  const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product'>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product' | 'user-uploads'>('all');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState<string>("");
 
@@ -325,6 +325,11 @@ const History = () => {
     const key = `${entry.id}-${media.id || mediaIndex}`;
     const isSelected = selectedImages.has(key);
     
+    // Check if this is a user upload
+    const inputImagesArr = (((entry as any).inputImages) || []) as any[];
+    const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
+    const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
+    
     // If image is selected, unselect it instead of opening preview
     if (isSelected) {
       e.stopPropagation();
@@ -335,8 +340,15 @@ const History = () => {
       return;
     }
     
-    // If no images are selected, open preview modal as normal
+    // If no images are selected, open preview modal as normal (but not for user uploads)
     if (selectedImages.size === 0) {
+      // Don't open preview for user uploads - they're just uploaded files
+      if (isUserUpload) {
+        e.stopPropagation();
+        toggleImageSelection(entry.id, media.id || mediaIndex.toString());
+        return;
+      }
+      
       const mediaUrl = media.firebaseUrl || media.url;
       const video = isVideoUrl(mediaUrl);
       const audio = isAudioUrl(mediaUrl);
@@ -419,9 +431,61 @@ const History = () => {
 
   // Helper function to get file type from URL or media
   const getFileType = (media: any, url: string) => {
-    if (url.includes('video') || url.includes('.mp4') || url.includes('.webm')) return 'video';
-    if (url.includes('audio') || url.includes('.mp3') || url.includes('.wav')) return 'audio';
+    const u = url.toLowerCase();
+    if (u.startsWith('data:video') || /(\.mp4|\.webm|\.mov|\.mkv)(\?|$)/i.test(u)) return 'video';
+    if (u.startsWith('data:audio') || /(\.mp3|\.wav|\.m4a|\.ogg|\.aac|\.flac)(\?|$)/i.test(u)) return 'audio';
+    if (/(\.png|\.jpg|\.jpeg|\.webp|\.gif)(\?|$)/i.test(u)) return 'image';
     return 'image';
+  };
+
+  // Derive original extension from a URL or data URI
+  const getExtensionFromUrl = (url: string): string | null => {
+    try {
+      // Handle data URIs like: data:audio/mpeg;base64,...
+      if (url.startsWith('data:')) {
+        const match = url.match(/^data:([^;]+);/);
+        if (match && match[1]) {
+          const mime = match[1];
+          const ext = getExtensionFromMime(mime);
+          if (ext) return ext;
+        }
+        return null;
+      }
+
+      // Strip query/hash
+      const clean = url.split('?')[0].split('#')[0];
+      const last = clean.split('/').pop() || '';
+      const dotIdx = last.lastIndexOf('.');
+      if (dotIdx > 0 && dotIdx < last.length - 1) {
+        const rawExt = last.substring(dotIdx + 1).toLowerCase();
+        // Whitelist known extensions
+        const allowed = new Set(['mp3','wav','m4a','ogg','aac','flac','mp4','webm','mov','mkv','png','jpg','jpeg','webp','gif']);
+        if (allowed.has(rawExt)) return rawExt;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getExtensionFromMime = (mime: string): string | null => {
+    const map: Record<string, string> = {
+      'audio/mpeg': 'mp3',
+      'audio/mp3': 'mp3',
+      'audio/wav': 'wav',
+      'audio/x-wav': 'wav',
+      'audio/aac': 'aac',
+      'audio/mp4': 'm4a',
+      'audio/ogg': 'ogg',
+      'audio/flac': 'flac',
+      'video/mp4': 'mp4',
+      'video/webm': 'webm',
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+    };
+    return map[mime] || null;
   };
 
   // Helper functions to convert URLs to proxy URLs (like preview modals)
@@ -472,8 +536,23 @@ const History = () => {
       window.URL.revokeObjectURL(objectUrl);
       return true;
     } catch (error) {
-      console.error('Download failed:', error);
-      return false;
+      console.error('Download via proxy failed, falling back to direct link:', error);
+      try {
+        // Fallback: open the original URL in a new tab; browser will handle download if allowed
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.download = filename; // may be ignored cross-origin, but harmless
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return true;
+      } catch (e) {
+        console.error('Direct open fallback failed:', e);
+        return false;
+      }
     }
   };
 
@@ -484,7 +563,11 @@ const History = () => {
       const failedDownloads: string[] = [];
       
       historyEntries.forEach((entry: HistoryEntry) => {
-        const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+        const mediaItems = [
+          ...((entry.images || []) as any[]),
+          ...(((entry as any).videos || []) as any[]),
+          ...(((entry as any).audios || []) as any[]),
+        ];
         mediaItems.forEach((media: any, index: number) => {
           const key = `${entry.id}-${media.id || index}`;
           if (selectedImages.has(key)) {
@@ -493,7 +576,8 @@ const History = () => {
             if (url) {
               downloadCount++;
               const fileType = getFileType(media, url);
-              const extension = fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'png';
+              const originalExt = getExtensionFromUrl(url);
+              const extension = originalExt || (fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'png');
               const filename = `${entry.model}-${entry.id}-${index}.${extension}`;
               
               console.log(`Attempting download for ${key}:`, { url, filename, fileType });
@@ -632,13 +716,46 @@ const History = () => {
     return groups;
   }, {} as { [key: string]: HistoryEntry[] });
 
+  // Calculate total filtered items count
+  const getFilteredItemsCount = () => {
+    let count = 0;
+    (Object.values(groupedByDate) as HistoryEntry[][]).forEach((entries: HistoryEntry[]) => {
+      entries.forEach((entry: HistoryEntry) => {
+        const inputImagesArr = (((entry as any).inputImages) || []) as any[];
+        const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
+        const mediaItems = [
+          ...inputImagesArr,
+          ...inputVideosArr,
+          ...((entry.images || []) as any[]),
+          ...(((entry as any).videos || []) as any[]),
+          ...(((entry as any).audios || []) as any[]),
+        ];
+        
+        const filteredMediaItems = mediaItems.filter((media: any) => {
+          const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
+          
+          if (quickFilter === 'user-uploads') {
+            return isUserUpload;
+          } else {
+            return !isUserUpload;
+          }
+        });
+        
+        count += filteredMediaItems.length;
+      });
+    });
+    return count;
+  };
+
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
     const diff = new Date(b).getTime() - new Date(a).getTime();
     return sortOrder === 'asc' ? -diff : diff;
   });
 
   // Header title to mirror TextToImage wording
-  const headerTitle = viewMode === 'global'
+  const headerTitle = quickFilter === 'user-uploads'
+    ? 'Your Uploads'
+    : viewMode === 'global'
     ? 'All Generation History'
     : (currentGenerationType === 'text-to-image'
       ? 'Image Generation History'
@@ -698,7 +815,7 @@ const History = () => {
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z" />
             </svg>
           </button> */}
-          <span className="text-md text-white/80">{historyEntries.length} generations</span>
+          <span className="text-md text-white/80">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
           {hasMore && <span className="text-md text-white/80">• Scroll to load more</span>}
         </div>
         <div className="flex items-right justify-end gap-2 pr-28 ">
@@ -710,6 +827,7 @@ const History = () => {
             { key: 'logo', label: 'Logo' },
             { key: 'sticker', label: 'Stickers' },
             { key: 'product', label: 'Products' },
+            { key: 'user-uploads', label: 'Your Uploads' },
           ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
             <button
               key={key}
@@ -736,6 +854,9 @@ const History = () => {
                     break;
                   case 'product':
                     f = { generationType: 'product-generation' };
+                    break;
+                  case 'user-uploads':
+                    f = { isUserUpload: true };
                     break;
                   default:
                     f = {};
@@ -889,18 +1010,22 @@ const History = () => {
       )} */}
 
         {/* History Entries - TextToImage-like UI: date-grouped tiles */}
-      {(historyEntries.length === 0 && !overlayLoading && !loading) ? (
+      {(getFilteredItemsCount() === 0 && !overlayLoading && !loading) ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 text-white/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-white/70 mb-2">No generations found</h3>
+          <h3 className="text-lg font-medium text-white/70 mb-2">
+            {quickFilter === 'user-uploads' ? 'No uploads found' : 'No generations found'}
+          </h3>
           <p className="text-white/50 mb-4">
             {Object.keys(filters).length > 0
-              ? "Try adjusting your filters or clear them to see all generations."
-              : "No generation history available yet."
+              ? `Try adjusting your filters or clear them to see all ${quickFilter === 'user-uploads' ? 'uploads' : 'generations'}.`
+              : quickFilter === 'user-uploads' 
+                ? "No uploads available yet."
+                : "No generation history available yet."
             }
           </p>
           {Object.keys(filters).length > 0 && (
@@ -925,28 +1050,54 @@ const History = () => {
               </div>
             </div>
           )}  
-          {sortedDates.map((dateKey) => (
-            <div key={dateKey} className="space-y-4">
-              {/* Date Header */}
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                  </svg>
-                </div>
-                <h3 className="text-sm font-medium text-white/70">
-                  {new Date(dateKey).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </h3>
-              </div>
+          {sortedDates.map((dateKey) => {
+            // Check if this date has any filtered items
+            const hasFilteredItems = groupedByDate[dateKey].some((entry: HistoryEntry) => {
+              const inputImagesArr = (((entry as any).inputImages) || []) as any[];
+              const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
+              const mediaItems = [
+                ...inputImagesArr,
+                ...inputVideosArr,
+                ...((entry.images || []) as any[]),
+                ...(((entry as any).videos || []) as any[]),
+                ...(((entry as any).audios || []) as any[]),
+              ];
+              
+              return mediaItems.some((media: any) => {
+                const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
+                
+                if (quickFilter === 'user-uploads') {
+                  return isUserUpload;
+                } else {
+                  return !isUserUpload;
+                }
+              });
+            });
 
-              {/* Tiles for this date */}
-              <div className="flex flex-wrap gap-3 ml-9">
-                {groupedByDate[dateKey].map((entry: HistoryEntry) => {
+            if (!hasFilteredItems) return null;
+
+            return (
+              <div key={dateKey} className="space-y-4">
+                {/* Date Header */}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-medium text-white/70">
+                    {new Date(dateKey).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </h3>
+                </div>
+
+                {/* Tiles for this date */}
+                <div className="flex flex-wrap gap-3 ml-9">
+                  {groupedByDate[dateKey].map((entry: HistoryEntry) => {
                   const inputImagesArr = (((entry as any).inputImages) || []) as any[];
                   const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
                   const mediaItems = [
@@ -956,7 +1107,19 @@ const History = () => {
                     ...(((entry as any).videos || []) as any[]),
                     ...(((entry as any).audios || []) as any[]),
                   ];
-                  return mediaItems.map((media: any, mediaIndex: number) => {
+                  
+                  // Filter media items based on quickFilter
+                  const filteredMediaItems = mediaItems.filter((media: any, mediaIndex: number) => {
+                    const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
+                    
+                    if (quickFilter === 'user-uploads') {
+                      return isUserUpload;
+                    } else {
+                      return !isUserUpload; // Exclude user uploads from normal history
+                    }
+                  });
+                  
+                  return filteredMediaItems.map((media: any, mediaIndex: number) => {
                     const mediaUrl = media.firebaseUrl || media.url;
                     const video = isVideoUrl(mediaUrl);
                     const audio = isAudioUrl(mediaUrl);
@@ -1077,7 +1240,8 @@ const History = () => {
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
           {/* Loader for scroll loading */}
           {hasMore && loading && (
             <div className="flex items-center justify-center py-8">
@@ -1143,7 +1307,11 @@ const History = () => {
                   const count = selectedImages.size;
                   const types = new Set();
                   historyEntries.forEach((entry: HistoryEntry) => {
-                    const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+                    const mediaItems = [
+                      ...((entry.images || []) as any[]),
+                      ...(((entry as any).videos || []) as any[]),
+                      ...(((entry as any).audios || []) as any[]),
+                    ];
                     mediaItems.forEach((media: any, index: number) => {
                       const key = `${entry.id}-${media.id || index}`;
                       if (selectedImages.has(key)) {

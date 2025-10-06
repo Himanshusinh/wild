@@ -8,8 +8,8 @@ const mapGenerationTypeForBackend = (type?: string): string | undefined => {
   if (!type) return type;
   const normalized = type.toLowerCase();
   switch (normalized) {
-    // case 'logo-generation':
-    //   return 'logo';
+    case 'logo-generation':
+      return 'logo';
     case 'image-to-video':
       return 'image_to_video';
     case 'video-to-video':
@@ -76,7 +76,7 @@ export const loadHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = {};
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = filters.generationType; // send exactly what UI wants
+      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (paginationParams?.limit) params.limit = paginationParams.limit;
@@ -114,22 +114,9 @@ export const loadHistory = createAsyncThunk(
     }
   },
   {
-    condition: (
-      { filters, paginationParams }: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
-      { getState }
-    ) => {
-      const state = getState() as { history: HistoryState };
-      const { loading, inFlight, currentRequestKey } = state.history;
-      const key = JSON.stringify({ type: 'load', filters: filters || {}, limit: paginationParams?.limit || 10, cursor: (paginationParams as any)?.cursor?.id });
-      if (loading || inFlight) {
-        try { console.log('[historySlice] loadHistory.condition SKIP: already loading', { currentRequestKey }); } catch {}
-        return false;
-      }
-      if (currentRequestKey === key) {
-        try { console.log('[historySlice] loadHistory.condition SKIP: duplicate key', { key }); } catch {}
-        return false;
-      }
-      try { console.log('[historySlice] loadHistory.condition OK', { key }); } catch {}
+    condition: () => {
+      // Always allow; feature pages chain their own fetches and reducer merges safely
+      try { console.log('[historySlice] loadHistory.condition OK'); } catch {}
       return true;
     }
   }
@@ -155,14 +142,22 @@ export const loadMoreHistory = createAsyncThunk(
           if (!type || typeof type !== 'string') return '';
           return type.replace(/[_-]/g, '-').toLowerCase();
         };
+        const typeMatches = (entryType?: string, filterType?: string): boolean => {
+          if (!filterType) return true;
+          if (entryType === filterType) return true;
+          const e = normalizeGenerationType(entryType);
+          const f = normalizeGenerationType(filterType);
+          if (e === f) return true;
+          // Synonyms old/new naming
+          if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
+          if ((f === 'sticker-generation' && e === 'sticker') || (f === 'sticker' && e === 'sticker-generation')) return true;
+          if ((f === 'product-generation' && e === 'product') || (f === 'product' && e === 'product-generation')) return true;
+          return false;
+        };
         const matchesFilters = (entry: any): boolean => {
           // Generation type filter
-          if (filters?.generationType) {
-            const e = normalizeGenerationType(entry.generationType);
-            const f = normalizeGenerationType(filters.generationType);
-            if (e !== f && !(f === 'logo' && e === 'logo-generation') && !(f === 'logo-generation' && e === 'logo')) {
-              return false;
-            }
+          if (filters?.generationType && !typeMatches(entry.generationType, filters.generationType)) {
+            return false;
           }
           // Mode filter (video groups t2v/i2v/v2v)
           if ((filters as any)?.mode === 'video') {
@@ -195,7 +190,7 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = filters.generationType; // send exactly what UI wants
+      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
@@ -350,36 +345,26 @@ const historySlice = createSlice({
         const usedFilters = (action.meta && action.meta.arg && action.meta.arg.filters) || {};
         state.filters = usedFilters;
 
-        // If filters were provided for this load, enforce them on the results for safety
+        // Apply a safe, synonym-aware filter when a generationType is requested
         state.entries = action.payload.entries;
-        if (usedFilters && Object.keys(usedFilters).length > 0) {
-          if (usedFilters.generationType) {
-            // Normalize both the filter and entry generationType for comparison
-            const normalizeGenerationType = (type: string | undefined): string => {
-              if (!type || typeof type !== 'string') return '';
-              return type.replace(/[_-]/g, '-').toLowerCase();
-            };
-            const matchesType = (entryType: string | undefined, filterType: string): boolean => {
-              const e = normalizeGenerationType(entryType);
-              const f = normalizeGenerationType(filterType);
-              if (e === f) return true;
-              // Handle synonyms between old/new naming
-              if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
-              // Accept backend terms for sticker/product
-              if ((f === 'sticker-generation' && e === 'sticker-generation') || (f === 'sticker-generation' && e === 'sticker')) return true;
-              if ((f === 'product-generation' && e === 'product-generation') || (f === 'product-generation' && e === 'product')) return true;
-              return false;
-            };
-            const filterBefore = state.entries.length;
-            state.entries = state.entries.filter(entry => matchesType(entry.generationType as any, usedFilters.generationType as any));
-            try { console.log('[historySlice] filter by type', { requested: usedFilters.generationType, before: filterBefore, after: state.entries.length }); } catch {}
-          }
-          if (usedFilters.model) {
-            state.entries = state.entries.filter(entry => entry.model === usedFilters.model);
-          }
-          if (usedFilters.status) {
-            state.entries = state.entries.filter(entry => entry.status === usedFilters.status);
-          }
+        const usedType = (usedFilters as any)?.generationType as string | undefined;
+        if (usedType) {
+          const normalize = (t?: string): string => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+          const matchesType = (entryType?: string): boolean => {
+            const e = normalize(entryType);
+            const f = normalize(usedType);
+            if (e === f) return true;
+            // logo synonyms
+            if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
+            // sticker synonyms
+            if ((f === 'sticker-generation' && e === 'sticker') || (f === 'sticker' && e === 'sticker-generation')) return true;
+            if ((f === 'sticker-generation' && e === 'sticker-generation') || (f === 'sticker' && e === 'sticker')) return true;
+            // product synonyms
+            if ((f === 'product-generation' && e === 'product') || (f === 'product' && e === 'product-generation')) return true;
+            if ((f === 'product-generation' && e === 'product-generation') || (f === 'product' && e === 'product')) return true;
+            return false;
+          };
+          state.entries = state.entries.filter((it: any) => matchesType(it?.generationType));
         }
         
         state.hasMore = action.payload.hasMore;
@@ -416,9 +401,25 @@ const historySlice = createSlice({
         state.currentRequestKey = null;
         
         // Filter out duplicate entries before adding
-        const newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
+        let newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
           !state.entries.some((existingEntry: HistoryEntry) => existingEntry.id === newEntry.id)
         );
+
+        // Enforce requested generationType for pagination as well
+        const usedType = ((action.meta as any)?.arg?.filters?.generationType || state.filters?.generationType) as string | undefined;
+        if (usedType) {
+          const normalize = (t?: string): string => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+          const matchesType = (entryType?: string): boolean => {
+            const e = normalize(entryType);
+            const f = normalize(usedType);
+            if (e === f) return true;
+            if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
+            if ((f === 'sticker-generation' && e === 'sticker') || (f === 'sticker' && e === 'sticker-generation')) return true;
+            if ((f === 'product-generation' && e === 'product') || (f === 'product' && e === 'product-generation')) return true;
+            return false;
+          };
+          newEntries = newEntries.filter((it: any) => matchesType(it?.generationType));
+        }
         
         state.entries.push(...newEntries);
         state.hasMore = action.payload.hasMore;

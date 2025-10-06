@@ -250,10 +250,10 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-white">Model</label>
                         <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
-                        <option value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
-                        <option value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
-                        <option value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
-                        <option value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
+                        <option className='bg-black/80' value="philz1337x/clarity-upscaler ">Clarity Upscaler</option>
+                        <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
+                        <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
+                        <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
                       </select>
                     </div>
                     {/* Optional Prompt */}
@@ -291,7 +291,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                     </div>
                     ) : model === 'fermatresearch/magic-image-refiner' ? (
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
+                      {/* <div>
                         <label className="text-xs text-white/80">HDR</label>
                         <input type="number" min={0} max={1} step={0.05} value={hdr} onChange={(e)=>setHdr(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
@@ -319,19 +319,19 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                       <div className="flex items-end gap-2">
                         <input id="guess" type="checkbox" checked={guessMode} onChange={(e)=>setGuessMode(e.target.checked)} />
                         <label htmlFor="guess" className="text-xs text-white/80">Guess mode</label>
-                      </div>
+                      </div> */}
                       <div>
                         <label className="text-xs text-white/80">Resolution</label>
-                        <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
-                          <option value="original">Original</option>
-                          <option value="1024">1024</option>
-                          <option value="2048">2048</option>
+                          <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                          <option className='bg-black/80' value="original">Original</option>
+                          <option className='bg-black/80' value="1024">1024</option>
+                          <option className='bg-black/80' value="2048">2048</option>
                         </select>
                       </div>
-                      <div>
+                      {/* <div>
                         <label className="text-xs text-white/80">Resemblance</label>
                         <input type="number" min={0} max={1} step={0.05} value={mirResemblance} onChange={(e)=>setMirResemblance(Number(e.target.value)||0.75)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
-                      </div>
+                      </div> */}
                       <div>
                         <label className="text-xs text-white/80">Guidance scale</label>
                         <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e)=>setGuidanceScale(Number(e.target.value)||7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />

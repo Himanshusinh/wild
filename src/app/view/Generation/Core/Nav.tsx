@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { useCredits } from '../../../../hooks/useCredits'
+import { NAV_ROUTES } from '../../../../routes/routes'
 
 interface UserData {
   uid: string
@@ -215,6 +216,18 @@ const Nav = () => {
                     </div>
 
                     <div className='border-t border-white/10 my-2'></div>
+
+                    {/* Account Settings */}
+                    <button 
+                      onClick={() => {
+                        router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)
+                        setShowDropdown(false)
+                      }}
+                      className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    >
+                      <span className='text-white text-sm'>Account Settings</span>
+                    </button>
+
                     <button onClick={handleLogout} className='w-full text-left py-2 px-3 rounded-lg hover:bg-red-500/20 transition-colors'>
                       <span className='text-red-400 text-sm'>Log Out</span>
                     </button>
