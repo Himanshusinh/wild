@@ -8,8 +8,8 @@ const mapGenerationTypeForBackend = (type?: string): string | undefined => {
   if (!type) return type;
   const normalized = type.toLowerCase();
   switch (normalized) {
-    case 'logo-generation':
-      return 'logo';
+    // case 'logo-generation':
+    //   return 'logo';
     case 'image-to-video':
       return 'image_to_video';
     case 'video-to-video':
@@ -76,7 +76,7 @@ export const loadHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = {};
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
+      if (filters?.generationType) params.generationType = filters.generationType; // send exactly what UI wants
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (paginationParams?.limit) params.limit = paginationParams.limit;
@@ -195,7 +195,7 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
+      if (filters?.generationType) params.generationType = filters.generationType; // send exactly what UI wants
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
@@ -365,6 +365,9 @@ const historySlice = createSlice({
               if (e === f) return true;
               // Handle synonyms between old/new naming
               if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
+              // Accept backend terms for sticker/product
+              if ((f === 'sticker-generation' && e === 'sticker-generation') || (f === 'sticker-generation' && e === 'sticker')) return true;
+              if ((f === 'product-generation' && e === 'product-generation') || (f === 'product-generation' && e === 'product')) return true;
               return false;
             };
             const filterBefore = state.entries.length;

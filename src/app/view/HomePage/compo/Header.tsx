@@ -1,7 +1,14 @@
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { getImageUrl } from '../routes'
 
 const Header = () => {
+  const router = useRouter();
+
+  const handleTryNowClick = () => {
+    router.push('/text-to-image');
+  };
+
   return (
     <div className="w-full relative">
       {/* Video wrapper with right padding */}
@@ -27,9 +34,12 @@ const Header = () => {
           Introducing Nano Banana by Google!
         </h1>
         <p className="text-lg md:text-xl mb-6 opacity-90">
-          Consistent Superior Editing by Google Gemini, now available in Wild Mind.
+          Consistent Superior Editing by Google Gemini, now available in Wild Mind...
         </p>
-        <button className="bg-[#1C303D] hover:bg-blue-700 text-white px-6 py-2 rounded-full text-lg font-medium transition-colors">
+        <button 
+          onClick={handleTryNowClick}
+          className="bg-[#1C303D] hover:bg-blue-700 text-white px-6 py-2 rounded-full text-lg font-medium transition-colors"
+        >
           Try Now
         </button>
       </div>

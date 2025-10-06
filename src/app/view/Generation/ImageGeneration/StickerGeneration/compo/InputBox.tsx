@@ -45,6 +45,9 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  // Local mount loading to avoid empty flash and ensure first render
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
   // Credits management
   const {
@@ -82,19 +85,20 @@ const InputBox = () => {
 
   // Load history on mount
   useEffect(() => {
-    console.log('[Sticker] useEffect: mount -> clearing and loading sticker history');
+    console.log('[Sticker] useEffect: mount -> loading sticker history');
     (async () => {
       try {
-        dispatch(clearHistory());
-        dispatch(clearFilters());
-        console.log('[Sticker] dispatched clearHistory');
+        setInitialLoading(true);
         const result: any = await (dispatch as any)(loadHistory({ 
-          filters: { generationType: 'sticker-generation' }, 
+          // load without strict type so we don't miss records with variant names
           paginationParams: { limit: 50 } 
         })).unwrap();
         console.log('[Sticker] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
       } catch (e) {
         console.error('[Sticker] initial loadHistory error', e);
+      } finally {
+        setInitialLoading(false);
+        setHasInitiallyLoaded(true);
       }
     })();
   }, [dispatch]);
@@ -344,11 +348,15 @@ const InputBox = () => {
   // Close preview modal
   const closePreview = () => setPreviewEntry(null);
 
-  // Filter entries for sticker generation
+  // Filter entries for sticker generation (be tolerant to naming)
   const stickerHistoryEntries = historyEntries.filter((entry: any) => {
-    // Strictly include only entries persisted as sticker-generation
-    return entry.generationType === 'sticker-generation';
+    const normalize = (t: string | undefined) => (t ? t.replace(/[_-]/g, '-').toLowerCase() : '');
+    const e = normalize(entry.generationType);
+    return e === 'sticker' || e === 'sticker-generation' || e === 'sticker-gen';
   });
+  
+  // Don't show empty state if we haven't loaded yet
+  const shouldShowEmptyState = hasInitiallyLoaded && !initialLoading && !loading && stickerHistoryEntries.length === 0 && localGeneratingEntries.length === 0;
 
   // Debug logging
   console.log('🎨 Sticker Generation - All entries:', historyEntries.length);
@@ -395,44 +403,26 @@ const InputBox = () => {
 
   return (
     <>
-      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
         <div className="py-6 pl-4 ">
-          {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Sticker Generation History</h2>
-          </div>
-          {/* Spacer to keep content below fixed header */}
-          <div className="h-0"></div>
-
-          {/* Main Loader */}
-          {loading && stickerHistoryEntries.length === 0 && (
-            <div className="flex items-center justify-center ">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                <div className="text-white text-lg">Loading your generation history...</div>
-              </div>
+            {/* History Header - Fixed during scroll */}
+            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
+              <h2 className="text-xl font-semibold text-white pl-0 ">Sticker Generation History</h2>
             </div>
-          )}
+            {/* Spacer to keep content below fixed header */}
+            <div className="h-0"></div>
 
-          {/* No History State */}
-          {!loading && stickerHistoryEntries.length === 0 && localGeneratingEntries.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </div>
-                <div className="text-white text-lg">No stickers generated yet</div>
-                <div className="text-white/60 text-sm max-w-md">
-                  Create your first AI-generated sticker using the interface below
+            {/* Scoped overlay loader while first page loads */}
+          {(initialLoading || (loading && stickerHistoryEntries.length === 0)) && (
+            <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-white text-lg">Loading generations...</div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* History Entries - Grouped by Date */}
-          {(stickerHistoryEntries.length > 0 || (localGeneratingEntries.length > 0 && !groupedByDate[todayKey])) && (
+            {/* History Entries - Grouped by Date */}
             <div className=" space-y-8  ">
               {/* If there is a local preview but no row for today yet, render today's row so the tile appears immediately */}
               {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
@@ -605,7 +595,6 @@ const InputBox = () => {
                 </div>
               ))}
             </div>
-          )}
 
           {/* Sentinel for infinite scroll */}
           <div ref={sentinelRef} style={{ height: 1 }} />

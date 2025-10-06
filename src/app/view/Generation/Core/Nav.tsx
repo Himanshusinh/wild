@@ -33,11 +33,11 @@ const Nav = () => {
     } catch { return true }
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
-  
+
   // Use Redux credits state
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits()
   const router = useRouter()
-  
+
   // Debug logging
   React.useEffect(() => {
     console.log('Nav credits state:', { creditBalance, creditsLoading, creditsError });
@@ -58,7 +58,7 @@ const Nav = () => {
           const server = (user && (user as any).isPublic)
           const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : true)
           setIsPublic(next)
-        } catch {}
+        } catch { }
 
         // Refresh credits from Redux store
         await refreshCredits()
@@ -80,7 +80,7 @@ const Nav = () => {
       document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
       const api = getApiClient()
       await api.post('/api/auth/logout')
-    } catch {}
+    } catch { }
     // Hard redirect to clear history and prevent back navigation
     if (typeof window !== 'undefined') {
       try {
@@ -88,7 +88,7 @@ const Nav = () => {
         window.addEventListener('popstate', () => {
           history.pushState(null, document.title, location.href)
         })
-      } catch {}
+      } catch { }
       window.location.replace('/view/Landingpage')
     }
   }
@@ -105,21 +105,21 @@ const Nav = () => {
   }
 
   return (
-    <div className='fixed top-1 left-18 right-4 z-40  '>
+    <div className='fixed md:top-1 md:left-18 left-4 md:right-4 right-0 z-40 -top-1 '>
       <div className='flex justify-between items-center m-3'>
         <div className=''>
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
         </div>
 
-        <div className='flex items-center gap-3'>
+        <div className='flex items-center md:gap-3 gap-1 '>
           {/* <Image className='cursor-pointer border rounded-full p-2 border-white/15' src="/icons/searchwhite.svg" alt='logo' width={45} height={45} /> */}
-          <button 
-            onClick={() => refreshCredits()} 
-            className='flex items-center gap-2 bg-white/15 border border-white/15 backdrop-blur-3xl rounded-full shadow-xl p-1 w-auto px-3 py-2 justify-center hover:bg-white/20 transition-colors z-50'
+          <button
+            onClick={() => refreshCredits()}
+            className='text-sm md:text-base flex items-center gap-2 bg-white/15 border border-white/15 backdrop-blur-3xl rounded-full shadow-xl p-1 w-auto md:px-3 px-2 md:py-2 py-0.5 justify-center hover:bg-white/20 transition-colors z-50'
             title={`Credits: ${creditBalance ?? userData?.credits ?? 150}${creditsError ? ` (Error: ${creditsError})` : ''}`}
           >
             {creditsLoading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
-            <Image className='cursor-pointer' src="/icons/coinswhite.svg" alt='logo' width={25} height={25} />
+            <Image className='cursor-pointer md:w-6 md:h-6 w-4 h-4' src="/icons/coinswhite.svg" alt='logo' width={25} height={25} />
           </button>
 
           {/* Profile trigger + dropdown (same behavior as homepage) */}
@@ -131,7 +131,7 @@ const Nav = () => {
                   alt='profile'
                   referrerPolicy='no-referrer'
                   onError={() => setAvatarFailed(true)}
-                  className='w-[40px] h-[40px] rounded-full object-cover'
+                  className='md:w-[40px] md:h-[40px] w-[30px] h-[30px] rounded-full object-cover'
                 />
               ) : (
                 <Image className='cursor-pointer' src="/icons/person.svg" alt='logo' width={25} height={25} />
@@ -181,13 +181,13 @@ const Nav = () => {
                       <span className='text-gray-300 text-sm'>{userData?.plan || 'Free'}</span>
                     </div>
 
-                    <button 
+                    <button
                       onClick={handleUpgradePlan}
                       className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
                     >
                       <span className='text-white text-sm'>Upgrade Plan</span>
                     </button>
-                    <button 
+                    <button
                       onClick={handlePurchaseCredits}
                       className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
                     >
@@ -206,8 +206,8 @@ const Nav = () => {
                           try {
                             const api = getApiClient()
                             await api.patch('/api/auth/me', { isPublic: next })
-                          } catch {}
-                          try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
+                          } catch { }
+                          try { localStorage.setItem('isPublicGenerations', String(next)) } catch { }
                         }}
                         className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
                       >

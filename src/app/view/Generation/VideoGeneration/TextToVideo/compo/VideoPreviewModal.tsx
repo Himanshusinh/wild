@@ -178,6 +178,19 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const isLongPrompt = cleanPrompt.length > 280;
 
+  // Lock background scroll while modal is open
+  React.useEffect(() => {
+    if (!preview) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = (document.documentElement as HTMLElement).style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscroll;
+    };
+  }, [preview]);
+
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>

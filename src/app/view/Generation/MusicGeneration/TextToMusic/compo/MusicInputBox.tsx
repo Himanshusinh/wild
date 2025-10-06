@@ -380,7 +380,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
         >
           <Music4 className="w-4 h-4" />
-          {creditInfo.hasCredits ? `${model} (${creditInfo.displayText})` : model}
+          {model}
           <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${modelOpen ? 'rotate-180' : ''}`} />
         </button>
         {modelOpen && (

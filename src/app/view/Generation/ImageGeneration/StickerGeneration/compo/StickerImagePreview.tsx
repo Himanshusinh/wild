@@ -23,6 +23,19 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const dispatch = useAppDispatch();
 
+  // Lock background scroll while modal is open
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = (document.documentElement as HTMLElement).style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscroll;
+    };
+  }, [isOpen]);
+
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
   const toProxyPath = (urlOrPath: string | undefined) => {
