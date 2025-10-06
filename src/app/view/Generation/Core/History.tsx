@@ -431,9 +431,61 @@ const History = () => {
 
   // Helper function to get file type from URL or media
   const getFileType = (media: any, url: string) => {
-    if (url.includes('video') || url.includes('.mp4') || url.includes('.webm')) return 'video';
-    if (url.includes('audio') || url.includes('.mp3') || url.includes('.wav')) return 'audio';
+    const u = url.toLowerCase();
+    if (u.startsWith('data:video') || /(\.mp4|\.webm|\.mov|\.mkv)(\?|$)/i.test(u)) return 'video';
+    if (u.startsWith('data:audio') || /(\.mp3|\.wav|\.m4a|\.ogg|\.aac|\.flac)(\?|$)/i.test(u)) return 'audio';
+    if (/(\.png|\.jpg|\.jpeg|\.webp|\.gif)(\?|$)/i.test(u)) return 'image';
     return 'image';
+  };
+
+  // Derive original extension from a URL or data URI
+  const getExtensionFromUrl = (url: string): string | null => {
+    try {
+      // Handle data URIs like: data:audio/mpeg;base64,...
+      if (url.startsWith('data:')) {
+        const match = url.match(/^data:([^;]+);/);
+        if (match && match[1]) {
+          const mime = match[1];
+          const ext = getExtensionFromMime(mime);
+          if (ext) return ext;
+        }
+        return null;
+      }
+
+      // Strip query/hash
+      const clean = url.split('?')[0].split('#')[0];
+      const last = clean.split('/').pop() || '';
+      const dotIdx = last.lastIndexOf('.');
+      if (dotIdx > 0 && dotIdx < last.length - 1) {
+        const rawExt = last.substring(dotIdx + 1).toLowerCase();
+        // Whitelist known extensions
+        const allowed = new Set(['mp3','wav','m4a','ogg','aac','flac','mp4','webm','mov','mkv','png','jpg','jpeg','webp','gif']);
+        if (allowed.has(rawExt)) return rawExt;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getExtensionFromMime = (mime: string): string | null => {
+    const map: Record<string, string> = {
+      'audio/mpeg': 'mp3',
+      'audio/mp3': 'mp3',
+      'audio/wav': 'wav',
+      'audio/x-wav': 'wav',
+      'audio/aac': 'aac',
+      'audio/mp4': 'm4a',
+      'audio/ogg': 'ogg',
+      'audio/flac': 'flac',
+      'video/mp4': 'mp4',
+      'video/webm': 'webm',
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+    };
+    return map[mime] || null;
   };
 
   // Helper functions to convert URLs to proxy URLs (like preview modals)
@@ -484,8 +536,23 @@ const History = () => {
       window.URL.revokeObjectURL(objectUrl);
       return true;
     } catch (error) {
-      console.error('Download failed:', error);
-      return false;
+      console.error('Download via proxy failed, falling back to direct link:', error);
+      try {
+        // Fallback: open the original URL in a new tab; browser will handle download if allowed
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.download = filename; // may be ignored cross-origin, but harmless
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return true;
+      } catch (e) {
+        console.error('Direct open fallback failed:', e);
+        return false;
+      }
     }
   };
 
@@ -496,7 +563,11 @@ const History = () => {
       const failedDownloads: string[] = [];
       
       historyEntries.forEach((entry: HistoryEntry) => {
-        const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+        const mediaItems = [
+          ...((entry.images || []) as any[]),
+          ...(((entry as any).videos || []) as any[]),
+          ...(((entry as any).audios || []) as any[]),
+        ];
         mediaItems.forEach((media: any, index: number) => {
           const key = `${entry.id}-${media.id || index}`;
           if (selectedImages.has(key)) {
@@ -505,7 +576,8 @@ const History = () => {
             if (url) {
               downloadCount++;
               const fileType = getFileType(media, url);
-              const extension = fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'png';
+              const originalExt = getExtensionFromUrl(url);
+              const extension = originalExt || (fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'png');
               const filename = `${entry.model}-${entry.id}-${index}.${extension}`;
               
               console.log(`Attempting download for ${key}:`, { url, filename, fileType });
@@ -1235,7 +1307,11 @@ const History = () => {
                   const count = selectedImages.size;
                   const types = new Set();
                   historyEntries.forEach((entry: HistoryEntry) => {
-                    const mediaItems = entry.images || entry.videos || (entry as any).audios || [];
+                    const mediaItems = [
+                      ...((entry.images || []) as any[]),
+                      ...(((entry as any).videos || []) as any[]),
+                      ...(((entry as any).audios || []) as any[]),
+                    ];
                     mediaItems.forEach((media: any, index: number) => {
                       const key = `${entry.id}-${media.id || index}`;
                       if (selectedImages.has(key)) {
