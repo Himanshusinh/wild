@@ -682,7 +682,7 @@ const History = () => {
 
   // Header title to mirror TextToImage wording
   const headerTitle = quickFilter === 'user-uploads'
-    ? 'User Uploads'
+    ? 'Your Uploads'
     : viewMode === 'global'
     ? 'All Generation History'
     : (currentGenerationType === 'text-to-image'
@@ -755,7 +755,7 @@ const History = () => {
             { key: 'logo', label: 'Logo' },
             { key: 'sticker', label: 'Stickers' },
             { key: 'product', label: 'Products' },
-            { key: 'user-uploads', label: 'User Uploads' },
+            { key: 'user-uploads', label: 'Your Uploads' },
           ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
             <button
               key={key}
@@ -946,13 +946,13 @@ const History = () => {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-white/70 mb-2">
-            {quickFilter === 'user-uploads' ? 'No user uploads found' : 'No generations found'}
+            {quickFilter === 'user-uploads' ? 'No uploads found' : 'No generations found'}
           </h3>
           <p className="text-white/50 mb-4">
             {Object.keys(filters).length > 0
               ? `Try adjusting your filters or clear them to see all ${quickFilter === 'user-uploads' ? 'uploads' : 'generations'}.`
               : quickFilter === 'user-uploads' 
-                ? "No user uploads available yet."
+                ? "No uploads available yet."
                 : "No generation history available yet."
             }
           </p>
