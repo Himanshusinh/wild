@@ -32,6 +32,13 @@ const axiosInstance = axios.create({
 // Attach device headers; rely on httpOnly session cookies for auth
 axiosInstance.interceptors.request.use((config) => {
   try {
+    // Route auth endpoints via same-origin Next.js API to avoid CORS during ngrok usage
+    const url = typeof config.url === 'string' ? config.url : ''
+    if (url.startsWith('/api/auth/')) {
+      // Override baseURL so the request is same-origin (Next.js app) and proxied server-side
+      config.baseURL = ''
+    }
+
     // Stable device id persisted in localStorage
     let deviceId = localStorage.getItem('device_id')
     if (!deviceId) {

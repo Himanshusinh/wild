@@ -1330,12 +1330,7 @@ const InputBox = () => {
         }
       }, 1000); // Small delay to ensure backend has updated
 
-      dispatch(
-        addNotification({
-          type: "success",
-          message: "Video generated successfully!",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Video generated successfully!'); } catch {}
 
       // Clear form
       setPrompt("");
@@ -1356,12 +1351,7 @@ const InputBox = () => {
         console.error('❌ Failed to rollback credits:', creditError);
       }
 
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error instanceof Error ? error.message : 'Video generation failed',
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error(error instanceof Error ? error.message : 'Video generation failed'); } catch {}
     } finally {
       setIsGenerating(false);
     }
@@ -1374,7 +1364,7 @@ const InputBox = () => {
           <div className="py-6 pl-4 ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation History</h2>
+            <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation </h2>
           </div>
           {/* Spacer to keep content below fixed header */}
           <div className="h-0"></div>

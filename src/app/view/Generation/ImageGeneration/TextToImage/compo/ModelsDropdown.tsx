@@ -54,7 +54,8 @@ const ModelsDropdown = () => {
       m.value === 'gen4_image' ||
       m.value === 'gen4_image_turbo' ||
       m.value === 'minimax-image-01' ||
-      m.value === 'gemini-25-flash-image'
+      m.value === 'gemini-25-flash-image' ||
+      m.value === 'seedream-v4'
     );
   }
 
@@ -112,10 +113,7 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${selectedModel !== 'flux-dev'
-          ? 'bg-white text-black'
-          : 'bg-transparent text-white/90 hover:bg-white/5'
-          }`}
+        className="Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
       >
         <Cpu className="w-4 h-4 mr-1" />
         {filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
@@ -136,7 +134,7 @@ const ModelsDropdown = () => {
               }}
 
               className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                ? 'bg-white text-black'
+                ? 'bg-white/20 text-white'
                 : 'text-white/90 hover:bg-white/10'
                 }`}
             >

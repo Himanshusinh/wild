@@ -7,6 +7,7 @@ import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
 import RemoveBgPopup from "./RemoveBgPopup";
+import EditPopup from "./EditPopup";
 
 import {
   setPrompt,
@@ -16,12 +17,13 @@ import {
   setUploadedImages,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
-import { runwayGenerate, runwayStatus, bflGenerate, falGenerate } from "@/store/slices/generationsApi";
+import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
   loadHistory,
 } from "@/store/slices/historySlice";
+import toast from 'react-hot-toast';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -52,6 +54,7 @@ const InputBox = () => {
   } | null>(null);
   const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
   const [isRemoveBgOpen, setIsRemoveBgOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -218,6 +221,11 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+
+  // Seedream-specific UI state
+  const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
+  const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
+  const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const hasUserScrolledRef = useRef(false);
@@ -369,10 +377,7 @@ const InputBox = () => {
       console.log('✅ Credits reserved for image generation:', creditResult);
     } catch (creditError: any) {
       console.error('❌ Credit validation failed:', creditError);
-      dispatch(addNotification({
-        type: 'error',
-        message: creditError.message || 'Insufficient credits for generation'
-      }));
+      toast.error(creditError.message || 'Insufficient credits for generation');
       return;
     }
 
@@ -455,12 +460,7 @@ const InputBox = () => {
             message: firebaseError instanceof Error ? firebaseError.message : 'Unknown error',
             stack: firebaseError instanceof Error ? firebaseError.stack : 'No stack trace'
           });
-          dispatch(
-            addNotification({
-              type: "error",
-              message: "Failed to save generation to history",
-            })
-          );
+          toast.error('Failed to save generation to history');
           return;
         }
 
@@ -800,12 +800,7 @@ const InputBox = () => {
 
         if (successfulResults.length > 0) {
           console.log('Runway generation completed successfully!');
-          dispatch(
-            addNotification({
-              type: "success",
-              message: `Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`,
-            })
-          );
+          toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
           await refreshAllHistory();
 
@@ -864,12 +859,7 @@ const InputBox = () => {
         } catch {}
 
         // Show success notification
-        dispatch(
-          addNotification({
-            type: "success",
-            message: `MiniMax generation completed! Generated ${result.images.length} image(s)`,
-          })
-        );
+        toast.success(`MiniMax generation completed! Generated ${result.images.length} image(s)`);
         clearInputs();
         await refreshAllHistory();
 
@@ -906,7 +896,7 @@ const InputBox = () => {
             setLocalGeneratingEntries([completedEntry]);
           } catch {}
 
-          dispatch(addNotification({ type: 'success', message: `Generated ${result.images?.length || 1} image(s) successfully!` }));
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -922,7 +912,54 @@ const InputBox = () => {
             await handleGenerationFailure(transactionId);
           }
 
-          dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana' }));
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana');
+          return;
+        }
+      } else if (selectedModel === 'seedream-v4') {
+        // Replicate Seedream v4 (supports T2I and I2I with multi-image input)
+        try {
+          // Build Seedream payload per new schema
+          const payload: any = {
+            prompt: `${prompt} [Style: ${style}]`,
+            model: 'bytedance/seedream-4',
+            size: seedreamSize,
+            aspect_ratio: frameSize,
+            sequential_image_generation: 'disabled',
+            max_images: Math.min(imageCount, 4),
+            isPublic,
+          };
+          if (seedreamSize === 'custom') {
+            payload.width = Math.max(1024, Math.min(4096, Number(seedreamWidth) || 2048));
+            payload.height = Math.max(1024, Math.min(4096, Number(seedreamHeight) || 2048));
+          }
+          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10);
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream');
           return;
         }
       } else {
@@ -984,13 +1021,7 @@ const InputBox = () => {
           // Server already finalized Firebase when historyId is provided
 
           // Show success notification
-          dispatch(
-            addNotification({
-              type: 'success',
-              message: `Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''
-                } successfully!`,
-            })
-          );
+          toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -1057,13 +1088,8 @@ const InputBox = () => {
           // );
 
           // Show success notification
-          dispatch(
-            addNotification({
-              type: "success",
-              message: `Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
-                } successfully!`,
-            })
-          );
+          toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
+            } successfully!`);
           clearInputs();
           await refreshAllHistory();
 
@@ -1117,15 +1143,7 @@ const InputBox = () => {
       }
 
       // Show error notification
-      dispatch(
-        addNotification({
-          type: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to generate images",
-        })
-      );
+      toast.error(error instanceof Error ? error.message : 'Failed to generate images');
     }
   };
 
@@ -1151,7 +1169,7 @@ const InputBox = () => {
           <div className="md:py-6 py-0 md:pl-4 pl-2 ">
             {/* History Header - Fixed during scroll */}
             <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-white/10 backdrop-blur-xl shadow-xl md:pl-6 pl-4 border border-white/10 rounded-2xl ">
-              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Iamge Generation </h2>
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
@@ -1404,7 +1422,7 @@ const InputBox = () => {
                   ))}
                 </div>
               )}
-              <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-2">
+              <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0">
                 <Image
                   src="/icons/fileuploadwhite.svg"
                   alt="Attach"
@@ -1428,10 +1446,7 @@ const InputBox = () => {
                     const oversizedFiles = files.filter(file => file.size > maxSize);
 
                     if (oversizedFiles.length > 0) {
-                      dispatch(addNotification({
-                        type: "error",
-                        message: `Image(s) too large. Maximum size is 2MB per image. ${oversizedFiles.length} file(s) exceed the limit.`,
-                      }));
+                      toast.error(`Image(s) too large. Maximum size is 2MB per image. ${oversizedFiles.length} file(s) exceed the limit.`);
                       // Clear the input
                       if (inputEl) inputEl.value = "";
                       return;
@@ -1525,58 +1540,60 @@ const InputBox = () => {
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
+              {selectedModel === 'seedream-v4' && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={seedreamSize}
+                    onChange={(e)=>setSeedreamSize(e.target.value as any)}
+                    className="h-[32px] px-3 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition"
+                  >
+                    <option className="bg-black" value="1K">1K</option>
+                    <option className="bg-black" value="2K">2K</option>
+                    <option className="bg-black" value="4K">4K</option>
+                    <option className="bg-black" value="custom">Custom</option>
+                  </select>
+                  {seedreamSize === 'custom' && (
+                    <>
+                      <input
+                        type="number"
+                        min={1024}
+                        max={4096}
+                        value={seedreamWidth}
+                        onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
+                        placeholder="Width"
+                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                      <input
+                        type="number"
+                        min={1024}
+                        max={4096}
+                        value={seedreamHeight}
+                        onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
+                        placeholder="Height"
+                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             {/* moved previews near upload above */}
             {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
               <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
                 <Button
-                  aria-label="Upscale"
-                  title="Upscale"
+                  aria-label="Edit"
+                  title="Edit"
                   borderRadius="1.5rem"
                   containerClassName="h-10 w-auto"
                   className="bg-black text-white px-4 py-2"
-                  onClick={() => setIsUpscaleOpen(true)}
+                  onClick={() => setIsEditOpen(true)}
                 >
                   <div className="flex items-center gap-2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 text-[#2F6BFF]"
-                    >
-                      <path d="M7 17l-4 4" />
-                      <path d="M3 17h4v4" />
-                      <path d="M17 7l4-4" />
-                      <path d="M21 7h-4V3" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white/80">
+                      <path d="M12 20h9"/>
+                      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
                     </svg>
-                    <span className="text-sm text-white">Upscale</span>
-                  </div>
-                </Button>
-                <Button
-                  aria-label="Remove background"
-                  title="Remove background"
-                  borderRadius="1.5rem"
-                  containerClassName="h-10 w-auto"
-                  className="bg-black text-white px-4 py-2"
-                  onClick={() => setIsRemoveBgOpen(true)}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 text-[#F97316]"
-                    >
-                      <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
-                      <path d="M5 13l6 6" />
-                    </svg>
-                    <span className="text-sm text-white">Remove background</span>
+                    <span className="text-sm text-white">Edit</span>
                   </div>
                 </Button>
               </div>
@@ -1589,6 +1606,17 @@ const InputBox = () => {
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
       <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
+      <EditPopup
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onUpscale={() => setIsUpscaleOpen(true)}
+        onRemoveBg={() => setIsRemoveBgOpen(true)}
+        onResize={() => {
+          // Open frame size dropdown programmatically (optional improvement)
+          const dropdown = document.querySelector('[data-frame-size-dropdown]') as HTMLElement | null;
+          if (dropdown) dropdown.click();
+        }}
+      />
     </>
   );
 };

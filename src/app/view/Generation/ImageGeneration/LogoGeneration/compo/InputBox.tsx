@@ -12,6 +12,7 @@ import {
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
+import { setFilters } from '@/store/slices/historySlice';
 import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
   loadMoreHistory,
@@ -99,19 +100,41 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount
+  // Load history on mount (scoped to logo)
   useEffect(() => {
     console.log('[Logo] useEffect: mount -> loading logo history');
     (async () => {
       try {
         setInitialLoading(true);
-        const result: any = await (dispatch as any)(loadHistory({ 
-          // no strict filter to avoid missing entries on first paint
-          paginationParams: { limit: 50 } 
+        const baseFilters: any = { generationType: 'logo' };
+        dispatch(setFilters(baseFilters));
+        // Fresh list for this view
+        dispatch(clearHistory());
+        // First page
+        await (dispatch as any)(loadHistory({ 
+          filters: baseFilters,
+          paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('[Logo] initial loadHistory fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
-      } catch (e) {
-        console.error('[Logo] initial loadHistory error', e);
+        // Auto-fill viewport like TextToImage
+        let attempts = 0;
+        while (
+          attempts < 6 &&
+          (document.documentElement.scrollHeight - window.innerHeight) < 240
+        ) {
+          const more: any = await (dispatch as any)(loadMoreHistory({
+            filters: baseFilters,
+            paginationParams: { limit: 10 }
+          })).unwrap();
+          if (!more?.hasMore) break;
+          attempts += 1;
+        }
+        console.log('[Logo] initial loadHistory fulfilled');
+      } catch (e: any) {
+        if (e && e.name === 'ConditionError') {
+          // benign overlap
+        } else {
+          console.error('[Logo] initial loadHistory error', e);
+        }
       } finally {
         setInitialLoading(false);
         setHasInitiallyLoaded(true);
@@ -166,12 +189,7 @@ const InputBox = () => {
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
     
     if (!hasSession && !hasToken) {
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Please sign in to generate logos",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Please sign in to generate logos'); } catch {}
       // Redirect to signup page
       window.location.href = '/view/signup?next=/logo-generation';
       return;
@@ -191,12 +209,7 @@ const InputBox = () => {
       console.log("✅ Credits reserved for logo generation:", creditResult);
     } catch (creditError: any) {
       console.error("❌ Credit validation failed:", creditError);
-      dispatch(
-        addNotification({
-          type: "error",
-          message: creditError.message || "Insufficient credits for generation",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error(creditError.message || 'Insufficient credits for generation'); } catch {}
       setIsGeneratingLocally(false);
       return;
     }
@@ -290,14 +303,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       dispatch(setPrompt(""));
 
       // Show success notification
-      dispatch(
-        addNotification({
-          type: "success",
-          message: `Successfully generated ${imageCount} logo${
-            imageCount > 1 ? "s" : ""
-          }!`,
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.success(`Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`); } catch {}
 
       // Handle credit success
       if (transactionId) {
@@ -325,12 +331,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       })));
 
       // Show error notification
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error.message || "Logo generation failed",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error(error.message || 'Logo generation failed'); } catch {}
 
       // Handle credit failure
       if (transactionId) {
@@ -350,16 +351,9 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
   // Close preview modal
   const closePreview = () => setPreviewEntry(null);
 
-  // Filter entries for logo generation
-  const logoHistoryEntries = historyEntries.filter((entry: any) => {
-    const normalize = (t: string | undefined) => (t ? t.replace(/[_-]/g, '-').toLowerCase() : '');
-    const e = normalize(entry.generationType);
-    return e === 'logo' || e === 'logo-generation';
-  });
+  // Slice already enforces generationType; use list as-is
+  const logoHistoryEntries = historyEntries as any[];
   
-  // Don't show empty state if we haven't loaded yet
-  const shouldShowEmptyState = hasInitiallyLoaded && !initialLoading && !loading && logoHistoryEntries.length === 0;
-
   console.log('[Logo] render diagnostics', {
     totalEntries: historyEntries.length,
     logoEntries: logoHistoryEntries.length,

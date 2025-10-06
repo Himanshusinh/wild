@@ -80,6 +80,8 @@ const Nav = () => {
       document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
       const api = getApiClient()
       await api.post('/api/auth/logout')
+      // Defer toast to landing page after redirect
+      try { localStorage.setItem('toastMessage', 'LOGOUT_SUCCESS'); } catch {}
     } catch { }
     // Hard redirect to clear history and prevent back navigation
     if (typeof window !== 'undefined') {
@@ -89,7 +91,8 @@ const Nav = () => {
           history.pushState(null, document.title, location.href)
         })
       } catch { }
-      window.location.replace('/view/Landingpage')
+      // Prefer query flag to guarantee toast after redirect
+      window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
     }
   }
 

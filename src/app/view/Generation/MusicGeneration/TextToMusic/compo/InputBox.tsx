@@ -241,12 +241,7 @@ const InputBox = () => {
         console.log('Using Firebase ID for all operations:', firebaseHistoryId);
       } catch (firebaseError) {
         console.error('❌ Firebase save failed:', firebaseError);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to save generation to history",
-          })
-        );
+        try { const toast = (await import('react-hot-toast')).default; toast.error('Failed to save generation to history'); } catch {}
         // Continue with generation even if Firebase save fails
       }
 
@@ -328,10 +323,7 @@ const InputBox = () => {
       }) : prev);
 
       // Show success notification
-      dispatch(addNotification({
-        type: 'success',
-        message: 'Music generated successfully!'
-      }));
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Music generated successfully!'); } catch {}
 
       // Handle credit success
       if (transactionId) {
@@ -377,12 +369,7 @@ const InputBox = () => {
       }));
 
       setErrorMessage(error.message || 'Music generation failed');
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Music generation failed",
-        })
-      );
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch {}
       
       // Handle credit failure
       if (transactionId) {
@@ -400,7 +387,7 @@ const InputBox = () => {
           <div className="py-6 pl-4 "> 
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Music Generation History</h2>
+            <h2 className="text-xl font-semibold text-white pl-0 ">Music Generation </h2>
           </div>
           {/* Spacer to keep content below fixed header */}
           <div className="h-0"></div>
