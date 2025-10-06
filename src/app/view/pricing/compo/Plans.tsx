@@ -72,34 +72,34 @@ function Plans({ isAnnual }: PlansProps) {
     <div className="py-2 w-full">
       <div className="w-full">
         <h1 className="text-white text-4xl font-semibold text-left mb-6">Plans</h1>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
           {plans.map((plan) => (
             <div 
               key={plan.name} 
-              className={`relative text-white rounded-[2rem] 
-              bg-gradient-to-br ${plan.glow} 
-              backdrop-blur-md 
-              shadow-[0_0_25px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.1)_inset] 
-              p-8 py-10 w-full overflow-hidden isolate`}
-
-              // className={`relative text-white rounded-[2rem] 
-              // bg-white/5 
-              // backdrop-blur-md 
-              // shadow-md z-30 border border-white/10
-              // p-8 py-10 w-full overflow-hidden isolate`}
+              className={`relative text-white rounded-[2rem]
+              bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
+              border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]
+              ring-1 ring-white/10
+              ${plan.name === 'Enterprise' ? 'lg:col-span-5 xl:col-span-5 p-4 py-5 mx-auto max-w-4xl' : 'p-5 py-6 h-[420px] md:h-[460px]'}
+              w-full overflow-hidden isolate flex flex-col
+              transition-all duration-300 hover:bg-white/10 hover:backdrop-saturate-200 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] hover:border-white/15`}
             >
-              <h3 className="text-2xl font-semibold m-4 mb-2">{plan.name}</h3>
-              <div className="mx-4 min-h-[100px]">
+              {/* Glass highlight and edge lighting */}
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+              <div className={`${plan.name === 'Enterprise' ? 'min-h-[60px]' : 'min-h-[120px]'}`}>
+                <h3 className={`text-lg font-semibold mx-4 ${plan.name === 'Enterprise' ? 'mt-2 mb-0.5' : 'mt-3 mb-1'}`}>{plan.name}</h3>
+                <div className={`mx-4 ${typeof plan.monthlyPrice !== 'undefined' ? 'min-h-[70px]' : 'min-h-0'}`}>
                 {typeof plan.monthlyPrice !== 'undefined' && (
                   <div>
-                    <div className="text-3xl font-bold tracking-tight">
+                    <div className={`text-xl font-bold tracking-tight`}>
                       {typeof plan.monthlyPrice === 'string' ? plan.monthlyPrice : 
                        `$${isAnnual && typeof plan.annualPrice !== 'undefined' ? plan.annualPrice : plan.monthlyPrice}`}
                     </div>
-                    <div className="text-sm text-white/80 mt-0">
+                    <div className={`text-xs text-white/80 mt-0`}>
                       {isAnnual ? '/ Year' : '/ Month'}
                       {isAnnual && typeof plan.monthlyPrice === 'number' && typeof plan.annualPrice === 'number' && (
-                        <span className="block text-green-400 text-xs mt-1">
+                        <span className={`block text-green-400 text-[10px] mt-1`}>
                           Save ${((plan.monthlyPrice - plan.annualPrice) * 12).toFixed(2)}/year
                         </span>
                       )}
@@ -109,18 +109,21 @@ function Plans({ isAnnual }: PlansProps) {
               </div>
 
               {plan.subtitle && (
-                <p className="text-base text-white/70 mt-4 mx-4 leading-relaxed">{plan.subtitle}</p>
+                <p className={`text-xs text-white/70 ${plan.name === 'Enterprise' ? 'mt-1' : 'mt-2'} mx-3 leading-snug break-words`}>{plan.subtitle}</p>
               )}
-
-              <div className="my-6 mx-4">
-                <button className="w-full bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-8 py-3 text-base font-medium">{plan.buttonText}</button>
               </div>
 
-              <ul className="mt-4 space-y-3 text-white/90 mx-4">
+              <div className={`my-4 mx-3 mt-auto` }>
+                <button className={`mt-2 bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full ${plan.name === 'Enterprise' ? 'px-4 py-1.5 text-[11px] max-w-[180px] mx-auto' : 'px-5 py-2 text-xs'} font-medium ring-1 ring-white/15 transition-colors w-full`}>
+                  {plan.buttonText}
+                </button>
+              </div>
+
+              <ul className={`mt-2.5 space-y-2 mx-3 text-white/90`}>
                 {plan.features.map((f, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <span className="mt-2 h-2 w-2 rounded-full bg-white/70 flex-shrink-0" />
-                    <span className="text-base leading-relaxed">{f}</span>
+                    <span className={`mt-1.5 h-1.5 w-1.5 rounded-full bg-white/70 flex-shrink-0`} />
+                    <span className={`text-xs leading-snug break-words`}>{f}</span>
                   </li>
                 ))}
               </ul>
