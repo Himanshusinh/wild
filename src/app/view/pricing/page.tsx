@@ -71,40 +71,39 @@ export default function Home() {
               {/* Toggle Switch */}
               <div className="flex items-center justify-center mt-10 ">
                 <div className="relative">
-                  {/* Save 20% Badge */}
-                  {
-                    <div className="absolute -top-6 left-16 bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-3xl whitespace-nowrap">
-                      Save 20% on everything
-                    </div>
-                  }
-
                   {/* Toggle Container */}
-                  <div className="relative bg-gray-700 rounded-full p-1 w-52 h-12">
+                  <div className="relative bg-[#1C303D] rounded-full p-1 w-52 h-12 ring-1 ring-white/15 overflow-visible">
+                    {/* Ambient gradient glow */}
+                    <div className={`pointer-events-none absolute -inset-6 rounded-full blur-2xl transition-opacity duration-500 ${isAnnual ? 'opacity-60 bg-gradient-to-r from-blue-500/20 via-cyan-400/20 to-teal-400/20' : 'opacity-40 bg-gradient-to-r from-indigo-400/20 via-purple-400/20 to-pink-400/20'}`} />
                     {/* Sliding Background */}
                     <div
-                      className={`absolute top-1 bottom-1 w-22 rounded-full transition-all duration-300 ease-in-out ${isAnnual
-                          ? 'bg-gray-300 translate-x-28'
-                          : 'bg-gray-300 translate-x-0'
+                      className={`absolute top-1 bottom-1 w-22 rounded-full bg-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] transition-transform duration-500 ease-[cubic-bezier(.2,.8,.2,1)] transform-gpu ${isAnnual
+                          ? 'translate-x-28 scale-105'
+                          : 'translate-x-0 scale-105'
                         }`}
                     />
 
                     {/* Monthly Option */}
                     <button
                       onClick={() => setIsAnnual(false)}
-                      className={`absolute left-1 top-1 bottom-1 w-22 rounded-full flex items-center justify-center transition-colors duration-300 ease-in-out focus:outline-none ${!isAnnual ? 'text-gray-700' : 'text-white'
+                      className={`absolute left-1 top-1 bottom-1 w-22 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none ${!isAnnual ? 'text-[#1C303D] translate-y-[-1px]' : 'text-white opacity-80'
                         }`}
                     >
                       <span className="text-sm font-medium ">Monthly</span>
                     </button>
 
-                    {/* Annually Option */}
-                    <button
-                      onClick={() => setIsAnnual(true)}
-                      className={`absolute right-1 top-1 bottom-1 w-22 rounded-full flex items-center justify-center transition-colors duration-300 ease-in-out focus:outline-none ${isAnnual ? 'text-gray-700' : 'text-white'
-                        }`}
-                    >
-                      <span className="text-sm font-medium">Annually</span>
-                    </button>
+                    {/* Annually Option with anchored badge */}
+                    <div className="absolute right-1 top-1 bottom-1 w-22 flex items-center justify-center">
+                      <div className={`absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-semibold px-3 py-1 ml-10 rounded-3xl whitespace-nowrap shadow-md ${isAnnual ? 'opacity-100' : 'opacity-100'}`}>
+                        Save 20% on everything
+                      </div>
+                      <button
+                        onClick={() => setIsAnnual(true)}
+                        className={`w-full rounded-full flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none ${isAnnual ? 'text-[#1C303D] translate-y-[-1px]' : 'text-white opacity-80'}`}
+                      >
+                        <span className="text-sm font-medium">Annually</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
