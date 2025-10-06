@@ -9,9 +9,10 @@ interface RemoveBgPopupProps {
   onClose: () => void;
   defaultImage?: string | null;
   onCompleted?: () => void;
+  inline?: boolean;
 }
 
-const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgPopupProps) => {
+const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: RemoveBgPopupProps) => {
   const [image, setImage] = useState<string | null>(defaultImage || null);
   const [model, setModel] = useState<'851-labs/background-remover' | 'lucataco/remove-bg'>('851-labs/background-remover');
   const [format, setFormat] = useState<'png' | 'jpg' | 'jpeg' | 'webp'>('png');
@@ -22,9 +23,9 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => { if (defaultImage) setImage(defaultImage); }, [defaultImage]);
-  // Lock background scroll while modal is open
+  // Lock background scroll while modal is open (skip for inline)
   useEffect(() => {
-    if (!isOpen) return;
+    if (inline || !isOpen) return;
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = (document.documentElement as HTMLElement).style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
@@ -33,8 +34,8 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
       document.body.style.overflow = prevOverflow;
       (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscroll;
     };
-  }, [isOpen]);
-  if (!isOpen) return null;
+  }, [isOpen, inline]);
+  if (!inline && !isOpen) return null;
 
   const run = async () => {
     if (!image) return;
@@ -57,16 +58,8 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
     }
   };
 
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60" />
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full">
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <h2 className="text-white text-md font-semibold">Remove Background</h2>
-            <button className="p-2 hover:bg-white/10 rounded" onClick={onClose}><X className="w-5 h-5 text-white"/></button>
-          </div>
-          <div className="p-4 space-y-4">
+  const content = (
+    <div className="p-4 space-y-4">
             {/* Hidden file input available in both states */}
             <input
               ref={fileInputRef}
@@ -118,27 +111,27 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="text-sm text-white/80">Model</label>
-                <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                  <option value="851-labs/background-remover">851-labs/background-remover</option>
-                  <option value="lucataco/remove-bg">lucataco/remove-bg</option>
+                <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
+                  <option className='text-white bg-black/70' value="851-labs/background-remover">851-labs/background-remover</option>
+                  <option className='text-white bg-black/70' value="lucataco/remove-bg">lucataco/remove-bg</option>
                 </select>
               </div>
               <div>
                 <label className="text-sm text-white/80">Format</label>
-                <select value={format} onChange={(e)=>setFormat(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                  <option value="png">PNG</option>
-                  <option value="jpg">JPG</option>
-                  <option value="jpeg">JPEG</option>
-                  <option value="webp">WEBP</option>
+                <select value={format} onChange={(e)=>setFormat(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
+                  <option className='text-white bg-black/70' value="png">PNG</option>
+                  <option className='text-white bg-black/70' value="jpg">JPG</option>
+                  <option className='text-white bg-black/70' value="jpeg">JPEG</option>
+                  <option className='text-white bg-black/70' value="webp">WEBP</option>
                 </select>
               </div>
               <div>
                 <label className="text-sm text-white/80">Background Type</label>
-                <input value={backgroundType} onChange={(e)=>setBackgroundType(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                <input value={backgroundType} onChange={(e)=>setBackgroundType(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-1  text-white text-sm" />
               </div>
               <div>
                 <label className="text-sm text-white/80">Threshold (0-1)</label>
-                <input type="number" min={0} max={1} step={0.05} value={threshold} onChange={(e)=>setThreshold(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                <input type="number" min={0} max={1} step={0.05} value={threshold} onChange={(e)=>setThreshold(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-1 text-white text-sm" />
               </div>
               <div className="flex items-end gap-2">
                 <input id="rev" type="checkbox" checked={reverse} onChange={(e)=>setReverse(e.target.checked)} />
@@ -146,10 +139,24 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted }: RemoveBgP
               </div>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={onClose} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg">Cancel</button>
+              <button onClick={inline ? (()=>{ setImage(null); }) : onClose} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/10 px-4 py-2 rounded-lg">{inline ? 'Clear' : 'Cancel'}</button>
               <button onClick={run} disabled={loading || !image} className="flex-1 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white px-4 py-2 rounded-lg disabled:opacity-50">{loading ? 'Running...' : 'Run'}</button>
             </div>
+    </div>
+  );
+  
+  if (inline) return content;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60" />
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full">
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <h2 className="text-white text-md font-semibold">Remove Background</h2>
+            <button className="p-2 hover:bg-white/10 rounded" onClick={onClose}><X className="w-5 h-5 text-white"/></button>
           </div>
+          {content}
         </div>
       </div>
     </>

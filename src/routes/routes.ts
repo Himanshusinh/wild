@@ -64,6 +64,7 @@ export const NAV_ROUTES = {
   LANDING:'/view/Main',
   LIVE_CHAT: '/view/Generation/wildmindskit/LiveChat',
   ACCOUNT_MANAGEMENT: '/view/account-management',
+  WORKFLOWS: '/view/workflows',
 } as const;
 
 // Legal Routes

@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getImageUrl } from '@/routes/imageroute'
-import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS } from '@/routes/routes'
+import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION } from '@/routes/routes'
 // import {
 //   IconBrandYoutube,
 //   IconBrandInstagram,
@@ -65,7 +65,7 @@ const FooterNew: React.FC = () => {
            <div className="relative z-10">
             {/* Main Footer Content */}
             <div className="py-8 md:py-6 lg:py-8 border-b border-white/10">
-              <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8 lg:gap-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8">
                 {/* Logo and Brand */}
                 <div className="lg:col-span-1 w-[100%] ">
                   <div className="mb-4">
@@ -103,32 +103,32 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Wild Mind Suite
+                      <Link href={NAV_ROUTES.WORKFLOWS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Wild Magic (Coming Soon)
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       AI Image Generation
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.TEMPLATES} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={FEATURE_ROUTES.VIDEO_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       AI Video Generation
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.ART_STATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={MUSICGENERATION.TEXT_TO_MUSIC} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       AI Audio Generation
                       </Link>                      </li>
                       <li>
 
-                      <Link href={NAV_ROUTES.ART_STATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       AI Filming tools
                       </Link>                      </li>
                       <li>
 
-                      <Link href={NAV_ROUTES.ART_STATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       AI 3D Generation
                       </Link>
                     </li>
@@ -142,41 +142,41 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={NAV_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Pricing                      </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Enterprise
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       FAQs
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Documentation
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Terms for Use
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Privacy Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Cookie Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Cookie Settings
                       </Link>
                     </li>
