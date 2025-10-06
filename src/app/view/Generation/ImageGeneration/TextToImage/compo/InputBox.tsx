@@ -7,6 +7,7 @@ import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
 import RemoveBgPopup from "./RemoveBgPopup";
+import EditPopup from "./EditPopup";
 
 import {
   setPrompt,
@@ -52,6 +53,7 @@ const InputBox = () => {
   } | null>(null);
   const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
   const [isRemoveBgOpen, setIsRemoveBgOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -1530,53 +1532,19 @@ const InputBox = () => {
             {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
               <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
                 <Button
-                  aria-label="Upscale"
-                  title="Upscale"
+                  aria-label="Edit"
+                  title="Edit"
                   borderRadius="1.5rem"
                   containerClassName="h-10 w-auto"
                   className="bg-black text-white px-4 py-2"
-                  onClick={() => setIsUpscaleOpen(true)}
+                  onClick={() => setIsEditOpen(true)}
                 >
                   <div className="flex items-center gap-2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 text-[#2F6BFF]"
-                    >
-                      <path d="M7 17l-4 4" />
-                      <path d="M3 17h4v4" />
-                      <path d="M17 7l4-4" />
-                      <path d="M21 7h-4V3" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white/80">
+                      <path d="M12 20h9"/>
+                      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
                     </svg>
-                    <span className="text-sm text-white">Upscale</span>
-                  </div>
-                </Button>
-                <Button
-                  aria-label="Remove background"
-                  title="Remove background"
-                  borderRadius="1.5rem"
-                  containerClassName="h-10 w-auto"
-                  className="bg-black text-white px-4 py-2"
-                  onClick={() => setIsRemoveBgOpen(true)}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 text-[#F97316]"
-                    >
-                      <path d="M19 14l-7-7-8 8 4 4h8l3-3z" />
-                      <path d="M5 13l6 6" />
-                    </svg>
-                    <span className="text-sm text-white">Remove background</span>
+                    <span className="text-sm text-white">Edit</span>
                   </div>
                 </Button>
               </div>
@@ -1589,6 +1557,17 @@ const InputBox = () => {
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
       <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
+      <EditPopup
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onUpscale={() => setIsUpscaleOpen(true)}
+        onRemoveBg={() => setIsRemoveBgOpen(true)}
+        onResize={() => {
+          // Open frame size dropdown programmatically (optional improvement)
+          const dropdown = document.querySelector('[data-frame-size-dropdown]') as HTMLElement | null;
+          if (dropdown) dropdown.click();
+        }}
+      />
     </>
   );
 };
