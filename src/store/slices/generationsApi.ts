@@ -122,4 +122,17 @@ export const falGenerate = createAsyncThunk(
   }
 );
 
+export const replicateGenerate = createAsyncThunk(
+  'generations/replicateGenerate',
+  async (payload: any, { rejectWithValue }) => {
+    try {
+      const api = getApiClient();
+      const res = await api.post('/api/replicate/generate', payload);
+      return res.data?.data || res.data;
+    } catch (e: any) {
+      return rejectWithValue(e?.response?.data?.message || e?.message || 'Replicate generate failed');
+    }
+  }
+);
+
 

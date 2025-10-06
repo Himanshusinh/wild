@@ -49,6 +49,11 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
 
   // Magic Image Refiner fields
   const [hdr, setHdr] = useState<number>(0);
+  // Real-ESRGAN fields
+  const [esrganScale, setEsrganScale] = useState<number>(4);
+  const [esrganFaceEnhance, setEsrganFaceEnhance] = useState<boolean>(false);
+  // Swin2SR
+  const [swinTask, setSwinTask] = useState<'classical_sr'|'real_sr'|'compressed_sr'>('real_sr');
   const [mask, setMask] = useState<string>('');
   const [steps, setSteps] = useState<number>(20);
   const [mirScheduler, setMirScheduler] = useState<'DDIM'|'DPMSolverMultistep'|'K_EULER_ANCESTRAL'|'K_EULER'>('DDIM');
@@ -110,7 +115,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
           num_inference_steps: numInferenceSteps,
           downscaling_resolution: downscalingResolution,
         };
-      } else {
+      } else if (model === 'fermatresearch/magic-image-refiner') {
         // magic-image-refiner
         payload = {
           ...payload,
@@ -125,6 +130,17 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
           resemblance: mirResemblance,
           guidance_scale: guidanceScale,
           negative_prompt: mirNegative || undefined,
+        };
+      } else if (model === 'nightmareai/real-esrgan') {
+        payload = {
+          ...payload,
+          scale: esrganScale,
+          face_enhance: esrganFaceEnhance,
+        };
+      } else if (model === 'mv-lab/swin2sr') {
+        payload = {
+          ...payload,
+          task: swinTask,
         };
       }
       const res = await axiosInstance.post('/api/replicate/upscale', payload);
@@ -258,7 +274,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Output</label>
-                        <select value={outputFormat} onChange={(e)=>setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <select value={outputFormat} onChange={(e)=>setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
                           <option value="png">PNG</option>
                           <option value="jpg">JPG</option>
                           <option value="webp">WEBP</option>
@@ -273,7 +289,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                         <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e)=>setSharpen(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                     </div>
-                    ) : (
+                    ) : model === 'fermatresearch/magic-image-refiner' ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-white/80">HDR</label>
@@ -289,7 +305,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Scheduler</label>
-                        <select value={mirScheduler} onChange={(e)=>setMirScheduler(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <select value={mirScheduler} onChange={(e)=>setMirScheduler(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
                           <option>DDIM</option>
                           <option>DPMSolverMultistep</option>
                           <option>K_EULER_ANCESTRAL</option>
@@ -306,7 +322,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Resolution</label>
-                        <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
                           <option value="original">Original</option>
                           <option value="1024">1024</option>
                           <option value="2048">2048</option>
@@ -323,6 +339,28 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted }: UpscalePop
                       <div className="col-span-2">
                         <label className="text-xs text-white/80">Negative prompt</label>
                         <input value={mirNegative} onChange={(e)=>setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                      </div>
+                    </div>
+                    ) : model === 'nightmareai/real-esrgan' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-white/80">Scale</label>
+                        <input type="number" min={0} max={10} step={1} value={esrganScale} onChange={(e)=>setEsrganScale(Number(e.target.value)||4)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <input id="fe" type="checkbox" checked={esrganFaceEnhance} onChange={(e)=>setEsrganFaceEnhance(e.target.checked)} />
+                        <label htmlFor="fe" className="text-xs text-white/80">Face enhance</label>
+                      </div>
+                    </div>
+                    ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-white/80">Task</label>
+                        <select value={swinTask} onChange={(e)=>setSwinTask(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                          <option value="classical_sr">classical_sr</option>
+                          <option value="real_sr">real_sr</option>
+                          <option value="compressed_sr">compressed_sr</option>
+                        </select>
                       </div>
                     </div>
                     )}

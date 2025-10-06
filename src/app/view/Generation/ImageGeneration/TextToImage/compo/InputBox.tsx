@@ -16,7 +16,7 @@ import {
   setUploadedImages,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
-import { runwayGenerate, runwayStatus, bflGenerate, falGenerate } from "@/store/slices/generationsApi";
+import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
@@ -218,6 +218,11 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+
+  // Seedream-specific UI state
+  const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
+  const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
+  const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const hasUserScrolledRef = useRef(false);
@@ -925,6 +930,53 @@ const InputBox = () => {
           dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana' }));
           return;
         }
+      } else if (selectedModel === 'seedream-v4') {
+        // Replicate Seedream v4 (supports T2I and I2I with multi-image input)
+        try {
+          // Build Seedream payload per new schema
+          const payload: any = {
+            prompt: `${prompt} [Style: ${style}]`,
+            model: 'bytedance/seedream-4',
+            size: seedreamSize,
+            aspect_ratio: frameSize,
+            sequential_image_generation: 'disabled',
+            max_images: Math.min(imageCount, 4),
+            isPublic,
+          };
+          if (seedreamSize === 'custom') {
+            payload.width = Math.max(1024, Math.min(4096, Number(seedreamWidth) || 2048));
+            payload.height = Math.max(1024, Math.min(4096, Number(seedreamHeight) || 2048));
+          }
+          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10);
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          dispatch(addNotification({ type: 'success', message: `Generated ${result.images?.length || 1} image(s) successfully!` }));
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          dispatch(addNotification({ type: 'error', message: error instanceof Error ? error.message : 'Failed to generate images with Seedream' }));
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
@@ -1525,6 +1577,42 @@ const InputBox = () => {
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
+              {selectedModel === 'seedream-v4' && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={seedreamSize}
+                    onChange={(e)=>setSeedreamSize(e.target.value as any)}
+                    className="h-[32px] px-3 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition"
+                  >
+                    <option className="bg-black" value="1K">1K</option>
+                    <option className="bg-black" value="2K">2K</option>
+                    <option className="bg-black" value="4K">4K</option>
+                    <option className="bg-black" value="custom">Custom</option>
+                  </select>
+                  {seedreamSize === 'custom' && (
+                    <>
+                      <input
+                        type="number"
+                        min={1024}
+                        max={4096}
+                        value={seedreamWidth}
+                        onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
+                        placeholder="Width"
+                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                      <input
+                        type="number"
+                        min={1024}
+                        max={4096}
+                        value={seedreamHeight}
+                        onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
+                        placeholder="Height"
+                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             {/* moved previews near upload above */}
             {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
