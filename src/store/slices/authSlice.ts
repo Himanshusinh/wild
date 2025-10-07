@@ -54,7 +54,8 @@ export const createSessionFromIdToken = createAsyncThunk(
   'auth/createSessionFromIdToken',
   async ({ idToken }: { idToken: string }, { rejectWithValue }) => {
     try {
-      await axiosInstance.post('/api/auth/session', { idToken });
+      const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+      await axiosInstance.post(`${backendBase}/api/auth/session`, { idToken });
       // After session creation, fetch user
       const res = await axiosInstance.get('/api/auth/me');
       const data = res.data?.data || res.data;

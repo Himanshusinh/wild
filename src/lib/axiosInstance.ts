@@ -32,12 +32,8 @@ const axiosInstance = axios.create({
 // Attach device headers; rely on httpOnly session cookies for auth
 axiosInstance.interceptors.request.use((config) => {
   try {
-    // Route only session endpoint via same-origin Next.js API to ensure cookies are set
+    // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
-    if (url.startsWith('/api/auth/session')) {
-      // Override baseURL so the request is same-origin (Next.js app) and proxied server-side
-      config.baseURL = ''
-    }
 
     // For backend data endpoints (credits, generations), attach Bearer id token so backend accepts without cookies
     if (url.startsWith('/api/credits/') || url.startsWith('/api/generations')) {
@@ -115,9 +111,10 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error)
       }
       const freshIdToken = await currentUser.getIdToken(true)
-      // Use same-origin Next.js proxy so cookies are set on this domain
+      // Refresh session directly on backend
+      const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
       await axios.post(
-        '/api/auth/session',
+        `${backendBase}/api/auth/session`,
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
       )
