@@ -14,9 +14,10 @@ import History from './History';
 import Bookmarks from './Bookmarks';
 import { loadHistory, clearHistoryByType, loadMoreHistory } from '@/store/slices/historySlice';
 import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
+import EditImageInterface from '../../EditImage/compo/EditImageInterface';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'edit-image';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -41,6 +42,9 @@ const generators: GeneratorComponentMap = {
   'product-generation': ProductGenerationInputBox,
   'ad-generation': AdGenerationInputBox,
   'live-chat': LiveChatInputBox,
+  
+  // Image Editing Features
+  'edit-image': EditImageInterface,
 };
 
 export default function PageRouter() {
