@@ -78,7 +78,17 @@ axiosInstance.interceptors.request.use((config) => {
       const path = full.pathname || ''
       const isProtectedApi = path.startsWith('/api/') && !path.startsWith('/api/auth/')
       if (isProtectedApi) {
-        const idToken = getStoredIdToken()
+        let idToken = getStoredIdToken()
+        // If not in storage, try to fetch a fresh token from Firebase
+        if (!idToken && auth?.currentUser) {
+          // Return a promise so axios waits for token
+          return auth.currentUser.getIdToken().then((fresh) => {
+            const hdrs: any = config.headers || {}
+            if (fresh) hdrs['Authorization'] = `Bearer ${fresh}`
+            config.headers = hdrs
+            return config
+          }).catch(() => config)
+        }
         if (idToken) headers['Authorization'] = `Bearer ${idToken}`
       }
     } catch {}
