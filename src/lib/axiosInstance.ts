@@ -69,11 +69,16 @@ axiosInstance.interceptors.request.use((config) => {
     headers['X-Device-Info'] = JSON.stringify(deviceInfo)
 
     // Forward proxy-identifying headers so Express trust proxy logic can work under ngrok
+    // BUT avoid adding these on auth endpoints (CORS preflight may reject unknown headers)
     try {
-      const proto = (typeof window !== 'undefined' && window.location?.protocol === 'https:') ? 'https' : 'http'
-      const host = (typeof window !== 'undefined' && window.location?.host) || ''
-      headers['X-Forwarded-Proto'] = proto
-      if (host) headers['X-Forwarded-Host'] = host
+      const path = typeof config.url === 'string' ? config.url : ''
+      const isAuthEndpoint = path.startsWith('/api/auth/')
+      if (!isAuthEndpoint) {
+        const proto = (typeof window !== 'undefined' && window.location?.protocol === 'https:') ? 'https' : 'http'
+        const host = (typeof window !== 'undefined' && window.location?.host) || ''
+        headers['X-Forwarded-Proto'] = proto
+        if (host) headers['X-Forwarded-Host'] = host
+      }
     } catch {}
 
     // Attach bearer token for protected backend routes when cookies may be missing (ngrok)
