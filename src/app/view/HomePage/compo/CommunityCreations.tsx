@@ -93,13 +93,11 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={[
-        "inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all",
-        "border border-white/10",
+      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
         active
-          ? "bg-[#2D6CFF] border-[#2D6CFF] text-white shadow-sm"
-          : "bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10",
-      ].join(" ")}
+          ? 'bg-white  text-black shadow-sm'
+          : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+      }`}
     >
       {leftIcon && <span className="text-white/90">{leftIcon}</span>}
       {children}
@@ -187,9 +185,8 @@ export default function CommunityCreations({
       </h2>
 
       {/* Filter bar + Explore link */}
-      <div className="relative mb-6 -mx-2">
-        <div className="flex items-center justify-between px-2 pb-2 pt-2">
-          <div className="flex items-center gap-3 overflow-x-auto scrollbar-none pr-3 flex-1">
+      <div className="mb-6">
+        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
           {CHIPS.map((chip, idx) => {
             const isActive = chip.key === active;
             return (
@@ -197,21 +194,20 @@ export default function CommunityCreations({
                 key={`${chip.label}-${idx}`}
                 active={isActive}
                 onClick={() => setActive(chip.key)}
-                leftIcon={chip.icon}
               >
                 {chip.label}
               </Chip>
             );
           })}
+          <div className="ml-auto">
+            <button
+              onClick={() => router.push('/view/ArtStation')}
+              className="shrink-0 text-white/80 hover:text-white text-sm font-medium transition-colors"
+              title="Explore Art Station"
+            >
+              Explore Art Station →
+            </button>
           </div>
-
-          <button
-            onClick={() => router.push('/view/ArtStation')}
-            className="shrink-0 text-white/80 hover:text-white text-sm font-medium transition-colors"
-            title="Explore Art Station"
-          >
-            Explore Art Station →
-          </button>
         </div>
       </div>
 
