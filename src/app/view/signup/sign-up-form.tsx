@@ -531,9 +531,8 @@ export default function SignInForm() {
       console.log("🔑 Firebase ID token obtained")
 
       // Step 3: Send to backend
-      console.log("📤 Sending to backend (direct) /api/auth/google")
-      const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-      const response = await axiosInstance.post(`${backendBase}/api/auth/google`, {
+      console.log("📤 Sending to backend /api/auth/google via same-origin proxy")
+      const response = await axiosInstance.post(`/api/auth/google`, {
         idToken: idToken
       }, {
         withCredentials: true
@@ -630,9 +629,8 @@ export default function SignInForm() {
         const userData = JSON.parse(tempUserData)
         console.log("👤 Google user object:", userData)
 
-        // Send username to backend (direct)
-        const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-        const response = await axiosInstance.post(`${backendBase}/api/auth/google/username`, {
+        // Send username to backend via same-origin proxy
+        const response = await axiosInstance.post(`/api/auth/google/username`, {
           uid: userData.uid,
           username: username.trim()
         }, {
