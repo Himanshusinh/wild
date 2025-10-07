@@ -40,7 +40,7 @@ const History = () => {
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setLocalFilters] = useState<HistoryFilters>({});
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | null>('desc');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product' | 'user-uploads'>('all');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -60,7 +60,7 @@ const History = () => {
   // Helper: load only the first page; more pages load on scroll
   const loadFirstPage = async (filtersObj: any) => {
     try {
-      const initialLimit = sortOrder === 'asc' ? 30 : 10; // fetch more when showing oldest so viewport fills immediately
+      const initialLimit = computeDynamicLimit(0);
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
       setHasMore(Boolean(result && result.hasMore));
     } catch (error) {
@@ -75,6 +75,22 @@ const History = () => {
   };
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
+  const computeDynamicLimit = (existingCount: number) => {
+    try {
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      const h = typeof window !== 'undefined' ? window.innerHeight : 800;
+      // crude columns estimate matching our tile sizes (w-48 h-48 + gaps)
+      const columns = w >= 1536 ? 6 : w >= 1280 ? 6 : w >= 1024 ? 5 : w >= 768 ? 4 : 2;
+      const approxRowHeight = 220; // tile size + gap
+      const rowsNeeded = Math.ceil(h / approxRowHeight) + 2; // a bit extra to prevent flicker
+      const targetItems = columns * rowsNeeded;
+      const need = targetItems - existingCount;
+      return Math.min(60, Math.max(10, need));
+    } catch {
+      return 20; // safe default
+    }
+  };
+
   const autoFillViewport = async (baseFilters: any) => {
     try {
       let attempts = 0;
@@ -84,7 +100,8 @@ const History = () => {
         !loading &&
         (document.documentElement.scrollHeight - window.innerHeight) < 200
       ) {
-        const more: any = await (dispatch as any)(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: 10 } })).unwrap();
+        const pageLimit = computeDynamicLimit(getFilteredItemsCount());
+        const more: any = await (dispatch as any)(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: pageLimit } })).unwrap();
         setHasMore(Boolean(more && more.hasMore));
         attempts += 1;
       }
@@ -106,12 +123,14 @@ const History = () => {
         // Reset history to ensure a clean initial load on refresh
         dispatch(clearHistory());
         if (viewMode === 'global') {
-          const base: any = { sortOrder };
+          const base: any = {};
+          if (sortOrder) base.sortOrder = sortOrder;
           dispatch(setFilters(base));
           await loadFirstPage(base);
           await autoFillViewport(base);
         } else {
-          const f = { generationType: currentGenerationType, sortOrder } as any;
+          const f: any = { generationType: currentGenerationType };
+          if (sortOrder) f.sortOrder = sortOrder;
           dispatch(setFilters(f));
           await loadFirstPage(f);
           await autoFillViewport(f);
@@ -161,17 +180,20 @@ const History = () => {
   useEffect(() => {
     // Re-apply current filters with new sort order and force viewport fill to avoid partial top rows
     (async () => {
-      const finalFilters = { ...filters, sortOrder } as any;
+      const finalFilters = { ...filters } as any;
+      if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
       if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
       dispatch(setFilters(finalFilters));
+      setOverlayLoading(true);
       try {
         await (dispatch as any)(loadHistory({
           filters: finalFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: sortOrder === 'asc' ? 30 : 10 }
         })).unwrap();
         await autoFillViewport(finalFilters);
       } catch {}
       setPage(1);
+      setOverlayLoading(false);
     })();
   }, [sortOrder, dispatch]);
 
@@ -183,8 +205,9 @@ const History = () => {
           isFetchingMoreRef.current = true;
           const nextPage = page + 1;
           setPage(nextPage);
-          const baseFilters = { ...filters, sortOrder } as any;
-          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: 10 } }))
+          const baseFilters = { ...filters } as any;
+          if (sortOrder) baseFilters.sortOrder = sortOrder;
+          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: sortOrder === 'asc' ? 30 : 10 } }))
             .then((result: any) => {
               if (result.payload && result.payload.entries) {
                 setHasMore(result.payload.hasMore);
@@ -748,17 +771,28 @@ const History = () => {
           ...(((entry as any).videos || []) as any[]),
           ...(((entry as any).audios || []) as any[]),
         ];
-        
+
         const filteredMediaItems = mediaItems.filter((media: any) => {
           const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
-          
-          if (quickFilter === 'user-uploads') {
-            return isUserUpload;
-          } else {
-            return !isUserUpload;
+          const url = media.firebaseUrl || media.url;
+          const video = isVideoUrl(url);
+          const audio = isAudioUrl(url);
+          const image = !video && !audio;
+
+          switch (quickFilter) {
+            case 'user-uploads':
+              return isUserUpload;
+            case 'images':
+              return !isUserUpload && image;
+            case 'videos':
+              return !isUserUpload && video;
+            case 'music':
+              return !isUserUpload && audio;
+            default:
+              return !isUserUpload;
           }
         });
-        
+
         count += filteredMediaItems.length;
       });
     });
@@ -892,7 +926,7 @@ const History = () => {
                 setPillLoading(false);
                 setOverlayLoading(false);
               }}
-              className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'
+              className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'
                 }`}
             >
               {label}
@@ -907,25 +941,13 @@ const History = () => {
           {/* Sort buttons */}
           <div className="ml-8 flex items-center gap-2">
             <button
-              onClick={() => setSortOrder('desc')}
-              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'desc' ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
+              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
               title="Newest first"
             >Newest</button>
             <button
-              onClick={async () => {
-                setSortOrder('asc');
-                // Force full reload so first page starts from oldest consistently
-                const f: any = { ...filters, sortOrder: 'asc' };
-                if (dateRange.start && dateRange.end) {
-                  f.dateRange = { start: (filters as any)?.dateRange?.start || dateRange.start?.toString(), end: (filters as any)?.dateRange?.end || dateRange.end?.toString() };
-                }
-                setLocalFilters(f);
-                dispatch(setFilters(f));
-                await loadFirstPage(f);
-                await autoFillViewport(f);
-                setPage(1);
-              }}
-              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'asc' ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              onClick={() => setSortOrder(prev => prev === 'asc' ? null : 'asc')}
+              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
               title="Oldest first"
             >Oldest</button>
           </div>
@@ -1036,15 +1058,21 @@ const History = () => {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-white/70 mb-2">
-            {quickFilter === 'user-uploads' ? 'No uploads found' : 'No generations found'}
+            {(() => {
+              if (quickFilter === 'user-uploads') return 'No uploads found';
+              if (quickFilter === 'videos') return 'No video generations found';
+              if (quickFilter === 'music') return 'No audio generations found';
+              if (quickFilter === 'images') return 'No image generations found';
+              return 'No generations found';
+            })()}
           </h3>
           <p className="text-white/50 mb-4">
-            {Object.keys(filters).length > 0
-              ? `Try adjusting your filters or clear them to see all ${quickFilter === 'user-uploads' ? 'uploads' : 'generations'}.`
-              : quickFilter === 'user-uploads' 
-                ? "No uploads available yet."
-                : "No generation history available yet."
-            }
+            {(() => {
+              const hasFilters = Object.keys(filters).length > 0 || Boolean((filters as any)?.dateRange);
+              const subject = quickFilter === 'user-uploads' ? 'uploads' : quickFilter === 'videos' ? 'videos' : quickFilter === 'music' ? 'tracks' : quickFilter === 'images' ? 'images' : 'generations';
+              if (hasFilters) return `Try adjusting your filters or clear them to see all ${subject}.`;
+              return quickFilter === 'user-uploads' ? 'No uploads available yet.' : `No ${subject} available yet.`;
+            })()}
           </p>
           {Object.keys(filters).length > 0 && (
             <button
@@ -1069,7 +1097,7 @@ const History = () => {
             </div>
           )}  
           {sortedDates.map((dateKey) => {
-            // Check if this date has any filtered items
+            // Check if this date has any filtered items for the active category
             const hasFilteredItems = groupedByDate[dateKey].some((entry: HistoryEntry) => {
               const inputImagesArr = (((entry as any).inputImages) || []) as any[];
               const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
@@ -1080,14 +1108,25 @@ const History = () => {
                 ...(((entry as any).videos || []) as any[]),
                 ...(((entry as any).audios || []) as any[]),
               ];
-              
+
               return mediaItems.some((media: any) => {
                 const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
-                
-                if (quickFilter === 'user-uploads') {
-                  return isUserUpload;
-                } else {
-                  return !isUserUpload;
+                const url = media.firebaseUrl || media.url;
+                const video = isVideoUrl(url);
+                const audio = isAudioUrl(url);
+                const image = !video && !audio;
+
+                switch (quickFilter) {
+                  case 'user-uploads':
+                    return isUserUpload;
+                  case 'images':
+                    return !isUserUpload && image;
+                  case 'videos':
+                    return !isUserUpload && video;
+                  case 'music':
+                    return !isUserUpload && audio;
+                  default:
+                    return !isUserUpload;
                 }
               });
             });
@@ -1129,11 +1168,22 @@ const History = () => {
                   // Filter media items based on quickFilter
                   const filteredMediaItems = mediaItems.filter((media: any, mediaIndex: number) => {
                     const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
-                    
-                    if (quickFilter === 'user-uploads') {
-                      return isUserUpload;
-                    } else {
-                      return !isUserUpload; // Exclude user uploads from normal history
+                    const url = media.firebaseUrl || media.url;
+                    const video = isVideoUrl(url);
+                    const audio = isAudioUrl(url);
+                    const image = !video && !audio;
+
+                    switch (quickFilter) {
+                      case 'user-uploads':
+                        return isUserUpload;
+                      case 'images':
+                        return !isUserUpload && image;
+                      case 'videos':
+                        return !isUserUpload && video;
+                      case 'music':
+                        return !isUserUpload && audio;
+                      default:
+                        return !isUserUpload; // Exclude uploads from normal history
                     }
                   });
                   
