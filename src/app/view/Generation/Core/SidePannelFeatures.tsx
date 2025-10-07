@@ -96,7 +96,7 @@ const SidePannelFeatures = ({
 
   return (
     <div
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-4 py-0 md:px-3 px-1 group transition-all text-white duration-200 bg-white/10 backdrop-blur-md md:w-[68px] w-[50px] hover:w-60 z-40 border border-white/10 shadow-2xl'
+      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200 bg-white/10 backdrop-blur-2xl md:w-[68px] w-[50px] hover:w-60 z-40 border border-white/10 shadow-2xl'
       style={{
         borderTopLeftRadius: '16px',
         borderBottomLeftRadius: '16px',
@@ -115,7 +115,7 @@ const SidePannelFeatures = ({
             } catch { }
             router.push(APP_ROUTES.LANDING);
           }}
-          className="md:w-[32px] md:h-[32px] w-[25px] h-[25px] flex-none">
+          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none">
           <Image
             src={imageRoutes.core.logo}
             alt="Wild Mind Logo"
