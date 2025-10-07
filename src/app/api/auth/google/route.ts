@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request) {
   try {
     const body = await req.text()
-    const apiBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+    const { resolveBackendBase } = await import('@/lib/serverApiBase')
+    const apiBase = resolveBackendBase(req)
     const resp = await fetch(`${apiBase}/api/auth/google`, {
       method: 'POST',
       headers: {

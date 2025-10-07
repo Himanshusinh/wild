@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic'
 // Server-side proxy to backend /api/auth/me endpoint
 export async function GET(req: Request) {
   try {
-    const apiBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+    const { resolveBackendBase } = await import('@/lib/serverApiBase')
+    const apiBase = resolveBackendBase(req)
     
     // Forward cookies from the request
     const cookie = req.headers.get('cookie')
