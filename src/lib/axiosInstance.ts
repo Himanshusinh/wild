@@ -70,6 +70,14 @@ axiosInstance.interceptors.request.use((config) => {
 
     // Do NOT set X-Forwarded-* headers from the browser. Proxies (ngrok/Vercel) will set them.
 
+    // Route auth endpoints through same-origin Next.js API (avoid CORS on ngrok)
+    try {
+      const rawUrl = typeof config.url === 'string' ? config.url : ''
+      if (rawUrl.startsWith('/api/auth/')) {
+        config.baseURL = ''
+      }
+    } catch {}
+
     // Attach bearer token for protected backend routes when cookies may be missing (ngrok)
     try {
       const raw = typeof config.url === 'string' ? config.url : ''
