@@ -530,7 +530,8 @@ export default function SignInForm() {
 
       // Step 3: Send to backend
       console.log("📤 Sending to backend (direct) /api/auth/google")
-      const response = await axiosInstance.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/auth/google`, {
+      const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+      const response = await axiosInstance.post(`${backendBase}/api/auth/google`, {
         idToken: idToken
       }, {
         withCredentials: true
@@ -627,7 +628,8 @@ export default function SignInForm() {
         console.log("👤 Google user object:", userData)
 
         // Send username to backend (direct)
-        const response = await axiosInstance.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/auth/google/username`, {
+        const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+        const response = await axiosInstance.post(`${backendBase}/api/auth/google/username`, {
           uid: userData.uid,
           username: username.trim()
         }, {
