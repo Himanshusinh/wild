@@ -12,7 +12,7 @@ import FooterNew from '../core/FooterNew'
 import Recentcreation from './compo/Recentcreation'
 import { WobbleCard } from '../Landingpage/components/wobble-card'
 import Image from 'next/image'
-import { getImageUrl } from './routes'
+import { getImageUrl, API_BASE } from './routes'
 import WelcomeModal from './compo/WelcomeModal'
 
 import { ViewType, GenerationType } from '@/types/generation';
@@ -157,81 +157,77 @@ const HomePage: React.FC = () => {
   ];
 
 
-  const ITEMS: Creation[] = [
-    {
-      id: "1",
-      src: getImageUrl('communityCreations', 'creation1'),
-      prompt: "Ultra-realistic studio portrait in 8K of a glamorous astronaut on a moon rock…",
-      categories: ["Trending", "Photography", "Character"],
-      width: 900,
-      height: 1400,
-    },
-    {
-      id: "2",
-      src: getImageUrl('communityCreations', 'creation2'),
-      prompt: "Custom street-art Nike sneaker product shot, reflective lacquer, moody studio lighting",
-      categories: ["Trending", "Photography", "Food"], // sample categories
-      width: 1200,
-      height: 1150,
-    },
-    {
-      id: "3",
-      src: getImageUrl('communityCreations', 'creation3'),
-      prompt: "Pixel-art anime frame close-up with halftone pattern",
-      categories: ["Character"],
-      width: 1000,
-      height: 1000,
-    },
-    {
-      id: "4",
-      src: getImageUrl('communityCreations', 'creation4'),
-      prompt: "Bold pop-art portrait with neon palette",
-      categories: ["Trending", "Animals"],
-      width: 1200,
-      height: 1810,
-    },
-    {
-      id: "5",
-      src: getImageUrl('communityCreations', 'creation5'),
-      prompt: "Painterly spring park with vivid trees and reflections",
-      categories: ["Photography"],
-      width: 1600,
-      height: 1400,
-    },
-    {
-      id: "6",
-      src: getImageUrl('communityCreations', 'creation6'),
-      prompt: "Urban anime character in layered hoodie, graffiti background",
-      categories: ["Character"],
-      width: 1100,
-      height: 1800,
-    },
-    {
-      id: "7",
-      src: getImageUrl('communityCreations', 'creation7'),
-      prompt: "Retro wave Porsche poster with motion lines",
-      categories: ["Photography", "Trending"],
-      width: 1500,
-      height: 1000,
-    },
-    {
-      id: "8",
-      src: getImageUrl('communityCreations', 'creation8'),
-      prompt: "Cyberpunk cityscape with neon lights and flying cars",
-      categories: ["Trending", "Character"],
-      width: 1400,
-      height: 1200,
-    },
-    {
-      id: "9",
-      src: getImageUrl('communityCreations', 'creation9'),
-      prompt: "Abstract geometric patterns with vibrant gradients",
-      categories: ["All", "Trending"],
-      width: 1200,
-      height: 1200,
-    },
+  // Removed static ITEMS fallback; homepage will use live Art Station feed only
 
-  ];
+  const [artItems, setArtItems] = useState<Creation[]>([])
+
+  useEffect(() => {
+    const fetchHomeArt = async () => {
+      try {
+        const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+        let nextCursor: string | undefined = undefined
+        const dims = [
+          { w: 900, h: 1400 },
+          { w: 1200, h: 1150 },
+          { w: 1000, h: 1000 },
+          { w: 1200, h: 1810 },
+          { w: 1600, h: 1400 },
+          { w: 1100, h: 1800 },
+          { w: 1500, h: 1000 },
+          { w: 1400, h: 1200 },
+          { w: 1200, h: 1200 },
+        ]
+
+        const out: Creation[] = []
+        let page = 0
+        const maxPages = 3
+        while (page < maxPages && out.length < 48) {
+          const url = new URL(`${baseUrl}/api/feed`)
+          url.searchParams.set('limit', '24')
+          if (nextCursor) url.searchParams.set('cursor', nextCursor)
+          const res = await fetch(url.toString(), { credentials: 'include' })
+          if (!res.ok) break
+          const data = await res.json()
+          const payload = data?.data || data
+          const items: any[] = payload?.items || []
+          nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
+
+          items.forEach((it: any, idx: number) => {
+            const firstImage = (it.images && it.images[0])
+            const firstVideo = (it.videos && it.videos[0])
+            const firstAudio = (it.audios && it.audios[0])
+            const media = firstVideo || firstImage || firstAudio
+            const src = media?.url || ''
+            if (!src) return
+            const tRaw = (it.generationType || '')
+            const t = tRaw.toLowerCase()
+            const cat = (() => {
+              if (firstAudio) return 'Music'
+              if (t.includes('music') || t.includes('audio')) return 'Music'
+              if (t === 'text-to-image') return 'Images'
+              if (t === 'text-to-video') return 'Videos'
+              if (t === 'logo' || t === 'logo-generation') return 'Logos'
+              if (t === 'sticker-generation' || t === 'sticker') return 'Stickers'
+              if (t === 'product-generation' || t === 'product') return 'Products'
+              return 'All'
+            })() as any
+            const dim = dims[(out.length + idx) % dims.length]
+            const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
+            out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
+          })
+
+          page += 1
+          if (!nextCursor) break
+        }
+
+        setArtItems(out)
+      } catch (e) {
+        // fallback to static
+        setArtItems([])
+      }
+    }
+    fetchHomeArt()
+  }, [])
 
   return (
     <div className="min-h-screen bg-black">
@@ -271,7 +267,7 @@ const HomePage: React.FC = () => {
 
           <main className="min-h-screen bg-black text-white px-4 md:px-8 py-10">
             <div className="w-full px-4 md:px-8 lg:px-12">
-              <CommunityCreations items={ITEMS} initialFilter="Trending" />
+              <CommunityCreations items={artItems} initialFilter="All" />
             </div>
           </main>
 
@@ -293,13 +289,13 @@ const HomePage: React.FC = () => {
                         <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
                           Plans That Grow With You
                         </h2>
-                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 text-justify mr-2 font-medium">
+                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
                           Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
                         </p>
                       </div>
 
                       {/* Join Community Button - Bottom Left */}
-                      <button className="font-poppins text-lg font-semibold bg-white text-[#1C303D] font-medium px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
+                      <button className="font-poppins text-lg bg-white text-[#1C303D] font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
                         Pricing Plans
                       </button>
                     </div>
