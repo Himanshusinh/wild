@@ -104,8 +104,9 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error)
       }
       const freshIdToken = await currentUser.getIdToken(true)
+      // Use same-origin Next.js proxy so cookies are set on this domain
       await axios.post(
-        (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000') + '/api/auth/session',
+        '/api/auth/session',
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
       )

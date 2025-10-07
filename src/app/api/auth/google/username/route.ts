@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 // Server-side proxy to backend auth username selection
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.text()
     const apiBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
     const resp = await fetch(`${apiBase}/api/auth/google/username`, {
       method: 'POST',
@@ -11,17 +11,19 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true',
       },
-      body: JSON.stringify(body),
+      body,
       credentials: 'include',
     })
 
     const text = await resp.text()
-    return new Response(text, {
-      status: resp.status,
-      headers: {
-        'Content-Type': resp.headers.get('content-type') || 'application/json',
-      },
-    })
+    // Forward Set-Cookie if present so cookies are stored on this domain
+    const setCookie = resp.headers.get('set-cookie') || undefined
+    const headers: Record<string, string> = {
+      'Content-Type': resp.headers.get('content-type') || 'application/json',
+    }
+    if (setCookie) headers['set-cookie'] = setCookie
+
+    return new Response(text, { status: resp.status, headers })
   } catch (e) {
     return new Response(JSON.stringify({ error: 'Proxy failed' }), { status: 500 })
   }
