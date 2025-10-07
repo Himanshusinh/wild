@@ -29,6 +29,16 @@ const axiosInstance = axios.create({
   }
 })
 
+// Toggle verbose network debug logging
+const isApiDebugEnabled = (): boolean => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).__API_DEBUG === true) return true
+    const flag = localStorage.getItem('api_debug')
+    if (flag && flag.toLowerCase() === 'true') return true
+  } catch {}
+  return process.env.NEXT_PUBLIC_API_DEBUG === 'true'
+}
+
 // Attach device headers; rely on httpOnly session cookies for auth
 axiosInstance.interceptors.request.use((config) => {
   try {
@@ -93,13 +103,33 @@ axiosInstance.interceptors.request.use((config) => {
           return auth.currentUser.getIdToken().then((fresh) => {
             const hdrs: any = config.headers || {}
             if (fresh) hdrs['Authorization'] = `Bearer ${fresh}`
+            if (isApiDebugEnabled()) console.log('[API][attach-bearer][fresh]', { path, hasToken: Boolean(fresh) })
             config.headers = hdrs
             return config
           }).catch(() => config)
         }
-        if (idToken) headers['Authorization'] = `Bearer ${idToken}`
+        if (idToken) {
+          headers['Authorization'] = `Bearer ${idToken}`
+          if (isApiDebugEnabled()) console.log('[API][attach-bearer][cached]', { path, hasToken: true })
+        } else {
+          if (isApiDebugEnabled()) console.log('[API][attach-bearer][missing]', { path })
+        }
       }
     } catch {}
+
+    if (isApiDebugEnabled()) {
+      try {
+        const base = (config.baseURL as string) || axiosInstance.defaults.baseURL
+        const authHeader = (config.headers as any)?.Authorization
+        console.log('[API][request]', {
+          method: (config.method || 'get').toUpperCase(),
+          url,
+          baseURL: base,
+          withCredentials: config.withCredentials,
+          hasAuthorization: Boolean(authHeader),
+        })
+      } catch {}
+    }
 
     config.headers = headers
   } catch {}
@@ -117,12 +147,22 @@ let isRefreshing = false
 let pendingRequests: Array<() => void> = []
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try { if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status }) } catch {}
+    return response
+  },
   async (error) => {
     const original = error?.config || {}
     const status = error?.response?.status
 
     if (status !== 401) {
+      try {
+        if (isApiDebugEnabled()) console.warn('[API][error]', {
+          url: original?.url,
+          status: error?.response?.status,
+          data: error?.response?.data,
+        })
+      } catch {}
       return Promise.reject(error)
     }
 
@@ -140,8 +180,10 @@ axiosInstance.interceptors.response.use(
 
     try {
       isRefreshing = true
+      if (isApiDebugEnabled()) console.log('[API][401][refresh] starting')
       const currentUser = auth.currentUser
       if (!currentUser) {
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser')
         return Promise.reject(error)
       }
       const freshIdToken = await currentUser.getIdToken(true)
@@ -151,12 +193,14 @@ axiosInstance.interceptors.response.use(
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
       )
+      if (isApiDebugEnabled()) console.log('[API][401][refresh] success, retrying original')
 
       // Resume queued requests
       pendingRequests.forEach((resolve) => resolve())
       pendingRequests = []
       return axiosInstance(original)
     } catch (e) {
+      try { if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) } catch {}
       return Promise.reject(error)
     } finally {
       isRefreshing = false
