@@ -145,10 +145,9 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error)
       }
       const freshIdToken = await currentUser.getIdToken(true)
-      // Refresh session directly on backend
-      const backendBase = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+      // Refresh session via same-origin Next.js proxy to avoid ngrok CORS
       await axios.post(
-        `${backendBase}/api/auth/session`,
+        '/api/auth/session',
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
       )
