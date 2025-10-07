@@ -39,6 +39,17 @@ axiosInstance.interceptors.request.use((config) => {
       config.baseURL = ''
     }
 
+    // For backend data endpoints (credits, generations), attach Bearer id token so backend accepts without cookies
+    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations')) {
+      const token = getStoredIdToken()
+      if (token) {
+        const headers: any = config.headers || {}
+        headers['Authorization'] = `Bearer ${token}`
+        config.headers = headers
+      }
+      // Leave baseURL pointing to external backend (default)
+    }
+
     // Stable device id persisted in localStorage
     let deviceId = localStorage.getItem('device_id')
     if (!deviceId) {
