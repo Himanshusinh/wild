@@ -67,6 +67,25 @@ axiosInstance.interceptors.request.use((config) => {
     headers['X-Device-Id'] = deviceId
     headers['X-Device-Name'] = platform
     headers['X-Device-Info'] = JSON.stringify(deviceInfo)
+
+    // Forward proxy-identifying headers so Express trust proxy logic can work under ngrok
+    try {
+      const proto = (typeof window !== 'undefined' && window.location?.protocol === 'https:') ? 'https' : 'http'
+      const host = (typeof window !== 'undefined' && window.location?.host) || ''
+      headers['X-Forwarded-Proto'] = proto
+      if (host) headers['X-Forwarded-Host'] = host
+    } catch {}
+
+    // Attach bearer token for protected backend routes when cookies may be missing (ngrok)
+    try {
+      const path = typeof config.url === 'string' ? config.url : ''
+      const isProtectedApi = path.startsWith('/api/') && !path.startsWith('/api/auth/')
+      if (isProtectedApi) {
+        const idToken = getStoredIdToken()
+        if (idToken) headers['Authorization'] = `Bearer ${idToken}`
+      }
+    } catch {}
+
     config.headers = headers
   } catch {}
   return config
