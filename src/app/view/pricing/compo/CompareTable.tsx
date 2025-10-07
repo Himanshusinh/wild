@@ -9,35 +9,35 @@
   const features = [
     {
       name: "Credits",
-      hobbyist: "200",
-      creator: "500",
-      professional: "1000",
-      collective: "4000",
-      enterprise: "200"
+      hobbyist: "12360",
+      creator: "24720",
+      professional: "61800",
+      collective: "197760",
+      enterprise: "Unlimited"
     },
     {
       name: "Generate images up to",
-      hobbyist: "510",
-      creator: "1026",
-      professional: "2055",
+      hobbyist: "247",
+      creator: "494",
+      professional: "1236",
       collective: "Unlimited",
-      enterprise: "510"
+      enterprise: "Custom"
     },
     {
       name: "Generate Video up to",
-      hobbyist: "25",
-      creator: "50",
-      professional: "100",
-      collective: "400",
-      enterprise: "25"
+      hobbyist: "56",
+      creator: "112",
+      professional: "280",
+      collective: "900",
+      enterprise: "Custom"
     },
     {
       name: "Library Storage (GB)",
       hobbyist: "10",
-      creator: "20",
+      creator: "30",
       professional: "50",
-      collective: "200",
-      enterprise: "10"
+      collective: "150",
+      enterprise: "Custom"
     },
     {
       name: "Art Station Access",
@@ -61,15 +61,15 @@
       creator: "3",
       professional: "5",
       collective: "10",
-      enterprise: "1"
+      enterprise: "Custom"
     },
     {
       name: "Generation Quality up to",
-      hobbyist: "1080p",
+      hobbyist: "1080p HD",
       creator: "2K",
       professional: "4K",
       collective: "4K",
-      enterprise: "1080p"
+      enterprise: "4K"
     },
     {
       name: "Concurrent Image Generations",
@@ -77,7 +77,7 @@
       creator: "3",
       professional: "5",
       collective: "10",
-      enterprise: "2"
+      enterprise: "10"
     },
     {
       name: "Concurrent Video Generations",
@@ -85,39 +85,39 @@
       creator: "2",
       professional: "3",
       collective: "5",
-      enterprise: "1"
+      enterprise: "5"
     },
     {
       name: "Watermark (Videos)",
-      hobbyist: "",
-      creator: "",
-      professional: "",
-      collective: "•",
-      enterprise: ""
+      hobbyist: "Not Removable",
+      creator: "Removable",
+      professional: "Removable",
+      collective: "Removable",
+      enterprise: "Removable"
     },
     {
       name: "Access to all AI models",
-      hobbyist: "1",
-      creator: "1",
-      professional: "1",
-      collective: "All",
-      enterprise: "1"
+      hobbyist: "Yes",
+      creator: "Yes",
+      professional: "Yes",
+      collective: "Yes",
+      enterprise: "Yes"
     },
     {
       name: "Additional Token Purchases",
-      hobbyist: "",
-      creator: "All",
-      professional: "",
-      collective: "•",
-      enterprise: ""
+      hobbyist: "No Access",
+      creator: "Limited Access",
+      professional: "Limited Access",
+      collective: "Unlimited Access",
+      enterprise: "Custom"
     },
     {
       name: "Purchases Additional Storage",
-      hobbyist: "",
-      creator: "",
-      professional: "",
-      collective: "",
-      enterprise: ""
+      hobbyist: "Limited Access",
+      creator: "Limited Access",
+      professional: "Limited Access",
+      collective: "Limited Access",
+      enterprise: "Custom"
     }
   ];
 
@@ -174,27 +174,27 @@
               <tr>
                 <td className="p-4"></td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-xs ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-xs ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-xs ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-xs ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-xs ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
                     Contact Sales
                   </button>
                 </td>
