@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp, Play, Image as ImageIcon, Cpu, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Play, Image as ImageIcon, Cpu, Sparkles, Zap } from "lucide-react";
 import { getModelCreditInfo } from '@/utils/modelCredits';
 
 interface VideoModelsDropdownProps {
@@ -82,11 +82,15 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const getAvailableModels = () => {
     if (generationMode === "text_to_video") {
       return [
+        { value: "veo3-t2v-8s", label: "Veo3", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
+        { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
         { value: "T2V-01-Director", label: "T2V-01-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" }
       ];
     } else if (generationMode === "image_to_video") {
       return [
+        { value: "veo3-i2v-8s", label: "Veo3 ", description: "Google's image-to-video model, 8s, 720p/1080p", provider: "fal" },
+        { value: "veo3-fast-i2v-8s", label: "Veo3 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
         { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
         { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
@@ -141,7 +145,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           setIsOpen(!isOpen);
         }}
         className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax')
+          selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax') || selectedModel.includes('veo3')
             ? 'bg-white text-black' 
             : 'bg-transparent text-white/90 hover:bg-white/5'
         }`}
@@ -176,6 +180,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   <span className="font-medium">{model.label}</span>
                   {model.provider === "minimax" && (
                     <Sparkles className="w-3 h-3 text-yellow-400" />
+                  )}
+                  {model.provider === "fal" && (
+                    <Zap className="w-3 h-3 text-blue-400" />
                   )}
                 </div>
                 <span className="text-xs opacity-70">{model.description}</span>
