@@ -64,6 +64,15 @@ export const generateImages = createAsyncThunk(
       const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
       const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
 
+      // Resolve isPublic from backend policy when not explicitly provided
+      let resolvedIsPublic: boolean | undefined = isPublic;
+      try {
+        if (typeof resolvedIsPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          resolvedIsPublic = await mod.getIsPublic();
+        }
+      } catch {}
+
       // Build payload
       const body: any = {
         prompt,
@@ -75,14 +84,16 @@ export const generateImages = createAsyncThunk(
         uploadedImages,
         clientRequestId,
         ...(width && height ? { width, height } : {}),
-        ...(typeof isPublic === 'boolean' ? { isPublic } : {})
+        ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {})
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
       if (isFalModel) {
         if (frameSize) body.aspect_ratio = frameSize;
       }
 
+      console.log('[generateImages] POST', endpoint, { body, isPublic: body.isPublic });
       const { data } = await api.post(endpoint, body);
+      console.log('[generateImages] RESPONSE', endpoint, { status: (data && data.status) || 'ok', keys: Object.keys(data || {}) });
       const payload = data?.data || data;
       // Trigger credits refresh after successful charge
       requestCreditsRefresh();
@@ -100,11 +111,12 @@ export const generateImages = createAsyncThunk(
 export const generateLiveChatImage = createAsyncThunk(
   'generation/generateLiveChatImage',
   async (
-    { prompt, model, frameSize, uploadedImages }: {
+    { prompt, model, frameSize, uploadedImages, isPublic }: {
       prompt: string;
       model: string;
       frameSize?: string;
       uploadedImages?: string[];
+      isPublic?: boolean;
     },
     { rejectWithValue }
   ) => {
@@ -114,8 +126,18 @@ export const generateLiveChatImage = createAsyncThunk(
       const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
       const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
       
-      const body: any = { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any };
+      // Resolve isPublic if absent
+      let resolvedIsPublic: boolean | undefined = isPublic;
+      try {
+        if (typeof resolvedIsPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          resolvedIsPublic = await mod.getIsPublic();
+        }
+      } catch {}
+
+      const body: any = { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any, ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {}) };
       if (isFalModel && frameSize) body.aspect_ratio = frameSize;
+      console.log('[generateLiveChatImage] POST', endpoint, { body, isPublic: body.isPublic });
       const { data } = await api.post(endpoint, body);
       const payload = data?.data || data;
       requestCreditsRefresh();
@@ -148,21 +170,32 @@ export const generateRunwayImages = createAsyncThunk(
       }
 
       const api = getApiClient();
-      const { data } = await api.post('/api/runway/generate', {
+      let resolvedIsPublic: boolean | undefined = isPublic;
+      try {
+        if (typeof resolvedIsPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          resolvedIsPublic = await mod.getIsPublic();
+        }
+      } catch {}
+
+      const payload = {
         promptText: prompt,
         model,
         ratio,
         uploadedImages,
         generationType,
         style,
-        ...(typeof isPublic === 'boolean' ? { isPublic } : {})
-      });
-      const payload = data?.data || data;
+        ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {})
+      };
+      console.log('[generateRunwayImages] POST /api/runway/generate', { payload });
+      const { data } = await api.post('/api/runway/generate', payload);
+      console.log('[generateRunwayImages] RESPONSE /api/runway/generate', { status: (data && data.status) || 'ok' });
+      const out = (data && (data.data || data)) as any;
       // Runway charges may occur async, but backend computes cost on start
       requestCreditsRefresh();
       return {
-        taskId: payload.taskId,
-        historyId: payload.historyId,
+        taskId: out.taskId,
+        historyId: out.historyId,
         model,
         ratio,
       };
@@ -199,6 +232,15 @@ export const generateMiniMaxImages = createAsyncThunk(
       // Enforce app-wide max of 4 images
       const requestedCount = Math.min(imageCount, 4);
 
+      // Resolve isPublic when absent
+      let resolvedIsPublic: boolean | undefined = isPublic;
+      try {
+        if (typeof resolvedIsPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          resolvedIsPublic = await mod.getIsPublic();
+        }
+      } catch {}
+
       const payload: any = {
         prompt,
         n: requestedCount,
@@ -206,7 +248,7 @@ export const generateMiniMaxImages = createAsyncThunk(
         prompt_optimizer: true,
         generationType,
         style,
-        ...(typeof isPublic === 'boolean' ? { isPublic } : {})
+        ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {})
       };
 
       // Add aspect ratio or width/height
@@ -233,8 +275,10 @@ export const generateMiniMaxImages = createAsyncThunk(
       }
 
       const api = getApiClient();
+      console.log('[generateMiniMaxImages] POST /api/minimax/generate', { payload });
       const { data } = await api.post('/api/minimax/generate', payload);
-      const payloadOut = data?.data || data;
+      console.log('[generateMiniMaxImages] RESPONSE /api/minimax/generate', { status: (data && data.status) || 'ok' });
+      const payloadOut = (data && (data.data || data)) as any;
       requestCreditsRefresh();
       return {
         images: payloadOut.images,
