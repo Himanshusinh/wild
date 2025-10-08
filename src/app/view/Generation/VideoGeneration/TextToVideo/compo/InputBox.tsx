@@ -32,6 +32,7 @@ declare global {
 import VideoModelsDropdown from "./VideoModelsDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
 import VideoDurationDropdown from "./VideoDurationDropdown";
+import QualityDropdown from "./QualityDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 
 
@@ -63,6 +64,7 @@ const InputBox = () => {
   const [cameraMovementPopupOpen, setCameraMovementPopupOpen] = useState(false);
   const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
   const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
+  const [selectedQuality, setSelectedQuality] = useState("720p"); // For Veo3 quality
   
   // Timeout refs for auto-close dropdowns
   const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,14 +94,14 @@ const InputBox = () => {
   // Auto-select model based onf generation mode (but preserve user's choice when possible)
   useEffect(() => {
     if (generationMode === "text_to_video") {
-      // Text→Video: Only MiniMax models support this
-      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director")) {
-        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax-Hailuo-02 for text→video
+      // Text→Video: MiniMax and Veo3 models support this
+      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3"))) {
+        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for text→video
       }
     } else if (generationMode === "image_to_video") {
-      // Image→Video: Both MiniMax and Runway models support this
-      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01")) {
-        setSelectedModel("gen4_turbo"); // Default to gen4_turbo for image→video (Runway model)
+      // Image→Video: MiniMax, Runway, and Veo3 models support this
+      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3"))) {
+        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for image→video
       }
     } else if (generationMode === "video_to_video") {
       // Video→Video: Only Runway models support this
@@ -127,6 +129,20 @@ const InputBox = () => {
       }
     }
   }, [selectedModel, selectedMiniMaxDuration]);
+
+  // Auto-adjust resolution when switching to text-to-video mode (512P not supported)
+  useEffect(() => {
+    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+      setSelectedResolution("768P"); // Switch to 768P for text-to-video
+    }
+  }, [generationMode, selectedModel, selectedResolution]);
+
+  // Additional check to ensure 512P is not available for text-to-video
+  useEffect(() => {
+    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+      setSelectedResolution("768P"); // Force switch to 768P
+    }
+  }, [generationMode, selectedModel, selectedResolution]);
 
   // Auto-adjust resolution when duration changes for MiniMax-Hailuo-02
   useEffect(() => {
@@ -248,8 +264,8 @@ const InputBox = () => {
    
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
-      // Text→Video: Only MiniMax models support this
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director") {
+      // Text→Video: MiniMax and Veo3 models support this
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3")) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -263,6 +279,11 @@ const InputBox = () => {
           // MiniMax-Hailuo-02: Set default resolution based on duration
           setSelectedMiniMaxDuration(6); // Default duration
           setSelectedResolution("768P"); // Default resolution for 6s
+        } else if (newModel.includes("veo3")) {
+          // Veo3 models: Set default duration and frame size
+          setDuration(8); // Default 8s for Veo3
+          setFrameSize("16:9"); // Default aspect ratio
+          setSelectedQuality("720p"); // Default quality
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -272,8 +293,8 @@ const InputBox = () => {
         return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
-      // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01
-      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01") {
+      // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01, Veo3
+      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3")) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "I2V-01-Director" || newModel === "S2V-01") {
@@ -287,6 +308,16 @@ const InputBox = () => {
           // MiniMax-Hailuo-02: Set default resolution based on duration
           setSelectedMiniMaxDuration(6); // Default duration
           setSelectedResolution("768P"); // Default resolution for 6s
+        } else if (newModel.includes("veo3")) {
+          // Veo3 models: Set default duration and frame size
+          if (generationMode === "image_to_video") {
+            setDuration(8); // Veo3 I2V only supports 8s
+            setFrameSize("auto"); // Default to auto for Veo3 I2V
+          } else {
+            setDuration(8); // Default 8s for Veo3 T2V
+            setFrameSize("16:9"); // Default aspect ratio for Veo3 T2V
+          }
+          setSelectedQuality("720p"); // Default quality
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -893,8 +924,8 @@ const InputBox = () => {
     console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
 
     // Validate model compatibility with generation mode
-    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director")) {
-      setError("Text→Video mode only supports MiniMax models. Please select a MiniMax model or switch to Image→Video mode.");
+    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3"))) {
+      setError("Text→Video mode only supports MiniMax and Veo3 models. Please select a compatible model or switch to Image→Video mode.");
       return;
     }
 
@@ -905,7 +936,8 @@ const InputBox = () => {
     // Validate and reserve credits before generation
     let transactionId: string;
     try {
-      const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' : 'runway';
+      const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' : 
+                      selectedModel.includes("veo3") ? 'fal' : 'runway';
       const creditResult = await validateAndReserveCredits(provider);
       transactionId = creditResult.transactionId;
       console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
@@ -924,7 +956,7 @@ const InputBox = () => {
       let apiEndpoint: string;
 
       if (generationMode === "text_to_video") {
-        // Text to video generation (MiniMax models)
+        // Text to video generation (MiniMax and Veo3 models)
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
           // Text-to-video: No image requirements (pure text generation)
          
@@ -940,14 +972,30 @@ const InputBox = () => {
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
+        } else if (selectedModel.includes("veo3")) {
+          // Veo3 text-to-video generation
+          const isFast = selectedModel.includes("fast");
+          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          requestBody = {
+            prompt: prompt,
+            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
+            duration: modelDuration,
+            resolution: selectedQuality, // Use selected quality
+            generate_audio: true,
+            enhance_prompt: true,
+            auto_fix: true,
+            isPublic: false
+          };
+          generationType = "text-to-video";
+          apiEndpoint = isFast ? '/api/fal/veo3/text-to-video/fast/submit' : '/api/fal/veo3/text-to-video/submit';
         } else {
           // Runway models don't support text-to-video (they require an image)
-          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax model.");
+          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3 model.");
           return;
         }
       } else if (generationMode === "image_to_video") {
-        // Check if we need uploaded images (exclude S2V-01 which only needs references)
-        if (selectedModel !== "S2V-01" && uploadedImages.length === 0) {
+        // Check if we need uploaded images (exclude S2V-01 and Veo3 which only need references/images)
+        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && uploadedImages.length === 0) {
           setError("Please upload at least one image");
           return;
         }
@@ -1004,6 +1052,24 @@ const InputBox = () => {
           };
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
+        } else if (selectedModel.includes("veo3")) {
+          // Veo3 image-to-video generation
+          if (uploadedImages.length === 0) {
+            setError("Veo3 image-to-video requires an input image");
+            return;
+          }
+          const isFast = selectedModel.includes("fast");
+          requestBody = {
+            prompt: prompt,
+            image_url: uploadedImages[0], // Veo3 expects a single image URL
+            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
+            duration: "8s", // Veo3 I2V only supports 8s duration
+            resolution: selectedQuality, // Use selected quality
+            generate_audio: true,
+            isPublic: false
+          };
+          generationType = "image-to-video";
+          apiEndpoint = isFast ? '/api/fal/veo3/image-to-video/fast/submit' : '/api/fal/veo3/image-to-video/submit';
         } else {
           // Runway image to video
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
@@ -1181,6 +1247,46 @@ const InputBox = () => {
         } else {
           console.error('❌ Unexpected MiniMax status:', videoResult);
           throw new Error('Unexpected MiniMax video generation status');
+        }
+      } else if (selectedModel.includes("veo3")) {
+        // Veo3 flow - queue-based polling
+        console.log('🎬 Veo3 video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+        
+        // Poll for completion using FAL queue status
+        let videoResult: any;
+        for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
+          try {
+            const statusRes = await api.get('/api/fal/queue/status', {
+              params: { model: result.model, requestId: result.requestId }
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            
+            if (status?.status === 'COMPLETED' || status?.status === 'completed') {
+              // Get the result
+              const resultRes = await api.get('/api/fal/queue/result', {
+                params: { model: result.model, requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              break;
+            }
+            if (status?.status === 'FAILED' || status?.status === 'failed') {
+              throw new Error('Veo3 video generation failed');
+            }
+          } catch (statusError) {
+            console.error('Status check failed:', statusError);
+            if (attempts === 359) throw statusError;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+        
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ Veo3 video completed with URL:', videoUrl);
+        } else {
+          console.error('❌ Veo3 video generation did not complete properly');
+          throw new Error('Veo3 video generation did not complete in time');
         }
       } else {
         // Runway video completion
@@ -1379,50 +1485,6 @@ const InputBox = () => {
               </div>
             )}
 
-              {/* Local preview block for today when no row exists yet */}
-              {localVideoPreview && !groupedByDate[todayKey] && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                    </h3>
-                  </div>
-                  <div className="flex flex-wrap gap-3 ml-9">
-                    <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                      {localVideoPreview.status === 'generating' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                            <div className="text-xs text-white/60">Generating...</div>
-                          </div>
-                        </div>
-                      ) : localVideoPreview.status === 'failed' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                          <div className="flex flex-col items-center gap-2">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                            </svg>
-                            <div className="text-xs text-red-400">Failed</div>
-                          </div>
-                        </div>
-                      ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                        <div className="relative w-full h-full">
-                          <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No preview</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* History Entries - Grouped by Date */}
               <div className="space-y-8">
@@ -2222,8 +2284,66 @@ const InputBox = () => {
                     );
                   }
                  
+                  // Veo3 Models: Full customization
+                  if (selectedModel.includes("veo3")) {
+                    return (
+                      <>
+                        {/* Aspect Ratio - Always shown for Veo3 models */}
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+                        />
+                        {/* Quality - For Veo3 models */}
+                        <QualityDropdown
+                          selectedQuality={selectedQuality}
+                          onQualityChange={setSelectedQuality}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                        />
+                        {/* Duration - For image→video and text→video modes */}
+                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                          <VideoDurationDropdown
+                            selectedDuration={duration}
+                            onDurationChange={setDuration}
+                            selectedModel={selectedModel}
+                            generationMode={generationMode}
+                            onCloseOtherDropdowns={() => {
+                              // Close models dropdown
+                              setCloseModelsDropdown(true);
+                              setTimeout(() => setCloseModelsDropdown(false), 0);
+                              // Close frame size dropdown
+                              setCloseFrameSizeDropdown(true);
+                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            }}
+                            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+                          />
+                        )}
+                      </>
+                    );
+                  }
+                 
                   // Runway Models: Full customization
-                  if (!(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01")) {
+                  if (!(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3"))) {
                     return (
                       <>
                         {/* Aspect Ratio - Always shown for Runway models */}
@@ -2231,6 +2351,7 @@ const InputBox = () => {
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
+                          generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
@@ -2246,6 +2367,8 @@ const InputBox = () => {
                           <VideoDurationDropdown
                             selectedDuration={duration}
                             onDurationChange={setDuration}
+                            selectedModel={selectedModel}
+                            generationMode={generationMode}
                             onCloseOtherDropdowns={() => {
                               // Close models dropdown
                               setCloseModelsDropdown(true);
@@ -2300,20 +2423,23 @@ const InputBox = () => {
                                   {/* Available resolutions based on duration */}
                                   {selectedMiniMaxDuration === 6 && (
                                     <>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedResolution("512P");
-                                          setResolutionDropdownOpen(false);
-                                        }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                        }`}
-                                      >
-                                        <span>512P</span>
-                                        {selectedResolution === "512P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
-                                        )}
-                                      </button>
+                                      {/* Only show 512P for image-to-video mode */}
+                                      {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedResolution("512P");
+                                            setResolutionDropdownOpen(false);
+                                          }}
+                                          className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                                            selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          }`}
+                                        >
+                                          <span>512P</span>
+                                          {selectedResolution === "512P" && (
+                                            <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          )}
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("768P");
@@ -2346,20 +2472,23 @@ const InputBox = () => {
                                   )}
                                   {selectedMiniMaxDuration === 10 && (
                                     <>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedResolution("512P");
-                                          setResolutionDropdownOpen(false);
-                                        }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                        }`}
-                                      >
-                                        <span>512P</span>
-                                        {selectedResolution === "512P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
-                                        )}
-                                      </button>
+                                      {/* Only show 512P for image-to-video mode */}
+                                      {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedResolution("512P");
+                                            setResolutionDropdownOpen(false);
+                                          }}
+                                          className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                                            selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          }`}
+                                        >
+                                          <span>512P</span>
+                                          {selectedResolution === "512P" && (
+                                            <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          )}
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("768P");

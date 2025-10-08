@@ -164,7 +164,8 @@ export default function SignInForm() {
 
         // Step 3: Create session
         console.log("🔄 Step 3: Creating session with backend...")
-        await axiosInstance.post('/api/auth/session',
+        const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+        await axiosInstance.post(`${backendBaseForSession}/api/auth/session`,
           { idToken: idToken },
           { withCredentials: true }
         )
@@ -373,7 +374,8 @@ export default function SignInForm() {
 
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
-            const sessionResponse = await axiosInstance.post('/api/auth/session',
+            const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+            const sessionResponse = await axiosInstance.post(`${backendBaseForSession}/api/auth/session`,
               { idToken: actualIdToken }, // Use the converted ID token
               { withCredentials: true }
             )
@@ -529,8 +531,8 @@ export default function SignInForm() {
       console.log("🔑 Firebase ID token obtained")
 
       // Step 3: Send to backend
-      console.log("📤 Sending to backend /api/auth/google")
-      const response = await axiosInstance.post('/api/auth/google', {
+      console.log("📤 Sending to backend /api/auth/google via same-origin proxy")
+      const response = await axiosInstance.post(`/api/auth/google`, {
         idToken: idToken
       }, {
         withCredentials: true
@@ -559,7 +561,8 @@ export default function SignInForm() {
           const finalIdToken = await userCredential.user.getIdToken()
 
           // Create session
-          await axiosInstance.post('/api/auth/session',
+          const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+          await axiosInstance.post(`${backendBaseForSession}/api/auth/session`,
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -626,8 +629,8 @@ export default function SignInForm() {
         const userData = JSON.parse(tempUserData)
         console.log("👤 Google user object:", userData)
 
-        // Send username to backend
-        const response = await axiosInstance.post('/api/auth/google/username', {
+        // Send username to backend via same-origin proxy
+        const response = await axiosInstance.post(`/api/auth/google/username`, {
           uid: userData.uid,
           username: username.trim()
         }, {
@@ -646,7 +649,8 @@ export default function SignInForm() {
           const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
 
-          await axiosInstance.post('/api/auth/session',
+          const backendBaseForSession2 = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+          await axiosInstance.post(`${backendBaseForSession2}/api/auth/session`,
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -725,7 +729,8 @@ export default function SignInForm() {
 
                 // Create session with the REAL ID token
                 console.log("🔄 Creating session with backend using ID token...")
-                const sessionResponse = await axiosInstance.post('/api/auth/session',
+                const backendBaseForSession3 = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+                const sessionResponse = await axiosInstance.post(`${backendBaseForSession3}/api/auth/session`,
                   { idToken: actualIdToken }, // Use the converted ID token
                   { withCredentials: true }
                 )

@@ -63,49 +63,18 @@ const Nav = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get the user token from localStorage
-        const token = localStorage.getItem('authToken') || localStorage.getItem('user')
-        
-        if (!token) {
-          console.log('No auth token found')
-          setLoading(false)
-          return
-        }
-
-        // Parse token if it's stored as user object
-        let authToken = token
-        try {
-          const userObj = JSON.parse(token)
-          authToken = userObj.token || userObj.idToken
-        } catch {
-          // Token is already a string
-        }
-
-        console.log('Fetching user data with token:', authToken ? 'present' : 'missing')
-        console.log('🍪 Current cookies before API call:', document.cookie)
-
-        // Call backend API to get current user data using axios
-        // Note: The backend expects the token in cookies (app_session), not Authorization header
         const api = getApiClient()
         const response = await api.get('/api/auth/me')
-
-        console.log('📥 /api/me response status:', response.status)
-        console.log('📥 /api/me response headers:', response.headers)
-
-        const responseData = response.data
-        console.log('Raw user data response:', responseData)
+        const payload = response.data
+        const user = payload?.data?.user || payload?.user || payload
+        setUserData(user || null)
         
-        // Parse the new response structure
-        const userData = responseData.data?.user || responseData.user || responseData
-        console.log('Parsed user data:', userData)
-        
-        setUserData(userData)
         try {
           const stored = localStorage.getItem('isPublicGenerations')
-          const server = (userData && (userData as any).isPublic)
-          const next = (stored != null) ? (stored === 'true') : Boolean(server)
+          const server = (user && (user as any).isPublic)
+          const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false)
           setIsPublic(next)
-        } catch {}
+        } catch { }
 
         // Fetch credits/token balance
         try {
@@ -322,12 +291,12 @@ const Nav = () => {
                   </button>
 
                   {/* Theme Toggle */}
-                  <button 
+                  {/* <button 
                     onClick={toggleTheme}
                     className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
                   >
                     <span className='text-white text-sm'>Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-                  </button>
+                  </button> */}
 
                   {/* Make generations public toggle */}
                   <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>

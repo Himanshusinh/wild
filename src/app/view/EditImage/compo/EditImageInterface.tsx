@@ -35,7 +35,7 @@ const EditImageInterface: React.FC = () => {
   const [shareCopied, setShareCopied] = useState(false);
   
   // Form states
-  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('philz1337x/clarity-upscaler');
+  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [output, setOutput] = useState<'png' | 'jpg' | 'jpeg' | 'webp'>('png');
@@ -233,13 +233,15 @@ const EditImageInterface: React.FC = () => {
         const shp = Number(sharpen);
 
         let payload: any = { image: currentInput, prompt: prompt || undefined, isPublic, model };
-        if (model === 'philz1337x/clarity-upscaler') {
-          payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
-        } else if (model === 'nightmareai/real-esrgan') {
+        // if (model === 'philz1337x/clarity-upscaler') {
+        //   payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
+        // } else 
+        if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale };
-        } else if (model === 'fermatresearch/magic-image-refiner') {
-          payload = { ...payload };
-        } else if (model === 'mv-lab/swin2sr') {
+        } 
+        // else if (model === 'fermatresearch/magic-image-refiner') {
+        //   payload = { ...payload };
+         else if (model === 'mv-lab/swin2sr') {
           payload = { ...payload };
         }
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
@@ -259,7 +261,12 @@ const EditImageInterface: React.FC = () => {
   const handleReset = () => {
     setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'using-prompt': null });
     setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'using-prompt': null });
-    setModel('philz1337x/clarity-upscaler');
+    // Set appropriate default model based on selected feature
+    if (selectedFeature === 'remove-bg') {
+      setModel('851-labs/background-remover');
+    } else if (selectedFeature === 'upscale') {
+      setModel('nightmareai/real-esrgan');
+    }
     setPrompt('');
     setScaleFactor('');
     setOutput('png');
@@ -379,7 +386,17 @@ const EditImageInterface: React.FC = () => {
               {features.map((feature) => (
                 <button
                   key={feature.id}
-                  onClick={() => { setSelectedFeature(feature.id); setOutputs((prev)=>({ ...prev, [feature.id]: null })); setProcessing((p)=>({ ...p, [feature.id]: false })); }}
+                  onClick={() => { 
+                    setSelectedFeature(feature.id); 
+                    setOutputs((prev)=>({ ...prev, [feature.id]: null })); 
+                    setProcessing((p)=>({ ...p, [feature.id]: false }));
+                    // Reset model to appropriate default for each feature
+                    if (feature.id === 'remove-bg') {
+                      setModel('851-labs/background-remover');
+                    } else if (feature.id === 'upscale') {
+                      setModel('nightmareai/real-esrgan');
+                    }
+                  }}
                   className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full text-xs md:text-sm font-medium transition-all border ${
                     selectedFeature === feature.id
                       ? 'bg-white border-white/5 text-black shadow-sm'
@@ -479,8 +496,8 @@ const EditImageInterface: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
-                      <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
+                      {/* <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option> */}
+                      {/* <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option> */}
                       <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
                       <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
                     </>

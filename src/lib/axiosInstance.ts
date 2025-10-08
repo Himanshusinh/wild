@@ -29,14 +29,31 @@ const axiosInstance = axios.create({
   }
 })
 
+// Toggle verbose network debug logging
+const isApiDebugEnabled = (): boolean => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).__API_DEBUG === true) return true
+    const flag = localStorage.getItem('api_debug')
+    if (flag && flag.toLowerCase() === 'true') return true
+  } catch {}
+  return process.env.NEXT_PUBLIC_API_DEBUG === 'true'
+}
+
 // Attach device headers; rely on httpOnly session cookies for auth
 axiosInstance.interceptors.request.use((config) => {
   try {
-    // Route auth endpoints via same-origin Next.js API to avoid CORS during ngrok usage
+    // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
-    if (url.startsWith('/api/auth/')) {
-      // Override baseURL so the request is same-origin (Next.js app) and proxied server-side
-      config.baseURL = ''
+
+    // For backend data endpoints (credits, generations), attach Bearer id token so backend accepts without cookies
+    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations')) {
+      const token = getStoredIdToken()
+      if (token) {
+        const headers: any = config.headers || {}
+        headers['Authorization'] = `Bearer ${token}`
+        config.headers = headers
+      }
+      // Leave baseURL pointing to external backend (default)
     }
 
     // Stable device id persisted in localStorage
@@ -60,6 +77,60 @@ axiosInstance.interceptors.request.use((config) => {
     headers['X-Device-Id'] = deviceId
     headers['X-Device-Name'] = platform
     headers['X-Device-Info'] = JSON.stringify(deviceInfo)
+
+    // Do NOT set X-Forwarded-* headers from the browser. Proxies (ngrok/Vercel) will set them.
+
+    // Route auth endpoints through same-origin Next.js API (avoid CORS on ngrok)
+    try {
+      const rawUrl = typeof config.url === 'string' ? config.url : ''
+      if (rawUrl.startsWith('/api/auth/')) {
+        config.baseURL = ''
+      }
+    } catch {}
+
+    // Attach bearer token for protected backend routes when cookies may be missing (ngrok)
+    try {
+      const raw = typeof config.url === 'string' ? config.url : ''
+      const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
+      const full = new URL(raw, base)
+      const path = full.pathname || ''
+      const isProtectedApi = path.startsWith('/api/') && !path.startsWith('/api/auth/')
+      if (isProtectedApi) {
+        let idToken = getStoredIdToken()
+        // If not in storage, try to fetch a fresh token from Firebase
+        if (!idToken && auth?.currentUser) {
+          // Return a promise so axios waits for token
+          return auth.currentUser.getIdToken().then((fresh) => {
+            const hdrs: any = config.headers || {}
+            if (fresh) hdrs['Authorization'] = `Bearer ${fresh}`
+            if (isApiDebugEnabled()) console.log('[API][attach-bearer][fresh]', { path, hasToken: Boolean(fresh) })
+            config.headers = hdrs
+            return config
+          }).catch(() => config)
+        }
+        if (idToken) {
+          headers['Authorization'] = `Bearer ${idToken}`
+          if (isApiDebugEnabled()) console.log('[API][attach-bearer][cached]', { path, hasToken: true })
+        } else {
+          if (isApiDebugEnabled()) console.log('[API][attach-bearer][missing]', { path })
+        }
+      }
+    } catch {}
+
+    if (isApiDebugEnabled()) {
+      try {
+        const base = (config.baseURL as string) || axiosInstance.defaults.baseURL
+        const authHeader = (config.headers as any)?.Authorization
+        console.log('[API][request]', {
+          method: (config.method || 'get').toUpperCase(),
+          url,
+          baseURL: base,
+          withCredentials: config.withCredentials,
+          hasAuthorization: Boolean(authHeader),
+        })
+      } catch {}
+    }
+
     config.headers = headers
   } catch {}
   return config
@@ -76,12 +147,22 @@ let isRefreshing = false
 let pendingRequests: Array<() => void> = []
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try { if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status }) } catch {}
+    return response
+  },
   async (error) => {
     const original = error?.config || {}
     const status = error?.response?.status
 
     if (status !== 401) {
+      try {
+        if (isApiDebugEnabled()) console.warn('[API][error]', {
+          url: original?.url,
+          status: error?.response?.status,
+          data: error?.response?.data,
+        })
+      } catch {}
       return Promise.reject(error)
     }
 
@@ -99,22 +180,27 @@ axiosInstance.interceptors.response.use(
 
     try {
       isRefreshing = true
+      if (isApiDebugEnabled()) console.log('[API][401][refresh] starting')
       const currentUser = auth.currentUser
       if (!currentUser) {
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser')
         return Promise.reject(error)
       }
       const freshIdToken = await currentUser.getIdToken(true)
+      // Refresh session via same-origin Next.js proxy to avoid ngrok CORS
       await axios.post(
-        (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000') + '/api/auth/session',
+        '/api/auth/session',
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
       )
+      if (isApiDebugEnabled()) console.log('[API][401][refresh] success, retrying original')
 
       // Resume queued requests
       pendingRequests.forEach((resolve) => resolve())
       pendingRequests = []
       return axiosInstance(original)
     } catch (e) {
+      try { if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) } catch {}
       return Promise.reject(error)
     } finally {
       isRefreshing = false
