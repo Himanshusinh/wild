@@ -1,12 +1,13 @@
 "use client";
 import React from 'react'
 import Image from 'next/image'
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { ViewType, GenerationType } from '@/types/generation';
 import { usePathname, useRouter } from 'next/navigation';
 import { Clapperboard } from 'lucide-react';
 import { imageRoutes } from '../../HomePage/routes';
 import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
+import { setCurrentView } from '@/store/slices/uiSlice';
 
 interface SidePannelFeaturesProps {
   currentView?: ViewType;
@@ -23,6 +24,7 @@ const SidePannelFeatures = ({
 }: SidePannelFeaturesProps) => {
 
 
+  const dispatch = useAppDispatch();
   const theme = useAppSelector((state: any) => state?.ui?.theme || 'dark');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
@@ -108,14 +110,12 @@ const SidePannelFeatures = ({
       <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0  -ml-1">
         <div
           onClick={() => {
-            try {
-              if (onViewChange && typeof onViewChange === 'function') {
-                onViewChange('landing');
-              }
-            } catch { }
-            router.push(APP_ROUTES.LANDING);
+            try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch {}
+            try { dispatch(setCurrentView('landing')); } catch {}
+            // Force hard navigation to avoid race conditions
+            try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
           }}
-          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none">
+          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
           <Image
             src={imageRoutes.core.logo}
             alt="Wild Mind Logo"
@@ -124,7 +124,9 @@ const SidePannelFeatures = ({
             className="w-full h-full"
           />
         </div>
-        <span className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap '>
+        <span
+          onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch {}; try { dispatch(setCurrentView('landing')); } catch {}; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
+          className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
           WildMind Ai
         </span>
       </div>

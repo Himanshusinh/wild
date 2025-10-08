@@ -252,8 +252,9 @@ Typography: If text is included, keep it minimal, modern sans-serif, and well-ba
 Output: High-resolution vector-style logo, plain background, sharp edges.
 `;
 
-      // Read isPublic preference
-      let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      // Read isPublic from backend policy
+      const { getIsPublic } = await import('@/lib/publicFlag');
+      const isPublic = await getIsPublic();
 
       if (selectedModel === "gemini-25-flash-image") {
         // Route to FAL (Google Nano Banana)

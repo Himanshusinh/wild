@@ -19,8 +19,13 @@ const getStoredIdToken = (): string | null => {
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
+const resolvedBaseUrl = (() => {
+  const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
+  return raw.length > 0 ? raw : 'http://localhost:5000'
+})()
+
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000',
+  baseURL: resolvedBaseUrl,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -80,11 +85,12 @@ axiosInstance.interceptors.request.use((config) => {
 
     // Do NOT set X-Forwarded-* headers from the browser. Proxies (ngrok/Vercel) will set them.
 
-    // Route auth endpoints through same-origin Next.js API (avoid CORS on ngrok)
+    // Route auth endpoints through backend baseURL (do not proxy via Next.js)
     try {
       const rawUrl = typeof config.url === 'string' ? config.url : ''
       if (rawUrl.startsWith('/api/auth/')) {
-        config.baseURL = ''
+        config.baseURL = resolvedBaseUrl
+        if (isApiDebugEnabled()) console.log('[API][auth-route]', { url: rawUrl, baseURL: config.baseURL })
       }
     } catch {}
 
@@ -148,10 +154,28 @@ let pendingRequests: Array<() => void> = []
 
 axiosInstance.interceptors.response.use(
   (response) => {
-    try { if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status }) } catch {}
+    try {
+      if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status })
+      const urlStr = String(response?.config?.url || '')
+      if (urlStr.includes('/api/auth/logout')) {
+        console.log('[API][logout][response]', { status: response?.status, url: response?.config?.url })
+      }
+    } catch {}
     return response
   },
   async (error) => {
+    try {
+      const urlStr = String(error?.config?.url || '')
+      if (urlStr.includes('/api/auth/logout')) {
+        console.error('[API][logout][error]', {
+          status: error?.response?.status,
+          url: error?.config?.url,
+          message: error?.message,
+          data: error?.response?.data,
+          baseURL: error?.config?.baseURL,
+        })
+      }
+    } catch {}
     const original = error?.config || {}
     const status = error?.response?.status
 

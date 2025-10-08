@@ -51,11 +51,23 @@ export default function MainLayout({
   useEffect(() => {
     if (!pathname || propCurrentView) return; // Skip if we're being used as a child component
 
+    // Respect explicit landing navigation from side panel/logo
+    if (pathname.includes('/view/Landingpage')) {
+      try { console.log('🔍 MainLayout - Respecting landing route. Setting currentView=landing and skipping generation sync.') } catch {}
+      dispatch(setCurrentView('landing'));
+      return;
+    }
+
     if (pathname.includes('/history')) {
       dispatch(setCurrentView('history'));
     } else if (pathname.includes('/bookmarks')) {
       dispatch(setCurrentView('bookmarks'));
-    } else {
+    } else if (
+      pathname.startsWith('/text-to-image') ||
+      pathname.startsWith('/text-to-video') ||
+      pathname.startsWith('/text-to-music') ||
+      pathname.startsWith('/edit-image')
+    ) {
       dispatch(setCurrentView('generation'));
       // Extract generation type from URL
       const type = pathname.split('/').pop();
@@ -67,6 +79,10 @@ export default function MainLayout({
         }
         dispatch(setCurrentGenerationType(newType));
       }
+    } else {
+      // Default to landing for any other non-generation routes
+      try { console.log('🔍 MainLayout - Non-generation route detected, setting currentView=landing:', pathname) } catch {}
+      dispatch(setCurrentView('landing'));
     }
   }, [pathname, dispatch, currentGenerationType, propCurrentView]);
 

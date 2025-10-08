@@ -174,7 +174,17 @@ const LandingPage: React.FC = () => {
     }
   }, [smoothScrollTo]);
 
-  const onGetStarted = () => router.push('/view/signup');
+  const onGetStarted = () => {
+    try {
+      const hasSessionCookie = document.cookie.split(';').some(c => c.trim().startsWith('app_session='))
+      const hasLocalAuth = Boolean(localStorage.getItem('authToken') || localStorage.getItem('user'))
+      if (hasSessionCookie || hasLocalAuth) {
+        router.push('/view/HomePage')
+        return
+      }
+    } catch {}
+    router.push('/view/signup')
+  };
 
   // Optimized intersection observers with proper cleanup
   React.useEffect(() => {

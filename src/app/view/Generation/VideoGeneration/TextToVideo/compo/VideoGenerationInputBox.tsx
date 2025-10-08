@@ -273,8 +273,9 @@ const VideoGenerationInputBox: React.FC = () => {
         return '';
       })();
 
-      // Call video generation API with sku for pricing
-      let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      // Call video generation API with isPublic from backend policy
+      const { getIsPublic } = await import('@/lib/publicFlag');
+      const isPublic = await getIsPublic();
       const result = await dispatch(runwayVideo({
         sku,
         mode: state.mode,

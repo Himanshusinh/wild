@@ -245,8 +245,9 @@ const InputBox = () => {
         // Continue with generation even if Firebase save fails
       }
 
-      // Add isPublic flag from profile preference
-      let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      // Add isPublic from backend policy
+      const { getIsPublic } = await import('@/lib/publicFlag');
+      const isPublic = await getIsPublic();
       console.log('🎵 Calling MiniMax music API with payload via thunk:', { ...payload, isPublic });
       const result = await dispatch(minimaxMusic({ ...payload, isPublic })).unwrap();
       console.log('🎵 MiniMax music thunk result:', result);

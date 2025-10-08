@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { X, Upload, Maximize2, Download } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
+import { getIsPublic } from '@/lib/publicFlag';
 
 interface UpscalePopupProps {
   isOpen: boolean;
@@ -90,8 +91,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
     if (!uploadedImage) return;
     setIsUpscaling(true);
     try {
-      let isPublic = false;
-      try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      const isPublic = await getIsPublic();
       let payload: any = { image: uploadedImage, prompt: prompt || undefined, isPublic, model };
       if (model === 'philz1337x/clarity-upscaler') {
         payload = {
