@@ -84,7 +84,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       return [
         { value: "veo3-t2v-8s", label: "Veo3", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
-        { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
+        { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
         { value: "T2V-01-Director", label: "T2V-01-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" }
       ];
     } else if (generationMode === "image_to_video") {

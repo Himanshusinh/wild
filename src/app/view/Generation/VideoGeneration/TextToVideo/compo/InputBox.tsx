@@ -130,6 +130,20 @@ const InputBox = () => {
     }
   }, [selectedModel, selectedMiniMaxDuration]);
 
+  // Auto-adjust resolution when switching to text-to-video mode (512P not supported)
+  useEffect(() => {
+    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+      setSelectedResolution("768P"); // Switch to 768P for text-to-video
+    }
+  }, [generationMode, selectedModel, selectedResolution]);
+
+  // Additional check to ensure 512P is not available for text-to-video
+  useEffect(() => {
+    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+      setSelectedResolution("768P"); // Force switch to 768P
+    }
+  }, [generationMode, selectedModel, selectedResolution]);
+
   // Auto-adjust resolution when duration changes for MiniMax-Hailuo-02
   useEffect(() => {
     if (selectedModel === "MiniMax-Hailuo-02") {
@@ -2409,20 +2423,23 @@ const InputBox = () => {
                                   {/* Available resolutions based on duration */}
                                   {selectedMiniMaxDuration === 6 && (
                                     <>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedResolution("512P");
-                                          setResolutionDropdownOpen(false);
-                                        }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                        }`}
-                                      >
-                                        <span>512P</span>
-                                        {selectedResolution === "512P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
-                                        )}
-                                      </button>
+                                      {/* Only show 512P for image-to-video mode */}
+                                      {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedResolution("512P");
+                                            setResolutionDropdownOpen(false);
+                                          }}
+                                          className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                                            selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          }`}
+                                        >
+                                          <span>512P</span>
+                                          {selectedResolution === "512P" && (
+                                            <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          )}
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("768P");
@@ -2455,20 +2472,23 @@ const InputBox = () => {
                                   )}
                                   {selectedMiniMaxDuration === 10 && (
                                     <>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedResolution("512P");
-                                          setResolutionDropdownOpen(false);
-                                        }}
-                                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                        }`}
-                                      >
-                                        <span>512P</span>
-                                        {selectedResolution === "512P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
-                                        )}
-                                      </button>
+                                      {/* Only show 512P for image-to-video mode */}
+                                      {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedResolution("512P");
+                                            setResolutionDropdownOpen(false);
+                                          }}
+                                          className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                                            selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          }`}
+                                        >
+                                          <span>512P</span>
+                                          {selectedResolution === "512P" && (
+                                            <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          )}
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => {
                                           setSelectedResolution("768P");
