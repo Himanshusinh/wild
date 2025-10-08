@@ -14,7 +14,7 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
 
 export default function App() {
   const dispatch = useAppDispatch();
-  const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home'); // Default to 'home' instead of 'landing'
+  const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'landing');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
   
