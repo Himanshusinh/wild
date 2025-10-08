@@ -61,6 +61,8 @@ const InputBox = () => {
   
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  // Track if we've already shown a Runway base_resp toast to avoid duplicates
+  const runwayBaseRespToastShownRef = useRef(false);
 
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
@@ -111,6 +113,28 @@ const InputBox = () => {
     };
 
     return ratioMap[frameSize] || "1024:1024"; // Default to square if no match
+  };
+
+  // Map Runway base_resp.status_code to toast message and severity; return whether to stop polling
+  const mapRunwayStatus = (status: any): { shouldStop: boolean; toastType: 'success' | 'error' | 'loading' | 'blank'; message: string } | null => {
+    try {
+      const base = status && (status.base_resp || (status.data && status.data.base_resp));
+      if (!base) return null;
+      const code = typeof base.status_code === 'string' ? parseInt(base.status_code, 10) : Number(base.status_code);
+      const msg = (base.status_msg as string) || 'Unknown status';
+      if (Number.isNaN(code)) return null;
+      if (code === 0) return { shouldStop: false, toastType: 'success', message: msg || 'Success' };
+      // Non-zero → error/terminal conditions
+      switch (code) {
+        case 1002: return { shouldStop: true, toastType: 'error', message: 'Rate limited by Runway. Please try again shortly.' };
+        case 1004:
+        case 2049: return { shouldStop: true, toastType: 'error', message: 'Runway authentication failed. Check API key.' };
+        case 1008: return { shouldStop: true, toastType: 'error', message: 'Runway balance insufficient. Please top up your plan.' };
+        case 1026: return { shouldStop: true, toastType: 'error', message: 'Prompt blocked due to content safety.' };
+        case 2013: return { shouldStop: true, toastType: 'error', message: 'Invalid parameters for Runway request.' };
+        default: return { shouldStop: true, toastType: 'error', message: msg || `Runway error (${code}).` };
+      }
+    } catch { return null; }
   };
 
   // Runway model-specific allowed ratios (kept in sync with backend validator)
@@ -584,13 +608,38 @@ const InputBox = () => {
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
-            // Poll via backend status route; stop immediately when completed
+            // Poll via backend status route; stop on completion or terminal error
             let imageUrl: string | undefined;
+            let terminalError: string | undefined;
+            let baseRespToastShown = false;
             for (let attempts = 0; attempts < 360; attempts++) {
               const status = await dispatch(runwayStatus(result.taskId)).unwrap();
               // Capture backend historyId if frontend one wasn't created
               if (!firebaseHistoryId && status?.historyId) {
                 firebaseHistoryId = status.historyId;
+              }
+              // If provider returned base_resp codes, handle and stop as needed
+              const mapped = mapRunwayStatus(status);
+              if (mapped && mapped.shouldStop) {
+                terminalError = mapped.message;
+                if (mapped.toastType === 'error' && !runwayBaseRespToastShownRef.current && !baseRespToastShown) {
+                  toast.error(mapped.message);
+                  runwayBaseRespToastShownRef.current = true;
+                  baseRespToastShown = true;
+                }
+                // Stop loader immediately
+                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setIsGeneratingLocally(false);
+                break;
+              }
+              // Also stop on explicit failure/cancelled statuses from backend/provider
+              const s = String(status?.status || '').toUpperCase();
+              if (s === 'FAILED' || s === 'CANCELLED' || s === 'THROTTLED') {
+                terminalError = (status?.failure as string) || 'Runway task did not complete';
+                if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
+                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setIsGeneratingLocally(false);
+                break;
               }
               if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
                 imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
@@ -598,7 +647,7 @@ const InputBox = () => {
               }
               await new Promise(res => setTimeout(res, 1000));
             }
-            if (!imageUrl) throw new Error('Runway generation did not complete in time');
+            if (!imageUrl) throw new Error(terminalError || 'Runway generation did not complete in time');
 
             // Process the completed image
             if (imageUrl) {
@@ -687,13 +736,9 @@ const InputBox = () => {
           } catch (error) {
             console.error(`Runway generation failed for image ${index + 1}:`, error);
             anyFailures = true;
-
-            dispatch(
-              addNotification({
-                type: "error",
-                message: `Failed to generate image ${index + 1} with Runway: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              })
-            );
+            if (!runwayBaseRespToastShownRef.current) {
+              toast.error(`Failed to generate image ${index + 1} with Runway: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
 
             return { success: false, index, error };
           }
@@ -1172,11 +1217,15 @@ const InputBox = () => {
         await handleGenerationFailure(transactionId);
       }
 
-      // Show error notification
-      toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+      // Show error notification (skip if a Runway base_resp toast already shown)
+      if (!runwayBaseRespToastShownRef.current) {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+      }
     } finally {
       // Always reset local generation state
       setIsGeneratingLocally(false);
+      // Reset the base_resp toast guard for next run
+      runwayBaseRespToastShownRef.current = false;
     }
   };
 
