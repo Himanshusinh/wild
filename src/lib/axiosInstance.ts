@@ -45,13 +45,22 @@ const isApiDebugEnabled = (): boolean => {
 }
 
 // Attach device headers; rely on httpOnly session cookies for auth
-axiosInstance.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use(async (config) => {
   try {
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
     // For backend data endpoints (credits, generations, auth/me), attach Bearer id token so backend accepts without cookies
     if (url.startsWith('/api/credits/') || url.startsWith('/api/generations') || url === '/api/auth/me') {
+      // Gentle delay if session cookie is racing to be set after auth
+      try {
+        const hasHint = document.cookie.includes('auth_hint=')
+        const hasSession = document.cookie.includes('app_session=')
+        if (hasHint && !hasSession) {
+          if (isApiDebugEnabled()) console.log('[API][request-delay] auth_hint present, delaying 250ms for session cookie')
+          await new Promise((r) => setTimeout(r, 250))
+        }
+      } catch {}
       const token = getStoredIdToken()
       if (token) {
         const headers: any = config.headers || {}
@@ -94,7 +103,7 @@ axiosInstance.interceptors.request.use((config) => {
       }
     } catch {}
 
-    // Attach bearer token for protected backend routes when cookies may be missing (ngrok)
+    // Attach bearer token for protected backend routes when cookies may be missing (ngrok/first-load)
     try {
       const raw = typeof config.url === 'string' ? config.url : ''
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
@@ -102,6 +111,17 @@ axiosInstance.interceptors.request.use((config) => {
       const path = full.pathname || ''
       // Treat most backend routes as protected to reduce 401s in early post-auth; allow session creation route to go without bearer
       const isProtectedApi = path.startsWith('/api/') && path !== '/api/auth/session'
+      // Gentle delay for protected APIs when auth just completed and Set-Cookie may lag
+      if (isProtectedApi) {
+        try {
+          const hasHint = document.cookie.includes('auth_hint=')
+          const hasSession = document.cookie.includes('app_session=')
+          if (hasHint && !hasSession) {
+            if (isApiDebugEnabled()) console.log('[API][request-delay] protected call while auth_hint present, delaying 250ms', { path })
+            await new Promise((r) => setTimeout(r, 250))
+          }
+        } catch {}
+      }
       if (isProtectedApi) {
         let idToken = getStoredIdToken()
         // If not in storage, try to fetch a fresh token from Firebase
