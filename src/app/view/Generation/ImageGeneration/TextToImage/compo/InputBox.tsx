@@ -12,7 +12,6 @@ import EditPopup from "./EditPopup";
 import {
   setPrompt,
   generateImages,
-  generateRunwayImages,
   generateMiniMaxImages,
   setUploadedImages,
   setSelectedModel,
@@ -59,6 +58,9 @@ const InputBox = () => {
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
+  
+  // Local state to track generation status for button text
+  const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
 
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
@@ -366,6 +368,9 @@ const InputBox = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Set local generation state immediately
+    setIsGeneratingLocally(true);
 
     // Clear any previous credit errors
     clearCreditsError();
@@ -801,6 +806,21 @@ const InputBox = () => {
 
         if (successfulResults.length > 0) {
           console.log('Runway generation completed successfully!');
+          
+          // Update local preview with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: currentImages.filter(img => img.url),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: successfulResults.length,
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+          
           toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
           await refreshAllHistory();
@@ -811,6 +831,12 @@ const InputBox = () => {
           }
         } else {
           console.log('All Runway generations failed');
+          
+          // Update local preview to failed status
+          setLocalGeneratingEntries((prev) => prev.map((e) => ({
+            ...e,
+            status: 'failed'
+          })));
         }
 
         console.log('=== RUNWAY GENERATION COMPLETED ===');
@@ -1099,6 +1125,9 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         }
+        
+        // Reset local generation state on success
+        setIsGeneratingLocally(false);
       }
     } catch (error) {
       console.error("Error generating images:", error);
@@ -1145,6 +1174,9 @@ const InputBox = () => {
 
       // Show error notification
       toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+    } finally {
+      // Always reset local generation state
+      setIsGeneratingLocally(false);
     }
   };
 
@@ -1496,10 +1528,10 @@ const InputBox = () => {
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim()}
+                disabled={isGeneratingLocally || !prompt.trim()}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                {isGenerating ? "Generating..." : "Generate"}
+                {isGeneratingLocally ? "Generating..." : "Generate"}
               </button>
             </div>
           </div>
