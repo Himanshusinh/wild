@@ -96,12 +96,12 @@ const InputBox = () => {
     if (generationMode === "text_to_video") {
       // Text→Video: MiniMax and Veo3 models support this
       if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3"))) {
-        setSelectedModel("veo3-t2v-8s"); // Default to Veo3 for text→video
+        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for text→video
       }
     } else if (generationMode === "image_to_video") {
       // Image→Video: MiniMax, Runway, and Veo3 models support this
       if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3"))) {
-        setSelectedModel("veo3-i2v-8s"); // Default to Veo3 I2V for image→video
+        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for image→video
       }
     } else if (generationMode === "video_to_video") {
       // Video→Video: Only Runway models support this
