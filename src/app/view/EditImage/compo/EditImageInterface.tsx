@@ -154,6 +154,7 @@ const EditImageInterface: React.FC = () => {
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (!imageContainerRef.current) return;
     
@@ -192,10 +193,30 @@ const EditImageInterface: React.FC = () => {
   }, [scale, offset, clampOffset, resetZoom]);
 
 
-  // Reset zoom when image changes
+  // Reset zoom when image changes and ensure actual dimensions
   useEffect(() => {
     resetZoom();
+    // Reset to show actual dimensions (scale = 1) when new image loads
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
   }, [outputs[selectedFeature], resetZoom]);
+
+  // Prevent page scroll when mouse is over image container
+  useEffect(() => {
+    const handleGlobalWheel = (e: WheelEvent) => {
+      if (imageContainerRef.current && imageContainerRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    // Add passive: false to allow preventDefault
+    document.addEventListener('wheel', handleGlobalWheel, { passive: false });
+    
+    return () => {
+      document.removeEventListener('wheel', handleGlobalWheel);
+    };
+  }, []);
 
   const features = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
@@ -774,7 +795,7 @@ const EditImageInterface: React.FC = () => {
             {errorMsg && (
               <div className="text-red-400 text-xs mb-2">{errorMsg}</div>
             )}
-            <div className="relative w-full h-[60vh] bg-white/5 border border-white/20 rounded-xl overflow-hidden">
+            <div className="relative w-full h-[60vh] bg-white/5 border border-white/20 rounded-xl overflow-hidden flex items-center justify-center" style={{ overscrollBehavior: 'none' }}>
               {processing[selectedFeature] ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <div className="w-7 h-7 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
@@ -795,15 +816,18 @@ const EditImageInterface: React.FC = () => {
                     onWheel={handleWheel}
                     onKeyDown={handleKeyDown}
                     style={{
-                      cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'zoom-in'
+                      cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'zoom-in',
+                      overscrollBehavior: 'none'
                     }}
                   >
                     <div
-                      className="absolute inset-0 flex items-center justify-center"
+                      className="flex items-center justify-center"
                       style={{
                         transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
                         transformOrigin: 'center center',
-                        transition: isPanning ? 'none' : 'transform 0.2s ease-out'
+                        transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+                        width: '100%',
+                        height: '100%'
                       }}
                     >
                       <Image
@@ -816,8 +840,16 @@ const EditImageInterface: React.FC = () => {
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
                           setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                          // Ensure image shows at actual dimensions when loaded
+                          setScale(1);
+                          setOffset({ x: 0, y: 0 });
                         }}
-                        style={{ maxWidth: 'none', maxHeight: 'none' }}
+                        style={{ 
+                          maxWidth: 'none', 
+                          maxHeight: 'none',
+                          width: 'auto',
+                          height: 'auto'
+                        }}
                       />
                     </div>
                   </div>
