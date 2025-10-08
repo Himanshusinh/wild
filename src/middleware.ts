@@ -52,8 +52,11 @@ export function middleware(req: NextRequest) {
   if (isPublic) return res;
 
   // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
+  // Be tolerant for OAuth redirects: allow if Firebase id token present in Authorization header
   const hasSession = req.cookies.get('app_session');
-  if (!hasSession) {
+  const authHeader = req.headers.get('authorization') || '';
+  const hasBearer = /^Bearer\s+/.test(authHeader);
+  if (!hasSession && !hasBearer) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
