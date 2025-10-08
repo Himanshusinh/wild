@@ -50,8 +50,8 @@ axiosInstance.interceptors.request.use((config) => {
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
-    // For backend data endpoints (credits, generations), attach Bearer id token so backend accepts without cookies
-    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations')) {
+    // For backend data endpoints (credits, generations, auth/me), attach Bearer id token so backend accepts without cookies
+    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations') || url === '/api/auth/me') {
       const token = getStoredIdToken()
       if (token) {
         const headers: any = config.headers || {}
@@ -100,7 +100,8 @@ axiosInstance.interceptors.request.use((config) => {
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
       const full = new URL(raw, base)
       const path = full.pathname || ''
-      const isProtectedApi = path.startsWith('/api/') && !path.startsWith('/api/auth/')
+      // Treat most backend routes as protected to reduce 401s in early post-auth; allow session creation route to go without bearer
+      const isProtectedApi = path.startsWith('/api/') && path !== '/api/auth/session'
       if (isProtectedApi) {
         let idToken = getStoredIdToken()
         // If not in storage, try to fetch a fresh token from Firebase
@@ -208,7 +209,9 @@ axiosInstance.interceptors.response.use(
       const currentUser = auth.currentUser
       if (!currentUser) {
         if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser')
-        return Promise.reject(error)
+        // If session cookie might be racing to be set, wait briefly then retry once
+        await new Promise((r) => setTimeout(r, 300))
+        return axiosInstance(original)
       }
       const freshIdToken = await currentUser.getIdToken(true)
       // Refresh session via same-origin Next.js proxy to avoid ngrok CORS
