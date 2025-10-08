@@ -164,8 +164,8 @@ export default function SignInForm() {
 
         // Step 3: Create session
         console.log("🔄 Step 3: Creating session with backend...")
-        const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-        await axiosInstance.post(`${backendBaseForSession}/api/auth/session`,
+        // Create session via same-origin Next proxy to ensure cookie is set on frontend domain
+        await axios.post('/api/auth/session',
           { idToken: idToken },
           { withCredentials: true }
         )
@@ -183,6 +183,8 @@ export default function SignInForm() {
         setPassword("")
 
         // Redirect immediately with optional query flag for safety
+        // Set a short-lived hint cookie to prevent race-condition redirects in middleware
+        try { document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax' } catch {}
         const redirectUrl = (redirect || APP_ROUTES.HOME) + '?toast=LOGIN_SUCCESS'
         console.log("🏠 Redirecting to:", redirectUrl)
         window.location.href = redirectUrl
@@ -375,8 +377,8 @@ export default function SignInForm() {
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
             const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-            const sessionResponse = await axiosInstance.post(`${backendBaseForSession}/api/auth/session`,
-              { idToken: actualIdToken }, // Use the converted ID token
+            const sessionResponse = await axios.post('/api/auth/session',
+              { idToken: actualIdToken },
               { withCredentials: true }
             )
 
@@ -562,7 +564,7 @@ export default function SignInForm() {
 
           // Create session
           const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-          await axiosInstance.post(`${backendBaseForSession}/api/auth/session`,
+          await axios.post('/api/auth/session',
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -649,8 +651,7 @@ export default function SignInForm() {
           const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
 
-          const backendBaseForSession2 = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-          await axiosInstance.post(`${backendBaseForSession2}/api/auth/session`,
+          await axios.post('/api/auth/session',
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -729,9 +730,8 @@ export default function SignInForm() {
 
                 // Create session with the REAL ID token
                 console.log("🔄 Creating session with backend using ID token...")
-                const backendBaseForSession3 = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-                const sessionResponse = await axiosInstance.post(`${backendBaseForSession3}/api/auth/session`,
-                  { idToken: actualIdToken }, // Use the converted ID token
+                const sessionResponse = await axios.post('/api/auth/session',
+                  { idToken: actualIdToken },
                   { withCredentials: true }
                 )
 
