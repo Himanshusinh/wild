@@ -1,6 +1,6 @@
   'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import axiosInstance from '@/lib/axiosInstance';
 import ModelsDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ModelsDropdown';
@@ -34,6 +34,16 @@ const EditImageInterface: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
   
+  // Zoom and pan state
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPoint, setLastPoint] = useState({ x: 0, y: 0 });
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  
   // Form states
   const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
@@ -49,6 +59,143 @@ const EditImageInterface: React.FC = () => {
   const reduxUploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Zoom and pan utility functions
+  const clampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
+    if (!imageContainerRef.current) return newOffset;
+    
+    const container = imageContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+    
+    // Calculate image dimensions at current scale
+    const imageWidth = naturalSize.width * currentScale;
+    const imageHeight = naturalSize.height * currentScale;
+    
+    // Calculate maximum offset to keep image covering container
+    const maxOffsetX = Math.max(0, (imageWidth - containerWidth) / 2);
+    const maxOffsetY = Math.max(0, (imageHeight - containerHeight) / 2);
+    
+    return {
+      x: Math.max(-maxOffsetX, Math.min(maxOffsetX, newOffset.x)),
+      y: Math.max(-maxOffsetY, Math.min(maxOffsetY, newOffset.y))
+    };
+  }, [naturalSize]);
+
+  const zoomToPoint = useCallback((point: { x: number; y: number }, newScale: number) => {
+    if (!imageContainerRef.current) return;
+    
+    const container = imageContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const containerCenterX = containerRect.width / 2;
+    const containerCenterY = containerRect.height / 2;
+    
+    // Calculate offset to center the zoom on the click point
+    const newOffsetX = containerCenterX - (point.x * newScale);
+    const newOffsetY = containerCenterY - (point.y * newScale);
+    
+    const clampedOffset = clampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
+    
+    setScale(newScale);
+    setOffset(clampedOffset);
+  }, [clampOffset]);
+
+  const resetZoom = useCallback(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!imageContainerRef.current) return;
+    
+    const container = imageContainerRef.current;
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    if (scale === 1) {
+      // Zoom to 2x at click point
+      zoomToPoint({ x: clickX, y: clickY }, 2);
+    } else {
+      // Reset to fit
+      resetZoom();
+    }
+  }, [scale, zoomToPoint, resetZoom]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (scale <= 1) return;
+    
+    e.preventDefault();
+    setIsPanning(true);
+    setLastPoint({ x: e.clientX, y: e.clientY });
+  }, [scale]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning || scale <= 1) return;
+    
+    e.preventDefault();
+    const deltaX = e.clientX - lastPoint.x;
+    const deltaY = e.clientY - lastPoint.y;
+    
+    const newOffset = {
+      x: offset.x + deltaX,
+      y: offset.y + deltaY
+    };
+    
+    const clampedOffset = clampOffset(newOffset, scale);
+    setOffset(clampedOffset);
+    setLastPoint({ x: e.clientX, y: e.clientY });
+  }, [isPanning, scale, offset, lastPoint, clampOffset]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    
+    if (!imageContainerRef.current) return;
+    
+    const container = imageContainerRef.current;
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newScale = Math.max(0.5, Math.min(6, scale + delta));
+    
+    if (newScale !== scale) {
+      zoomToPoint({ x: mouseX, y: mouseY }, newScale);
+    }
+  }, [scale, zoomToPoint]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      const newScale = Math.min(6, scale + 0.1);
+      if (newScale !== scale) {
+        setScale(newScale);
+        setOffset(clampOffset(offset, newScale));
+      }
+    } else if (e.key === '-') {
+      e.preventDefault();
+      const newScale = Math.max(0.5, scale - 0.1);
+      if (newScale !== scale) {
+        setScale(newScale);
+        setOffset(clampOffset(offset, newScale));
+      }
+    } else if (e.key === '0') {
+      e.preventDefault();
+      resetZoom();
+    }
+  }, [scale, offset, clampOffset, resetZoom]);
+
+
+  // Reset zoom when image changes
+  useEffect(() => {
+    resetZoom();
+  }, [outputs[selectedFeature], resetZoom]);
 
   const features = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
@@ -374,7 +521,8 @@ const EditImageInterface: React.FC = () => {
   }
 
   return (
-    <div className="h-screen overflow-hidden pr-6 pt-4  " >
+    <>
+      <div className="h-screen overflow-hidden pr-6 pt-4  " >
       <div className="w-full px-6 md:px-10 lg:px-14">
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
@@ -431,7 +579,7 @@ const EditImageInterface: React.FC = () => {
                     src={inputs[selectedFeature] as string}
                     alt="Input"
                     fill
-                    className="object-cover rounded-xl"
+                    className="object-contain rounded-xl"
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
@@ -626,23 +774,94 @@ const EditImageInterface: React.FC = () => {
             {errorMsg && (
               <div className="text-red-400 text-xs mb-2">{errorMsg}</div>
             )}
-              <div className="w-full h-[60vh] bg-white/5 border border-white/20 rounded-xl flex items-center justify-center text-center p-3.5">
+            <div className="relative w-full h-[60vh] bg-white/5 border border-white/20 rounded-xl overflow-hidden">
               {processing[selectedFeature] ? (
-                <div className="flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center justify-center h-full gap-3">
                   <div className="w-7 h-7 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
                   <p className="text-white/60 text-sm md:text-sm">Processing...</p>
                 </div>
               ) : outputs[selectedFeature] ? (
-                <div className="relative w-full h-full">
-                  <Image
-                    src={outputs[selectedFeature] as string}
-                    alt="Output"
-                    fill
-                    className="object-contain rounded-xl"
-                  />
-                </div>
+                <>
+                  {/* Image container with zoom/pan functionality */}
+                  <div
+                    ref={imageContainerRef}
+                    tabIndex={0}
+                    className="relative w-full h-full cursor-zoom-in focus:outline-none"
+                    onClick={handleImageClick}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onWheel={handleWheel}
+                    onKeyDown={handleKeyDown}
+                    style={{
+                      cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'zoom-in'
+                    }}
+                  >
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
+                        transformOrigin: 'center center',
+                        transition: isPanning ? 'none' : 'transform 0.2s ease-out'
+                      }}
+                    >
+                      <Image
+                        ref={imageRef}
+                        src={outputs[selectedFeature] as string}
+                        alt="Output"
+                        width={naturalSize.width || 800}
+                        height={naturalSize.height || 600}
+                        className="object-contain"
+                        onLoad={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                        }}
+                        style={{ maxWidth: 'none', maxHeight: 'none' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Zoom controls */}
+                  <div className="absolute bottom-2 left-2 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const newScale = Math.max(0.5, scale - 0.1);
+                        setScale(newScale);
+                        setOffset(clampOffset(offset, newScale));
+                      }}
+                      className="px-2 py-1 bg-black/50 text-white text-xs rounded hover:bg-black/70 transition-colors"
+                      disabled={scale <= 0.5}
+                    >
+                      -
+                    </button>
+                    <button
+                      onClick={resetZoom}
+                      className="px-2 py-1 bg-black/50 text-white text-xs rounded hover:bg-black/70 transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newScale = Math.min(6, scale + 0.1);
+                        setScale(newScale);
+                        setOffset(clampOffset(offset, newScale));
+                      }}
+                      className="px-2 py-1 bg-black/50 text-white text-xs rounded hover:bg-black/70 transition-colors"
+                      disabled={scale >= 6}
+                    >
+                      +
+                    </button>
+                    <span className="px-2 py-1 bg-black/50 text-white text-xs rounded">
+                      {Math.round(scale * 100)}%
+                    </span>
+                  </div>
+                  
+                </>
               ) : (
-                <p className="text-white/40 text-sm md:text-sm">Click run to generate upscaled image</p>
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-white/40 text-sm md:text-sm">Click run to generate upscaled image</p>
+                </div>
               )}
             </div>
             {/* Output Actions */}
@@ -666,6 +885,7 @@ const EditImageInterface: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
