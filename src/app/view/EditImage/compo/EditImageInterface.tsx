@@ -1,6 +1,7 @@
   'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
@@ -12,6 +13,7 @@ import { useAppSelector } from '@/store/hooks';
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'using-prompt';
 
 const EditImageInterface: React.FC = () => {
+  const searchParams = useSearchParams();
   const [selectedFeature, setSelectedFeature] = useState<EditFeature>('upscale');
   const [inputs, setInputs] = useState<Record<EditFeature, string | null>>({
     'upscale': null,
@@ -41,6 +43,7 @@ const EditImageInterface: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
   const [lastPoint, setLastPoint] = useState({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const [fitScale, setFitScale] = useState(1);
   
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -60,6 +63,39 @@ const EditImageInterface: React.FC = () => {
   const reduxUploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize from query params: feature and image
+  useEffect(() => {
+    try {
+      const featureParam = (searchParams?.get('feature') || '').toLowerCase();
+      const imageParam = searchParams?.get('image') || '';
+      const storagePathParam = searchParams?.get('sp') || '';
+      const validFeature = ['upscale', 'remove-bg', 'resize', 'using-prompt'].includes(featureParam)
+        ? (featureParam as EditFeature)
+        : null;
+      if (validFeature) {
+        setSelectedFeature(validFeature);
+        // Set default model based on feature
+        if (validFeature === 'remove-bg') {
+          setModel('851-labs/background-remover');
+        } else if (validFeature === 'upscale') {
+          setModel('nightmareai/real-esrgan');
+        }
+        // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
+        if (storagePathParam) {
+          const frontendProxied = `/api/proxy/resource/${encodeURIComponent(storagePathParam)}`;
+          setInputs((prev) => ({ ...prev, [validFeature]: frontendProxied }));
+        } else if (imageParam && imageParam.trim() !== '') {
+          setInputs((prev) => ({ ...prev, [validFeature]: imageParam }));
+        }
+      } else if (imageParam && imageParam.trim() !== '') {
+        // Fallback: if only image provided, attach to current feature
+        setInputs((prev) => ({ ...prev, [selectedFeature]: imageParam }));
+      }
+    } catch {}
+    // Only run once on mount for initial hydration from URL
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Zoom and pan utility functions
   const clampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -103,9 +139,9 @@ const EditImageInterface: React.FC = () => {
   }, [clampOffset]);
 
   const resetZoom = useCallback(() => {
-    setScale(1);
+    setScale((prev) => (fitScale ? fitScale : prev));
     setOffset({ x: 0, y: 0 });
-  }, []);
+  }, [fitScale]);
 
   const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageContainerRef.current) return;
@@ -115,14 +151,14 @@ const EditImageInterface: React.FC = () => {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
     
-    if (scale === 1) {
+    if (Math.abs(scale - fitScale) < 1e-3) {
       // Zoom to 2x at click point
-      zoomToPoint({ x: clickX, y: clickY }, 2);
+      zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 2));
     } else {
       // Reset to fit
       resetZoom();
     }
-  }, [scale, zoomToPoint, resetZoom]);
+  }, [scale, fitScale, zoomToPoint, resetZoom]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (scale <= 1) return;
@@ -194,13 +230,36 @@ const EditImageInterface: React.FC = () => {
   }, [scale, offset, clampOffset, resetZoom]);
 
 
-  // Reset zoom when image changes and ensure actual dimensions
+  // Reset offsets on image change; scale will be computed on image load
   useEffect(() => {
-    resetZoom();
-    // Reset to show actual dimensions (scale = 1) when new image loads
-    setScale(1);
     setOffset({ x: 0, y: 0 });
-  }, [outputs[selectedFeature], resetZoom]);
+  }, [outputs[selectedFeature]]);
+
+  // Recompute fit scale when container resizes or natural size changes
+  useEffect(() => {
+    if (!imageContainerRef.current || !naturalSize.width || !naturalSize.height) return;
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const fitCandidate = Math.min(rect.width / naturalSize.width, rect.height / naturalSize.height) || 1;
+    const newFit = Math.min(1, fitCandidate); // do not upscale by default
+    const centerOffset = { x: 0, y: 0 };
+    setFitScale(newFit);
+    setScale(newFit);
+    setOffset(centerOffset);
+  }, [naturalSize]);
+  useEffect(() => {
+    const handleResize = () => {
+      if (!imageContainerRef.current || !naturalSize.width || !naturalSize.height) return;
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      const fitCandidate = Math.min(rect.width / naturalSize.width, rect.height / naturalSize.height) || 1;
+      const newFit = Math.min(1, fitCandidate);
+      const centerOffset = { x: 0, y: 0 };
+      setFitScale(newFit);
+      setScale(newFit);
+      setOffset(centerOffset);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [naturalSize]);
 
   // Prevent page scroll when mouse is over image container
   useEffect(() => {
@@ -223,7 +282,7 @@ const EditImageInterface: React.FC = () => {
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
     { id: 'remove-bg', label: 'Remove Background', description: 'Remove background from your image' },
     { id: 'using-prompt', label: 'Using Prompt', description: 'Edit image using text prompts' },
-    { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
+    { id: 'resize', label: 'Resize (coming Soon....)', description: 'Resize image to specific dimensions' },
 
   ] as const;
 
@@ -240,7 +299,33 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleRun = async () => {
-    const currentInput = inputs[selectedFeature];
+    const toAbsoluteProxyUrl = (url: string | null | undefined) => {
+      if (!url) return url as any;
+      if (url.startsWith('data:')) return url as any;
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+      // For Replicate, we must provide a publicly reachable URL. Use Zata public URL instead of localhost proxy.
+      try {
+        const RESOURCE_SEG = '/api/proxy/resource/';
+        if (url.startsWith(RESOURCE_SEG)) {
+          const decoded = decodeURIComponent(url.substring(RESOURCE_SEG.length));
+          return `${ZATA_PREFIX}${decoded}`;
+        }
+        // Absolute to frontend origin
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          const u = new URL(url);
+          if (u.pathname.startsWith(RESOURCE_SEG)) {
+            const decoded = decodeURIComponent(u.pathname.substring(RESOURCE_SEG.length));
+            return `${ZATA_PREFIX}${decoded}`;
+          }
+          return url as any;
+        }
+      } catch {}
+      return url as any;
+    };
+
+    const currentInputRaw = inputs[selectedFeature];
+    const currentInput = toAbsoluteProxyUrl(currentInputRaw) as any;
     if (!currentInput) return;
     setErrorMsg('');
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
@@ -842,15 +927,12 @@ const EditImageInterface: React.FC = () => {
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
                           setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                          // Ensure image shows at actual dimensions when loaded
-                          setScale(1);
-                          setOffset({ x: 0, y: 0 });
                         }}
                         style={{ 
-                          maxWidth: 'none', 
-                          maxHeight: 'none',
-                          width: 'auto',
-                          height: 'auto'
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          width: naturalSize.width ? `${naturalSize.width}px` : 'auto',
+                          height: naturalSize.height ? `${naturalSize.height}px` : 'auto'
                         }}
                       />
                     </div>
@@ -887,7 +969,7 @@ const EditImageInterface: React.FC = () => {
                       +
                     </button>
                     <span className="px-2 py-1 bg-black/50 text-white text-xs rounded">
-                      {Math.round(scale * 100)}%
+                      {Math.round((scale / (fitScale || 1)) * 100)}%
                     </span>
                   </div>
                   

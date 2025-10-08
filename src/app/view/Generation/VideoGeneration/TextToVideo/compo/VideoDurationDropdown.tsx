@@ -36,7 +36,7 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Auto-close dropdown after 5 seconds
+  // Auto-close dropdown after 20 seconds
   useEffect(() => {
     if (isOpen) {
       // Clear any existing timeout
@@ -44,10 +44,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         clearTimeout(timeoutRef.current);
       }
       
-      // Set new timeout for 5 seconds
+      // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
-      }, 5000);
+      }, 20000);
     } else {
       // Clear timeout if dropdown is closed
       if (timeoutRef.current) {

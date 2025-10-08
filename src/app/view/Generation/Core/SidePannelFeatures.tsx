@@ -147,7 +147,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
             }`}
         >
-          <Image src="/icons/imagegenerationwhite.svg" alt="Image Generation" width={30} height={30} />
+          <Image src="/icons/imagegeneration.svg" alt="Image Generation" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
         </div>
       </div>
@@ -180,7 +180,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/10' : ''
             }`}
         >
-          <Image src="/icons/imagegenerationwhite.svg" alt="Edit Image" width={30} height={30} />
+          <Image src="/icons/edit_image.svg" alt="Edit Image" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Edit Image</span>
         </div>
       </div>

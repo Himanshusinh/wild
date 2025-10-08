@@ -3,12 +3,9 @@
 import React from 'react';
 import Image from 'next/image';
 import { Share, Trash2 } from 'lucide-react';
-import UpscalePopup from './UpscalePopup';
-import RemoveBgPopup from './RemoveBgPopup';
-import ResizePopup from './ResizePopup';
+// Redirect to Edit Image page rather than opening inline popups
 import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '@/store/hooks';
-import { setUploadedImages } from '@/store/slices/generationSlice';
 import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
@@ -40,11 +37,110 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
   const [objectUrl, setObjectUrl] = React.useState<string>('');
-  const [showUpscale, setShowUpscale] = React.useState(false);
-  const [showRemoveBg, setShowRemoveBg] = React.useState(false);
-  const [showResize, setShowResize] = React.useState(false);
+  // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
-  const appDispatch = useAppDispatch();
+
+  // single dispatch instance
+  // Fullscreen viewer state
+  const [isFsOpen, setIsFsOpen] = React.useState(false);
+  const [fsScale, setFsScale] = React.useState(1);
+  const [fsFitScale, setFsFitScale] = React.useState(1);
+  const [fsOffset, setFsOffset] = React.useState({ x: 0, y: 0 });
+  const [fsIsPanning, setFsIsPanning] = React.useState(false);
+  const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
+  const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
+  const fsContainerRef = React.useRef<HTMLDivElement>(null);
+  
+  // -------- Fullscreen helpers (declared before any early returns) ---------
+  const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
+    if (!fsContainerRef.current) return newOffset;
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const imgW = fsNaturalSize.width * currentScale;
+    const imgH = fsNaturalSize.height * currentScale;
+    const maxX = Math.max(0, (imgW - rect.width) / 2);
+    const maxY = Math.max(0, (imgH - rect.height) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
+      y: Math.max(-maxY, Math.min(maxY, newOffset.y))
+    };
+  }, [fsNaturalSize]);
+
+  const fsZoomToPoint = React.useCallback((point: { x: number; y: number }, newScale: number) => {
+    if (!fsContainerRef.current) return;
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const newOffsetX = centerX - (point.x * newScale);
+    const newOffsetY = centerY - (point.y * newScale);
+    const clamped = fsClampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
+    setFsScale(newScale);
+    setFsOffset(clamped);
+  }, [fsClampOffset]);
+
+  const openFullscreen = React.useCallback(() => {
+    setIsFsOpen(true);
+  }, []);
+
+  const closeFullscreen = React.useCallback(() => {
+    setIsFsOpen(false);
+    setFsIsPanning(false);
+  }, []);
+
+  // Compute fit scale on open/resize
+  React.useEffect(() => {
+    if (!isFsOpen) return;
+    const computeFit = () => {
+      if (!fsContainerRef.current || !fsNaturalSize.width || !fsNaturalSize.height) return;
+      const rect = fsContainerRef.current.getBoundingClientRect();
+      const fit = Math.min(rect.width / fsNaturalSize.width, rect.height / fsNaturalSize.height) || 1;
+      const base = Math.min(1, fit); // do not upscale by default
+      setFsFitScale(base);
+      setFsScale(base);
+      setFsOffset({ x: 0, y: 0 });
+    };
+    computeFit();
+    const onResize = () => computeFit();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isFsOpen, fsNaturalSize]);
+
+  // Lock background scroll while fullscreen is open
+  React.useEffect(() => {
+    if (!isFsOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isFsOpen]);
+
+  const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!fsContainerRef.current) return;
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const next = Math.max(0.5, Math.min(6, fsScale + delta));
+    if (next !== fsScale) fsZoomToPoint({ x: mx, y: my }, next);
+  }, [fsScale, fsZoomToPoint]);
+
+  const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setFsIsPanning(true);
+    setFsLastPoint({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const fsOnMouseMove = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!fsIsPanning) return;
+    e.preventDefault();
+    const dx = e.clientX - fsLastPoint.x;
+    const dy = e.clientY - fsLastPoint.y;
+    const clamped = fsClampOffset({ x: fsOffset.x + dx, y: fsOffset.y + dy }, fsScale);
+    setFsOffset(clamped);
+    setFsLastPoint({ x: e.clientX, y: e.clientY });
+  }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
+
+  const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
   
   // Build gallery with user uploads first, then generated outputs
   const inputImages = React.useMemo(() => ((preview as any)?.inputImages) || [], [preview]);
@@ -109,10 +205,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
-  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  };
+  // removed earlier duplicate definition; using single helper below near navigation
 
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
     const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
@@ -240,6 +333,30 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const selectedImage: any = galleryImages[selectedIndex] || preview.image;
   const isUserUploadSelected = selectedIndex < inputImages.length;
 
+  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
+  };
+
+  const navigateToEdit = (feature: 'upscale' | 'remove-bg' | 'resize') => {
+    try {
+      const imgUrl = toFrontendProxyResourceUrl((selectedImage as any)?.storagePath) || selectedImage?.url || preview.image.url;
+      const qs = new URLSearchParams();
+      qs.set('feature', feature);
+      if (imgUrl) qs.set('image', imgUrl);
+      // Also pass raw storage path when available so the Edit page can reconstruct a public URL for external services
+      const storagePath = (selectedImage as any)?.storagePath || (() => {
+        const original = selectedImage?.url || '';
+        const pathCandidate = toProxyPath(original);
+        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+      })();
+      if (storagePath) qs.set('sp', storagePath);
+      router.push(`/edit-image?${qs.toString()}`);
+      onClose();
+    } catch {}
+  };
+
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-0">
       <div className="relative md:h-[92vh] h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl">
@@ -274,7 +391,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(toFrontendProxyResourceUrl((selectedImage as any)?.storagePath || selectedImage?.url || preview.image.url), '_blank')}
+              onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
@@ -383,13 +500,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             <div className="mt-6 space-y-2">
               <div className="flex gap-2">
                 <button
-                  onClick={() => setShowUpscale(true)}
+                  onClick={() => navigateToEdit('upscale')}
                   className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm  text-white text-sm ring-1 ring-white/20 transition"
                 >
                   Upscale
                 </button>
                 <button
-                  onClick={() => setShowRemoveBg(true)}
+                  onClick={() => navigateToEdit('remove-bg')}
                   className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
                 >
                   Remove background
@@ -399,7 +516,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
               <div className="flex gap-2">
               <button
-                  onClick={() => setShowResize(true)}
+                  onClick={() => navigateToEdit('resize')}
                   className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
                 >
                   Resize
@@ -426,16 +543,46 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           </div>
         </div>
       </div>
-      {/* Popups */}
-      {showUpscale && (
-        <UpscalePopup isOpen={showUpscale} onClose={() => setShowUpscale(false)} defaultImage={objectUrl || selectedImage?.url || preview.image.url} />
+      {/* Fullscreen viewer overlay */}
+      {isFsOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute top-3 right-4 z-[90]">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
+              ✕
+            </button>
+          </div>
+          <div
+            ref={fsContainerRef}
+            className="relative w-full h-full cursor-zoom-in"
+            onWheel={fsOnWheel}
+            onMouseDown={fsOnMouseDown}
+            onMouseMove={fsOnMouseMove}
+            onMouseUp={fsOnMouseUp}
+            onMouseLeave={fsOnMouseUp}
+            style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+          >
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`,
+                transformOrigin: 'center center',
+                transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out'
+              }}
+            >
+              <img
+                src={objectUrl || selectedImage?.url || preview.image.url}
+                alt={preview.entry.prompt}
+                onLoad={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                }}
+                className="max-w-full max-h-full object-contain select-none"
+                draggable={false}
+              />
+            </div>
+          </div>
+        </div>
       )}
-      {showRemoveBg && (
-        <RemoveBgPopup isOpen={showRemoveBg} onClose={() => setShowRemoveBg(false)} defaultImage={objectUrl || selectedImage?.url || preview.image.url} />
-      )}
-  {showResize && (
-    <ResizePopup isOpen={showResize} onClose={() => setShowResize(false)} defaultImage={objectUrl || selectedImage?.url || preview.image.url} />
-  )}
     </div>
   );
 };

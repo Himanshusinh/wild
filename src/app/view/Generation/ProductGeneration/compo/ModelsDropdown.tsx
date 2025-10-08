@@ -40,7 +40,7 @@ const ModelsDropdown = () => {
     dispatch(toggleDropdown(''));
   };
 
-  // Auto-close dropdown after 5 seconds
+  // Auto-close dropdown after 20 seconds
   useEffect(() => {
     if (activeDropdown === 'product-models') {
       if (timeoutRef.current) {
@@ -48,7 +48,7 @@ const ModelsDropdown = () => {
       }
       timeoutRef.current = setTimeout(() => {
         dispatch(toggleDropdown(''));
-      }, 5000);
+      }, 20000);
     } else {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);

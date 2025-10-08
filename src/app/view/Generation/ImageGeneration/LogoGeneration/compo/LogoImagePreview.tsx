@@ -23,6 +23,15 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const [copied, setCopied] = useState(false);
   const dispatch = useAppDispatch();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  // Fullscreen state for in-place zoom/pan viewer
+  const [isFsOpen, setIsFsOpen] = React.useState(false);
+  const [fsScale, setFsScale] = React.useState(1);
+  const [fsFitScale, setFsFitScale] = React.useState(1);
+  const [fsOffset, setFsOffset] = React.useState({ x: 0, y: 0 });
+  const [fsIsPanning, setFsIsPanning] = React.useState(false);
+  const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
+  const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
+  const fsContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Lock background scroll while modal is open
   React.useEffect(() => {
@@ -75,6 +84,75 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
   const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
   const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
+
+  // ---- Fullscreen helpers (unconditional hooks) ----
+  const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
+    if (!fsContainerRef.current) return newOffset;
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const imgW = fsNaturalSize.width * currentScale;
+    const imgH = fsNaturalSize.height * currentScale;
+    const maxX = Math.max(0, (imgW - rect.width) / 2);
+    const maxY = Math.max(0, (imgH - rect.height) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
+      y: Math.max(-maxY, Math.min(maxY, newOffset.y))
+    };
+  }, [fsNaturalSize]);
+
+  const fsZoomToPoint = React.useCallback((point: { x: number; y: number }, newScale: number) => {
+    if (!fsContainerRef.current) return;
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const newOffsetX = centerX - (point.x * newScale);
+    const newOffsetY = centerY - (point.y * newScale);
+    const clamped = fsClampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
+    setFsScale(newScale);
+    setFsOffset(clamped);
+  }, [fsClampOffset]);
+
+  const openFullscreen = React.useCallback(() => setIsFsOpen(true), []);
+  const closeFullscreen = React.useCallback(() => { setIsFsOpen(false); setFsIsPanning(false); }, []);
+
+  React.useEffect(() => {
+    if (!isFsOpen) return;
+    const computeFit = () => {
+      if (!fsContainerRef.current || !fsNaturalSize.width || !fsNaturalSize.height) return;
+      const rect = fsContainerRef.current.getBoundingClientRect();
+      const fit = Math.min(rect.width / fsNaturalSize.width, rect.height / fsNaturalSize.height) || 1;
+      const base = Math.min(1, fit);
+      setFsFitScale(base); setFsScale(base); setFsOffset({ x: 0, y: 0 });
+    };
+    computeFit();
+    const onResize = () => computeFit();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isFsOpen, fsNaturalSize]);
+
+  React.useEffect(() => {
+    if (!isFsOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isFsOpen]);
+
+  const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!fsContainerRef.current) return;
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const next = Math.max(0.5, Math.min(6, fsScale + delta));
+    if (next !== fsScale) fsZoomToPoint({ x: mx, y: my }, next);
+  }, [fsScale, fsZoomToPoint]);
+  const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => { e.preventDefault(); setFsIsPanning(true); setFsLastPoint({ x: e.clientX, y: e.clientY }); }, []);
+  const fsOnMouseMove = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!fsIsPanning) return; e.preventDefault();
+    const dx = e.clientX - fsLastPoint.x; const dy = e.clientY - fsLastPoint.y;
+    const clamped = fsClampOffset({ x: fsOffset.x + dx, y: fsOffset.y + dy }, fsScale);
+    setFsOffset(clamped); setFsLastPoint({ x: e.clientX, y: e.clientY });
+  }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
+  const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
 
   React.useEffect(() => {
     let revokeUrl: string | null = null;
@@ -244,7 +322,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => window.open(toFrontendProxyResourceUrl(selectedImagePath || selectedImage?.url), '_blank')}
+              onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
@@ -358,6 +436,36 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             </div>
           </div>
         </div>
+        {isFsOpen && (
+          <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+            <div className="absolute top-3 right-4 z-[90]">
+              <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
+            </div>
+            <div
+              ref={fsContainerRef}
+              className="relative w-full h-full cursor-zoom-in"
+              onWheel={fsOnWheel}
+              onMouseDown={fsOnMouseDown}
+              onMouseMove={fsOnMouseMove}
+              onMouseUp={fsOnMouseUp}
+              onMouseLeave={fsOnMouseUp}
+              style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+            >
+              <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
+                <img
+                  src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
+                  alt={entry.prompt}
+                  onLoad={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                  }}
+                  className="max-w-full max-h-full object-contain select-none"
+                  draggable={false}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

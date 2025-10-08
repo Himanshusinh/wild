@@ -28,7 +28,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       // Set new timeout for 5 seconds
       timeoutRef.current = setTimeout(() => {
         dispatch(toggleDropdown(''));
-      }, 5000);
+      }, 20000);
     } else {
       // Clear timeout if dropdown is closed
       if (timeoutRef.current) {

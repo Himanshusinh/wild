@@ -23,7 +23,7 @@ const StyleSelector = () => {
       // Set new timeout for 5 seconds
       timeoutRef.current = setTimeout(() => {
         setIsStylePopupOpen(false);
-      }, 5000);
+      }, 20000);
     } else {
       // Clear timeout if popup is closed
       if (timeoutRef.current) {

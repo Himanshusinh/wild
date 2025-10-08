@@ -134,9 +134,9 @@ const Nav = () => {
           <button
             onClick={() => refreshCredits()}
             className='text-sm md:text-base flex items-center gap-2 bg-white/15 border border-white/15 backdrop-blur-3xl rounded-full shadow-xl p-1 w-auto md:px-3 px-2 md:py-2 py-0.5 justify-center hover:bg-white/20 transition-colors z-50'
-            title={`Credits: ${creditBalance ?? userData?.credits ?? 150}${creditsError ? ` (Error: ${creditsError})` : ''}`}
+            title={`Credits: ${creditBalance ?? userData?.credits ?? 0}${creditsError ? ` (Error: ${creditsError})` : ''}`}
           >
-            {creditsLoading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
+            {creditsLoading ? '...' : (creditBalance ?? userData?.credits ?? 0)}
             <Image className='cursor-pointer md:w-6 md:h-6 w-4 h-4' src="/icons/coinswhite.svg" alt='logo' width={25} height={25} />
           </button>
 

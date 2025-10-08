@@ -93,11 +93,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const canGenerate = isLyricsValid(lyrics) && !generating;
 
-  // Auto-close timers for all dropdowns
+  // Auto-close timers for all dropdowns (20 seconds)
   useEffect(() => {
     if (styleOpen) {
       if (styleTimeoutRef.current) clearTimeout(styleTimeoutRef.current);
-      styleTimeoutRef.current = setTimeout(() => setStyleOpen(false), 5000);
+      styleTimeoutRef.current = setTimeout(() => setStyleOpen(false), 20000);
     } else {
       if (styleTimeoutRef.current) {
         clearTimeout(styleTimeoutRef.current);
@@ -112,7 +112,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   useEffect(() => {
     if (instrumentsOpen) {
       if (instrumentsTimeoutRef.current) clearTimeout(instrumentsTimeoutRef.current);
-      instrumentsTimeoutRef.current = setTimeout(() => setInstrumentsOpen(false), 5000);
+      instrumentsTimeoutRef.current = setTimeout(() => setInstrumentsOpen(false), 20000);
     } else {
       if (instrumentsTimeoutRef.current) {
         clearTimeout(instrumentsTimeoutRef.current);
@@ -127,7 +127,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   useEffect(() => {
     if (modelOpen) {
       if (modelTimeoutRef.current) clearTimeout(modelTimeoutRef.current);
-      modelTimeoutRef.current = setTimeout(() => setModelOpen(false), 5000);
+      modelTimeoutRef.current = setTimeout(() => setModelOpen(false), 20000);
     } else {
       if (modelTimeoutRef.current) {
         clearTimeout(modelTimeoutRef.current);
@@ -142,7 +142,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   useEffect(() => {
     if (srOpen) {
       if (srTimeoutRef.current) clearTimeout(srTimeoutRef.current);
-      srTimeoutRef.current = setTimeout(() => setSrOpen(false), 5000);
+      srTimeoutRef.current = setTimeout(() => setSrOpen(false), 20000);
     } else {
       if (srTimeoutRef.current) {
         clearTimeout(srTimeoutRef.current);
@@ -157,7 +157,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   useEffect(() => {
     if (brOpen) {
       if (brTimeoutRef.current) clearTimeout(brTimeoutRef.current);
-      brTimeoutRef.current = setTimeout(() => setBrOpen(false), 5000);
+      brTimeoutRef.current = setTimeout(() => setBrOpen(false), 20000);
     } else {
       if (brTimeoutRef.current) {
         clearTimeout(brTimeoutRef.current);
@@ -172,7 +172,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   useEffect(() => {
     if (formatOpen) {
       if (formatTimeoutRef.current) clearTimeout(formatTimeoutRef.current);
-      formatTimeoutRef.current = setTimeout(() => setFormatOpen(false), 5000);
+      formatTimeoutRef.current = setTimeout(() => setFormatOpen(false), 20000);
     } else {
       if (formatTimeoutRef.current) {
         clearTimeout(formatTimeoutRef.current);
@@ -187,7 +187,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   useEffect(() => {
     if (outputFormatOpen) {
       if (outputFormatTimeoutRef.current) clearTimeout(outputFormatTimeoutRef.current);
-      outputFormatTimeoutRef.current = setTimeout(() => setOutputFormatOpen(false), 5000);
+      outputFormatTimeoutRef.current = setTimeout(() => setOutputFormatOpen(false), 20000);
     } else {
       if (outputFormatTimeoutRef.current) {
         clearTimeout(outputFormatTimeoutRef.current);
