@@ -61,6 +61,8 @@ const InputBox = () => {
   
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  // Track if we've already shown a Runway base_resp toast to avoid duplicates
+  const runwayBaseRespToastShownRef = useRef(false);
 
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
@@ -609,6 +611,7 @@ const InputBox = () => {
             // Poll via backend status route; stop on completion or terminal error
             let imageUrl: string | undefined;
             let terminalError: string | undefined;
+            let baseRespToastShown = false;
             for (let attempts = 0; attempts < 360; attempts++) {
               const status = await dispatch(runwayStatus(result.taskId)).unwrap();
               // Capture backend historyId if frontend one wasn't created
@@ -619,14 +622,23 @@ const InputBox = () => {
               const mapped = mapRunwayStatus(status);
               if (mapped && mapped.shouldStop) {
                 terminalError = mapped.message;
-                if (mapped.toastType === 'error') toast.error(mapped.message);
+                if (mapped.toastType === 'error' && !runwayBaseRespToastShownRef.current && !baseRespToastShown) {
+                  toast.error(mapped.message);
+                  runwayBaseRespToastShownRef.current = true;
+                  baseRespToastShown = true;
+                }
+                // Stop loader immediately
+                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setIsGeneratingLocally(false);
                 break;
               }
               // Also stop on explicit failure/cancelled statuses from backend/provider
               const s = String(status?.status || '').toUpperCase();
               if (s === 'FAILED' || s === 'CANCELLED' || s === 'THROTTLED') {
                 terminalError = (status?.failure as string) || 'Runway task did not complete';
-                toast.error(terminalError);
+                if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
+                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setIsGeneratingLocally(false);
                 break;
               }
               if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
@@ -724,8 +736,9 @@ const InputBox = () => {
           } catch (error) {
             console.error(`Runway generation failed for image ${index + 1}:`, error);
             anyFailures = true;
-
-            toast.error(`Failed to generate image ${index + 1} with Runway: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            if (!runwayBaseRespToastShownRef.current) {
+              toast.error(`Failed to generate image ${index + 1} with Runway: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
 
             return { success: false, index, error };
           }
@@ -1204,11 +1217,15 @@ const InputBox = () => {
         await handleGenerationFailure(transactionId);
       }
 
-      // Show error notification
-      toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+      // Show error notification (skip if a Runway base_resp toast already shown)
+      if (!runwayBaseRespToastShownRef.current) {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+      }
     } finally {
       // Always reset local generation state
       setIsGeneratingLocally(false);
+      // Reset the base_resp toast guard for next run
+      runwayBaseRespToastShownRef.current = false;
     }
   };
 
