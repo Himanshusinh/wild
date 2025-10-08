@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import axiosInstance from '@/lib/axiosInstance';
+import { getIsPublic } from '@/lib/publicFlag';
 import ModelsDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ModelsDropdown';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
@@ -77,8 +78,7 @@ const EditImageInterface: React.FC = () => {
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
-      let isPublic = false;
-      try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      const isPublic = await getIsPublic();
 
       if (selectedFeature === 'remove-bg') {
         const body: any = {
@@ -130,7 +130,8 @@ const EditImageInterface: React.FC = () => {
             ratio: mapToRunwayRatio(String(frameSize)),
             referenceImages: [{ uri: currentInput }],
             uploadedImages: [currentInput],
-            generationType: 'text-to-image'
+            generationType: 'text-to-image',
+            isPublic,
           };
           const res = await axiosInstance.post('/api/runway/generate', runwayPayload);
           const taskId = res?.data?.data?.taskId || res?.data?.taskId;
@@ -213,7 +214,8 @@ const EditImageInterface: React.FC = () => {
             frameSize: frameSize,
             generationType: 'text-to-image',
             uploadedImages: [currentInput],
-            style: 'realistic'
+            style: 'realistic',
+            isPublic,
           };
           const res = await axiosInstance.post('/api/bfl/generate', payload);
           const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';

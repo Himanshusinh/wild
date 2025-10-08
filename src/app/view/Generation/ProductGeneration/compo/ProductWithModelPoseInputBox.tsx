@@ -36,6 +36,7 @@ import ImageCountButton from './ImageCountButton';
 import ProductImagePreview from './ProductImagePreview';
 import GenerationModeDropdown from './GenerationModeDropdown';
 import { getApiClient } from '@/lib/axiosInstance';
+import { getIsPublic } from '@/lib/publicFlag';
 
 const ProductWithModelPoseInputBox = () => {
   const dispatch = useAppDispatch();
@@ -339,6 +340,7 @@ GENERATOR HINTS:
       
       if (selectedModel === 'gemini-25-flash-image') {
         // Route to FAL (Google Nano Banana) using axios with credentials (required for session cookie)
+        const isPublic = await getIsPublic();
         const payload = {
           prompt: backendPrompt,
           model: selectedModel,
@@ -348,6 +350,7 @@ GENERATOR HINTS:
             : [productImage].filter((img): img is string => img !== null),
           output_format: 'jpeg',
           generationType: 'product-generation',
+          isPublic,
         } as any;
 
         const api = getApiClient();
@@ -355,7 +358,7 @@ GENERATOR HINTS:
         result = (data?.data || data) as any;
       } else {
         // Route to BFL (Flux models)
-        let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+        const isPublic = await getIsPublic();
         result = await dispatch(bflGenerate({
           prompt: backendPrompt,
           model: selectedModel,
