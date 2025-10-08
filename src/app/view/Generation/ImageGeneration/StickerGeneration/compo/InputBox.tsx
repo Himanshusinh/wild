@@ -415,7 +415,7 @@ const InputBox = () => {
       <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
         <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl ">
+            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-white/10 rounded-2xl ">
               <h2 className="text-xl font-semibold text-white pl-0 ">Sticker Generation History</h2>
             </div>
             {/* Spacer to keep content below fixed header */}

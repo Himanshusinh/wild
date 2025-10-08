@@ -7,7 +7,12 @@ import { setSelectedModel } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
 import { getModelCreditInfo } from '@/utils/modelCredits';
 
-const ModelsDropdown = () => {
+type ModelsDropdownProps = {
+  openDirection?: 'up' | 'down';
+  imageOnly?: boolean;
+};
+
+const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropdownProps) => {
   const dispatch = useAppDispatch();
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const uploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
@@ -46,9 +51,10 @@ const ModelsDropdown = () => {
     };
   });
 
-  // If user uploaded images, restrict to models which support image inputs
+  // If imageOnly or user uploaded images, restrict to models which support image inputs
   let filteredModels = modelsWithCredits;
-  if (uploadedImages.length > 0) {
+  const restrictForImages = imageOnly || uploadedImages.length > 0;
+  if (restrictForImages) {
     filteredModels = modelsWithCredits.filter(m =>
       m.value.startsWith('flux-kontext') ||
       m.value === 'gen4_image' ||
@@ -124,7 +130,7 @@ const ModelsDropdown = () => {
 
       
       {activeDropdown === 'models' && ( 
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-3xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50`}>
           {filteredModels.map((model) => (
             <button
               key={model.value}
@@ -134,7 +140,7 @@ const ModelsDropdown = () => {
               }}
 
               className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                ? 'bg-white/20 text-white'
+                ? 'bg-white text-black'
                 : 'text-white/90 hover:bg-white/10'
                 }`}
             >
