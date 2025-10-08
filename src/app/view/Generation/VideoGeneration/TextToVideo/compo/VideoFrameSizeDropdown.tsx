@@ -7,6 +7,7 @@ interface VideoFrameSizeDropdownProps {
   selectedFrameSize: string;
   onFrameSizeChange: (frameSize: string) => void;
   selectedModel: string;
+  generationMode?: string;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
 }
@@ -15,6 +16,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   selectedFrameSize,
   onFrameSizeChange,
   selectedModel,
+  generationMode,
   onCloseOtherDropdowns,
   onCloseThisDropdown,
 }) => {
@@ -73,9 +75,26 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
     }
   }, [onCloseThisDropdown, isOpen]);
 
-  // Get available frame sizes based on model
+  // Get available frame sizes based on model and generation mode
   const getAvailableFrameSizes = () => {
-    if (selectedModel === "gen3a_turbo") {
+    if (selectedModel?.includes("veo3")) {
+      // Veo3 models support limited aspect ratios
+      if (generationMode === "image_to_video") {
+        // Veo3 image-to-video only supports auto, 16:9, 9:16
+        return [
+          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+        ];
+      } else {
+        // Veo3 text-to-video supports more ratios
+        return [
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
+          { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
+        ];
+      }
+    } else if (selectedModel === "gen3a_turbo") {
       return [
         { value: "16:10", label: "16:10", description: "1280×768 landscape", icon: "landscape" },
         { value: "10:16", label: "10:16", description: "768×1280 portrait", icon: "portrait" }

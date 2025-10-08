@@ -45,7 +45,7 @@ export const useCredits = () => {
   }, [dispatch, credits]);
 
   const validateVideoCredits = async (
-    provider: 'minimax' | 'runway',
+    provider: 'minimax' | 'runway' | 'fal',
     model: string,
     resolution?: string,
     duration?: number
@@ -217,7 +217,7 @@ export const useGenerationCredits = (
     clearCreditsError,
   } = useCredits();
 
-  const validateAndReserveCredits = async (provider?: 'minimax' | 'runway') => {
+  const validateAndReserveCredits = async (provider?: 'minimax' | 'runway' | 'fal') => {
     let requiredCredits: number;
     let validation: any;
 
