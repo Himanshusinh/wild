@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, useEffect } from "react"
 import axios from "axios"
-import axiosInstance from '@/lib/axiosInstance'
+import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
 import { useUsernameAvailability } from "./useUsernameAvailability"
 import { getImageUrl } from "@/routes/imageroute"
@@ -164,8 +164,8 @@ export default function SignInForm() {
 
         // Step 3: Create session
         console.log("🔄 Step 3: Creating session with backend...")
-        // Create session via same-origin Next proxy to ensure cookie is set on frontend domain
-        await axios.post('/api/auth/session',
+        // Create session directly on backend so cookie is set on API domain
+        await (axiosInstance || getApiClient()).post('/api/auth/session',
           { idToken: idToken },
           { withCredentials: true }
         )
@@ -377,7 +377,7 @@ export default function SignInForm() {
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
             const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-            const sessionResponse = await axios.post('/api/auth/session',
+            const sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
               { idToken: actualIdToken },
               { withCredentials: true }
             )
@@ -400,6 +400,7 @@ export default function SignInForm() {
               // Store user profile only; rely on httpOnly cookie for auth
               const createdUser = response.data?.data?.user || response.data?.user || response.data
               localStorage.setItem("user", JSON.stringify(createdUser))
+              try { localStorage.setItem('authToken', actualIdToken) } catch {}
               setShowUsernameForm(true)
               setOtp("")
               setOtpSent(false)
@@ -564,16 +565,18 @@ export default function SignInForm() {
 
           // Create session
           const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-          await axios.post('/api/auth/session',
+          const resp = await (axiosInstance || getApiClient()).post('/api/auth/session',
             { idToken: finalIdToken },
             { withCredentials: true }
           )
+          try { if (resp?.status === 200) { localStorage.setItem('authToken', finalIdToken) } } catch {}
 
           console.log("✅ Session created, redirecting...")
           toast.success('Logged in successfully')
 
           // Store user profile only; rely on httpOnly cookie for auth
           localStorage.setItem("user", JSON.stringify(userData))
+          try { localStorage.setItem('authToken', finalIdToken) } catch {}
           setIsRedirecting(true)
 
           setTimeout(() => {
@@ -651,7 +654,7 @@ export default function SignInForm() {
           const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
 
-          await axios.post('/api/auth/session',
+          const sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
             { idToken: finalIdToken },
             { withCredentials: true }
           )
@@ -730,7 +733,7 @@ export default function SignInForm() {
 
                 // Create session with the REAL ID token
                 console.log("🔄 Creating session with backend using ID token...")
-                const sessionResponse = await axios.post('/api/auth/session',
+                const sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
                   { idToken: actualIdToken },
                   { withCredentials: true }
                 )

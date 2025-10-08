@@ -235,7 +235,7 @@ axiosInstance.interceptors.response.use(
       }
       const freshIdToken = await currentUser.getIdToken(true)
       // Refresh session via same-origin Next.js proxy to avoid ngrok CORS
-      await axios.post(
+      await axiosInstance.post(
         '/api/auth/session',
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
