@@ -85,14 +85,18 @@ const ProfileManagement = () => {
         const responseData = response.data;
         
         const userData = responseData.data?.user || responseData.user || responseData;
+        try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch {}
         setUserData(userData);
         // setEditedUsername(userData.username || ''); // DISABLED
         
-        // Set public generations preference
+        // Set public generations preference with plan gating
         try {
           const stored = localStorage.getItem('isPublicGenerations');
           const server = userData && (userData as any).isPublic;
-          const next = (stored != null) ? (stored === 'true') : Boolean(server);
+          const planRaw = String(userData?.plan || '').toUpperCase();
+          const canToggle = (userData as any)?.canTogglePublicGenerations === true || /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D';
+          const next = canToggle ? ((stored != null) ? (stored === 'true') : Boolean(server)) : true;
+          if (!canToggle) { try { localStorage.setItem('isPublicGenerations', 'true') } catch {} }
           setIsPublic(next);
         } catch {}
 
@@ -242,17 +246,16 @@ const ProfileManagement = () => {
 
   // Handle public generations toggle
   const handleTogglePublic = async () => {
+    const planRaw = String(userData?.plan || '').toUpperCase();
+    const canToggle = /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D';
+    if (!canToggle) {
+      setIsPublic(true);
+      try { localStorage.setItem('isPublicGenerations', 'true'); } catch {}
+      return;
+    }
     const next = !isPublic;
     setIsPublic(next);
-    
-    try {
-      const api = getApiClient();
-      await api.patch('/api/auth/me', { isPublic: next });
-      localStorage.setItem('isPublicGenerations', String(next));
-    } catch (error) {
-      console.error('Error updating public setting:', error);
-      setIsPublic(!next); // Revert on error
-    }
+    try { localStorage.setItem('isPublicGenerations', String(next)); } catch {}
   };
 
   // Handle back navigation

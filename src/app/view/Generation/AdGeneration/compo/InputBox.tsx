@@ -90,7 +90,8 @@ const AdGenerationInputBox: React.FC = () => {
       console.log('[STEP 1] Analyzing product image...');
       console.time('[STEP 1] analyze-image');
       {
-        let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+        const { getIsPublic } = await import('@/lib/publicFlag');
+        const isPublic = await getIsPublic();
         await dispatch(bflGenerate({ prompt: `Analyze product image for ad generation.`, model: 'flux-kontext-pro', n: 1, frameSize: '1:1', isPublic })).unwrap();
       }
       console.timeEnd('[STEP 1] analyze-image');
@@ -99,7 +100,8 @@ const AdGenerationInputBox: React.FC = () => {
       console.log('[STEP 2] Generating prompts...');
       console.time('[STEP 2] generate-prompts');
       {
-        let isPublic = false; try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+        const { getIsPublic } = await import('@/lib/publicFlag');
+        const isPublic = await getIsPublic();
         await dispatch(bflGenerate({ prompt: `Create ad prompts for: ${script.trim()}. Requests: ${specialRequests}`, model: 'flux-kontext-pro', n: 1, frameSize: '1:1', isPublic })).unwrap();
       }
       console.timeEnd('[STEP 2] generate-prompts');
@@ -107,10 +109,12 @@ const AdGenerationInputBox: React.FC = () => {
       // Step 3: Submit video generation via Runway thunk
       console.log('[STEP 3] Submitting to video generation (Runway)...');
       console.time('[STEP 3] runway/video');
+      const { getIsPublic } = await import('@/lib/publicFlag');
+      const isPublic = await getIsPublic();
       const submitJson = await dispatch(runwayVideo({
         mode: 'text_to_video',
         textToVideo: { promptText: script.trim(), ratio: '1280:720' },
-        isPublic: (localStorage.getItem('isPublicGenerations') === 'true')
+        isPublic
       })).unwrap();
       console.timeEnd('[STEP 3] runway/video');
       const taskId: string | undefined = submitJson?.taskId;
@@ -183,10 +187,12 @@ const AdGenerationInputBox: React.FC = () => {
     setIsGeneratingLocal(true);
 
     try {
+      const { getIsPublic } = await import('@/lib/publicFlag');
+      const isPublic = await getIsPublic();
       const submit = await dispatch(runwayVideo({
         mode: 'text_to_video',
         textToVideo: { promptText: backendPrompt.script?.hook || 'Ad video', ratio: '1280:720' },
-        isPublic: (localStorage.getItem('isPublicGenerations') === 'true')
+        isPublic
       })).unwrap();
       const taskId: string | undefined = submit?.taskId;
       if (!taskId) throw new Error('Missing taskId for manual mode');

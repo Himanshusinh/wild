@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import LandingPage from './view/Landingpage/page';
 import HomePage from './view/HomePage/page';
 import PricingPage from './view/pricing/page';
@@ -15,19 +16,17 @@ export default function App() {
   const dispatch = useAppDispatch();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home'); // Default to 'home' instead of 'landing'
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
+  const pathname = usePathname();
   
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
 
-  // Always default to home page on first load
+  // Preserve landing when explicitly selected; don't force home on first load
   useEffect(() => {
-    if (isFirstLoad.current && currentView === 'landing') {
-      console.log('🔍 App - Setting currentView to home on first load');
-      dispatch(setCurrentView('home'));
-      isFirstLoad.current = false;
-    }
-  }, [dispatch, currentView]); // Only run once on mount
+    if (!isFirstLoad.current) return;
+    isFirstLoad.current = false;
+  }, [dispatch, currentView]);
 
   const handleViewChange = (view: ViewType) => {
     console.log('🔍 App - handleViewChange called with:', view, 'previous view was:', currentView);
@@ -49,6 +48,16 @@ export default function App() {
     dispatch(setCurrentView('generation'));
     console.log('🔍 App - Dispatched both actions to Redux');
   };
+
+  // Hard route-based overrides to avoid race conditions
+  if (pathname?.startsWith('/view/Landingpage')) {
+    console.log('🔍 App - Route override: rendering LandingPage for', pathname);
+    return <LandingPage />;
+  }
+  if (pathname?.startsWith('/view/HomePage')) {
+    console.log('🔍 App - Route override: rendering HomePage for', pathname);
+    return <HomePage />;
+  }
 
   // Render different views based on current state
   console.log('🔍 App - Rendering decision for currentView:', currentView);

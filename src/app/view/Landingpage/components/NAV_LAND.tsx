@@ -98,7 +98,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
     setIsLoggedIn(false)
     setUserSlug("")
     setIsUserDropdownOpen(false)
-    router.push("/")
+    router.push('/view/Landingpage')
   }
 
   return (
@@ -129,11 +129,11 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
          } transition-all duration-300 hidden `}
        >
         {/* Logo */}
-        <div className="flex w-10 h-10 pl-2 ml-3">
+        <div className="flex w-10 h-10 pl-2 ml-3 cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] desktop logo clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage') }}>
               {(() => {
             const logoUrl = getImageUrl("core", "logo");
             return logoUrl ? (
-              <Image src={logoUrl} width={25} height={15} alt="logo" onClick={() => router.push("/")} />
+              <Image src={logoUrl} width={25} height={15} alt="logo" />
             ) : null;
           })()}
             </div>
@@ -278,11 +278,11 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
           </button>
 
           {/* Logo and Name */}
-          <div className="flex items-center">
+          <div className="flex items-center cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] desktop brand clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage') }}>
           {(() => {
             const logoUrl = getImageUrl("core", "logo");
             return logoUrl ? (
-              <Image src={logoUrl} width={32} height={20} alt="logo" onClick={() => router.push("/")} />
+              <Image src={logoUrl} width={32} height={20} alt="logo" />
             ) : null;
           })()}
           <span className="text-white text-xl font-bold">WildMind</span>
@@ -331,12 +331,12 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
               ref={menuRef}
               className="fixed inset-y-0 left-0 w-80 bg-black z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-left"
             >
-              <div className="flex justify-between items-center p-4 border-b border-gray-800">
-                <div className="flex items-center">
+          <div className="flex justify-between items-center p-4 border-b border-gray-800">
+                <div className="flex items-center cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] mobile brand clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage'); setIsMobileMenuOpen(false) }}>
                           {(() => {
             const logoUrl = getImageUrl("core", "logo");
             return logoUrl ? (
-              <Image src={logoUrl} width={32} height={20} alt="logo" onClick={() => router.push("/")} />
+              <Image src={logoUrl} width={32} height={20} alt="logo" />
             ) : null;
           })()}
                 <span className="text-white text-xl font-bold">WildMind</span>

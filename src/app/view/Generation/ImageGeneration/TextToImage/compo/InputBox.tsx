@@ -39,6 +39,7 @@ import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
+import { getIsPublic } from '@/lib/publicFlag';
 import { Button } from "@/components/ui/Button";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import axiosInstance from "@/lib/axiosInstance";
@@ -433,9 +434,8 @@ const InputBox = () => {
     // No local writes to global history; backend tracks persistent history
 
     let firebaseHistoryId: string | undefined;
-    // Read isPublic preference
-    let isPublic = false;
-    try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+    // Read isPublic from backend policy (fallbacks handled internally)
+    const isPublic = await getIsPublic();
 
     try {
       // Check if it's a Runway model

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import axiosInstance from '@/lib/axiosInstance';
+import { getIsPublic } from '@/lib/publicFlag';
 import { X } from 'lucide-react';
 
 interface RemoveBgPopupProps {
@@ -41,8 +42,7 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
     if (!image) return;
     setLoading(true);
     try {
-      let isPublic = false;
-      try { isPublic = (localStorage.getItem('isPublicGenerations') === 'true'); } catch {}
+      const isPublic = await getIsPublic();
       const body: any = { image, format, isPublic, model };
       if (reverse) body.reverse = true;
       if (threshold) body.threshold = threshold;

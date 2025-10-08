@@ -111,6 +111,7 @@ const Nav = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('[Logout][HomeNav] begin')
       // Clear local storage
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
@@ -120,7 +121,9 @@ const Nav = () => {
       
       // Call logout API using axios
       const api = getApiClient()
+      console.log('[Logout][HomeNav] calling /api/auth/logout')
       await api.post('/api/auth/logout')
+      console.log('[Logout][HomeNav] logout API success')
       
       // Clear history stack: prevent navigating back into the app
       if (typeof window !== 'undefined') {
@@ -130,12 +133,13 @@ const Nav = () => {
             history.pushState(null, document.title, location.href)
           })
         } catch {}
-        window.location.replace('/view/Landingpage')
+        console.log('[Logout][HomeNav] redirecting to landing')
+        window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
       }
     } catch (error) {
       console.error('Logout error:', error)
       // Still redirect even if API call fails
-      if (typeof window !== 'undefined') window.location.replace('/view/Landingpage')
+      if (typeof window !== 'undefined') window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED')
     }
   }
 

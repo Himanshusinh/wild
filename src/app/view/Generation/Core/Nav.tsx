@@ -6,6 +6,7 @@ import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { useCredits } from '../../../../hooks/useCredits'
 import { NAV_ROUTES } from '../../../../routes/routes'
+import toast from 'react-hot-toast'
 
 interface UserData {
   uid: string
@@ -52,11 +53,21 @@ const Nav = () => {
         const response = await api.get('/api/auth/me')
         const payload = response.data
         const user = payload?.data?.user || payload?.user || payload
+        try { console.log('[PublicGen][me] plan:', user?.plan, 'canTogglePublicGenerations:', (user as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (user as any)?.forcePublicGenerations) } catch {}
         setUserData(user || null)
         try {
           const stored = localStorage.getItem('isPublicGenerations')
           const server = (user && (user as any).isPublic)
-          const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : true)
+          // Plan-based gating: only Plan C/D may toggle; otherwise force true
+          const planRaw = String((user as any)?.plan || '').toUpperCase()
+          const isPlanCOrD = (user as any)?.canTogglePublicGenerations === true || /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D'
+          let next = true
+          if (isPlanCOrD) {
+            next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : true)
+          } else {
+            // Force true and persist for consumers
+            try { localStorage.setItem('isPublicGenerations', 'true') } catch {}
+          }
           setIsPublic(next)
         } catch { }
 
@@ -75,17 +86,21 @@ const Nav = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('[Logout] begin')
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
       document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
       const api = getApiClient()
+      console.log('[Logout] calling /api/auth/logout')
       await api.post('/api/auth/logout')
+      console.log('[Logout] logout API success')
       // Defer toast to landing page after redirect
       try { localStorage.setItem('toastMessage', 'LOGOUT_SUCCESS'); } catch {}
     } catch { }
     // Hard redirect to clear history and prevent back navigation
     if (typeof window !== 'undefined') {
       try {
+        console.log('[Logout] clearing history and redirecting')
         history.pushState(null, document.title, location.href)
         window.addEventListener('popstate', () => {
           history.pushState(null, document.title, location.href)
@@ -203,15 +218,19 @@ const Nav = () => {
                       <button
                         type='button'
                         aria-pressed={isPublic}
-                        onClick={async () => {
-                          const next = !isPublic
-                          setIsPublic(next)
-                          try {
-                            const api = getApiClient()
-                            await api.patch('/api/auth/me', { isPublic: next })
-                          } catch { }
-                          try { localStorage.setItem('isPublicGenerations', String(next)) } catch { }
-                        }}
+                      onClick={async () => {
+                        const planRaw = String(userData?.plan || '').toUpperCase()
+                        const canToggle = /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D'
+                        if (!canToggle) {
+                          toast('Public generations are always enabled on your plan')
+                          setIsPublic(true)
+                          try { localStorage.setItem('isPublicGenerations', 'true') } catch {}
+                          return
+                        }
+                        const next = !isPublic
+                        setIsPublic(next)
+                        try { localStorage.setItem('isPublicGenerations', String(next)) } catch { }
+                      }}
                         className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
                       >
                         <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0.5 left-0.5`} />

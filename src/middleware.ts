@@ -36,26 +36,12 @@ export function middleware(req: NextRequest) {
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
 
-  // Temporary bypass when backend runs on ngrok (cookie is on ngrok domain and not visible here)
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-  const bypassForNgrok = /ngrok/i.test(apiBase);
-  if (bypassForNgrok) {
-    return res;
-  }
-
-  // Dev bypass: when frontend runs on localhost and API is on a different domain (e.g., ngrok),
-  // the httpOnly session cookie is scoped to the API domain and is not visible here.
-  // Allow navigation without enforcing the cookie in non-production environments.
-  const host = req.headers.get('host') || '';
-  if (process.env.NODE_ENV !== 'production' || host.includes('localhost')) {
-    return res;
-  }
+  // Enforce auth for protected routes in all environments
 
   // Allow public pages
   const isPublic = (
     pathname === '/' ||
     pathname.startsWith('/view/Landingpage') ||
-    pathname.startsWith('/view/HomePage') ||
     pathname.startsWith('/view/ArtStation') ||
     pathname.startsWith('/view/signup') ||
     pathname.startsWith('/view/signin') ||
@@ -71,8 +57,11 @@ export function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    redirect.headers.set('X-Auth-Decision', 'redirect-signup');
+    return redirect;
   }
+  res.headers.set('X-Auth-Decision', 'allow');
   return res;
 }
 
