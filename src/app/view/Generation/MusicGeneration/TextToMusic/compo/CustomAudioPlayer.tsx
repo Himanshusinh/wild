@@ -64,7 +64,7 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
   }, [autoPlay, audioUrl]);
 
   const togglePlay = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !audioUrl || audioUrl.trim() === '') return;
     
     if (isPlaying) {
       audioRef.current.pause();
@@ -146,6 +146,11 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
   };
 
   const handleDownload = async () => {
+    if (!audioUrl || audioUrl.trim() === '') {
+      console.error('No audio URL available for download');
+      return;
+    }
+    
     try {
       const ext = getExtensionFromUrl(audioUrl) || 'mp3';
       const filename = `${model || 'audio'}-${Date.now()}.${ext}`;

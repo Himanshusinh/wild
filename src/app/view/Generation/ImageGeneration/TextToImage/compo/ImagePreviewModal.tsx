@@ -22,19 +22,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const dispatch = useAppDispatch();
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
-  const toProxyPath = (urlOrPath: string | undefined) => {
+  const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
     if (urlOrPath.startsWith(ZATA_PREFIX)) {
       return urlOrPath.substring(ZATA_PREFIX.length);
     }
     return urlOrPath;
-  };
+  }, []);
 
-  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
+  const toProxyResourceUrl = React.useCallback((urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
     return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}?ngrok-skip-browser-warning=true` : '';
-  };
+  }, [API_BASE, toProxyPath]);
   
   // Move all hooks to the top before any conditional returns
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
