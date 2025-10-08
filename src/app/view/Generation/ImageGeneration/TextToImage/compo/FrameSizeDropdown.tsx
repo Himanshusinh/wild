@@ -6,7 +6,11 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setFrameSize } from '@/store/slices/generationSlice';
 import { toggleDropdown } from '@/store/slices/uiSlice';
 
-const FrameSizeDropdown = () => {
+type FrameSizeDropdownProps = {
+  openDirection?: 'up' | 'down';
+};
+
+const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => {
   const dispatch = useAppDispatch();
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
@@ -101,7 +105,7 @@ const FrameSizeDropdown = () => {
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'frameSize' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'frameSize' && (
-        <div className="absolute bottom-full left-0 mb-2 w-44 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-44 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2`}>
           {frameSizes.map((size) => (
             <button
               key={size.value}

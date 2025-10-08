@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -46,6 +46,7 @@ import axiosInstance from "@/lib/axiosInstance";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -1168,7 +1169,7 @@ const InputBox = () => {
         <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-2 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-white/10 backdrop-blur-xl shadow-xl md:pl-6 pl-4 border border-white/10 rounded-2xl ">
+            <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-white/10 backdrop-blur-lg shadow-xl md:pl-6 pl-4 border border-white/10 rounded-2xl ">
               <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
@@ -1586,7 +1587,7 @@ const InputBox = () => {
                   borderRadius="1.5rem"
                   containerClassName="h-10 w-auto"
                   className="bg-black text-white px-4 py-2"
-                  onClick={() => setIsEditOpen(true)}
+                  onClick={() => router.push('/edit-image')}
                 >
                   <div className="flex items-center gap-2">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white/80">
