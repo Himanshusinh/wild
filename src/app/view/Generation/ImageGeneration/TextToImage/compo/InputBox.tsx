@@ -1506,7 +1506,7 @@ const InputBox = () => {
               )}
               <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0">
                 <Image
-                  src="/icons/fileuploadwhite.svg"
+                  src="/icons/fileupload.svg"
                   alt="Attach"
                   width={18}
                   height={18}
