@@ -389,7 +389,7 @@ export default function ArtStationPage() {
   return (
     <div className="min-h-screen bg-black">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
-      <div className="flex pt-[80px]">
+      <div className="flex pt-10">
         <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => {}} onGenerationTypeChange={() => {}} onWildmindSkitClick={() => {}} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
           <div className="mb-6 sm:mb-8">
@@ -410,7 +410,7 @@ export default function ArtStationPage() {
                   onClick={() => setActiveCategory(category)}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
                     activeCategory === category
-                      ? 'bg-[#2D6CFF] border-[#2D6CFF] text-white shadow-sm'
+                      ? 'bg-white border-white/5 text-black shadow-sm'
                       : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >

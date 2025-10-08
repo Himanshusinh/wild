@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Share, Trash2 } from 'lucide-react';
 import UpscalePopup from './UpscalePopup';
 import RemoveBgPopup from './RemoveBgPopup';
+import ResizePopup from './ResizePopup';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '@/store/hooks';
 import { setUploadedImages } from '@/store/slices/generationSlice';
@@ -41,6 +42,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [objectUrl, setObjectUrl] = React.useState<string>('');
   const [showUpscale, setShowUpscale] = React.useState(false);
   const [showRemoveBg, setShowRemoveBg] = React.useState(false);
+  const [showResize, setShowResize] = React.useState(false);
   const router = useRouter();
   const appDispatch = useAppDispatch();
   
@@ -392,7 +394,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 >
                   Remove background
                 </button>
+                
               </div>
+
+              <div className="flex gap-2">
+              <button
+                  onClick={() => setShowResize(true)}
+                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                >
+                  Resize
+                </button>
               <button
                 onClick={() => {
                   try {
@@ -405,10 +416,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     onClose();
                   } catch {}
                 }}
-                className="w-full px-4 py-2.5 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
                 Remix in editor
               </button>
+              </div>
+              
             </div>
           </div>
         </div>
@@ -420,6 +433,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       {showRemoveBg && (
         <RemoveBgPopup isOpen={showRemoveBg} onClose={() => setShowRemoveBg(false)} defaultImage={objectUrl || selectedImage?.url || preview.image.url} />
       )}
+  {showResize && (
+    <ResizePopup isOpen={showResize} onClose={() => setShowResize(false)} defaultImage={objectUrl || selectedImage?.url || preview.image.url} />
+  )}
     </div>
   );
 };

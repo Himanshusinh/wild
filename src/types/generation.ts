@@ -10,6 +10,7 @@ export type GenerationType =
   | 'product-generation'
   | 'ad-generation'
   | 'live-chat'
-  | 'logo-generation';
+  | 'logo-generation'
+  | 'edit-image';
 
 

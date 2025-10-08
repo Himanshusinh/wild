@@ -44,6 +44,9 @@ const SidePannelFeatures = ({
       case 'text-to-music':
         router.push('/text-to-music');
         return;
+      case 'edit-image':
+        router.push('/edit-image');
+        return;
       default:
         return;
     }
@@ -93,7 +96,7 @@ const SidePannelFeatures = ({
 
   return (
     <div
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-4 py-0 md:px-3 px-1 group transition-all text-white duration-200 bg-white/10 backdrop-blur-2xl md:w-[68px] w-[50px] hover:w-60 z-40 border border-white/10 shadow-2xl'
+      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200 bg-white/10 backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40 border border-white/10 shadow-2xl'
       style={{
         borderTopLeftRadius: '16px',
         borderBottomLeftRadius: '16px',
@@ -112,7 +115,7 @@ const SidePannelFeatures = ({
             } catch { }
             router.push(APP_ROUTES.LANDING);
           }}
-          className="md:w-[32px] md:h-[32px] w-[25px] h-[25px] flex-none">
+          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none">
           <Image
             src={imageRoutes.core.logo}
             alt="Wild Mind Logo"
@@ -166,6 +169,17 @@ const SidePannelFeatures = ({
         >
           <Image src="/icons/musicgenerationwhite.svg" alt="Music Generation" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Music Generation</span>
+        </div>
+      </div>
+
+      <div>
+        <div
+          onClick={() => handleGenerationTypeChange('edit-image')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/10' : ''
+            }`}
+        >
+          <Image src="/icons/imagegenerationwhite.svg" alt="Edit Image" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Edit Image</span>
         </div>
       </div>
 

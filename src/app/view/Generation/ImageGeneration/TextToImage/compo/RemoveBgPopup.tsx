@@ -127,16 +127,16 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
               </div>
               <div>
                 <label className="text-sm text-white/80">Background Type</label>
-                <input value={backgroundType} onChange={(e)=>setBackgroundType(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-1  text-white text-sm" />
+                <input value={backgroundType} onChange={(e)=>setBackgroundType(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2  text-white text-sm" />
               </div>
               <div>
                 <label className="text-sm text-white/80">Threshold (0-1)</label>
-                <input type="number" min={0} max={1} step={0.05} value={threshold} onChange={(e)=>setThreshold(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-1 text-white text-sm" />
+                <input type="number" min={0} max={1} step={0.05} value={threshold} onChange={(e)=>setThreshold(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm" />
               </div>
-              <div className="flex items-end gap-2">
+              {/* <div className="flex items-end gap-2">
                 <input id="rev" type="checkbox" checked={reverse} onChange={(e)=>setReverse(e.target.checked)} />
                 <label htmlFor="rev" className="text-sm text-white/80">Reverse (remove foreground)</label>
-              </div>
+              </div> */}
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={inline ? (()=>{ setImage(null); }) : onClose} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/10 px-4 py-2 rounded-lg">{inline ? 'Clear' : 'Cancel'}</button>

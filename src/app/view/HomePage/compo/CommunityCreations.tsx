@@ -6,15 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from "next/image";
 
 /* ---------- Types ---------- */
-type Category =
-  | "Trending"
-  | "All"
-  | "Upscaled"
-  | "Video"
-  | "Photography"
-  | "Animals"
-  | "Food"
-  | "Character";
+type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
 
 export interface Creation {
   id: string;
@@ -23,6 +15,7 @@ export interface Creation {
   categories: Category[];
   width?: number;
   height?: number;
+  createdBy?: string;
 }
 
 /* ---------- Small inline icons (no extra deps) ---------- */
@@ -72,17 +65,15 @@ const Icon = {
   ),
 };
 
-/* ---------- Chip meta for ordering & separators ---------- */
-const CHIPS: { key: Category; label: string; icon: React.ReactElement; group?: string }[] = [
-  { key: "Trending", label: "Trending", icon: Icon.fire, group: "A" },
-  { key: "All", label: "All", icon: Icon.grid, group: "B" },
-  { key: "Upscaled", label: "Upscaled", icon: Icon.grid, group: "B" },
-  { key: "Video", label: "Video", icon: Icon.video, group: "B" },
-  { key: "All", label: "All", icon: Icon.grid, group: "C" }, // if you want a second "All" like the screenshot; remove if not needed
-  { key: "Photography", label: "Photography", icon: Icon.camera, group: "C" },
-  { key: "Animals", label: "Animals", icon: Icon.paw, group: "C" },
-  { key: "Food", label: "Food", icon: Icon.burger, group: "C" },
-  { key: "Character", label: "Character", icon: Icon.user, group: "C" },
+/* ---------- Chip meta aligned with ArtStation categories ---------- */
+const CHIPS: { key: Category; label: string; icon: React.ReactElement }[] = [
+  { key: 'All', label: 'All', icon: Icon.grid },
+  { key: 'Images', label: 'Images', icon: Icon.camera },
+  { key: 'Videos', label: 'Videos', icon: Icon.video },
+  { key: 'Music', label: 'Music', icon: Icon.grid },
+  { key: 'Logos', label: 'Logos', icon: Icon.grid },
+  { key: 'Stickers', label: 'Stickers', icon: Icon.grid },
+  { key: 'Products', label: 'Products', icon: Icon.grid },
 ];
 
 /* ---------- Pill Button ---------- */
@@ -102,13 +93,11 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={[
-        "inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all",
-        "border border-white/10",
+      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
         active
-          ? "bg-[#2D6CFF] border-[#2D6CFF] text-white shadow-sm"
-          : "bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10",
-      ].join(" ")}
+          ? 'bg-white  text-black shadow-sm'
+          : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+      }`}
     >
       {leftIcon && <span className="text-white/90">{leftIcon}</span>}
       {children}
@@ -120,32 +109,45 @@ function Chip({
 /* ---------- Card (unchanged) ---------- */
 function Card({ item }: { item: Creation }) {
   const ratio = item.width && item.height ? item.height / item.width : 4 / 5;
+  const src = item.src || ''
+  const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
+  const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
+
   return (
     <div className="break-inside-avoid mb-5">
       <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
-        <div style={{ aspectRatio: `${1 / ratio}` }}>
-          <Image
-            src={item.src}
-            alt={item.prompt ?? "creation"}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover"
-          />
+        <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
+          {isAudio ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
+              <div className="flex flex-col items-center text-white/80">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                </svg>
+                <span className="text-xs mt-2">Audio</span>
+              </div>
+            </div>
+          ) : isVideo ? (
+            <video src={src} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
+          ) : (
+            <Image
+              src={src}
+              alt={item.prompt ?? "creation"}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+            />
+          )}
         </div>
         <div className="absolute inset-x-0 bottom-0 p-3">
           <div className="rounded-xl bg-black/40 backdrop-blur-sm p-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
-            <p className="text-[13px] leading-snug text-white/90 line-clamp-2">
-              {item.prompt ?? "—"}
-            </p>
-            <div className="mt-3">
-              <button className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#2D6CFF] hover:bg-[#255fe6] text-white text-sm font-medium py-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 12a9 9 0 1 0 9-9" />
-                  <path d="M3 3v6h6" />
-                </svg>
-                Remix
-              </button>
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] leading-snug text-white/90 line-clamp-2">
+                {item.prompt ?? "—"}
+              </p>
             </div>
+            {item.createdBy && (
+              <div className="mt-2 text-white/80 text-xs">By {item.createdBy}</div>
+            )}
           </div>
         </div>
         <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-2xl pointer-events-none transition" />
@@ -157,7 +159,7 @@ function Card({ item }: { item: Creation }) {
 /* ---------- Main component ---------- */
 export default function CommunityCreations({
   items,
-  initialFilter = "Trending",
+  initialFilter = "All",
   className = "",
 }: {
   items: Creation[];
@@ -168,17 +170,13 @@ export default function CommunityCreations({
   const router = useRouter();
 
   const filtered = useMemo(() => {
-    if (active === "All") return items;
-    if (active === "Trending") {
-      return items.filter(
-        (i) =>
-          i.categories.includes("Trending") ||
-          i.categories.includes("Character") ||
-          i.categories.includes("Photography")
-      );
-    }
+    if (active === 'All') return items;
     return items.filter((i) => i.categories.includes(active));
   }, [active, items]);
+
+  // Limit to ~4-5 rows (with 4 columns ≈ 16-20 items)
+  const limited = useMemo(() => filtered.slice(0, 20), [filtered]);
+  const showOverlay = useMemo(() => active === 'All' && limited.length >= 12, [active, limited]);
 
   return (
     <section className={`w-full ${className}`}>
@@ -186,57 +184,58 @@ export default function CommunityCreations({
         Community Creations
       </h2>
 
-      {/* Filter bar — visually matches screenshot */}
-      <div className="relative mb-6 -mx-2">
-        <div className="flex items-center gap-3 overflow-x-auto px-2 pb-2 pt-2 scrollbar-none">
+      {/* Filter bar + Explore link */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
           {CHIPS.map((chip, idx) => {
             const isActive = chip.key === active;
-            const next = CHIPS[idx + 1];
-            const needsDivider = next && chip.group !== next.group;
-
             return (
-              <React.Fragment key={`${chip.label}-${idx}`}>
-                <Chip
-                  active={isActive}
-                  onClick={() => setActive(chip.key)}
-                  leftIcon={chip.icon}
-                  rightIcon={chip.key === "Trending" ? Icon.chevronDown : undefined}
-                >
-                  {chip.label}
-                </Chip>
-
-                {needsDivider && (
-                  <span className="h-6 w-px bg-white/10 shrink-0" />
-                )}
-              </React.Fragment>
+              <Chip
+                key={`${chip.label}-${idx}`}
+                active={isActive}
+                onClick={() => setActive(chip.key)}
+              >
+                {chip.label}
+              </Chip>
             );
           })}
+          <div className="ml-auto">
+            <button
+              onClick={() => router.push('/view/ArtStation')}
+              className="shrink-0 text-white/80 hover:text-white text-sm font-medium transition-colors"
+              title="Explore Art Station"
+            >
+              Explore Art Station →
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Masonry grid with overlay */}
+      {/* Masonry grid with conditional overlay */}
       <div className="relative">
         <div className="columns-1 sm:columns-2 md:columns-4 lg:columns-4 xl:columns-4 gap-5 ">
-          {filtered.map((item) => (
+          {limited.map((item) => (
             <Card key={item.id} item={item} />
           ))}
         </div>
-        
-        {/* Explore Art Station Overlay - positioned over the images */}
-        <div className="absolute bottom-0 left-0 right-0 h-[40rem] bg-gradient-to-t from-black/70 via-black/60 to-transparent z-10 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-black/40 via-black/60 to-transparent z-10 pointer-events-none" />
-        
-        {/* Clickable text overlay - centered in the gradient */}
-        <div onClick={() => router.push('/view/ArtStation')} className="absolute bottom-0 left-0 right-0 h-[40rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto">
-          <div className="text-center">
-            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
-              Explore Art Station
-            </h3>
-            <p className="text-white/80 text-lg font-medium">
-              Discover more amazing creations
-            </p>
-          </div>
-        </div>
+        {showOverlay && (
+          <>
+            {/* Explore Art Station Overlay - positioned over the images */}
+            <div className="absolute bottom-0 left-0 right-0 h-[28rem] md:h-[32rem] bg-gradient-to-t from-black/70 via-black/60 to-transparent z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-64 md:h-80 bg-gradient-to-t from-black/40 via-black/60 to-transparent z-10 pointer-events-none" />
+            {/* Clickable text overlay - centered in the gradient */}
+            <div onClick={() => router.push('/view/ArtStation')} className="absolute bottom-0 left-0 right-0 h-[28rem] md:h-[32rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto">
+              <div className="text-center">
+                <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
+                  Explore Art Station
+                </h3>
+                <p className="text-white/80 text-lg font-medium">
+                  Discover more amazing creations
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

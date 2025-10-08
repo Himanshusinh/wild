@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
@@ -149,7 +149,9 @@ export default function MainLayout({
         onWildmindSkitClick={() => setShowWildmindSkitPopup(true)}
       />
       <div className="ml-[68px] pt-[62px]">
-        <PageRouter />
+        <Suspense fallback={null}>
+          <PageRouter />
+        </Suspense>
       </div>
       <NotificationToast />
       
