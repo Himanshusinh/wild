@@ -291,12 +291,12 @@ const Nav = () => {
                   </button>
 
                   {/* Theme Toggle */}
-                  <button 
+                  {/* <button 
                     onClick={toggleTheme}
                     className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
                   >
                     <span className='text-white text-sm'>Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-                  </button>
+                  </button> */}
 
                   {/* Make generations public toggle */}
                   <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
