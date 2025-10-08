@@ -70,7 +70,9 @@ export const imageRoutes: FolderImageRoutes = {
 
     // Header video
     header: {
-        heroVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FXdownloader.Com%200Xframer%20Dcd80_2.mp4?alt=media&token=3cca7354-2269-4c7c-b9ac-1c8455032d4d'
+        heroVideo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FKLING_Ultra_Real_Text_to_Video_Model%20(1).mp4?alt=media&token=e1312e5a-cdf5-4df2-8f4f-1c0bc5195382',
+        heroVideo2: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2F20251008_0132_New%20Video_simple_compose_01k71f5qnke1wvf4xz99y098ws.mp4?alt=media&token=04748dd2-ee1a-4515-b85c-d51d84c111b7',
+        heroVideo3: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FVeo_Cinematic_Intelligence_Reimagined.mp4?alt=media&token=f04a1a44-4290-47b9-822f-ca62bcffbd45',
     },
 
     // Pricing section

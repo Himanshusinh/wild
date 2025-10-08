@@ -45,7 +45,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#07070B]">
       {/* Navigation - fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Nav />
@@ -68,42 +68,37 @@ export default function Home() {
               <h2 className="head text-4xl font-semibold text-center mt-20">Plans Made for Everyone</h2>
               <p className="line text-center font-xs">Scalable solutions tailored to teams of all sizes.</p>
 
-              {/* Toggle Switch */}
-              <div className="flex items-center justify-center mt-10 ">
-                <div className="relative">
-                  {/* Toggle Container */}
-                  <div className="relative bg-[#1C303D] rounded-full p-1 w-52 h-12 ring-1 ring-white/15 overflow-visible">
-                    {/* Ambient gradient glow */}
-                    <div className={`pointer-events-none absolute -inset-6 rounded-full blur-2xl transition-opacity duration-500 ${isAnnual ? 'opacity-60 bg-gradient-to-r from-blue-500/20 via-cyan-400/20 to-teal-400/20' : 'opacity-40 bg-gradient-to-r from-indigo-400/20 via-purple-400/20 to-pink-400/20'}`} />
-                    {/* Sliding Background */}
-                    <div
-                      className={`absolute top-1 bottom-1 w-22 rounded-full bg-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] transition-transform duration-500 ease-[cubic-bezier(.2,.8,.2,1)] transform-gpu ${isAnnual
-                          ? 'translate-x-28 scale-105'
-                          : 'translate-x-0 scale-105'
-                        }`}
+              {/* Toggle Switch - simplified style like reference */}
+              <div className="flex items-center justify-center mt-10">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setIsAnnual(false)}
+                    aria-pressed={!isAnnual}
+                    className={`text-base font-medium transition-colors ${!isAnnual ? 'text-white' : 'text-white/70'}`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAnnual(!isAnnual)}
+                    aria-label="Toggle billing period"
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-300 ${isAnnual ? 'bg-[#1C303D]' : 'bg-white'}`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full shadow transition-transform duration-300 ${isAnnual ? 'bg-white translate-x-7' : 'bg-[#1C303D] translate-x-1'}`}
                     />
-
-                    {/* Monthly Option */}
-                    <button
-                      onClick={() => setIsAnnual(false)}
-                      className={`absolute left-1 top-1 bottom-1 w-22 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none ${!isAnnual ? 'text-[#1C303D] translate-y-[-1px]' : 'text-white opacity-80'
-                        }`}
-                    >
-                      <span className="text-sm font-medium ">Monthly</span>
-                    </button>
-
-                    {/* Annually Option with anchored badge */}
-                    <div className="absolute right-1 top-1 bottom-1 w-22 flex items-center justify-center">
-                      <div className={`absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-semibold px-3 py-1 ml-10 rounded-3xl whitespace-nowrap shadow-md ${isAnnual ? 'opacity-100' : 'opacity-100'}`}>
-                        Save 20% on everything
-                      </div>
-                      <button
-                        onClick={() => setIsAnnual(true)}
-                        className={`w-full rounded-full flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none ${isAnnual ? 'text-[#1C303D] translate-y-[-1px]' : 'text-white opacity-80'}`}
-                      >
-                        <span className="text-sm font-medium">Annually</span>
-                      </button>
+                  </button>
+                  <div className="relative flex items-center justify-center">
+                    <div className=" ml-16 absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-3xl whitespace-nowrap shadow-md">
+                      Save 20% on everything
                     </div>
+                    <button
+                      onClick={() => setIsAnnual(true)}
+                      aria-pressed={isAnnual}
+                      className={`text-base font-medium transition-colors ${isAnnual ? 'text-white' : 'text-white/70'}`}
+                    >
+                      Annually
+                    </button>
                   </div>
                 </div>
               </div>
@@ -132,8 +127,10 @@ export default function Home() {
                 <FAQs />
               </div>
             </section>
-
-            <FooterNew />
+                
+            <div className="w-full bg-[#0C0C10]">
+              <FooterNew />
+            </div>
           </main>
         </div>
       </div>
