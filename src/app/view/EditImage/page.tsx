@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
 import EditImageInterface from './compo/EditImageInterface';
 import { ViewType, GenerationType } from '@/types/generation';
@@ -31,7 +31,9 @@ const EditImagePage = () => {
         currentView={currentView}
         currentGenerationType={currentGenerationType}
       />
-      <EditImageInterface />
+      <Suspense fallback={<div className="p-4 text-white/70">Loading editor…</div>}>
+        <EditImageInterface />
+      </Suspense>
     </div>
   );
 };
