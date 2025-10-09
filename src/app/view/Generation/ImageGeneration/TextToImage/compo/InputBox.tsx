@@ -1295,7 +1295,7 @@ const InputBox = () => {
                         </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full">
-                          <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-cover" sizes="192px" />
+                          <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
                         </div>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
@@ -1360,7 +1360,7 @@ const InputBox = () => {
                               </div>
                             ) : image.url ? (
                               <div className="relative w-full h-full">
-                                <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-cover" sizes="192px" />
+                                <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
                               </div>
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
@@ -1412,7 +1412,7 @@ const InputBox = () => {
                                 src={image.url}
                                 alt={entry.prompt}
                                 fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200 "
+                                className="object-contain group-hover:scale-105 transition-transform duration-200 "
                                 sizes="192px"
                                 onLoad={() => {
                                   // Remove shimmer when image loads
