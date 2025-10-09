@@ -84,21 +84,34 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
   }
 
   const handleLogout = async () => {
+    try { await signOut(auth) } catch {}
     try {
-      await signOut(auth)
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
+      try {
+        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; ${expired}; SameSite=Lax`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`
+      } catch {}
     } catch {}
-    
-    // Preserve user tokens by only removing auth-related items
-    localStorage.removeItem("otpUser")
-    localStorage.removeItem("username")
-    localStorage.removeItem("slug")
-    
-    setUserEmail("")
-    setUsername("")
+    localStorage.removeItem('otpUser')
+    localStorage.removeItem('username')
+    localStorage.removeItem('slug')
+    setUserEmail('')
+    setUsername('')
     setIsLoggedIn(false)
-    setUserSlug("")
+    setUserSlug('')
     setIsUserDropdownOpen(false)
-    router.push('/view/Landingpage')
+    if (typeof window !== 'undefined') {
+      try {
+        history.pushState(null, document.title, location.href)
+        window.addEventListener('popstate', () => {
+          history.pushState(null, document.title, location.href)
+        })
+      } catch {}
+      window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
+    }
   }
 
   return (

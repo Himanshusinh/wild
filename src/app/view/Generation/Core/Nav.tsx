@@ -7,6 +7,8 @@ import { getApiClient } from '../../../../lib/axiosInstance'
 import { useCredits } from '../../../../hooks/useCredits'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import toast from 'react-hot-toast'
+import { signOut } from 'firebase/auth'
+import { auth } from '../../../../lib/firebase'
 
 interface UserData {
   uid: string
@@ -86,6 +88,7 @@ const Nav = () => {
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+      try { await signOut(auth) } catch {}
       const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
       try {
         document.cookie = `app_session=; ${expired}; SameSite=None; Secure`

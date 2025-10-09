@@ -6,6 +6,8 @@ import { getApiClient } from '../../../../lib/axiosInstance'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import Image from 'next/image'
+import { signOut } from 'firebase/auth'
+import { auth } from '../../../../lib/firebase'
 import { imageRoutes } from '../routes'
 
 interface UserData {
@@ -118,6 +120,9 @@ const Nav = () => {
 
       // Call Next.js logout proxy to clear server and client cookies robustly
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+
+      // Also sign out from Firebase to stop background token refresh
+      try { await signOut(auth) } catch {}
 
       // Proactively clear cookie variants on current domain and parent domain
       const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
