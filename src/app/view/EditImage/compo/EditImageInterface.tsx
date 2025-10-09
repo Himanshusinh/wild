@@ -743,7 +743,7 @@ const EditImageInterface: React.FC = () => {
                 <select
                   value={model}
                   onChange={(e) => { setModel(e.target.value as any); setOutputs((prev)=>({ ...prev, [selectedFeature]: null })); setProcessing((p)=>({ ...p, [selectedFeature]: false })); }}
-                  className="w-full px-3.5 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white text-md focus:outline-none focus:border-white/40"
+                  className="w-full px-3.5 py-2.5 bg-white/5 border border-white/20 rounded-xl text-white text-md focus:outline-none focus:border-white/40"
                 >
                   {selectedFeature === 'remove-bg' ? (
                     <>
