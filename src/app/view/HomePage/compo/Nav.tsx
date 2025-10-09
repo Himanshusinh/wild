@@ -119,6 +119,15 @@ const Nav = () => {
       // Call Next.js logout proxy to clear server and client cookies robustly
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
 
+      // Proactively clear cookie variants on current domain and parent domain
+      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
+      try {
+        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; ${expired}; SameSite=Lax`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`
+      } catch {}
+
       // Clear history stack: prevent navigating back into the app
       if (typeof window !== 'undefined') {
         try {
