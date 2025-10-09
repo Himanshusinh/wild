@@ -10,7 +10,7 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
       return new Response(JSON.stringify({ error: 'Missing path' }), { status: 400 });
     }
 
-    const backendBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    const backendBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
     const targetUrl = `${backendBase}/api/proxy/media/${encodedPath}`;
 
     const forwardHeaders: Record<string, string> = {};
