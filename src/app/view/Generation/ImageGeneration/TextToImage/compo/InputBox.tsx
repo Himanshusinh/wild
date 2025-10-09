@@ -75,16 +75,22 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Prefill uploaded image and prompt from query params (?image=, ?prompt=)
+  // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
       const img = current.searchParams.get('image');
+      const sp = current.searchParams.get('sp');
       const prm = current.searchParams.get('prompt');
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
-      if (img) dispatch(setUploadedImages([img] as any));
+      if (sp) {
+        const proxied = `/api/proxy/resource/${encodeURIComponent(sp)}`;
+        dispatch(setUploadedImages([proxied] as any));
+      } else if (img) {
+        dispatch(setUploadedImages([img] as any));
+      }
       if (prm) dispatch(setPrompt(prm));
       if (mdl) {
         const mapIncomingModel = (m: string): string => {
@@ -102,9 +108,10 @@ const InputBox = () => {
         try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch {}
       }
       // Consume params once so a refresh doesn't keep the image selected
-      if (img || prm) {
+      if (img || prm || sp || mdl || frm || sty) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
+        current.searchParams.delete('sp');
         current.searchParams.delete('model');
         current.searchParams.delete('frame');
         current.searchParams.delete('style');
@@ -237,6 +244,28 @@ const InputBox = () => {
       a.click();
       document.body.removeChild(a);
     }
+  };
+
+  // Normalize frontend proxy URLs to absolute public URLs for provider APIs
+  const toAbsoluteFromProxy = (url: string): string => {
+    try {
+      if (!url) return url;
+      if (url.startsWith('data:')) return url;
+      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+      const RESOURCE_SEG = '/api/proxy/resource/';
+      if (url.startsWith(RESOURCE_SEG)) {
+        const decoded = decodeURIComponent(url.substring(RESOURCE_SEG.length));
+        return `${ZATA_PREFIX}${decoded}`;
+      }
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        const u = new URL(url);
+        if (u.pathname.startsWith(RESOURCE_SEG)) {
+          const decoded = decodeURIComponent(u.pathname.substring(RESOURCE_SEG.length));
+          return `${ZATA_PREFIX}${decoded}`;
+        }
+      }
+      return url;
+    } catch { return url; }
   };
 
   // Fetch only first page on mount; further pages load on scroll
@@ -968,7 +997,7 @@ const InputBox = () => {
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
             aspect_ratio: frameSize as any,
-            uploadedImages,
+            uploadedImages: (uploadedImages || []).map((u: string) => toAbsoluteFromProxy(u)),
             output_format: 'jpeg',
             generationType: 'text-to-image',
             isPublic,
@@ -1024,7 +1053,7 @@ const InputBox = () => {
             payload.width = Math.max(1024, Math.min(4096, Number(seedreamWidth) || 2048));
             payload.height = Math.max(1024, Math.min(4096, Number(seedreamHeight) || 2048));
           }
-          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10);
+          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10).map((u: string) => toAbsoluteFromProxy(u));
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
           try {
