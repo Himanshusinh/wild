@@ -169,6 +169,28 @@ export default axiosInstance
 
 
 
+// Utility: ensure session cookie is present before navigating protected UI
+export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boolean> {
+  try {
+    const hasSession = typeof document !== 'undefined' && document.cookie.includes('app_session=')
+    if (hasSession) return true
+    // Try to set session using current id token
+    const idToken = (auth?.currentUser && await auth.currentUser.getIdToken()) || getStoredIdToken()
+    if (!idToken) return false
+    try {
+      await axiosInstance.post('/api/auth/session', { idToken }, { withCredentials: true })
+    } catch {}
+    const start = Date.now()
+    while (Date.now() - start < maxWaitMs) {
+      if (document.cookie.includes('app_session=')) return true
+      await new Promise(r => setTimeout(r, 100))
+    }
+    return document.cookie.includes('app_session=')
+  } catch {
+    return false
+  }
+}
+
 // Response interceptor: on 401, try to refresh session cookie once
 let isRefreshing = false
 let pendingRequests: Array<() => void> = []
