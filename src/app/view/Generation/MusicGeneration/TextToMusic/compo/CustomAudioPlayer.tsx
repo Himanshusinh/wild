@@ -165,7 +165,7 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
         return urlOrPath;
       };
       const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
         const path = toProxyPath(urlOrPath);
         return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
       };
@@ -197,7 +197,7 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
           return urlOrPath;
         };
         const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-          const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+          const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
           const path = toProxyPath(urlOrPath);
           return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
         };
