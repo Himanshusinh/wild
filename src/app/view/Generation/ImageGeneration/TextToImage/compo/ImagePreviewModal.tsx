@@ -540,8 +540,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     qs.set('prompt', cleanPrompt);
                     if (imgUrl) qs.set('image', imgUrl);
                     if (storagePath) qs.set('sp', storagePath);
-                    // Hard navigate to ensure route stack switches correctly
-                    window.location.href = `/text-to-image?${qs.toString()}`;
+                    // also pass model, frameSize and style for preselection
+                    console.log('preview.entry', preview.entry);
+                    if (preview.entry?.model) {
+                      // Map backend model ids to UI dropdown ids where needed
+                      const m = String(preview.entry.model);
+                      const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+                      qs.set('model', mapped);
+                    }
+                    if (preview.entry?.frameSize) qs.set('frame', String(preview.entry.frameSize));
+                    const sty = preview.entry?.style || extractStyleFromPrompt(preview.entry?.prompt || '') || '';
+                    if (sty) qs.set('style', String(sty));
+                    // Client-side navigation to avoid full page reload
+                    router.push(`/text-to-image?${qs.toString()}`);
                     onClose();
                   } catch {}
                 }}

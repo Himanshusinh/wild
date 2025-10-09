@@ -81,12 +81,33 @@ const InputBox = () => {
       const current = new URL(window.location.href);
       const img = current.searchParams.get('image');
       const prm = current.searchParams.get('prompt');
+      const mdl = current.searchParams.get('model');
+      const frm = current.searchParams.get('frame');
+      const sty = current.searchParams.get('style');
       if (img) dispatch(setUploadedImages([img] as any));
       if (prm) dispatch(setPrompt(prm));
+      if (mdl) {
+        const mapIncomingModel = (m: string): string => {
+          if (!m) return m;
+          // Normalize known backend → UI mappings
+          if (m === 'bytedance/seedream-4') return 'seedream-v4';
+          return m;
+        };
+        dispatch(setSelectedModel(mapIncomingModel(mdl)));
+      }
+      if (frm) {
+        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frm }); } catch {}
+      }
+      if (sty) {
+        try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch {}
+      }
       // Consume params once so a refresh doesn't keep the image selected
       if (img || prm) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
+        current.searchParams.delete('model');
+        current.searchParams.delete('frame');
+        current.searchParams.delete('style');
         window.history.replaceState({}, '', current.toString());
       }
     } catch {}
