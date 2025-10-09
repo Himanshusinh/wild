@@ -48,7 +48,13 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/view/signin') ||
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
-    pathname.startsWith('/view/workflows')
+    pathname.startsWith('/view/workflows') ||
+    // Allow static assets and Next.js internals
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/icons/') ||
+    pathname.startsWith('/public/')
   );
   if (isPublic) return res;
 
@@ -59,15 +65,31 @@ export function middleware(req: NextRequest) {
   const hasBearer = /^Bearer\s+/.test(authHeader);
   // Also respect a short-lived client hint cookie set right before redirect from auth
   const hasHint = Boolean(req.cookies.get('auth_hint'));
+  
+  // Debug logging for middleware decisions
+  const debugInfo = {
+    pathname,
+    hasSession: Boolean(hasSession),
+    hasBearer: Boolean(hasBearer),
+    hasHint: Boolean(hasHint),
+    cookies: req.cookies.getAll().map(c => c.name),
+    authHeader: authHeader ? 'present' : 'missing'
+  };
+  
   if (!hasSession && !hasBearer && !hasHint) {
+    console.log('🔒 Middleware: Blocking protected route', debugInfo);
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
     const redirect = NextResponse.redirect(url);
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
+    redirect.headers.set('X-Debug-Info', JSON.stringify(debugInfo));
     return redirect;
   }
+  
+  console.log('✅ Middleware: Allowing protected route', debugInfo);
   res.headers.set('X-Auth-Decision', 'allow');
+  res.headers.set('X-Debug-Info', JSON.stringify(debugInfo));
   return res;
 }
 

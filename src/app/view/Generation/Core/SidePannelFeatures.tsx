@@ -37,7 +37,16 @@ const SidePannelFeatures = ({
 
 
   const navigateForType = async (type: GenerationType) => {
-    try { await ensureSessionReady(600) } catch {}
+    try {
+      console.log('🔄 SidePanel: Ensuring session before navigation to', type)
+      const sessionReady = await ensureSessionReady(600)
+      if (!sessionReady) {
+        console.warn('⚠️ SidePanel: Session not ready, proceeding anyway...')
+      }
+    } catch (error) {
+      console.warn('⚠️ SidePanel: Session guard failed:', error)
+    }
+    
     switch (type) {
       case 'text-to-image':
         router.push('/text-to-image');
@@ -135,7 +144,18 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={async () => { try { await ensureSessionReady(600) } catch {}; router.push(APP_ROUTES.HOME) }}
+          onClick={async () => { 
+            try {
+              console.log('🔄 SidePanel: Ensuring session before Home navigation')
+              const sessionReady = await ensureSessionReady(600)
+              if (!sessionReady) {
+                console.warn('⚠️ SidePanel: Session not ready for Home, proceeding anyway...')
+              }
+            } catch (error) {
+              console.warn('⚠️ SidePanel: Session guard failed for Home:', error)
+            }
+            router.push(APP_ROUTES.HOME)
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
           <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} />
