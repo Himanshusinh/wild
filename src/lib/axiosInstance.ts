@@ -172,21 +172,83 @@ export default axiosInstance
 // Utility: ensure session cookie is present before navigating protected UI
 export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boolean> {
   try {
-    const hasSession = typeof document !== 'undefined' && document.cookie.includes('app_session=')
-    if (hasSession) return true
-    // Try to set session using current id token
-    const idToken = (auth?.currentUser && await auth.currentUser.getIdToken()) || getStoredIdToken()
-    if (!idToken) return false
+    // Check if we're in browser environment
+    if (typeof document === 'undefined') return false
+    
+    const hasSession = document.cookie.includes('app_session=')
+    if (hasSession) {
+      console.log('✅ ensureSessionReady: Session cookie already present')
+      return true
+    }
+    
+    console.log('🔄 ensureSessionReady: No session cookie, attempting to create one...')
+    
+    // Try to get fresh ID token from Firebase
+    let idToken = getStoredIdToken()
+    if (!idToken && auth?.currentUser) {
+      try {
+        idToken = await auth.currentUser.getIdToken(true) // Force refresh
+        console.log('✅ ensureSessionReady: Got fresh ID token from Firebase')
+      } catch (error) {
+        console.warn('⚠️ ensureSessionReady: Failed to get fresh ID token from Firebase:', error)
+      }
+    }
+    
+    if (!idToken) {
+      console.warn('⚠️ ensureSessionReady: No ID token available')
+      return false
+    }
+    
+    // Create session with backend
     try {
-      await axiosInstance.post('/api/auth/session', { idToken }, { withCredentials: true })
-    } catch {}
+      console.log('🔄 ensureSessionReady: Creating session with backend...', { idTokenLength: idToken.length })
+      const sessionResponse = await axiosInstance.post('/api/auth/session', { idToken }, { 
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` // Include Bearer token in session creation
+        }
+      })
+      console.log('✅ ensureSessionReady: Session creation successful', { 
+        status: sessionResponse.status,
+        headers: Object.keys(sessionResponse.headers)
+      })
+    } catch (error: any) {
+      console.warn('⚠️ ensureSessionReady: Session creation failed:', {
+        status: error?.response?.status,
+        message: error?.message,
+        data: error?.response?.data,
+        url: error?.config?.url,
+        baseURL: error?.config?.baseURL
+      })
+      
+      // As a fallback, set auth_hint cookie to help middleware allow the request
+      try {
+        document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
+        console.log('🔄 ensureSessionReady: Set auth_hint cookie as fallback')
+      } catch (cookieError) {
+        console.warn('⚠️ ensureSessionReady: Failed to set auth_hint cookie:', cookieError)
+      }
+      
+      // If session creation fails, we should still return false to indicate no session
+      return false
+    }
+    
+    // Wait for cookie to be set
     const start = Date.now()
     while (Date.now() - start < maxWaitMs) {
-      if (document.cookie.includes('app_session=')) return true
-      await new Promise(r => setTimeout(r, 100))
+      if (document.cookie.includes('app_session=')) {
+        console.log('✅ ensureSessionReady: Session cookie detected after', Date.now() - start, 'ms')
+        return true
+      }
+      await new Promise(r => setTimeout(r, 50))
     }
-    return document.cookie.includes('app_session=')
-  } catch {
+    
+    const finalResult = document.cookie.includes('app_session=')
+    console.log(finalResult ? '✅ ensureSessionReady: Session cookie set successfully' : '❌ ensureSessionReady: Session cookie not set after timeout')
+    return finalResult
+  } catch (error) {
+    console.error('❌ ensureSessionReady: Error:', error)
     return false
   }
 }

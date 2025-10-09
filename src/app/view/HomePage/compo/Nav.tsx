@@ -6,6 +6,7 @@ import { getApiClient } from '../../../../lib/axiosInstance'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import Image from 'next/image'
+import { imageRoutes } from '../routes'
 
 interface UserData {
   uid: string
@@ -179,7 +180,7 @@ const Nav = () => {
           <button className='flex items-center rounded-full text-white text-lg px-6 py-2 gap-2'>
             {loading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
 
-            <Image className='cursor-pointer' src="/icons/coinswhite.svg" alt='logo' width={25} height={25} />
+            <Image className='cursor-pointer' src={imageRoutes.icons.coins} alt='logo' width={25} height={25} />
 
             {/* <svg className='cursor-pointer' width='26' height='26' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <circle cx='12' cy='12' r='9' stroke='#F4D03F' strokeWidth='2' fill='url(#coinGrad)'/>
