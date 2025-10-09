@@ -45,13 +45,22 @@ const isApiDebugEnabled = (): boolean => {
 }
 
 // Attach device headers; rely on httpOnly session cookies for auth
-axiosInstance.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use(async (config) => {
   try {
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
-    // For backend data endpoints (credits, generations), attach Bearer id token so backend accepts without cookies
-    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations')) {
+    // For backend data endpoints (credits, generations, auth/me), attach Bearer id token so backend accepts without cookies
+    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations') || url === '/api/auth/me') {
+      // Gentle delay if session cookie is racing to be set after auth
+      try {
+        const hasHint = document.cookie.includes('auth_hint=')
+        const hasSession = document.cookie.includes('app_session=')
+        if (hasHint && !hasSession) {
+          if (isApiDebugEnabled()) console.log('[API][request-delay] auth_hint present, delaying 250ms for session cookie')
+          await new Promise((r) => setTimeout(r, 250))
+        }
+      } catch {}
       const token = getStoredIdToken()
       if (token) {
         const headers: any = config.headers || {}
@@ -94,13 +103,25 @@ axiosInstance.interceptors.request.use((config) => {
       }
     } catch {}
 
-    // Attach bearer token for protected backend routes when cookies may be missing (ngrok)
+    // Attach bearer token for protected backend routes when cookies may be missing (ngrok/first-load)
     try {
       const raw = typeof config.url === 'string' ? config.url : ''
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
       const full = new URL(raw, base)
       const path = full.pathname || ''
-      const isProtectedApi = path.startsWith('/api/') && !path.startsWith('/api/auth/')
+      // Treat most backend routes as protected to reduce 401s in early post-auth; allow session creation route to go without bearer
+      const isProtectedApi = path.startsWith('/api/') && path !== '/api/auth/session'
+      // Gentle delay for protected APIs when auth just completed and Set-Cookie may lag
+      if (isProtectedApi) {
+        try {
+          const hasHint = document.cookie.includes('auth_hint=')
+          const hasSession = document.cookie.includes('app_session=')
+          if (hasHint && !hasSession) {
+            if (isApiDebugEnabled()) console.log('[API][request-delay] protected call while auth_hint present, delaying 250ms', { path })
+            await new Promise((r) => setTimeout(r, 250))
+          }
+        } catch {}
+      }
       if (isProtectedApi) {
         let idToken = getStoredIdToken()
         // If not in storage, try to fetch a fresh token from Firebase
@@ -147,6 +168,28 @@ export const getApiClient = () => axiosInstance
 export default axiosInstance
 
 
+
+// Utility: ensure session cookie is present before navigating protected UI
+export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boolean> {
+  try {
+    const hasSession = typeof document !== 'undefined' && document.cookie.includes('app_session=')
+    if (hasSession) return true
+    // Try to set session using current id token
+    const idToken = (auth?.currentUser && await auth.currentUser.getIdToken()) || getStoredIdToken()
+    if (!idToken) return false
+    try {
+      await axiosInstance.post('/api/auth/session', { idToken }, { withCredentials: true })
+    } catch {}
+    const start = Date.now()
+    while (Date.now() - start < maxWaitMs) {
+      if (document.cookie.includes('app_session=')) return true
+      await new Promise(r => setTimeout(r, 100))
+    }
+    return document.cookie.includes('app_session=')
+  } catch {
+    return false
+  }
+}
 
 // Response interceptor: on 401, try to refresh session cookie once
 let isRefreshing = false
@@ -208,11 +251,13 @@ axiosInstance.interceptors.response.use(
       const currentUser = auth.currentUser
       if (!currentUser) {
         if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser')
-        return Promise.reject(error)
+        // If session cookie might be racing to be set, wait briefly then retry once
+        await new Promise((r) => setTimeout(r, 300))
+        return axiosInstance(original)
       }
       const freshIdToken = await currentUser.getIdToken(true)
       // Refresh session via same-origin Next.js proxy to avoid ngrok CORS
-      await axios.post(
+      await axiosInstance.post(
         '/api/auth/session',
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }

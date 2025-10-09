@@ -6,6 +6,7 @@ import { ViewType, GenerationType } from '@/types/generation';
 import { usePathname, useRouter } from 'next/navigation';
 import { Clapperboard } from 'lucide-react';
 import { imageRoutes } from '../../HomePage/routes';
+import { ensureSessionReady } from '@/lib/axiosInstance';
 import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
 import { setCurrentView } from '@/store/slices/uiSlice';
 
@@ -35,7 +36,8 @@ const SidePannelFeatures = ({
 
 
 
-  const navigateForType = (type: GenerationType) => {
+  const navigateForType = async (type: GenerationType) => {
+    try { await ensureSessionReady(600) } catch {}
     switch (type) {
       case 'text-to-image':
         router.push('/text-to-image');
@@ -54,7 +56,7 @@ const SidePannelFeatures = ({
     }
   };
 
-  const handleGenerationTypeChange = (type: GenerationType) => {
+  const handleGenerationTypeChange = async (type: GenerationType) => {
     try {
       if (onGenerationTypeChange && typeof onGenerationTypeChange === 'function') {
         onGenerationTypeChange(type);
@@ -63,7 +65,7 @@ const SidePannelFeatures = ({
       console.error('Error in handleGenerationTypeChange:', error);
     }
     setShowBrandingDropdown(false);
-    navigateForType(type);
+    await navigateForType(type);
   };
 
   const handleImageGenerationClick = () => {
@@ -133,7 +135,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => router.push(APP_ROUTES.HOME)}
+          onClick={async () => { try { await ensureSessionReady(600) } catch {}; router.push(APP_ROUTES.HOME) }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
           <Image src="/icons/Homewhite.svg" alt="Home" width={30} height={30} />
