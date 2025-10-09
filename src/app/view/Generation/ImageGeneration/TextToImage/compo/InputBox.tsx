@@ -315,7 +315,6 @@ const InputBox = () => {
 
   // Function to clear input after successful generation
   const clearInputs = () => {
-    dispatch(setPrompt(""));
     setUploadedImages([]);
     // Reset file input
     if (inputEl.current) {

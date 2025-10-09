@@ -338,18 +338,23 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
   };
 
+  const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
+
   const navigateToEdit = (feature: 'upscale' | 'remove-bg' | 'resize') => {
     try {
-      const imgUrl = toFrontendProxyResourceUrl((selectedImage as any)?.storagePath) || selectedImage?.url || preview.image.url;
-      const qs = new URLSearchParams();
-      qs.set('feature', feature);
-      if (imgUrl) qs.set('image', imgUrl);
-      // Also pass raw storage path when available so the Edit page can reconstruct a public URL for external services
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         const original = selectedImage?.url || '';
         const pathCandidate = toProxyPath(original);
         return pathCandidate && pathCandidate !== original ? pathCandidate : '';
       })();
+
+      // Prefer stable frontend proxy from storagePath; fallback to http(s) url; never use blob:/data:
+      const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+      const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+      const qs = new URLSearchParams();
+      qs.set('feature', feature);
+      if (imgUrl) qs.set('image', imgUrl);
+      // Also pass raw storage path when available so the Edit page can reconstruct a public URL for external services
       if (storagePath) qs.set('sp', storagePath);
       router.push(`/edit-image?${qs.toString()}`);
       onClose();
@@ -524,10 +529,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <button
                 onClick={() => {
                   try {
-                    const imgUrl = objectUrl || selectedImage?.url || preview.image.url;
+                    const storagePath = (selectedImage as any)?.storagePath || (() => {
+                      const original = selectedImage?.url || '';
+                      const pathCandidate = toProxyPath(original);
+                      return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+                    })();
+                    const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+                    const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
                     const qs = new URLSearchParams();
                     qs.set('prompt', cleanPrompt);
                     if (imgUrl) qs.set('image', imgUrl);
+                    if (storagePath) qs.set('sp', storagePath);
                     // Hard navigate to ensure route stack switches correctly
                     window.location.href = `/text-to-image?${qs.toString()}`;
                     onClose();
