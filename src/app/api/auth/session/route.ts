@@ -19,11 +19,30 @@ export async function POST(req: Request) {
     const text = await resp.text()
 
     // Forward Set-Cookie if present so cookies are stored on this domain
-    const setCookie = resp.headers.get('set-cookie') || undefined
+    let setCookie = resp.headers.get('set-cookie') || undefined
     const headers: Record<string, string> = {
       'Content-Type': resp.headers.get('content-type') || 'application/json',
     }
-    if (setCookie) headers['set-cookie'] = setCookie
+    // Normalize cookie so it is accepted for the frontend domain
+    if (setCookie) {
+      try {
+        const host = (req.headers.get('host') || '').split(':')[0]
+        // Strip any Domain attribute coming from the backend (cross-domain cookies will be rejected)
+        // Also ensure SameSite=None and Secure are present for cross-site scenarios
+        let normalized = setCookie
+          .replace(/;\s*Domain=[^;]*/gi, '')
+          .replace(/;\s*SameSite=[^;]*/gi, '')
+        if (!/;\s*Secure(=|;|$)/i.test(normalized)) normalized += '; Secure'
+        normalized += '; SameSite=None'
+
+        // Optionally scope explicitly to current host (safe). Leaving it off scopes to current host by default.
+        // normalized += `; Domain=${host}`
+
+        headers['set-cookie'] = normalized
+      } catch {
+        headers['set-cookie'] = setCookie
+      }
+    }
 
     return new Response(text, { status: resp.status, headers })
   } catch (e) {
