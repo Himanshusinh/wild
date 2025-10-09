@@ -73,8 +73,17 @@ export function middleware(req: NextRequest) {
     hasBearer: Boolean(hasBearer),
     hasHint: Boolean(hasHint),
     cookies: req.cookies.getAll().map(c => c.name),
-    authHeader: authHeader ? 'present' : 'missing'
+    authHeader: authHeader ? 'present' : 'missing',
+    userAgent: req.headers.get('user-agent')?.substring(0, 50) || 'unknown'
   };
+  
+  // Special handling for generation routes - be more permissive
+  const isGenerationRoute = pathname.startsWith('/text-to-') || 
+                           pathname.startsWith('/edit-image') || 
+                           pathname.startsWith('/logo-generation') || 
+                           pathname.startsWith('/sticker-generation') || 
+                           pathname.startsWith('/product-generation') ||
+                           pathname.startsWith('/history');
   
   if (!hasSession && !hasBearer && !hasHint) {
     console.log('🔒 Middleware: Blocking protected route', debugInfo);

@@ -201,11 +201,37 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
     
     // Create session with backend
     try {
-      console.log('🔄 ensureSessionReady: Creating session with backend...')
-      await axiosInstance.post('/api/auth/session', { idToken }, { withCredentials: true })
-      console.log('✅ ensureSessionReady: Session creation request sent')
-    } catch (error) {
-      console.warn('⚠️ ensureSessionReady: Session creation failed:', error)
+      console.log('🔄 ensureSessionReady: Creating session with backend...', { idTokenLength: idToken.length })
+      const sessionResponse = await axiosInstance.post('/api/auth/session', { idToken }, { 
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` // Include Bearer token in session creation
+        }
+      })
+      console.log('✅ ensureSessionReady: Session creation successful', { 
+        status: sessionResponse.status,
+        headers: Object.keys(sessionResponse.headers)
+      })
+    } catch (error: any) {
+      console.warn('⚠️ ensureSessionReady: Session creation failed:', {
+        status: error?.response?.status,
+        message: error?.message,
+        data: error?.response?.data,
+        url: error?.config?.url,
+        baseURL: error?.config?.baseURL
+      })
+      
+      // As a fallback, set auth_hint cookie to help middleware allow the request
+      try {
+        document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
+        console.log('🔄 ensureSessionReady: Set auth_hint cookie as fallback')
+      } catch (cookieError) {
+        console.warn('⚠️ ensureSessionReady: Failed to set auth_hint cookie:', cookieError)
+      }
+      
+      // If session creation fails, we should still return false to indicate no session
+      return false
     }
     
     // Wait for cookie to be set

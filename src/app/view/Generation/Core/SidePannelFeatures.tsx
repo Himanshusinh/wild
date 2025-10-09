@@ -41,12 +41,14 @@ const SidePannelFeatures = ({
       console.log('🔄 SidePanel: Ensuring session before navigation to', type)
       const sessionReady = await ensureSessionReady(600)
       if (!sessionReady) {
-        console.warn('⚠️ SidePanel: Session not ready, proceeding anyway...')
+        console.warn('⚠️ SidePanel: Session not ready, but proceeding with navigation...')
+        console.log('🔄 SidePanel: Middleware should handle auth with Bearer token')
       }
     } catch (error) {
-      console.warn('⚠️ SidePanel: Session guard failed:', error)
+      console.warn('⚠️ SidePanel: Session guard failed, proceeding anyway:', error)
     }
     
+    // Always proceed with navigation - middleware will handle auth with Bearer token if session cookie is missing
     switch (type) {
       case 'text-to-image':
         router.push('/text-to-image');
