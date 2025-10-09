@@ -1278,7 +1278,7 @@ const InputBox = () => {
                 </div>
                 <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                    <div key={`local-only-${idx}`} className="relative md:w-60 md:h-60 md:max-w-[240px] md:max-h-[240px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
@@ -1341,7 +1341,7 @@ const InputBox = () => {
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative md:w-60 md:h-60 md:max-w-[240px] md:max-h-[240px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                                 <div className="flex flex-col items-center gap-2">
@@ -1377,7 +1377,7 @@ const InputBox = () => {
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreview({ entry, image })}
-                          className="relative md:w-60 md:h-60 md:max-w-[240px] md:max-h-[240px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
