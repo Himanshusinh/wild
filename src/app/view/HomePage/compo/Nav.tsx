@@ -112,20 +112,13 @@ const Nav = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('[Logout][HomeNav] begin')
       // Clear local storage
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
-      
-      // Clear authentication cookie
-      document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
-      
-      // Call logout API using axios
-      const api = getApiClient()
-      console.log('[Logout][HomeNav] calling /api/auth/logout')
-      await api.post('/api/auth/logout')
-      console.log('[Logout][HomeNav] logout API success')
-      
+
+      // Call Next.js logout proxy to clear server and client cookies robustly
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+
       // Clear history stack: prevent navigating back into the app
       if (typeof window !== 'undefined') {
         try {
@@ -134,12 +127,9 @@ const Nav = () => {
             history.pushState(null, document.title, location.href)
           })
         } catch {}
-        console.log('[Logout][HomeNav] redirecting to landing')
         window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
       }
-    } catch (error) {
-      console.error('Logout error:', error)
-      // Still redirect even if API call fails
+    } catch (_err) {
       if (typeof window !== 'undefined') window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED')
     }
   }
@@ -166,7 +156,7 @@ const Nav = () => {
     setShowDropdown(false)
   }
 
-  console.log(userData?.photoURL)
+  
 
   return (
     <div className='fixed top-4 right-4 z-50'>
