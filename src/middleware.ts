@@ -42,7 +42,6 @@ export function middleware(req: NextRequest) {
   const isPublic = (
     pathname === '/' ||
     pathname.startsWith('/view/Landingpage') ||
-    pathname.startsWith('/view/HomePage') ||
     pathname.startsWith('/view/ArtStation') ||
     pathname.startsWith('/view/signup') ||
     pathname.startsWith('/view/signin') ||
