@@ -64,11 +64,6 @@ const Nav = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Skip authed calls when no session cookie present
-        if (typeof document !== 'undefined' && !document.cookie.includes('app_session=')) {
-          setLoading(false)
-          return
-        }
         const api = getApiClient()
         const response = await api.get('/api/auth/me')
         const payload = response.data
