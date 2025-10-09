@@ -55,6 +55,18 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/public/')
   );
+  // If root path and unauthenticated, force redirect to landing with toast
+  if (pathname === '/') {
+    const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
+    const hasHint = Boolean(req.cookies.get('auth_hint'));
+    if (!hasSession && !hasHint) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/view/Landingpage';
+      url.searchParams.set('toast', 'UNAUTHORIZED');
+      return NextResponse.redirect(url);
+    }
+    return res;
+  }
   if (isPublic) return res;
 
   // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
