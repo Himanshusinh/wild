@@ -78,6 +78,24 @@ export const imageRoutes: FolderImageRoutes = {
     // Pricing section
     pricing: {
         balloonPlane: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250829_1658_Balloon%20Plane%20in%20Sky_remix_01k3ts72pyf3vrzfpp48y7yy5q%20(1).png?alt=media&token=c7c7464e-b808-405b-8929-c9a1235054ed'
+    },
+    icons : {
+        home : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FHomewhite.svg?alt=media&token=4d1fbd0f-27ea-4cef-bbb0-56485e658e83',
+        imageGeneration : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fimagegeneration.svg?alt=media&token=99ef06c2-e0ad-4d7f-87c9-9591aa7e05cc',
+        videoGeneration : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FvideoGenerationiconwhite.svg?alt=media&token=98497b2a-df56-4149-a2b6-a5b202848eae',
+        musicGeneration : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fmusicgenerationwhite.svg?alt=media&token=c7224305-5f55-4927-9c56-1f049eca3772',
+        canvas : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Flivecanvas.svg?alt=media&token=d955c80f-772d-45db-be04-b49b86287fc1',
+        brandingKit : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fbrandingkitwhite.svg?alt=media&token=878c5af2-d78c-4e16-bbbb-6f2f1cb2a6b4',
+        templates : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Ftemplateswhite.svg?alt=media&token=e60e552a-b7d6-465e-bdd6-f286461e3d2f',
+        pricing : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fpricingwhite.svg?alt=media&token=6771e848-bdb0-4462-ba8b-4db855467a23',
+        history : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fhistorywhite.svg?alt=media&token=efd29d83-39b9-4c6b-8ddd-c7e446d7f84e',
+        bookmarks : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FBookmarkwhite.svg?alt=media&token=8d3970d7-2f86-4380-a724-2d2bbe52b044',
+        search : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fsearchwhite.svg?alt=media&token=9905cf6c-ab94-4b7c-8004-455c0caef4f8',
+        coins : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fcoinswhite.svg?alt=media&token=a3f67c5a-f16b-416d-a24b-1b3a1c977962',
+        profile : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fperson.svg?alt=media&token=23811069-4a7b-455d-bfbc-635c088ff9d0',
+        editImage : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fedit_image.svg?alt=media&token=1c3cf10c-a167-4610-be92-e447ab085354',
+        wildmindskit : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fyy666.png?alt=media&token=8c3408e7-6e86-47e7-9bf3-1601bfc713ae',
+        artStation : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fartstation.svg?alt=media&token=9be89cd6-49ad-4b62-a085-1d8e86905fa8'
     }
 };
 
