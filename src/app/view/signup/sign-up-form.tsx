@@ -377,10 +377,13 @@ export default function SignInForm() {
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
             const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-            const sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
-              { idToken: actualIdToken },
-              { withCredentials: true }
-            )
+            // Use Next.js API route for session creation to avoid cross-domain cookie issues
+            const sessionResponse = await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ idToken: actualIdToken })
+            })
 
             if (sessionResponse.status === 200) {
               console.log("✅ Session created with ID token!")
@@ -565,11 +568,14 @@ export default function SignInForm() {
 
           // Create session
           const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-          const resp = await (axiosInstance || getApiClient()).post('/api/auth/session',
-            { idToken: finalIdToken },
-            { withCredentials: true }
-          )
-          try { if (resp?.status === 200) { localStorage.setItem('authToken', finalIdToken) } } catch {}
+          // Use Next.js API route for session creation to avoid cross-domain cookie issues
+          const resp = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ idToken: finalIdToken })
+          })
+          try { if (resp?.ok) { localStorage.setItem('authToken', finalIdToken) } } catch {}
 
           console.log("✅ Session created, redirecting...")
           toast.success('Logged in successfully')
@@ -733,10 +739,13 @@ export default function SignInForm() {
 
                 // Create session with the REAL ID token
                 console.log("🔄 Creating session with backend using ID token...")
-                const sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
-                  { idToken: actualIdToken },
-                  { withCredentials: true }
-                )
+            // Use Next.js API route for session creation to avoid cross-domain cookie issues
+            const sessionResponse = await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ idToken: actualIdToken })
+            })
 
                 if (sessionResponse.status === 200) {
                   console.log("✅ Session created with ID token after username creation!")

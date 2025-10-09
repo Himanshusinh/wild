@@ -199,27 +199,32 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       return false
     }
     
-    // Create session with backend
+    // Create session with backend via Next.js proxy to avoid cross-domain cookie issues
     try {
-      console.log('🔄 ensureSessionReady: Creating session with backend...', { idTokenLength: idToken.length })
-      const sessionResponse = await axiosInstance.post('/api/auth/session', { idToken }, { 
-        withCredentials: true,
+      console.log('🔄 ensureSessionReady: Creating session via Next.js proxy...', { idTokenLength: idToken.length })
+      
+      // Use Next.js API route instead of direct backend call to avoid cross-domain cookie issues
+      const sessionResponse = await fetch('/api/auth/session', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` // Include Bearer token in session creation
-        }
+        },
+        credentials: 'include', // Important for cookie handling
+        body: JSON.stringify({ idToken })
       })
+      
       console.log('✅ ensureSessionReady: Session creation successful', { 
         status: sessionResponse.status,
-        headers: Object.keys(sessionResponse.headers)
+        ok: sessionResponse.ok
       })
+      
+      if (!sessionResponse.ok) {
+        throw new Error(`Session creation failed with status ${sessionResponse.status}`)
+      }
     } catch (error: any) {
       console.warn('⚠️ ensureSessionReady: Session creation failed:', {
-        status: error?.response?.status,
         message: error?.message,
-        data: error?.response?.data,
-        url: error?.config?.url,
-        baseURL: error?.config?.baseURL
+        status: error?.status
       })
       
       // As a fallback, set auth_hint cookie to help middleware allow the request
