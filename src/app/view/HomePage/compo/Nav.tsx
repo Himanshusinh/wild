@@ -6,6 +6,8 @@ import { getApiClient } from '../../../../lib/axiosInstance'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import Image from 'next/image'
+import { signOut } from 'firebase/auth'
+import { auth } from '../../../../lib/firebase'
 import { imageRoutes } from '../routes'
 
 interface UserData {
@@ -112,20 +114,25 @@ const Nav = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('[Logout][HomeNav] begin')
       // Clear local storage
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
-      
-      // Clear authentication cookie
-      document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
-      
-      // Call logout API using axios
-      const api = getApiClient()
-      console.log('[Logout][HomeNav] calling /api/auth/logout')
-      await api.post('/api/auth/logout')
-      console.log('[Logout][HomeNav] logout API success')
-      
+
+      // Call Next.js logout proxy to clear server and client cookies robustly
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+
+      // Also sign out from Firebase to stop background token refresh
+      try { await signOut(auth) } catch {}
+
+      // Proactively clear cookie variants on current domain and parent domain
+      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
+      try {
+        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; ${expired}; SameSite=Lax`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`
+      } catch {}
+
       // Clear history stack: prevent navigating back into the app
       if (typeof window !== 'undefined') {
         try {
@@ -134,12 +141,9 @@ const Nav = () => {
             history.pushState(null, document.title, location.href)
           })
         } catch {}
-        console.log('[Logout][HomeNav] redirecting to landing')
         window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
       }
-    } catch (error) {
-      console.error('Logout error:', error)
-      // Still redirect even if API call fails
+    } catch (_err) {
       if (typeof window !== 'undefined') window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED')
     }
   }
@@ -166,7 +170,7 @@ const Nav = () => {
     setShowDropdown(false)
   }
 
-  console.log(userData?.photoURL)
+  
 
   return (
     <div className='fixed top-4 right-4 z-50'>

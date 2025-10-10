@@ -75,18 +75,46 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Prefill uploaded image and prompt from query params (?image=, ?prompt=)
+  // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
       const img = current.searchParams.get('image');
+      const sp = current.searchParams.get('sp');
       const prm = current.searchParams.get('prompt');
-      if (img) dispatch(setUploadedImages([img] as any));
+      const mdl = current.searchParams.get('model');
+      const frm = current.searchParams.get('frame');
+      const sty = current.searchParams.get('style');
+      if (sp) {
+        const proxied = `/api/proxy/resource/${encodeURIComponent(sp)}`;
+        dispatch(setUploadedImages([proxied] as any));
+      } else if (img) {
+        dispatch(setUploadedImages([img] as any));
+      }
       if (prm) dispatch(setPrompt(prm));
+      if (mdl) {
+        const mapIncomingModel = (m: string): string => {
+          if (!m) return m;
+          // Normalize known backend → UI mappings
+          if (m === 'bytedance/seedream-4') return 'seedream-v4';
+          return m;
+        };
+        dispatch(setSelectedModel(mapIncomingModel(mdl)));
+      }
+      if (frm) {
+        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frm }); } catch {}
+      }
+      if (sty) {
+        try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch {}
+      }
       // Consume params once so a refresh doesn't keep the image selected
-      if (img || prm) {
+      if (img || prm || sp || mdl || frm || sty) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
+        current.searchParams.delete('sp');
+        current.searchParams.delete('model');
+        current.searchParams.delete('frame');
+        current.searchParams.delete('style');
         window.history.replaceState({}, '', current.toString());
       }
     } catch {}
@@ -218,6 +246,40 @@ const InputBox = () => {
     }
   };
 
+  // Copy prompt to clipboard (used on hover overlay)
+  const copyPrompt = async (e: React.MouseEvent, text: string) => {
+    try {
+      e.stopPropagation();
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      toast.success('Prompt copied');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
+  // Normalize frontend proxy URLs to absolute public URLs for provider APIs
+  const toAbsoluteFromProxy = (url: string): string => {
+    try {
+      if (!url) return url;
+      if (url.startsWith('data:')) return url;
+      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+      const RESOURCE_SEG = '/api/proxy/resource/';
+      if (url.startsWith(RESOURCE_SEG)) {
+        const decoded = decodeURIComponent(url.substring(RESOURCE_SEG.length));
+        return `${ZATA_PREFIX}${decoded}`;
+      }
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        const u = new URL(url);
+        if (u.pathname.startsWith(RESOURCE_SEG)) {
+          const decoded = decodeURIComponent(u.pathname.substring(RESOURCE_SEG.length));
+          return `${ZATA_PREFIX}${decoded}`;
+        }
+      }
+      return url;
+    } catch { return url; }
+  };
+
   // Fetch only first page on mount; further pages load on scroll
   const refreshAllHistory = async () => {
     try {
@@ -315,7 +377,6 @@ const InputBox = () => {
 
   // Function to clear input after successful generation
   const clearInputs = () => {
-    dispatch(setPrompt(""));
     setUploadedImages([]);
     // Reset file input
     if (inputEl.current) {
@@ -948,7 +1009,7 @@ const InputBox = () => {
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
             aspect_ratio: frameSize as any,
-            uploadedImages,
+            uploadedImages: (uploadedImages || []).map((u: string) => toAbsoluteFromProxy(u)),
             output_format: 'jpeg',
             generationType: 'text-to-image',
             isPublic,
@@ -1004,7 +1065,7 @@ const InputBox = () => {
             payload.width = Math.max(1024, Math.min(4096, Number(seedreamWidth) || 2048));
             payload.height = Math.max(1024, Math.min(4096, Number(seedreamHeight) || 2048));
           }
-          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10);
+          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10).map((u: string) => toAbsoluteFromProxy(u));
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
           try {
@@ -1032,6 +1093,75 @@ const InputBox = () => {
             await handleGenerationFailure(transactionId);
           }
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream');
+          return;
+        }
+      } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
+        // Ideogram v3 via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for ideogram (validator list)
+          const allowedAspect = new Set([
+            '1:3','3:1','1:2','2:1','9:16','16:9','10:16','16:10','2:3','3:2','3:4','4:3','4:5','5:4','1:1'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Ideogram v3 doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            // Sensible defaults (can be expanded to UI later)
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'ideogram-ai/ideogram-v3-turbo',
+              aspect_ratio: aspect,
+              // Provide safe defaults accepted by backend validator/model
+              resolution: 'None',
+              style_type: 'Auto',
+              magic_prompt_option: 'Auto',
+            };
+
+            // If user provided a reference image, pass a single image (v3 supports I2I prompt image)
+            if (uploadedImages && uploadedImages.length > 0) {
+              payload.image = toAbsoluteFromProxy(uploadedImages[0]);
+            }
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
           return;
         }
       } else {
@@ -1358,12 +1488,34 @@ const InputBox = () => {
                                   <div className="text-xs text-red-400">Failed</div>
                                 </div>
                               </div>
-                            ) : image.url ? (
-                              <div className="relative w-full h-full">
-                                <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
-                              </div>
+                      ) : image.url ? (
+                        <div className="relative w-full h-full group">
+                          <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
+                          {/* Hover prompt overlay */}
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                            <span
+                              title={getCleanPrompt(prompt)}
+                              className="text-md md:text-sm text-white flex-1 leading-snug"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3 as any,
+                                WebkitBoxOrient: 'vertical' as any,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {getCleanPrompt(prompt)}
+                            </span>
+                            <button
+                              aria-label="Copy prompt"
+                              className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                              onClick={(e) => copyPrompt(e, getCleanPrompt(prompt))}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                          </div>
+                        </div>
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                              <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/20 flex items-center justify-center text-white/60">
                                 <div className="text-xs text-white/60">No image</div>
                               </div>
                             )}
@@ -1407,7 +1559,7 @@ const InputBox = () => {
                             </div>
                           ) : (
                             // Completed image with shimmer loading
-                            <div className="relative w-full h-full ">
+                            <div className="relative w-full h-full group">
                               <Image
                                 src={image.url}
                                 alt={entry.prompt}
@@ -1426,6 +1578,28 @@ const InputBox = () => {
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              {/* Hover prompt overlay */}
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                                <span
+                                  title={getCleanPrompt(entry.prompt)}
+                                  className="text-base md:text-lg text-white/90 flex-1 leading-snug"
+                                  style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3 as any,
+                                    WebkitBoxOrient: 'vertical' as any,
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  {getCleanPrompt(entry.prompt)}
+                                </span>
+                                <button
+                                  aria-label="Copy prompt"
+                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                  onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                              </div>
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -1661,13 +1835,13 @@ const InputBox = () => {
             </div>
             {/* moved previews near upload above */}
             {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
-              <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
-                <Button
+              <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0 ">
+                <button
                   aria-label="Edit"
                   title="Edit"
-                  borderRadius="1.5rem"
-                  containerClassName="h-10 w-auto"
-                  className="bg-black text-white px-4 py-2"
+                  // borderRadius="1.5rem"
+                  // containerClassName="h-10 w-auto"
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-7 py-2 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                   onClick={() => router.push('/edit-image')}
                 >
                   <div className="flex items-center gap-2">
@@ -1677,7 +1851,7 @@ const InputBox = () => {
                     </svg>
                     <span className="text-sm text-white">Edit</span>
                   </div>
-                </Button>
+                </button>
               </div>
             )}
           </div>

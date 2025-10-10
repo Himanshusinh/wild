@@ -21,7 +21,7 @@ const getStoredIdToken = (): string | null => {
 // Centralized axios instance configured to send cookies and optional Authorization header
 const resolvedBaseUrl = (() => {
   const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
-  return raw.length > 0 ? raw : 'http://localhost:5000'
+  return raw.length > 0 ? raw : 'https://api-gateway-services-wildmind.onrender.com'
 })()
 
 const axiosInstance = axios.create({
@@ -177,32 +177,25 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
     
     const hasSession = document.cookie.includes('app_session=')
     if (hasSession) {
-      console.log('✅ ensureSessionReady: Session cookie already present')
       return true
     }
-    
-    console.log('🔄 ensureSessionReady: No session cookie, attempting to create one...')
     
     // Try to get fresh ID token from Firebase
     let idToken = getStoredIdToken()
     if (!idToken && auth?.currentUser) {
       try {
         idToken = await auth.currentUser.getIdToken(true) // Force refresh
-        console.log('✅ ensureSessionReady: Got fresh ID token from Firebase')
       } catch (error) {
-        console.warn('⚠️ ensureSessionReady: Failed to get fresh ID token from Firebase:', error)
+        // Silent fail
       }
     }
     
     if (!idToken) {
-      console.warn('⚠️ ensureSessionReady: No ID token available')
       return false
     }
     
     // Create session with backend via Next.js proxy to avoid cross-domain cookie issues
     try {
-      console.log('🔄 ensureSessionReady: Creating session via Next.js proxy...', { idTokenLength: idToken.length })
-      
       // Use Next.js API route instead of direct backend call to avoid cross-domain cookie issues
       const sessionResponse = await fetch('/api/auth/session', {
         method: 'POST',
@@ -213,26 +206,15 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
         body: JSON.stringify({ idToken })
       })
       
-      console.log('✅ ensureSessionReady: Session creation successful', { 
-        status: sessionResponse.status,
-        ok: sessionResponse.ok
-      })
-      
       if (!sessionResponse.ok) {
         throw new Error(`Session creation failed with status ${sessionResponse.status}`)
       }
     } catch (error: any) {
-      console.warn('⚠️ ensureSessionReady: Session creation failed:', {
-        message: error?.message,
-        status: error?.status
-      })
-      
       // As a fallback, set auth_hint cookie to help middleware allow the request
       try {
         document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
-        console.log('🔄 ensureSessionReady: Set auth_hint cookie as fallback')
       } catch (cookieError) {
-        console.warn('⚠️ ensureSessionReady: Failed to set auth_hint cookie:', cookieError)
+        // Silent fail
       }
       
       // If session creation fails, we should still return false to indicate no session
@@ -243,17 +225,13 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
     const start = Date.now()
     while (Date.now() - start < maxWaitMs) {
       if (document.cookie.includes('app_session=')) {
-        console.log('✅ ensureSessionReady: Session cookie detected after', Date.now() - start, 'ms')
         return true
       }
       await new Promise(r => setTimeout(r, 50))
     }
     
-    const finalResult = document.cookie.includes('app_session=')
-    console.log(finalResult ? '✅ ensureSessionReady: Session cookie set successfully' : '❌ ensureSessionReady: Session cookie not set after timeout')
-    return finalResult
+    return document.cookie.includes('app_session=')
   } catch (error) {
-    console.error('❌ ensureSessionReady: Error:', error)
     return false
   }
 }

@@ -7,6 +7,8 @@ import { getApiClient } from '../../../../lib/axiosInstance'
 import { useCredits } from '../../../../hooks/useCredits'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import toast from 'react-hot-toast'
+import { signOut } from 'firebase/auth'
+import { auth } from '../../../../lib/firebase'
 
 interface UserData {
   uid: string
@@ -39,10 +41,7 @@ const Nav = () => {
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits()
   const router = useRouter()
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('Nav credits state:', { creditBalance, creditsLoading, creditsError });
-  }, [creditBalance, creditsLoading, creditsError]);
+  // Debug logging removed
 
   useOutsideClick(dropdownRef, () => setShowDropdown(false))
 
@@ -86,27 +85,25 @@ const Nav = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('[Logout] begin')
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
-      document.cookie = 'app_session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax'
-      const api = getApiClient()
-      console.log('[Logout] calling /api/auth/logout')
-      await api.post('/api/auth/logout')
-      console.log('[Logout] logout API success')
-      // Defer toast to landing page after redirect
-      try { localStorage.setItem('toastMessage', 'LOGOUT_SUCCESS'); } catch {}
-    } catch { }
-    // Hard redirect to clear history and prevent back navigation
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+      try { await signOut(auth) } catch {}
+      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
+      try {
+        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`
+        document.cookie = `app_session=; ${expired}; SameSite=Lax`
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`
+      } catch {}
+    } catch {}
     if (typeof window !== 'undefined') {
       try {
-        console.log('[Logout] clearing history and redirecting')
         history.pushState(null, document.title, location.href)
         window.addEventListener('popstate', () => {
           history.pushState(null, document.title, location.href)
         })
-      } catch { }
-      // Prefer query flag to guarantee toast after redirect
+      } catch {}
       window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
     }
   }

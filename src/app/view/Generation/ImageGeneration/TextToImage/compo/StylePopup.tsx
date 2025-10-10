@@ -102,7 +102,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
           </div>
 
           {/* Styles Grid */}
-          <div className="p-4 overflow-y-auto max-h-[calc(70vh-80px)]">
+          <div className="p-4 overflow-y-auto max-h-[calc(70vh-80px)] cool-scrollbar">
             <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
               {styles.map((style) => (
                 <div
@@ -152,7 +152,33 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     </>
   );
 
-  return createPortal(popupContent, document.body);
+  return (
+    <>
+      {createPortal(popupContent, document.body)}
+      <style jsx global>{`
+        /* Modern thin scrollbar for StylePopup grid */
+        .cool-scrollbar {
+          scrollbar-width: thin; /* Firefox */
+          scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+        }
+        .cool-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .cool-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .cool-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+          border-radius: 9999px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .cool-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+        }
+      `}</style>
+    </>
+  );
 };
 
 // Helper function to get style-specific gradients

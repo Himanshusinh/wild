@@ -31,6 +31,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
     { name: 'Seedream v4', value: 'seedream-v4' },
+    { name: 'Ideogram v3', value: 'ideogram-ai/ideogram-v3' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -61,7 +62,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'gen4_image_turbo' ||
       m.value === 'minimax-image-01' ||
       m.value === 'gemini-25-flash-image' ||
-      m.value === 'seedream-v4'
+      m.value === 'seedream-v4' ||
+      m.value === 'ideogram-ai/ideogram-v3'
     );
   }
 

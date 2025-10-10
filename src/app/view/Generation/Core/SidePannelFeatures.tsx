@@ -38,14 +38,10 @@ const SidePannelFeatures = ({
 
   const navigateForType = async (type: GenerationType) => {
     try {
-      console.log('🔄 SidePanel: Ensuring session before navigation to', type)
       const sessionReady = await ensureSessionReady(600)
-      if (!sessionReady) {
-        console.warn('⚠️ SidePanel: Session not ready, but proceeding with navigation...')
-        console.log('🔄 SidePanel: Middleware should handle auth with Bearer token')
-      }
+      // Always proceed with navigation - middleware will handle auth with Bearer token if session cookie is missing
     } catch (error) {
-      console.warn('⚠️ SidePanel: Session guard failed, proceeding anyway:', error)
+      // Silent fail
     }
     
     // Always proceed with navigation - middleware will handle auth with Bearer token if session cookie is missing
@@ -148,13 +144,9 @@ const SidePannelFeatures = ({
         <div
           onClick={async () => { 
             try {
-              console.log('🔄 SidePanel: Ensuring session before Home navigation')
-              const sessionReady = await ensureSessionReady(600)
-              if (!sessionReady) {
-                console.warn('⚠️ SidePanel: Session not ready for Home, proceeding anyway...')
-              }
+              await ensureSessionReady(600)
             } catch (error) {
-              console.warn('⚠️ SidePanel: Session guard failed for Home:', error)
+              // Silent fail
             }
             router.push(APP_ROUTES.HOME)
           }}

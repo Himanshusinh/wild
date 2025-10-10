@@ -13,7 +13,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gen4_image_turbo': 70,       // Runway Gen 4 Image Turbo
   'minimax-image-01': 37,       // Minimax Image-01
   'gemini-25-flash-image': 108, // Google nano banana (T2I)
-  'seedream-v4': 90,            // Seedream v4 (from sheet)
+  'seedream-v4': 90,   
+  'ideogram-ai/ideogram-v3': 90, // Ideogram v3 (from sheet)
 
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]

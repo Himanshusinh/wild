@@ -1,7 +1,7 @@
 export function resolveBackendBase(req: Request): string {
   // Preferred explicit backend base (server-only)
-  const explicit = process.env.API_BASE_URL || process.env.BACKEND_BASE_URL || '';
-  const publicBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const explicit = process.env.API_BASE_URL || process.env.BACKEND_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
+  const publicBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
 
   // Choose explicit if present, else public
   let base = explicit || publicBase || 'http://localhost:5000';

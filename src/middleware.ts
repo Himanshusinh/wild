@@ -42,7 +42,6 @@ export function middleware(req: NextRequest) {
   const isPublic = (
     pathname === '/' ||
     pathname.startsWith('/view/Landingpage') ||
-    pathname.startsWith('/view/HomePage') ||
     pathname.startsWith('/view/ArtStation') ||
     pathname.startsWith('/view/signup') ||
     pathname.startsWith('/view/signin') ||
@@ -56,49 +55,37 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/public/')
   );
+  // If root path and unauthenticated, force redirect to landing with toast
+  if (pathname === '/') {
+    const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
+    const hasHint = Boolean(req.cookies.get('auth_hint'));
+    if (!hasSession && !hasHint) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/view/Landingpage';
+      url.searchParams.set('toast', 'UNAUTHORIZED');
+      return NextResponse.redirect(url);
+    }
+    return res;
+  }
   if (isPublic) return res;
 
   // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
   // Be tolerant for OAuth redirects: allow if Firebase id token present in Authorization header
   const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
-  const authHeader = req.headers.get('authorization') || '';
-  const hasBearer = /^Bearer\s+/.test(authHeader);
+  // Do not consider Authorization header for page protection; only cookie/hint
   // Also respect a short-lived client hint cookie set right before redirect from auth
   const hasHint = Boolean(req.cookies.get('auth_hint'));
   
-  // Debug logging for middleware decisions
-  const debugInfo = {
-    pathname,
-    hasSession: Boolean(hasSession),
-    hasBearer: Boolean(hasBearer),
-    hasHint: Boolean(hasHint),
-    cookies: req.cookies.getAll().map(c => c.name),
-    authHeader: authHeader ? 'present' : 'missing',
-    userAgent: req.headers.get('user-agent')?.substring(0, 50) || 'unknown'
-  };
-  
-  // Special handling for generation routes - be more permissive
-  const isGenerationRoute = pathname.startsWith('/text-to-') || 
-                           pathname.startsWith('/edit-image') || 
-                           pathname.startsWith('/logo-generation') || 
-                           pathname.startsWith('/sticker-generation') || 
-                           pathname.startsWith('/product-generation') ||
-                           pathname.startsWith('/history');
-  
-  if (!hasSession && !hasBearer && !hasHint) {
-    console.log('🔒 Middleware: Blocking protected route', debugInfo);
+  if (!hasSession && !hasHint) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
     const redirect = NextResponse.redirect(url);
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
-    redirect.headers.set('X-Debug-Info', JSON.stringify(debugInfo));
     return redirect;
   }
   
-  console.log('✅ Middleware: Allowing protected route', debugInfo);
   res.headers.set('X-Auth-Decision', 'allow');
-  res.headers.set('X-Debug-Info', JSON.stringify(debugInfo));
   return res;
 }
 

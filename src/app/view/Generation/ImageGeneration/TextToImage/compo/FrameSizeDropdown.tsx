@@ -96,7 +96,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       <button
         onClick={handleDropdownClick}
         className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${frameSize !== '1:1'
-            ? 'bg-white text-black'
+            ? 'bg-transparent text-white/90'
             : 'bg-transparent text-white/90 hover:bg-white/5'
           }`}
       >
