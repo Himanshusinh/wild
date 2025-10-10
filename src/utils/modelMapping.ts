@@ -92,6 +92,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'image',
     provider: 'fal'
   },
+  {
+    frontendValue: 'ideogram-ai/ideogram-v3',
+    creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
+    generationType: 'image',
+    provider: 'replicate'
+  },
 
   // VIDEO GENERATION MODELS
   {

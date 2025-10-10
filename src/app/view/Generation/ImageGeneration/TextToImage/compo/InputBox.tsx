@@ -1083,6 +1083,75 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream');
           return;
         }
+      } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
+        // Ideogram v3 via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for ideogram (validator list)
+          const allowedAspect = new Set([
+            '1:3','3:1','1:2','2:1','9:16','16:9','10:16','16:10','2:3','3:2','3:4','4:3','4:5','5:4','1:1'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Ideogram v3 doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            // Sensible defaults (can be expanded to UI later)
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'ideogram-ai/ideogram-v3-turbo',
+              aspect_ratio: aspect,
+              // Provide safe defaults accepted by backend validator/model
+              resolution: 'None',
+              style_type: 'Auto',
+              magic_prompt_option: 'Auto',
+            };
+
+            // If user provided a reference image, pass a single image (v3 supports I2I prompt image)
+            if (uploadedImages && uploadedImages.length > 0) {
+              payload.image = toAbsoluteFromProxy(uploadedImages[0]);
+            }
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
