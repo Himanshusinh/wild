@@ -246,6 +246,18 @@ const InputBox = () => {
     }
   };
 
+  // Copy prompt to clipboard (used on hover overlay)
+  const copyPrompt = async (e: React.MouseEvent, text: string) => {
+    try {
+      e.stopPropagation();
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      toast.success('Prompt copied');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
   // Normalize frontend proxy URLs to absolute public URLs for provider APIs
   const toAbsoluteFromProxy = (url: string): string => {
     try {
@@ -1476,12 +1488,34 @@ const InputBox = () => {
                                   <div className="text-xs text-red-400">Failed</div>
                                 </div>
                               </div>
-                            ) : image.url ? (
-                              <div className="relative w-full h-full">
-                                <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
-                              </div>
+                      ) : image.url ? (
+                        <div className="relative w-full h-full group">
+                          <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
+                          {/* Hover prompt overlay */}
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                            <span
+                              title={getCleanPrompt(prompt)}
+                              className="text-md md:text-sm text-white flex-1 leading-snug"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3 as any,
+                                WebkitBoxOrient: 'vertical' as any,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {getCleanPrompt(prompt)}
+                            </span>
+                            <button
+                              aria-label="Copy prompt"
+                              className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                              onClick={(e) => copyPrompt(e, getCleanPrompt(prompt))}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                          </div>
+                        </div>
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                              <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/20 flex items-center justify-center text-white/60">
                                 <div className="text-xs text-white/60">No image</div>
                               </div>
                             )}
@@ -1525,7 +1559,7 @@ const InputBox = () => {
                             </div>
                           ) : (
                             // Completed image with shimmer loading
-                            <div className="relative w-full h-full ">
+                            <div className="relative w-full h-full group">
                               <Image
                                 src={image.url}
                                 alt={entry.prompt}
@@ -1544,6 +1578,28 @@ const InputBox = () => {
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              {/* Hover prompt overlay */}
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                                <span
+                                  title={getCleanPrompt(entry.prompt)}
+                                  className="text-base md:text-lg text-white/90 flex-1 leading-snug"
+                                  style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3 as any,
+                                    WebkitBoxOrient: 'vertical' as any,
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  {getCleanPrompt(entry.prompt)}
+                                </span>
+                                <button
+                                  aria-label="Copy prompt"
+                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                  onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                              </div>
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -1779,13 +1835,13 @@ const InputBox = () => {
             </div>
             {/* moved previews near upload above */}
             {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
-              <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0">
-                <Button
+              <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0 ">
+                <button
                   aria-label="Edit"
                   title="Edit"
-                  borderRadius="1.5rem"
-                  containerClassName="h-10 w-auto"
-                  className="bg-black text-white px-4 py-2"
+                  // borderRadius="1.5rem"
+                  // containerClassName="h-10 w-auto"
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-7 py-2 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                   onClick={() => router.push('/edit-image')}
                 >
                   <div className="flex items-center gap-2">
@@ -1795,7 +1851,7 @@ const InputBox = () => {
                     </svg>
                     <span className="text-sm text-white">Edit</span>
                   </div>
-                </Button>
+                </button>
               </div>
             )}
           </div>
