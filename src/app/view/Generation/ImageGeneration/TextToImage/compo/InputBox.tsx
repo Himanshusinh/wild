@@ -1527,12 +1527,6 @@ const InputBox = () => {
                                 e.preventDefault();
                                 e.nativeEvent.stopImmediatePropagation();
                               }}
-                              onMouseEnter={(e) => {
-                                e.stopPropagation();
-                              }}
-                              onMouseLeave={(e) => {
-                                e.stopPropagation();
-                              }}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
@@ -1552,13 +1546,7 @@ const InputBox = () => {
                         <div
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
-                          onClick={(e) => {
-                            // Don't open preview if clicking on copy button
-                            if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
-                              return;
-                            }
-                            setPreview({ entry, image });
-                          }}
+                          onClick={() => setPreview({ entry, image })}
                           className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
@@ -1640,12 +1628,6 @@ const InputBox = () => {
                                     e.stopPropagation();
                                     e.preventDefault();
                                     e.nativeEvent.stopImmediatePropagation();
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.stopPropagation();
                                   }}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
