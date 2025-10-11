@@ -87,6 +87,24 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'imagen-4-ultra',
+    creditModelName: 'Imagen 4 Ultra',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'imagen-4',
+    creditModelName: 'Imagen 4',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'imagen-4-fast',
+    creditModelName: 'Imagen 4 Fast',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
     frontendValue: 'seedream-v4',
     creditModelName: 'Seedream v4 (T2I)',
     generationType: 'image',

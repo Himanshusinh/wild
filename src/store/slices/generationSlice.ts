@@ -81,7 +81,7 @@ export const generateImages = createAsyncThunk(
       const api = getApiClient();
 
       // Decide provider based on model
-      const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
+  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
       const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
 
       // Resolve isPublic from backend policy when not explicitly provided
@@ -143,7 +143,7 @@ export const generateLiveChatImage = createAsyncThunk(
     try {
       const api = getApiClient();
       // Use different endpoints based on model
-      const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
+  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
       const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
       
       // Resolve isPublic if absent
