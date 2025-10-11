@@ -229,7 +229,7 @@ function Plans({ isAnnual }: PlansProps) {
                     <div className={`min-h-[60px] ml-2`}>
                       <div className="flex items-center justify-between gap-3 mx-3 mt-2 mb-0.5">
                         <h3 className={`text-3xl font-medium leading-tight`}>{enterprise.name}</h3>
-                        <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/15 transition-colors w-auto`}>
+                        <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-6 py-2.5 text-sm font-medium ring-1 ring-white/15 transition-colors min-w-[180px]`}>
                           {enterprise.buttonText}
                         </button>
                       </div>

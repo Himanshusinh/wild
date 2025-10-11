@@ -308,7 +308,7 @@ const LandingPage: React.FC = () => {
   return (
 
     
-    <div className='relative w-full h-full bg-[#0a1116] mb:w-full mb:h-full'>                    
+    <div className='relative w-full h-full bg-[#07070B] mb:w-full mb:h-full'>                    
 
     <div className="fixed top-0 left-0 right-0 z-[100] flex justify-center px-6 md:px-4 lg:px-6">
         <NAV_LAND onGetStarted={onGetStarted} />
