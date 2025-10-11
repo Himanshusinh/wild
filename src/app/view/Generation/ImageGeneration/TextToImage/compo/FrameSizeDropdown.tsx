@@ -58,17 +58,36 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     { name: 'Landscape Wide', value: '3:2', icon: 'landscape' },
     { name: 'Wide', value: '16:9', icon: 'landscape' },
     { name: 'Ultra Wide', value: '21:9', icon: 'ultrawide' },
+    // Additional ratios for Lucid Origin and Phoenix 1.0
+    { name: 'Portrait 4:5', value: '4:5', icon: 'portrait' },
+    { name: 'Landscape 5:4', value: '5:4', icon: 'landscape' },
+    { name: 'Ultra Wide 2:1', value: '2:1', icon: 'ultrawide' },
+    { name: 'Portrait 1:2', value: '1:2', icon: 'portrait' },
+    { name: 'Ultra Wide 3:1', value: '3:1', icon: 'ultrawide' },
+    { name: 'Portrait 1:3', value: '1:3', icon: 'portrait' },
   ];
 
   // Some providers (MiniMax) specify an explicit allowed list; others accept broader ranges.
   const isRunway = selectedModel?.startsWith('gen4_image');
   const isMiniMax = selectedModel === 'minimax-image-01';
   const isFlux = selectedModel?.startsWith('flux');
+  const isLucidOrigin = selectedModel === 'leonardoai/lucid-origin';
+  const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
 
   const frameSizes = (() => {
     if (isMiniMax) {
       // MiniMax: 1:1,16:9,4:3,3:2,2:3,3:4,9:16,21:9
       const allowed = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isLucidOrigin) {
+      // Lucid Origin: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3
+      const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isPhoenix) {
+      // Phoenix 1.0: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3
+      const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isRunway) {
@@ -81,6 +100,17 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     }
     return baseSizes;
   })();
+
+  // Auto-switch to supported frame size when model changes
+  useEffect(() => {
+    const currentFrameSize = frameSize;
+    const isCurrentFrameSizeSupported = frameSizes.some(size => size.value === currentFrameSize);
+    
+    if (!isCurrentFrameSizeSupported && frameSizes.length > 0) {
+      // Switch to the first supported frame size (usually 1:1)
+      dispatch(setFrameSize(frameSizes[0].value));
+    }
+  }, [selectedModel, frameSizes, frameSize, dispatch]);
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('frameSize'));

@@ -98,6 +98,24 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'image',
     provider: 'replicate'
   },
+  {
+    frontendValue: 'ideogram-ai/ideogram-v3-quality',
+    creditModelName: 'replicate/ideogram-ai/ideogram-v3-quality',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'leonardoai/lucid-origin',
+    creditModelName: 'replicate/leonardoai/lucid-origin',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'leonardoai/phoenix-1.0',
+    creditModelName: 'replicate/leonardoai/phoenix-1.0',
+    generationType: 'image',
+    provider: 'replicate'
+  },
 
   // VIDEO GENERATION MODELS
   {

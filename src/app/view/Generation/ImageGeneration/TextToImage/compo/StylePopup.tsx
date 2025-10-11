@@ -15,6 +15,7 @@ interface StylePopupProps {
 const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const dispatch = useAppDispatch();
   const currentStyle = useAppSelector((state: any) => state.generation?.style || 'none');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const [mounted, setMounted] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -51,7 +52,53 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     };
   }, [isOpen, onClose]);
 
-  const styles = STYLE_CATALOG;
+  // Model-specific style filtering
+  const isLucidOrigin = selectedModel === 'leonardoai/lucid-origin';
+  const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
+
+  // Filter styles based on selected model
+  const styles = (() => {
+    if (isLucidOrigin) {
+      // Lucid Origin: Only show model-specific styles
+      const allowedStyles = new Set([
+        'bokeh', 'cinematic', 'cinematic_close_up', 'creative', 'dynamic', 'fashion', 
+        'film', 'food', 'hdr', 'long_exposure', 'macro', 'minimalist', 'monochrome', 
+        'moody', 'neutral', 'none', 'portrait', 'retro', 'stock_photo', 'unprocessed', 'vibrant'
+      ]);
+      return STYLE_CATALOG.filter(style => allowedStyles.has(style.value));
+    }
+    if (isPhoenix) {
+      // Phoenix 1.0: Only show model-specific styles
+      const allowedStyles = new Set([
+        'render_3d', 'bokeh', 'cinematic', 'cinematic_concept', 'creative', 'dynamic', 
+        'fashion', 'graphic_design_pop_art', 'graphic_design_vector', 'hdr', 'illustration', 
+        'macro', 'minimalist', 'moody', 'none', 'portrait', 'pro_bw_photography', 
+        'pro_color_photography', 'pro_film_photography', 'portrait_fashion', 'ray_traced', 
+        'sketch_bw', 'sketch_color', 'stock_photo', 'vibrant'
+      ]);
+      return STYLE_CATALOG.filter(style => allowedStyles.has(style.value));
+    }
+    // For other models, show only original styles (exclude new model-specific styles)
+    const originalStyles = new Set([
+      'none', 'neutral_studio', 'realistic', 'minimalist', 'watercolor', 'oil_painting', 
+      'abstract', 'cyberpunk', 'neon_noir', 'isometric', 'vintage_poster', 'vaporwave', 
+      'pixel_art', 'cartoon', 'pencil_sketch', 'claymation', 'fantasy', 'sci_fi', 
+      'steampunk', 'abstract_geometry', 'surrealism', 'render_3d', 'ukiyoe', 'graffiti', 
+      'renaissance', 'pop_art'
+    ]);
+    return STYLE_CATALOG.filter(style => originalStyles.has(style.value));
+  })();
+
+  // Auto-switch to supported style when model changes
+  useEffect(() => {
+    const currentStyleValue = currentStyle;
+    const isCurrentStyleSupported = styles.some(style => style.value === currentStyleValue);
+    
+    if (!isCurrentStyleSupported && styles.length > 0) {
+      // Switch to the first supported style (usually 'none')
+      dispatch(setStyle(styles[0].value));
+    }
+  }, [selectedModel, styles, currentStyle, dispatch]);
 
   const handleStyleSelect = (styleValue: string) => {
     dispatch(setStyle(styleValue));

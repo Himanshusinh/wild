@@ -15,6 +15,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gemini-25-flash-image': 108, // Google nano banana (T2I)
   'seedream-v4': 90,   
   'ideogram-ai/ideogram-v3': 90, // Ideogram v3 (from sheet)
+  'ideogram-ai/ideogram-v3-quality': 210, // Ideogram v3 Quality (from replicatePricing.ts)
+  'leonardoai/lucid-origin': 183, // Lucid Origin (from sheet)
+  'leonardoai/phoenix-1.0': 180, // Phoenix 1.0 (from sheet)
 
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]

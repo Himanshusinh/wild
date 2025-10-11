@@ -32,6 +32,9 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
     { name: 'Seedream v4', value: 'seedream-v4' },
     { name: 'Ideogram v3', value: 'ideogram-ai/ideogram-v3' },
+    { name: 'Ideogram v3 Quality', value: 'ideogram-ai/ideogram-v3-quality' },
+    { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
+    { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -63,7 +66,10 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'minimax-image-01' ||
       m.value === 'gemini-25-flash-image' ||
       m.value === 'seedream-v4' ||
-      m.value === 'ideogram-ai/ideogram-v3'
+      m.value === 'ideogram-ai/ideogram-v3' ||
+      m.value === 'ideogram-ai/ideogram-v3-quality' ||
+      m.value === 'leonardoai/lucid-origin' ||
+      m.value === 'leonardoai/phoenix-1.0'
     );
   }
 

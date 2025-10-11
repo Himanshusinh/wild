@@ -19,6 +19,16 @@ interface GenerationState {
     status: string;
   } | null;
   uploadedImages: string[];
+  // Lucid Origin options
+  lucidStyle: string;
+  lucidContrast: string;
+  lucidMode: string;
+  lucidPromptEnhance: boolean;
+  // Phoenix 1.0 options
+  phoenixStyle: string;
+  phoenixContrast: string;
+  phoenixMode: string;
+  phoenixPromptEnhance: boolean;
 }
 
 const initialState: GenerationState = {
@@ -32,6 +42,16 @@ const initialState: GenerationState = {
   lastGeneratedImages: [],
   generationProgress: null,
   uploadedImages: [],
+  // Lucid Origin defaults
+  lucidStyle: 'none',
+  lucidContrast: 'medium',
+  lucidMode: 'standard',
+  lucidPromptEnhance: false,
+  // Phoenix 1.0 defaults
+  phoenixStyle: 'none',
+  phoenixContrast: 'medium',
+  phoenixMode: 'fast',
+  phoenixPromptEnhance: false,
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -330,6 +350,32 @@ const generationSlice = createSlice({
     setUploadedImages: (state, action: PayloadAction<string[]>) => {
       state.uploadedImages = action.payload;
     },
+    // Lucid Origin options
+    setLucidStyle: (state, action: PayloadAction<string>) => {
+      state.lucidStyle = action.payload;
+    },
+    setLucidContrast: (state, action: PayloadAction<string>) => {
+      state.lucidContrast = action.payload;
+    },
+    setLucidMode: (state, action: PayloadAction<string>) => {
+      state.lucidMode = action.payload;
+    },
+    setLucidPromptEnhance: (state, action: PayloadAction<boolean>) => {
+      state.lucidPromptEnhance = action.payload;
+    },
+    // Phoenix 1.0 options
+    setPhoenixStyle: (state, action: PayloadAction<string>) => {
+      state.phoenixStyle = action.payload;
+    },
+    setPhoenixContrast: (state, action: PayloadAction<string>) => {
+      state.phoenixContrast = action.payload;
+    },
+    setPhoenixMode: (state, action: PayloadAction<string>) => {
+      state.phoenixMode = action.payload;
+    },
+    setPhoenixPromptEnhance: (state, action: PayloadAction<boolean>) => {
+      state.phoenixPromptEnhance = action.payload;
+    },
     clearGenerationState: (state) => {
       state.prompt = '';
       state.uploadedImages = [];
@@ -435,6 +481,16 @@ export const {
   setLastGeneratedImages,
   setGenerationProgress,
   setUploadedImages,
+  // Lucid Origin options
+  setLucidStyle,
+  setLucidContrast,
+  setLucidMode,
+  setLucidPromptEnhance,
+  // Phoenix 1.0 options
+  setPhoenixStyle,
+  setPhoenixContrast,
+  setPhoenixMode,
+  setPhoenixPromptEnhance,
   clearGenerationState,
 } = generationSlice.actions;
 

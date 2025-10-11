@@ -35,6 +35,8 @@ import ModelsDropdown from "./ModelsDropdown";
 import ImageCountDropdown from "./ImageCountDropdown";
 import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
+import LucidOriginOptions from "./LucidOriginOptions";
+import PhoenixOptions from "./PhoenixOptions";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
@@ -305,6 +307,15 @@ const InputBox = () => {
   const style = useAppSelector(
     (state: any) => state.generation?.style || "realistic"
   );
+  // Lucid Origin and Phoenix 1.0 options
+  const lucidStyle = useAppSelector((state: any) => state.generation?.lucidStyle || 'none');
+  const lucidContrast = useAppSelector((state: any) => state.generation?.lucidContrast || 'medium');
+  const lucidMode = useAppSelector((state: any) => state.generation?.lucidMode || 'standard');
+  const lucidPromptEnhance = useAppSelector((state: any) => state.generation?.lucidPromptEnhance || false);
+  const phoenixStyle = useAppSelector((state: any) => state.generation?.phoenixStyle || 'none');
+  const phoenixContrast = useAppSelector((state: any) => state.generation?.phoenixContrast || 'medium');
+  const phoenixMode = useAppSelector((state: any) => state.generation?.phoenixMode || 'fast');
+  const phoenixPromptEnhance = useAppSelector((state: any) => state.generation?.phoenixPromptEnhance || false);
   const isGenerating = useAppSelector(
     (state: any) => state.generation?.isGenerating || false
   );
@@ -1168,6 +1179,205 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
           return;
         }
+      } else if (selectedModel === 'ideogram-ai/ideogram-v3-quality') {
+        // Ideogram v3 Quality via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for ideogram (validator list)
+          const allowedAspect = new Set([
+            '1:3','3:1','1:2','2:1','9:16','16:9','10:16','16:10','2:3','3:2','3:4','4:3','4:5','5:4','1:1'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Ideogram v3 Quality doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            // Sensible defaults (can be expanded to UI later)
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'ideogram-ai/ideogram-v3-quality',
+              aspect_ratio: aspect,
+              // Provide safe defaults accepted by backend validator/model
+              resolution: 'None',
+              style_type: 'Auto',
+              magic_prompt_option: 'Auto',
+            };
+
+            // If user provided a reference image, pass a single image (v3 supports I2I prompt image)
+            if (uploadedImages && uploadedImages.length > 0) {
+              payload.image = toAbsoluteFromProxy(uploadedImages[0]);
+            }
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3 Quality');
+          return;
+        }
+      } else if (selectedModel === 'leonardoai/lucid-origin') {
+        // Lucid Origin via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for Lucid Origin
+          const allowedAspect = new Set([
+            '1:1','16:9','9:16','3:2','2:3','4:5','5:4','3:4','4:3','2:1','1:2','3:1','1:3'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'leonardoai/lucid-origin',
+              aspect_ratio: aspect,
+              // Use Redux state values for Lucid Origin
+              style: lucidStyle,
+              contrast: lucidContrast,
+              generation_mode: lucidMode,
+              prompt_enhance: lucidPromptEnhance,
+              num_images: 1
+            };
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Lucid Origin');
+          return;
+        }
+      } else if (selectedModel === 'leonardoai/phoenix-1.0') {
+        // Phoenix 1.0 via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for Phoenix 1.0
+          const allowedAspect = new Set([
+            '1:1','16:9','9:16','3:2','2:3','4:5','5:4','3:4','4:3','2:1','1:2','3:1','1:3'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Phoenix 1.0 doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'leonardoai/phoenix-1.0',
+              aspect_ratio: aspect,
+              // Use Redux state values for Phoenix 1.0
+              style: phoenixStyle,
+              contrast: phoenixContrast,
+              generation_mode: phoenixMode,
+              prompt_enhance: phoenixPromptEnhance,
+              num_images: 1
+            };
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Phoenix 1.0');
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
@@ -1802,6 +2012,8 @@ const InputBox = () => {
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
+              <LucidOriginOptions />
+              <PhoenixOptions />
               {selectedModel === 'seedream-v4' && (
                 <div className="flex items-center gap-2">
                   <select

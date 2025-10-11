@@ -593,6 +593,33 @@ export const creditDistributionData: ModelCreditInfo[] = [
   },
   {
     srNo: 39,
+    modelName: "replicate/ideogram-ai/ideogram-v3-quality",
+    priceToPay: 0.09,
+    overCharge: 0.015,
+    userCost: 0.105,
+    creditsPerGeneration: 210,
+    plans: { planA: 58.85714286, planB: 117.7142857, planC: 294.2857143, planD: 941.7142857, free: 19.61904762 }
+  },
+  {
+    srNo: 40,
+    modelName: "replicate/leonardoai/lucid-origin",
+    priceToPay: 0.0765,
+    overCharge: 0.015,
+    userCost: 0.0915,
+    creditsPerGeneration: 183,
+    plans: { planA: 67.54098361, planB: 135.0819672, planC: 337.704918, planD: 1080.655738, free: 22.5136612 }
+  },
+  {
+    srNo: 41,
+    modelName: "replicate/leonardoai/phoenix-1.0",
+    priceToPay: 0.075,
+    overCharge: 0.015,
+    userCost: 0.09,
+    creditsPerGeneration: 180,
+    plans: { planA: 68.66666667, planB: 137.3333333, planC: 343.3333333, planD: 1098.666667, free: 22.88888889 }
+  },
+  {
+    srNo: 42,
     modelName: "replicate/fermatresearch/magic-image-refiner",
     priceToPay: 0.027,
     overCharge: 0.015,
