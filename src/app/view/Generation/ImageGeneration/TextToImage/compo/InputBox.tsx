@@ -250,11 +250,14 @@ const InputBox = () => {
   const copyPrompt = async (e: React.MouseEvent, text: string) => {
     try {
       e.stopPropagation();
+      e.preventDefault();
       if (!text) return;
       await navigator.clipboard.writeText(text);
-      toast.success('Prompt copied');
+      (await import('react-hot-toast')).default.success('Prompt copied');
     } catch {
-      toast.error('Failed to copy');
+      try {
+        (await import('react-hot-toast')).default.error('Failed to copy');
+      } catch {}
     }
   };
 
@@ -1492,10 +1495,10 @@ const InputBox = () => {
                         <div className="relative w-full h-full group">
                           <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
                           {/* Hover prompt overlay */}
-                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-white/20 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
                             <span
                               title={getCleanPrompt(prompt)}
-                              className="text-md md:text-sm text-white flex-1 leading-snug"
+                              className="text-xs text-white flex-1 leading-snug"
                               style={{
                                 display: '-webkit-box',
                                 WebkitLineClamp: 3 as any,
@@ -1507,8 +1510,29 @@ const InputBox = () => {
                             </span>
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
-                              onClick={(e) => copyPrompt(e, getCleanPrompt(prompt))}
+                              className="pointer-events-auto p-1 rounded hover:bg-white/20 text-white/90 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                e.nativeEvent.stopImmediatePropagation();
+                                copyPrompt(e, getCleanPrompt(prompt));
+                              }}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                e.nativeEvent.stopImmediatePropagation();
+                              }}
+                              onMouseUp={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                e.nativeEvent.stopImmediatePropagation();
+                              }}
+                              onMouseEnter={(e) => {
+                                e.stopPropagation();
+                              }}
+                              onMouseLeave={(e) => {
+                                e.stopPropagation();
+                              }}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
@@ -1528,7 +1552,13 @@ const InputBox = () => {
                         <div
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
-                          onClick={() => setPreview({ entry, image })}
+                          onClick={(e) => {
+                            // Don't open preview if clicking on copy button
+                            if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
+                              return;
+                            }
+                            setPreview({ entry, image });
+                          }}
                           className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
@@ -1579,10 +1609,10 @@ const InputBox = () => {
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-white/20 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
-                                  className="text-base md:text-lg text-white/90 flex-1 leading-snug"
+                                  className="text-xs text-white flex-1 leading-snug"
                                   style={{
                                     display: '-webkit-box',
                                     WebkitLineClamp: 3 as any,
@@ -1594,8 +1624,29 @@ const InputBox = () => {
                                 </span>
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
-                                  onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                                  className="pointer-events-auto p-1 rounded hover:bg-white/20 text-white/90 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    e.nativeEvent.stopImmediatePropagation();
+                                    copyPrompt(e, getCleanPrompt(entry.prompt));
+                                  }}
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    e.nativeEvent.stopImmediatePropagation();
+                                  }}
+                                  onMouseUp={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    e.nativeEvent.stopImmediatePropagation();
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.stopPropagation();
+                                  }}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
