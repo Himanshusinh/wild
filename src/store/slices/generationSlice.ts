@@ -29,6 +29,8 @@ interface GenerationState {
   phoenixContrast: string;
   phoenixMode: string;
   phoenixPromptEnhance: boolean;
+  // Output format for Imagen models
+  outputFormat: string;
 }
 
 const initialState: GenerationState = {
@@ -52,6 +54,8 @@ const initialState: GenerationState = {
   phoenixContrast: 'medium',
   phoenixMode: 'fast',
   phoenixPromptEnhance: false,
+  // Output format default
+  outputFormat: 'jpeg',
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -376,6 +380,10 @@ const generationSlice = createSlice({
     setPhoenixPromptEnhance: (state, action: PayloadAction<boolean>) => {
       state.phoenixPromptEnhance = action.payload;
     },
+    // Output format
+    setOutputFormat: (state, action: PayloadAction<string>) => {
+      state.outputFormat = action.payload;
+    },
     clearGenerationState: (state) => {
       state.prompt = '';
       state.uploadedImages = [];
@@ -491,6 +499,8 @@ export const {
   setPhoenixContrast,
   setPhoenixMode,
   setPhoenixPromptEnhance,
+  // Output format
+  setOutputFormat,
   clearGenerationState,
 } = generationSlice.actions;
 

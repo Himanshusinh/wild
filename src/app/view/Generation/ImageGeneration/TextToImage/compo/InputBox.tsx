@@ -37,6 +37,7 @@ import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
 import LucidOriginOptions from "./LucidOriginOptions";
 import PhoenixOptions from "./PhoenixOptions";
+import FileTypeDropdown from "./FileTypeDropdown";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
@@ -316,6 +317,7 @@ const InputBox = () => {
   const phoenixContrast = useAppSelector((state: any) => state.generation?.phoenixContrast || 'medium');
   const phoenixMode = useAppSelector((state: any) => state.generation?.phoenixMode || 'fast');
   const phoenixPromptEnhance = useAppSelector((state: any) => state.generation?.phoenixPromptEnhance || false);
+  const outputFormat = useAppSelector((state: any) => state.generation?.outputFormat || 'jpeg');
   const isGenerating = useAppSelector(
     (state: any) => state.generation?.isGenerating || false
   );
@@ -1061,6 +1063,49 @@ const InputBox = () => {
           }
 
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana');
+          return;
+        }
+      } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
+        // Imagen 4 models via FAL generate endpoint
+        try {
+          const result = await dispatch(falGenerate({
+            prompt: `${prompt} [Style: ${style}]`,
+            model: selectedModel,
+            aspect_ratio: frameSize as any,
+            num_images: imageCount,
+            uploadedImages: (uploadedImages || []).map((u: string) => toAbsoluteFromProxy(u)),
+            output_format: outputFormat,
+            generationType: 'text-to-image',
+            isPublic,
+          })).unwrap();
+
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          // Handle credit success
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Imagen 4');
           return;
         }
       } else if (selectedModel === 'seedream-v4') {
@@ -2014,6 +2059,7 @@ const InputBox = () => {
               <StyleSelector />
               <LucidOriginOptions />
               <PhoenixOptions />
+              <FileTypeDropdown />
               {selectedModel === 'seedream-v4' && (
                 <div className="flex items-center gap-2">
                   <select

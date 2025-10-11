@@ -73,6 +73,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isFlux = selectedModel?.startsWith('flux');
   const isLucidOrigin = selectedModel === 'leonardoai/lucid-origin';
   const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
+  const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
 
   const frameSizes = (() => {
     if (isMiniMax) {
@@ -88,6 +89,11 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     if (isPhoenix) {
       // Phoenix 1.0: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3
       const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isImagen) {
+      // Imagen models: 1:1,16:9,9:16,3:4,4:3
+      const allowed = new Set(['1:1', '16:9', '9:16', '3:4', '4:3']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isRunway) {

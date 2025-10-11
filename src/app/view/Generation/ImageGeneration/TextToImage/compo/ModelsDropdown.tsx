@@ -35,6 +35,9 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Ideogram v3 Quality', value: 'ideogram-ai/ideogram-v3-quality' },
     { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
     { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
+    { name: 'Imagen 4 Ultra', value: 'imagen-4-ultra' },
+    { name: 'Imagen 4', value: 'imagen-4' },
+    { name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -69,7 +72,10 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'ideogram-ai/ideogram-v3' ||
       m.value === 'ideogram-ai/ideogram-v3-quality' ||
       m.value === 'leonardoai/lucid-origin' ||
-      m.value === 'leonardoai/phoenix-1.0'
+      m.value === 'leonardoai/phoenix-1.0' ||
+      m.value === 'imagen-4-ultra' ||
+      m.value === 'imagen-4' ||
+      m.value === 'imagen-4-fast'
     );
   }
 
