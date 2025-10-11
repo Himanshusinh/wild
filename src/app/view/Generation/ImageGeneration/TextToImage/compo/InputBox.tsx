@@ -249,6 +249,7 @@ const InputBox = () => {
   // Copy prompt to clipboard (used on hover overlay)
   const copyPrompt = async (e: React.MouseEvent, text: string) => {
     try {
+      console.log("beti")
       e.stopPropagation();
       if (!text) return;
       await navigator.clipboard.writeText(text);
@@ -1492,7 +1493,7 @@ const InputBox = () => {
                         <div className="relative w-full h-full group">
                           <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
                           {/* Hover prompt overlay */}
-                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                             <span
                               title={getCleanPrompt(prompt)}
                               className="text-md md:text-sm text-white flex-1 leading-snug"
@@ -1508,7 +1509,8 @@ const InputBox = () => {
                             <button
                               aria-label="Copy prompt"
                               className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
-                              onClick={(e) => copyPrompt(e, getCleanPrompt(prompt))}
+                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
+                              onMouseDown={(e) => e.stopPropagation()}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
@@ -1579,7 +1581,7 @@ const InputBox = () => {
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-base md:text-lg text-white/90 flex-1 leading-snug"
@@ -1595,7 +1597,8 @@ const InputBox = () => {
                                 <button
                                   aria-label="Copy prompt"
                                   className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
-                                  onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                                  onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                  onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
