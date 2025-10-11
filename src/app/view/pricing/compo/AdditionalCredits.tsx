@@ -32,9 +32,7 @@
   {
     id: 5,
     title: "Custom Credits",
-    price: "$3",
-   credits: "5000",
-    eligibility: "Eligible for Professional and Collective",
+    eligibility: "Eligible for Enterprise",
     gradient: "from-green-500 to-green-700"
   }
  ];
@@ -61,10 +59,12 @@
               <div className="relative z-10 min-h-[120px]">
                 <div className="flex justify-between items-start mb-3 mx-4">
                   <h3 className="text-lg font-semibold">{pkg.title}</h3>
-                  <div className="text-right">
-                    <p className="text-xl font-bold leading-none">{pkg.credits}</p>
-                    <p className="text-xs text-white/70 mt-1">Credits</p>
-                  </div>
+                  {pkg.credits && (
+                    <div className="text-right">
+                      <p className="text-xl font-bold leading-none">{pkg.credits}</p>
+                      <p className="text-xs text-white/70 mt-1">Credits</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mx-4">
