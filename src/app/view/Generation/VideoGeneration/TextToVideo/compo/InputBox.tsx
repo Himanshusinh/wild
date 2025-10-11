@@ -1723,15 +1723,25 @@ const InputBox = () => {
                                 </div>
                               </div>
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
-                                  className="text-xs text-white/90 flex-1 leading-snug"
-                                  style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
+                                  className="text-xs text-white flex-1 leading-snug"
+                                  style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3 as any,
+                                    WebkitBoxOrient: 'vertical' as any,
+                                    overflow: 'hidden'
+                                  }}
                                 >
                                   {getCleanPrompt(entry.prompt)}
                                 </span>
-                                <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/20 text-white/90 transition-colors" onClick={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }} onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); }} onMouseUp={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); }} onMouseEnter={(e) => { e.stopPropagation(); }} onMouseLeave={(e) => { e.stopPropagation(); }}>
+                                <button
+                                  aria-label="Copy prompt"
+                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                  onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                               </div>
