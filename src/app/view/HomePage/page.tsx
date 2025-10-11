@@ -230,7 +230,7 @@ const HomePage: React.FC = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#07070B]">
       {/* DEBUG: This is HomePage component */}
       {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
         🔍 DEBUG: HomePage Component is Rendering

@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -37,7 +37,8 @@ const EditImageInterface: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
   const [sliderPosition, setSliderPosition] = useState(50);
-
+  const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
+  
   // Zoom and pan state
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -45,10 +46,10 @@ const EditImageInterface: React.FC = () => {
   const [lastPoint, setLastPoint] = useState({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [fitScale, setFitScale] = useState(1);
-
+  
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-
+  
   // Form states
   const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('');
   const [prompt, setPrompt] = useState('');
@@ -62,7 +63,7 @@ const EditImageInterface: React.FC = () => {
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
   const selectedStyle = useAppSelector((state: any) => state.generation?.style || 'realistic');
   const reduxUploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
-
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize from query params: feature and image
@@ -101,20 +102,20 @@ const EditImageInterface: React.FC = () => {
   // Zoom and pan utility functions
   const clampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
     if (!imageContainerRef.current) return newOffset;
-
+    
     const container = imageContainerRef.current;
     const containerRect = container.getBoundingClientRect();
     const containerWidth = containerRect.width;
     const containerHeight = containerRect.height;
-
+    
     // Calculate image dimensions at current scale
     const imageWidth = naturalSize.width * currentScale;
     const imageHeight = naturalSize.height * currentScale;
-
+    
     // Calculate maximum offset to keep image covering container
     const maxOffsetX = Math.max(0, (imageWidth - containerWidth) / 2);
     const maxOffsetY = Math.max(0, (imageHeight - containerHeight) / 2);
-
+    
     return {
       x: Math.max(-maxOffsetX, Math.min(maxOffsetX, newOffset.x)),
       y: Math.max(-maxOffsetY, Math.min(maxOffsetY, newOffset.y))
@@ -123,18 +124,18 @@ const EditImageInterface: React.FC = () => {
 
   const zoomToPoint = useCallback((point: { x: number; y: number }, newScale: number) => {
     if (!imageContainerRef.current) return;
-
+    
     const container = imageContainerRef.current;
     const containerRect = container.getBoundingClientRect();
     const containerCenterX = containerRect.width / 2;
     const containerCenterY = containerRect.height / 2;
-
+    
     // Calculate offset to center the zoom on the click point
     const newOffsetX = containerCenterX - (point.x * newScale);
     const newOffsetY = containerCenterY - (point.y * newScale);
-
+    
     const clampedOffset = clampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
-
+    
     setScale(newScale);
     setOffset(clampedOffset);
   }, [clampOffset]);
@@ -146,12 +147,12 @@ const EditImageInterface: React.FC = () => {
 
   const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageContainerRef.current) return;
-
+    
     const container = imageContainerRef.current;
     const rect = container.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-
+    
     if (Math.abs(scale - fitScale) < 1e-3) {
       // Zoom to 1.5x at click point (more reasonable)
       zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 1.5));
@@ -169,16 +170,16 @@ const EditImageInterface: React.FC = () => {
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
-
+    
     e.preventDefault();
     const deltaX = e.clientX - lastPoint.x;
     const deltaY = e.clientY - lastPoint.y;
-
+    
     const newOffset = {
       x: offset.x + deltaX,
       y: offset.y + deltaY
     };
-
+    
     const clampedOffset = clampOffset(newOffset, scale);
     setOffset(clampedOffset);
     setLastPoint({ x: e.clientX, y: e.clientY });
@@ -191,17 +192,17 @@ const EditImageInterface: React.FC = () => {
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-
+    
     if (!imageContainerRef.current) return;
-
+    
     const container = imageContainerRef.current;
     const rect = container.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-
+    
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newScale = Math.max(0.1, Math.min(6, scale + delta));
-
+    
     if (newScale !== scale) {
       zoomToPoint({ x: mouseX, y: mouseY }, newScale);
     }
@@ -271,7 +272,7 @@ const EditImageInterface: React.FC = () => {
 
     // Add passive: false to allow preventDefault
     document.addEventListener('wheel', handleGlobalWheel, { passive: false });
-
+    
     return () => {
       document.removeEventListener('wheel', handleGlobalWheel);
     };
@@ -414,7 +415,7 @@ const EditImageInterface: React.FC = () => {
           };
           const res = await axiosInstance.post('/api/runway/generate', runwayPayload);
           const taskId = res?.data?.data?.taskId || res?.data?.taskId;
-
+          
           if (taskId) {
             // Poll for completion like the image generation flow
             let imageUrl: string | undefined;
@@ -422,7 +423,7 @@ const EditImageInterface: React.FC = () => {
               try {
                 const statusRes = await axiosInstance.get(`/api/runway/status/${taskId}`);
                 const status = statusRes?.data?.data || statusRes?.data;
-
+                
                 if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
                   imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                   break;
@@ -436,7 +437,7 @@ const EditImageInterface: React.FC = () => {
               }
               await new Promise(res => setTimeout(res, 1000));
             }
-
+            
             if (imageUrl) {
               setOutputs((prev) => ({ ...prev, ['using-prompt']: imageUrl as string }));
             } else {
@@ -461,7 +462,7 @@ const EditImageInterface: React.FC = () => {
               max_images: 1,
               isPublic,
             };
-
+            
             // Use Replicate generate endpoint (same as image generation flow)
             const res = await axiosInstance.post('/api/replicate/generate', payload);
             const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
@@ -519,10 +520,10 @@ const EditImageInterface: React.FC = () => {
         // } else 
         if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale };
-        }
+        } 
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
-        else if (model === 'mv-lab/swin2sr') {
+         else if (model === 'mv-lab/swin2sr') {
           payload = { ...payload };
         }
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
@@ -655,16 +656,45 @@ const EditImageInterface: React.FC = () => {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-black">
-      <div className="flex h-screen py-1">
+    <div className="h-screen overflow-hidden bg-[#07070B]">
+      {/* Global horizontal headers */}
+      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B]">
+        <h1 className="text-base font-semibold text-white">Edit Images</h1>
+        <p className="text-white/60 text-xs">Transform your images with AI</p>
+      </div>
+      <div className="w-screen px-4 pt-2 pb-2 bg-[#07070B]">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          {features.map((feature) => (
+            <div
+              key={feature.id}
+              onClick={() => {
+                setSelectedFeature(feature.id);
+                setOutputs((prev) => ({ ...prev, [feature.id]: null }));
+                setProcessing((p) => ({ ...p, [feature.id]: false }));
+              }}
+              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all ${selectedFeature === feature.id
+                  ? 'border-white/30 bg-white/10'
+                  : 'border-white/10 hover:bg-white/10'
+                }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded flex items-center justify-center ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
+                  }`}>
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-white text-xs font-medium">{feature.label}</h3>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-white/5 border-r border-white/10 flex flex-col h-181 rounded-br-xl overflow-hidden">
-          {/* Header */}
-          <div className="p-3 border-b border-white/10">
-            <h1 className="text-base font-semibold text-white mb-1">Edit Images</h1>
-            <p className="text-white/60 text-xs">Transform your images with AI</p>
-          </div>
-
+        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative">
           {/* Error Message */}
           {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
@@ -672,20 +702,21 @@ const EditImageInterface: React.FC = () => {
             </div>
           )}
 
+
           {/* Input Image Upload */}
-          <div className="p-3 border-b border-white/10">
+          <div className="p-3">
             <h3 className="text-xs font-medium text-white/80 mb-2">Input Image</h3>
             <div className="relative">
-              <div className="h-48 bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden">
-                {inputs[selectedFeature] ? (
-                  <>
+              <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] lg:min-h-[16rem]">
+                  {inputs[selectedFeature] ? (
+                    <>
                     <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-cover rounded-xl" />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
                       className="absolute bottom-1 left-1 right-1 bg-black/70 hover:bg-black/80 text-white text-xs py-0.5 px-1 rounded-full transition-colors"
-                    >
-                      Change
-                    </button>
+                      >
+                        Change
+                      </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -697,31 +728,31 @@ const EditImageInterface: React.FC = () => {
                     >
                       ×
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
                     className="absolute inset-0 flex flex-col items-center justify-center text-white/50 hover:text-white transition-colors"
-                  >
+                    >
                     <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     <span className="text-sm">Upload Image</span>
-                  </button>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-              </div>
-            </div>
-          </div>
+                    </button>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                </div>
+                        </div>
+                      </div>
 
-          {/* Action Buttons - Moved to top for visibility */}
-          <div className="p-3 border-b border-white/10">
+          {/* Action Buttons - moved under upload image */}
+          <div className="px-3 pb-3">
             <div className="flex gap-2">
               <button
                 onClick={handleReset}
                 className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors"
               >
-                {selectedFeature === 'remove-bg' ? 'Clear' : 'Reset'}
+                Reset
               </button>
               <button
                 onClick={handleRun}
@@ -733,63 +764,66 @@ const EditImageInterface: React.FC = () => {
             </div>
           </div>
 
-          {/* Configuration - No Scroll */}
-          <div className="flex-1 p-3">
+          {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
+          <div className="flex-1 min-h-0 p-3 overflow-hidden">
             <h3 className="text-xs font-medium text-white/80 mb-2">Parameters</h3>
 
-            {selectedFeature === 'using-prompt' ? (
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1">Edit Prompt</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe the edit you want to apply to the image"
-                    rows={2}
-                    className="w-full h-16 px-3 py-4 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none flex items-center justify-center text-center"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+              {selectedFeature === 'using-prompt' ? (
+              <>
+                <div className="space-y-2">
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Aspect Ratio</label>
-                    <FrameSizeDropdown openDirection="up" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Style</label>
-                    <StyleSelector />
+                    <label className="block text-xs font-medium text-white/70 mb-1">Edit Prompt</label>
+                    <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe the edit you want to apply to the image"
+                      rows={2}
+                      className="w-full h-16 px-3 py-4 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none flex items-center justify-center text-center"
+                      />
+                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1">Aspect Ratio</label>
+                      <FrameSizeDropdown openDirection="up" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1">Style</label>
+                      <StyleSelector />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
+                {/* Buttons moved to bottom footer */}
+              </>
+              ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-white/70 mb-1">Model</label>
-                    <select
-                      value={model}
+                  <select
+                    value={model}
                       onChange={(e) => { setModel(e.target.value as any); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
-                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
-                    >
+                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark]"
+                  >
                       <option value="" disabled hidden>Select model</option>
-                      {selectedFeature === 'remove-bg' ? (
-                        <>
+                    {selectedFeature === 'remove-bg' ? (
+                      <>
                           <option value="851-labs/background-remover">851-labs/background-remover</option>
                           <option value="lucataco/remove-bg">lucataco/remove-bg</option>
-                        </>
-                      ) : (
-                        <>
+                      </>
+                    ) : (
+                      <>
                           <option value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
                           <option value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
-                        </>
-                      )}
-                    </select>
+                      </>
+                    )}
+                  </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-white/70 mb-1">Output Format</label>
                     <select
                       value={output}
                       onChange={(e) => setOutput(e.target.value as any)}
-                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark]"
                     >
                       <option value="" disabled hidden>Select format</option>
                       <option value="png">PNG</option>
@@ -811,15 +845,15 @@ const EditImageInterface: React.FC = () => {
                       className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
                     />
                   </div>
-                )}
+                  )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-white/70 mb-1">Scale Factor</label>
-                    <input
-                      type="text"
-                      value={scaleFactor}
-                      onChange={(e) => setScaleFactor(e.target.value)}
+                  <input
+                    type="text"
+                    value={scaleFactor}
+                    onChange={(e) => setScaleFactor(e.target.value)}
                       placeholder="e.g., 2x or 4x"
                       className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
                     />
@@ -834,17 +868,19 @@ const EditImageInterface: React.FC = () => {
                         placeholder="e.g., rgba or white"
                         className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
                       />
-                    </div>
-                  )}
-                </div>
+              </div>
+            )}
+
+            {/* Buttons moved to bottom footer */}
+          </div>
 
                 {selectedFeature === 'remove-bg' && (
                   <div>
                     <label className="block text-xs font-medium text-white/70 mb-1">Threshold</label>
-                    <input
-                      type="text"
-                      value={threshold}
-                      onChange={(e) => setThreshold(e.target.value)}
+                      <input
+                        type="text"
+                        value={threshold}
+                        onChange={(e) => setThreshold(e.target.value)}
                       placeholder="0.0 to 1.0"
                       className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
                     />
@@ -855,269 +891,282 @@ const EditImageInterface: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs font-medium text-white/70 mb-1">Dynamic</label>
-                      <input
-                        type="text"
-                        value={dynamic}
-                        onChange={(e) => setDynamic(e.target.value)}
+                        <input
+                          type="text"
+                          value={dynamic}
+                          onChange={(e) => setDynamic(e.target.value)}
                         placeholder="0-10 (optional)"
                         className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
                       />
-                    </div>
+                      </div>
                     <div>
                       <label className="block text-xs font-medium text-white/70 mb-1">Sharpen</label>
-                      <input
-                        type="text"
-                        value={sharpen}
-                        onChange={(e) => setSharpen(e.target.value)}
+                        <input
+                          type="text"
+                          value={sharpen}
+                          onChange={(e) => setSharpen(e.target.value)}
                         placeholder="0.0-1.0 (optional)"
                         className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
                       />
-                    </div>
+                      </div>
                   </div>
-                )}
+                  )}
               </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Right Main Area - Image Display */}
-        <div className="flex-1 flex flex-col bg-black overflow-hidden">
-          {/* Header (no cards) */}
-          <div className="p-6 border-b border-white/10 bg-white/5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-white/80">AI Tools</h2>
-              {outputs[selectedFeature] && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleDownloadOutput}
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-full transition-colors flex items-center gap-1.5"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Download
-                  </button>
-                  <button
-                    onClick={handleShareOutput}
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-full transition-colors flex items-center gap-1.5"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                    </svg>
-                    {shareCopied ? 'Copied!' : 'Share'}
-                  </button>
-                </div>
               )}
             </div>
-          </div>
 
-          {/* Horizontal Cards directly above preview */}
-          <div className="px-4 pt-3 pb-0">
-            <div className="grid grid-cols-4 gap-3 pb-1">
-              {features.map((feature) => (
-                <div
-                  key={feature.id}
-                  onClick={() => {
-                    setSelectedFeature(feature.id);
-                    setOutputs((prev) => ({ ...prev, [feature.id]: null }));
-                    setProcessing((p) => ({ ...p, [feature.id]: false }));
-                  }}
-                  className={`min-w-0 w-full bg-white/5 rounded-lg p-3 border cursor-pointer transition-all ${selectedFeature === feature.id
-                      ? 'border-white/30 bg-white/10'
-                      : 'border-white/10 hover:bg-white/10'
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
-                      }`}>
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-white text-sm font-medium">{feature.label}</h3>
-                      <p className="text-white/60 text-xs">{feature.description}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            {/* Footer removed; buttons are rendered at the end of Parameters above */}
 
-          {/* Main Content Area */}
-          <div className="flex-1 p-4">
-            <div className="h-133 bg-white/5 rounded-xl border border-white/10 relative overflow-hidden">
-              {/* Output Image Label */}
+          </div>
+ 
+        {/* Right Main Area - Image Display */}
+        <div className="flex-1 flex flex-col bg-[#07070B] overflow-hidden">
+
+
+          {/* Right Main Area - Output preview parallel to input image */}
+          <div className="p-4 flex items-start justify-center mt-5">
+              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem] w-full max-w-2xl">
               <div className="absolute top-3 left-3 z-10">
                 <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded">Output Image</span>
               </div>
-              {processing[selectedFeature] ? (
-                <div className="h-full flex flex-col items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mb-2"></div>
-                  <p className="text-white/70 text-xs">Processing your image...</p>
-                </div>
-              ) : outputs[selectedFeature] ? (
-                <>
+              {outputs[selectedFeature] ? (
+                <div className="w-full h-full relative">
                   {selectedFeature === 'upscale' && inputs[selectedFeature] ? (
-                    // Comparison slider for upscale
-                    <div className="relative w-full h-full">
-                      <div className="relative w-full h-full overflow-hidden">
-                        {/* Original image (left side) */}
-                        <div 
-                          className="absolute inset-0"
-                          style={{ clipPath: `inset(0 ${100 - sliderPosition}%} 0 0)` }}
-                        >
-                          <Image
-                            src={inputs[selectedFeature] as string}
-                            alt="Original"
-                            fill
-                            className="object-contain"
-                          />
+                    // Upscale with toggle between comparison and zoom
+                    <div className="w-full h-full relative min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]">
+                      {/* View Mode Toggle - moved to bottom right */}
+                      <div className="absolute bottom-3 left-3 z-30">
+                        <div className="flex bg-black/80 rounded-lg p-1">
+                          <button
+                            onClick={() => setUpscaleViewMode('comparison')}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              upscaleViewMode === 'comparison' 
+                                ? 'bg-white text-black' 
+                                : 'text-white hover:bg-white/20'
+                            }`}
+                          >
+                            Compare
+                          </button>
+                          <button
+                            onClick={() => setUpscaleViewMode('zoom')}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              upscaleViewMode === 'zoom' 
+                                ? 'bg-white text-black' 
+                                : 'text-white hover:bg-white/20'
+                            }`}
+                          >
+                            Zoom
+                          </button>
                         </div>
-                        
-                        {/* Generated image (right side) */}
-                        <div 
-                          className="absolute inset-0"
-                          style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
-                        >
-                          <Image
-                            src={outputs[selectedFeature] as string}
-                            alt="Generated"
-                            fill
-                            className="object-contain"
-                          />
-                        </div>
-                        
-                        {/* Slider line */}
-                        <div 
-                          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg z-10"
-                          style={{ left: `${sliderPosition}%` }}
-                        >
-                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg"></div>
-                        </div>
-                        
-                        {/* Labels positioned at edges */}
-                        <div className="absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-white text-xs z-30">
-                          Original
-                        </div>
-                        <div className="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs z-30">
-                          Generated
-                        </div>
-                        
-                        {/* Slider input */}
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={sliderPosition}
-                          onChange={(e) => setSliderPosition(Number(e.target.value))}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
-                        />
                       </div>
+
+                      {upscaleViewMode === 'comparison' ? (
+                        // Comparison slider mode
+                        <>
+                          <div className="absolute inset-0">
+                            <Image
+                              src={inputs[selectedFeature] as string}
+                              alt="Original"
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                          <div 
+                            className="absolute inset-0"
+                            style={{
+                              clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`
+                            }}
+                          >
+                            <Image
+                              src={outputs[selectedFeature] as string}
+                              alt="Generated"
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                          <div className="absolute inset-0">
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={sliderPosition}
+                              onChange={(e) => setSliderPosition(Number(e.target.value))}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
+                            />
+                            <div 
+                              className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
+                              style={{ left: `${sliderPosition}%` }}
+                            />
+                          </div>
+                          <div className="absolute top-2 right-2 z-30">
+                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded">Generated</span>
+                          </div>
+                        </>
+                      ) : (
+                        // Zoom mode
+                        <div
+                          ref={imageContainerRef}
+                          className="w-full h-full relative cursor-move select-none min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]"
+                          onMouseDown={handleMouseDown}
+                          onMouseMove={handleMouseMove}
+                          onMouseUp={handleMouseUp}
+                          onMouseLeave={handleMouseUp}
+                          onWheel={handleWheel}
+                          onKeyDown={handleKeyDown}
+                          tabIndex={0}
+                          style={{ outline: 'none' }}
+                        >
+                          <Image
+                            ref={imageRef}
+                            src={outputs[selectedFeature] as string}
+                            alt="Output"
+                            fill
+                            className="object-contain"
+                            style={{
+                              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                              transformOrigin: 'center center',
+                            }}
+                            onLoad={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                            }}
+                            onClick={handleImageClick}
+                          />
+                          
+                          {/* Zoom Controls */}
+                          <div className="absolute bottom-3 right-3 z-30">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  const newScale = Math.max(0.1, scale - 0.1);
+                                  setScale(newScale);
+                                  setOffset(clampOffset(offset, newScale));
+                                }}
+                                disabled={scale <= 0.1}
+                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                −
+                              </button>
+                              <span className="text-white/80 text-xs px-1.5">
+                                {Math.round(scale * 100)}%
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const newScale = Math.min(6, scale + 0.1);
+                                  setScale(newScale);
+                                  setOffset(clampOffset(offset, newScale));
+                                }}
+                                disabled={scale >= 6}
+                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                +
+                              </button>
+                              <button
+                                onClick={resetZoom}
+                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center"
+                              >
+                                ⌂
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    // Regular image viewer for other features
+                    // Regular image viewer with zoom controls
                     <div
                       ref={imageContainerRef}
-                      tabIndex={0}
-                      className="relative w-full h-full focus:outline-none"
-                      onClick={handleImageClick}
+                      className="w-full h-full relative cursor-move select-none min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
                       onMouseLeave={handleMouseUp}
                       onWheel={handleWheel}
                       onKeyDown={handleKeyDown}
-                      style={{
-                        cursor: isPanning ? 'grabbing' : (scale > 1 ? 'grab' : 'zoom-in'),
-                        overscrollBehavior: 'none',
-                        userSelect: 'none'
-                      }}
+                      tabIndex={0}
+                      style={{ outline: 'none' }}
                     >
-                      <div
-                        className="flex items-center justify-center w-full h-full"
+                      <Image
+                        ref={imageRef}
+                        src={outputs[selectedFeature] as string}
+                        alt="Output"
+                        fill
+                        className="object-contain"
                         style={{
-                          transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
+                          transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                           transformOrigin: 'center center',
-                          transition: isPanning ? 'none' : 'transform 0.2s ease-out'
                         }}
-                      >
-                        <Image
-                          ref={imageRef}
-                          src={outputs[selectedFeature] as string}
-                          alt="Output"
-                          width={naturalSize.width || 800}
-                          height={naturalSize.height || 600}
-                          className="object-contain max-w-full max-h-full"
-                          onLoad={(e) => {
-                            const img = e.target as HTMLImageElement;
-                            setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                          }}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            width: 'auto',
-                            height: 'auto'
-                          }}
-                        />
+                        onLoad={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                        }}
+                        onClick={handleImageClick}
+                      />
+                      
+                      {/* Zoom Controls */}
+                      <div className="absolute bottom-3 right-3 z-30">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              const newScale = Math.max(0.1, scale - 0.1);
+                              setScale(newScale);
+                              setOffset(clampOffset(offset, newScale));
+                            }}
+                            disabled={scale <= 0.1}
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            −
+                          </button>
+                          <span className="text-white/80 text-xs px-1.5">
+                            {Math.round(scale * 100)}%
+                          </span>
+                          <button
+                            onClick={() => {
+                              const newScale = Math.min(6, scale + 0.1);
+                              setScale(newScale);
+                              setOffset(clampOffset(offset, newScale));
+                            }}
+                            disabled={scale >= 6}
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            +
+                          </button>
+                          <button
+                            onClick={resetZoom}
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center"
+                          >
+                            ⌂
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
-
-                  {/* Zoom Controls - Only show for non-upscale or when no comparison slider */}
-                  {selectedFeature !== 'upscale' && (
-                    <div className="absolute bottom-3 right-3 z-30">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          const newScale = Math.max(0.1, scale - 0.1);
-                          setScale(newScale);
-                          setOffset(clampOffset(offset, newScale));
-                        }}
-                        className="w-7 h-7 flex items-center justify-center text-white text-sm rounded-lg hover:bg-white/20 transition-colors border border-white/20"
-                        disabled={scale <= 0.1}
-                      >
-                        −
-                      </button>
-                      <button
-                        onClick={resetZoom}
-                        className="px-3 py-1.5 text-white text-xs rounded-lg hover:bg-white/20 transition-colors border border-white/20"
-                      >
-                        Reset
-                      </button>
-                      <button
-                        onClick={() => {
-                          const newScale = Math.min(6, scale + 0.1);
-                          setScale(newScale);
-                          setOffset(clampOffset(offset, newScale));
-                        }}
-                        className="w-7 h-7 flex items-center justify-center text-white text-sm rounded-lg hover:bg-white/20 transition-colors border border-white/20"
-                        disabled={scale >= 6}
-                      >
-                        +
-                      </button>
-                      <span className="text-white text-xs px-2 font-medium">{Math.round(scale * 100)}%</span>
-                    </div>
-                  </div>
-                  )}
-                </>
+                </div>
               ) : (
-                <div className="h-full flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]">
                   <div className="text-center">
-                    <svg className="w-12 h-12 mx-auto mb-3 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-white/50 text-xs">Upload an image and configure settings to get started</p>
+                    {processing[selectedFeature] ? (
+                      <>
+                        <div className="w-10 h-10 mx-auto mb-2 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <p className="text-white/50 text-xs">Generating...</p>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-10 h-10 mx-auto mb-2 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-white/50 text-xs">Output will appear here</p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
-                </div>
-              </div>
+            </div>
+          </div>
             </div>
           </div>
         </div>
   );
 };
 
-      export default EditImageInterface;
+export default EditImageInterface;

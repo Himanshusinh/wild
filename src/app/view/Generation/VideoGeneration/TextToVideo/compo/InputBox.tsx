@@ -79,6 +79,23 @@ const InputBox = () => {
   // State to trigger closing of duration dropdown
   const [closeDurationDropdown, setCloseDurationDropdown] = useState(false);
 
+  // Helpers: clean prompt and copy
+  const getCleanPrompt = (text: string): string => {
+    try { return (text || '').replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim(); } catch { return text; }
+  };
+  const copyPrompt = async (e: React.MouseEvent, text: string) => {
+    try { 
+      e.stopPropagation(); 
+      e.preventDefault();
+      await navigator.clipboard.writeText(text); 
+      (await import('react-hot-toast')).default.success('Prompt copied'); 
+    } catch { 
+      try { 
+        (await import('react-hot-toast')).default.error('Failed to copy'); 
+      } catch {} 
+    }
+  };
+
   // Credits management - after all state declarations
   const {
     validateAndReserveCredits,
@@ -1624,7 +1641,13 @@ const InputBox = () => {
                         <div
                           key={`${entry.id}-${video.id}`}
                           data-video-id={`${entry.id}-${video.id}`}
-                          onClick={() => setPreview({ entry, video })}
+                          onClick={(e) => {
+                            // Don't open preview if clicking on copy button
+                            if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
+                              return;
+                            }
+                            setPreview({ entry, video });
+                          }}
                           className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
@@ -1655,7 +1678,7 @@ const InputBox = () => {
                             </div>
                           ) : (
                             // Completed video thumbnail with shimmer loading
-                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
+                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                               {(video.firebaseUrl || video.url) ? (
                                 <div className="relative w-full h-full">
                                   <video
@@ -1698,6 +1721,19 @@ const InputBox = () => {
                                     <path d="M8 5v14l11-7z" />
                                   </svg>
                                 </div>
+                              </div>
+                              {/* Hover prompt overlay */}
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
+                                <span
+                                  title={getCleanPrompt(entry.prompt)}
+                                  className="text-xs text-white/90 flex-1 leading-snug"
+                                  style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
+                                >
+                                  {getCleanPrompt(entry.prompt)}
+                                </span>
+                                <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/20 text-white/90 transition-colors" onClick={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }} onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); }} onMouseUp={(e) => { e.stopPropagation(); e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); }} onMouseEnter={(e) => { e.stopPropagation(); }} onMouseLeave={(e) => { e.stopPropagation(); }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
                               </div>
                               {/* Video duration or other info */}
                               {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">

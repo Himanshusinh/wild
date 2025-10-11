@@ -251,11 +251,14 @@ const InputBox = () => {
     try {
       console.log("beti")
       e.stopPropagation();
+      e.preventDefault();
       if (!text) return;
       await navigator.clipboard.writeText(text);
-      toast.success('Prompt copied');
+      (await import('react-hot-toast')).default.success('Prompt copied');
     } catch {
-      toast.error('Failed to copy');
+      try {
+        (await import('react-hot-toast')).default.error('Failed to copy');
+      } catch {}
     }
   };
 
@@ -1496,7 +1499,7 @@ const InputBox = () => {
                           <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                             <span
                               title={getCleanPrompt(prompt)}
-                              className="text-md md:text-sm text-white flex-1 leading-snug"
+                              className="text-xs text-white flex-1 leading-snug"
                               style={{
                                 display: '-webkit-box',
                                 WebkitLineClamp: 3 as any,
@@ -1584,7 +1587,7 @@ const InputBox = () => {
                               <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
-                                  className="text-base md:text-lg text-white/90 flex-1 leading-snug"
+                                  className="text-xs text-white flex-1 leading-snug"
                                   style={{
                                     display: '-webkit-box',
                                     WebkitLineClamp: 3 as any,

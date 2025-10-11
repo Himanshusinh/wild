@@ -90,6 +90,23 @@ const InputBox = () => {
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
 
+  // Helpers: clean prompt (remove [Style: ...]) and copy
+  const getCleanPrompt = (text: string): string => {
+    try { return (text || '').replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim(); } catch { return text; }
+  };
+  const copyPrompt = async (e: React.MouseEvent, text: string) => {
+    try { 
+      e.stopPropagation(); 
+      e.preventDefault();
+      await navigator.clipboard.writeText(text); 
+      (await import('react-hot-toast')).default.success('Prompt copied'); 
+    } catch { 
+      try { 
+        (await import('react-hot-toast')).default.error('Failed to copy'); 
+      } catch {} 
+    }
+  };
+
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
@@ -467,9 +484,22 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
             </div>
           </div>
         ) : (
-                          <div className="relative w-full h-full">
+                          <div className="relative w-full h-full group">
                             <Image src={image.url || image.originalUrl || '/placeholder-logo.png'} alt={localGeneratingEntries[0].prompt} fill loading="lazy" className="object-cover" sizes="192px" />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                            {/* Hover prompt overlay */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
+                              <span
+                                title={getCleanPrompt(localGeneratingEntries[0].prompt)}
+                                className="text-xs text-white flex-1 leading-snug"
+                                style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
+                              >
+                                {getCleanPrompt(localGeneratingEntries[0].prompt)}
+                              </span>
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
+                            </div>
                           </div>
                         )}
                         <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Logo</div>
@@ -605,7 +635,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           </div>
                           ) : (
                             // Completed logo
-                          <div className="relative w-full h-full">
+                          <div className="relative w-full h-full group">
                             <Image
                                 src={image.url || image.originalUrl || '/placeholder-logo.png'}
                                 alt={entry.prompt}
@@ -621,6 +651,19 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                               }}
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                            {/* Hover prompt overlay */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                              <span
+                                title={getCleanPrompt(entry.prompt)}
+                                className="text-sm text-white/90 flex-1 leading-snug"
+                                style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
+                              >
+                                {getCleanPrompt(entry.prompt)}
+                              </span>
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
+                            </div>
                           </div>
                           )}
 
