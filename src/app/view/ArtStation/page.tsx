@@ -5,7 +5,6 @@ import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
-import UpscalePopup from '../Generation/ImageGeneration/TextToImage/compo/UpscalePopup'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 
@@ -14,6 +13,9 @@ type PublicItem = {
   prompt?: string;
   generationType?: string;
   model?: string;
+  aspectRatio?: string;
+  frameSize?: string;
+  aspect_ratio?: string;
   createdAt?: string;
   updatedAt?: string;
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
@@ -42,7 +44,6 @@ export default function ArtStationPage() {
   const [currentUid, setCurrentUid] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
-  const [showUpscale, setShowUpscale] = useState(false)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
   const navigateForType = (type?: string) => {
     const t = (type || '').toLowerCase()
@@ -145,6 +146,8 @@ export default function ArtStationPage() {
         ...it,
         createdAt: normalizeDate(it?.createdAt) || it?.createdAt,
         updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
+        aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
+        frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
       }))
       const newCursor = meta?.nextCursor || payload?.nextCursor
       
@@ -158,6 +161,11 @@ export default function ArtStationPage() {
       // Log sample items to verify data structure
       if (newItems.length > 0) {
         console.log('[ArtStation] Sample item:', newItems[0])
+        console.log('[ArtStation] Sample item aspect ratio fields:', {
+          aspectRatio: newItems[0].aspectRatio,
+          frameSize: newItems[0].frameSize,
+          aspect_ratio: newItems[0].aspect_ratio
+        })
       }
       
       setItems(prev => {
@@ -593,7 +601,7 @@ export default function ArtStationPage() {
                   </div>
 
                   {/* Sidebar */}
-                  <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+                  <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
                     {/* Creator */}
                     <div className="mb-4">
                       <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Creator</div>
@@ -614,14 +622,12 @@ export default function ArtStationPage() {
                     </div>
                     
                     {/* Prompt */}
-                    <div className="mb-4">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Prompt</div>
-                      <div className="text-white/90 text-sm leading-relaxed mb-3 whitespace-pre-wrap">
-                        {cleanPromptByType(preview.item.prompt, preview.item.generationType)}
-                      </div>
+                    <div className="pb-4 ">
+                      <div className="flex items-center justify-between mb-4">
+                      <div className="text-white/60 text-xs uppercase tracking-wider mb-0">Prompt</div>
                       <button 
                         onClick={() => copyPrompt(preview.item.prompt || '', `preview-${preview.item.id}`)}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                        className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
                           copiedButtonId === `preview-${preview.item.id}` 
                             ? 'bg-green-500/20 text-green-400' 
                             : 'bg-white/10 hover:bg-white/20'
@@ -640,10 +646,16 @@ export default function ArtStationPage() {
                               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
-                            Copy Prompt
                           </>
                         )}
                       </button>
+                      </div>
+                      <div className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
+                        {cleanPromptByType(preview.item.prompt, preview.item.generationType)}
+                        
+                      </div>
+                      
+                      
                     </div>
                     
                     {/* Images Thumbnails */}
@@ -716,6 +728,10 @@ export default function ArtStationPage() {
                           <span className="text-white text-sm">{preview.item.model}</span>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-white/60 text-sm">Aspect ratio:</span>
+                          <span className="text-white text-sm">{preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Format:</span>
                           <span className="text-white text-sm">{preview.kind}</span>
                         </div>
@@ -729,24 +745,99 @@ export default function ArtStationPage() {
                       </div>
                     </div>
                     
-                    {/* Action Button */}
-                    <div className="mt-6 space-y-2">
-                      {preview.item.generationType === 'text-to-image' && preview.kind === 'image' && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setShowUpscale(true)}
-                            className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm text-white ring-1 ring-white/20 transition"
-                          >
-                            Upscale
-                          </button>
-                          <button
-                            onClick={() => setShowRemoveBg(true)}
-                            className="flex-1 px-3 py-2 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 text-sm text-white ring-1 ring-white/20 transition"
-                          >
-                            Remove background
-                          </button>
-                        </div>
-                      )}
+                    {/* Action Buttons */}
+                    <div className="mb-2 flex gap-2">
+                      <button
+                        onClick={async () => {
+                          const currentMedia = (() => {
+                            if (preview.kind === 'image') {
+                              const images = (preview.item.images || []) as any[]
+                              return images[selectedImageIndex] || images[0] || { url: preview.url }
+                            } else if (preview.kind === 'video') {
+                              const videos = (preview.item.videos || []) as any[]
+                              return videos[selectedVideoIndex] || videos[0] || { url: preview.url }
+                            } else {
+                              const audios = (preview.item as any).audios || []
+                              return audios[selectedAudioIndex] || audios[0] || { url: preview.url }
+                            }
+                          })()
+                          
+                          try {
+                            // Use the same logic as ImagePreviewModal
+                            const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+                            const toProxyPath = (urlOrPath: string | undefined) => {
+                              if (!urlOrPath) return '';
+                              const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                              if (urlOrPath.startsWith(ZATA_PREFIX)) {
+                                return urlOrPath.substring(ZATA_PREFIX.length);
+                              }
+                              return urlOrPath;
+                            };
+                            
+                            const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+                              const path = toProxyPath(urlOrPath);
+                              return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+                            };
+                            
+                            const downloadUrl = toProxyDownloadUrl(currentMedia.url);
+                            if (!downloadUrl) return;
+                            
+                            const response = await fetch(downloadUrl, {
+                              credentials: 'include',
+                              headers: { 'ngrok-skip-browser-warning': 'true' }
+                            });
+                            
+                            const blob = await response.blob();
+                            const objectUrl = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = objectUrl;
+                            const baseName = (toProxyPath(currentMedia.url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
+                            a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : 'generated-image.jpg';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(objectUrl);
+                          } catch (e) {
+                            console.error('Download failed:', e);
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M12 3v12" />
+                          <path d="M7 10l5 5 5-5" />
+                          <path d="M5 19h14" />
+                        </svg>
+                        Download
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          const shareUrl = `${window.location.origin}/view/ArtStation?gen=${preview.item.id}`
+                          if (navigator.share) {
+                            navigator.share({
+                              title: 'Check out this AI generation',
+                              text: preview.item.prompt || 'Amazing AI-generated content',
+                              url: shareUrl
+                            })
+                          } else {
+                            navigator.clipboard.writeText(shareUrl)
+                            alert('Link copied to clipboard!')
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                          <polyline points="16,6 12,2 8,6" />
+                          <line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                        Share
+                      </button>
+                    </div>
+                    
+                    {/* Open in generator button */}
+                    <div className="mt-0">
                       <button 
                         onClick={() => { 
                           setPreview(null); 
@@ -758,7 +849,7 @@ export default function ArtStationPage() {
                         }}
                         className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
                       >
-                        Open in generator
+                        Remix
                       </button>
                     </div>
                   </div>
@@ -766,31 +857,16 @@ export default function ArtStationPage() {
               </div>
             </div>
           )}
-          {preview && preview.kind === 'image' && preview.item.generationType === 'text-to-image' && (
-            <>
-              {showUpscale && (
-                <UpscalePopup
-                  isOpen={showUpscale}
-                  onClose={() => setShowUpscale(false)}
-                  defaultImage={(() => {
-                    const images = (preview.item.images || []) as any[]
-                    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                    return img.url
-                  })()}
-                />
-              )}
-              {showRemoveBg && (
-                <RemoveBgPopup
-                  isOpen={showRemoveBg}
-                  onClose={() => setShowRemoveBg(false)}
-                  defaultImage={(() => {
-                    const images = (preview.item.images || []) as any[]
-                    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                    return img.url
-                  })()}
-                />
-              )}
-            </>
+          {preview && preview.kind === 'image' && preview.item.generationType === 'text-to-image' && showRemoveBg && (
+            <RemoveBgPopup
+              isOpen={showRemoveBg}
+              onClose={() => setShowRemoveBg(false)}
+              defaultImage={(() => {
+                const images = (preview.item.images || []) as any[]
+                const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                return img.url
+              })()}
+            />
           )}
         </div>
       </div>

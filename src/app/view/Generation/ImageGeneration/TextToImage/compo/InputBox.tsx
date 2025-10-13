@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import Image from "next/image";
+import { Trash2 } from 'lucide-react';
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -1924,7 +1925,7 @@ const InputBox = () => {
                       />
                       <button
                         aria-label="Remove reference"
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
                         onClick={(e) => {
                           e.stopPropagation();
                           const next = uploadedImages.filter(
@@ -1933,7 +1934,7 @@ const InputBox = () => {
                           dispatch(setUploadedImages(next));
                         }}
                       >
-                        ×
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))}

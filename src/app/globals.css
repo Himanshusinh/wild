@@ -20,7 +20,7 @@ body {
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 2px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -43,7 +43,7 @@ body {
 
 /* Custom scrollbar for webkit browsers */
 .thumbnails-scroll::-webkit-scrollbar {
-  width: 8px;
+  width: 2px;
 }
 
 .thumbnails-scroll::-webkit-scrollbar-track {
@@ -59,6 +59,100 @@ body {
 
 .thumbnails-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Unified custom scrollbar - Modern thin with gradient */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+}
+
+/* Legacy scrollbar classes - keeping for backward compatibility */
+.artstation-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+}
+
+.artstation-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.artstation-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.artstation-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.artstation-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+}
+
+/* Scrollbar with arrows for dropdowns */
+.dropdown-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+}
+
+.dropdown-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-button {
+  display: block;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-button:start:decrement {
+  background: rgba(255, 255, 255, 0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23ffffff' d='M4 2L2 4l2 2V2z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-button:end:increment {
+  background: rgba(255, 255, 255, 0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23ffffff' d='M4 6L6 4l-2-2v4z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Shimmer loading animation */

@@ -144,7 +144,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50 max-h-150 overflow-y-auto dropdown-scrollbar`}>
           {filteredModels.map((model) => (
             <button
               key={model.value}
@@ -158,10 +158,10 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                 : 'text-white/90 hover:bg-white/10'
                 }`}
             >
-              <div className="flex flex-col">
+              <div className="flex flex-col -mb-2">
                 <span>{model.name}</span>
                 {model.credits && (
-                  <span className="text-xs opacity-70">{model.credits} credits</span>
+                  <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
                 )}
               </div>
               {selectedModel === model.value && (

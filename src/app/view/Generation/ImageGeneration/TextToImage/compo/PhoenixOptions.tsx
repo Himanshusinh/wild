@@ -126,10 +126,10 @@ const PhoenixOptions = () => {
           {/* Style Selection */}
           {/* <div className="px-4 py-2">
             <div className="text-xs text-white/70 mb-2">Style</div>
-            <div className="max-h-32 overflow-y-auto cool-scrollbar">
+            <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {phoenixStyles.map((style) => (
                 <button
-                  key={style.value}
+                  key={style.value} 
                   onClick={(e) => {
                     e.stopPropagation();
                     handleStyleSelect(style.value);
@@ -149,7 +149,7 @@ const PhoenixOptions = () => {
           {/* Contrast Selection */}
           <div className="px-4 py-2">
             <div className="text-xs text-white/70 mb-2">Contrast</div>
-            <div className="max-h-32 overflow-y-auto cool-scrollbar">
+            <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {contrastOptions.map((contrast) => (
                 <button
                   key={contrast.value}
@@ -172,7 +172,7 @@ const PhoenixOptions = () => {
           {/* Mode Selection */}
           <div className="px-4 py-2">
             <div className="text-xs text-white/70 mb-2">Mode</div>
-            <div className="max-h-32 overflow-y-auto cool-scrollbar">
+            <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {modeOptions.map((mode) => (
                 <button
                   key={mode.value}
@@ -228,28 +228,6 @@ const PhoenixOptions = () => {
       )}
       </div>
       
-      <style jsx global>{`
-        /* Custom scrollbar for Phoenix Options */
-        .cool-scrollbar {
-          scrollbar-width: thin; /* Firefox */
-          scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
-        }
-        .cool-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .cool-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .cool-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
-          border-radius: 9999px;
-          border: 1px solid transparent;
-          background-clip: padding-box;
-        }
-        .cool-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
-        }
-      `}</style>
     </>
   );
 };
