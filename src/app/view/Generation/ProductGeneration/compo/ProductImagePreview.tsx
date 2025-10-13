@@ -292,7 +292,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             {/* Date */}
             <div className="mb-4">
               <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
+              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
             </div>
 
             {/* Details */}
