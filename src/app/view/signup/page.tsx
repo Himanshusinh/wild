@@ -11,7 +11,7 @@ export default function SignUp() {
   return (
     <main className="flex min-h-screen bg-background w-[100%]">
       {/* Left Side - Form */}
-      <div className="w-[60%] min-h-screen relative z-20 bg-[#000000] flex justify-center items-center">
+      <div className="w-[60%] min-h-screen relative z-20 bg-[#07070B] flex justify-center items-center">
 
         <SignInForm />
 

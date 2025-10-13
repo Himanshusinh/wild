@@ -314,21 +314,21 @@ const LandingPage: React.FC = () => {
         <NAV_LAND onGetStarted={onGetStarted} />
     </div>
                 
-    <div className='w-full bg-[#0a1116]'>
+    <div className='w-full bg-[#07070B]'>
         {loadHeroParallax ? (
-          <React.Suspense fallback={<div className="h-screen bg-[#0a1116] animate-pulse" />}>
+          <React.Suspense fallback={<div className="h-screen bg-[#07070B] animate-pulse" />}>
             <LazyHeroParallax products={heroProducts} />
           </React.Suspense>
         ) : (
-          <div className="h-screen bg-[#0a1116]" />
+          <div className="h-screen bg-[#07070B]" />
         )}
     </div>
     
     {/* Spacer to ensure proper separation (minimized) */}
-    <div className="h-0 bg-[#0a1116] md:h-32 md:mt-48 md:mb-24"></div>
+    <div className="h-0 bg-[#07070B] md:h-32 md:mt-48 md:mb-24"></div>
 
     {/* New sections after HeroParallax (not nested inside) */}
-    <div className={`relative z-[10] bg-[#0a1116] px-8 md:px-8 md:mt-32 lg:px-8 pt-2 md:pt-1 lg:pt-2 pb-20 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
+    <div className={`relative z-[10] bg-[#07070B] px-8 md:px-8 md:mt-32 lg:px-8 pt-2 md:pt-1 lg:pt-2 pb-20 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
       <ScrollFloat
         containerClassName="text-center md:mt-24"
         animationDuration={5}
@@ -388,7 +388,7 @@ const LandingPage: React.FC = () => {
     </div>
     
     {/* Consolidated sections with same background */}
-    <div className={`bg-[#0a1116] ${unlockBelow ? '' : 'opacity-0 pointer-events-none'}`}>
+    <div className={`bg-[#07070B] ${unlockBelow ? '' : 'opacity-0 pointer-events-none'}`}>
       <div className="w-full h-full py-20 md:py-16 lg:py-20" ref={hKnowRef}>
         <h2 className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
           <VariableProximity

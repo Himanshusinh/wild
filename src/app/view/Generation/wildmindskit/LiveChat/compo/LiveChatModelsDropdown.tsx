@@ -87,7 +87,7 @@ const LiveChatModelsDropdown: React.FC = () => {
         }`}
       >
         <Cpu className="w-4 h-4 mr-1" />
-        {currentModel?.displayName || currentModel?.name || 'Models'}
+        {currentModel?.name || 'Models'}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (

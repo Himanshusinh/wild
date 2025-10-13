@@ -165,7 +165,8 @@ export default function SignInForm() {
         // Step 3: Create session
         console.log("🔄 Step 3: Creating session with backend...")
         // Create session directly on backend so cookie is set on API domain
-        await (axiosInstance || getApiClient()).post('/api/auth/session',
+        const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+        await (axiosInstance || getApiClient()).post(`${backendBase}/api/auth/session`,
           { idToken: idToken },
           { withCredentials: true }
         )
@@ -376,9 +377,9 @@ export default function SignInForm() {
 
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
-            const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
-            // Use Next.js API route for session creation to avoid cross-domain cookie issues
-            const sessionResponse = await fetch('/api/auth/session', {
+            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+            // Create session directly with backend
+            const sessionResponse = await fetch(`${backendBaseForSession}/api/auth/session`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',

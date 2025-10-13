@@ -859,7 +859,7 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white p-2 select-none">
+    <div className="min-h-screen bg-[#07070B] text-white p-2 select-none">
       {/* Fixed Header to match TextToImage style */}
       <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl">
         <h2 className="text-xl font-semibold text-white">{headerTitle}</h2>

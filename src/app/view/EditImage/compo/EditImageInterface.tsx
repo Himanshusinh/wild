@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
-import ModelsDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ModelsDropdown';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
 import { useAppSelector } from '@/store/hooks';
@@ -38,6 +37,7 @@ const EditImageInterface: React.FC = () => {
   const [shareCopied, setShareCopied] = useState(false);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
+  const [showImageMenu, setShowImageMenu] = useState(false);
   
   // Zoom and pan state
   const [scale, setScale] = useState(1);
@@ -49,6 +49,8 @@ const EditImageInterface: React.FC = () => {
   
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   
   // Form states
   const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('');
@@ -99,45 +101,30 @@ const EditImageInterface: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Zoom and pan utility functions
+  // Zoom and pan utility functions (improved from ImagePreviewModal)
   const clampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
     if (!imageContainerRef.current) return newOffset;
-    
-    const container = imageContainerRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const containerWidth = containerRect.width;
-    const containerHeight = containerRect.height;
-    
-    // Calculate image dimensions at current scale
-    const imageWidth = naturalSize.width * currentScale;
-    const imageHeight = naturalSize.height * currentScale;
-    
-    // Calculate maximum offset to keep image covering container
-    const maxOffsetX = Math.max(0, (imageWidth - containerWidth) / 2);
-    const maxOffsetY = Math.max(0, (imageHeight - containerHeight) / 2);
-    
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const imgW = naturalSize.width * currentScale;
+    const imgH = naturalSize.height * currentScale;
+    const maxX = Math.max(0, (imgW - rect.width) / 2);
+    const maxY = Math.max(0, (imgH - rect.height) / 2);
     return {
-      x: Math.max(-maxOffsetX, Math.min(maxOffsetX, newOffset.x)),
-      y: Math.max(-maxOffsetY, Math.min(maxOffsetY, newOffset.y))
+      x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
+      y: Math.max(-maxY, Math.min(maxY, newOffset.y))
     };
   }, [naturalSize]);
 
   const zoomToPoint = useCallback((point: { x: number; y: number }, newScale: number) => {
     if (!imageContainerRef.current) return;
-    
-    const container = imageContainerRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const containerCenterX = containerRect.width / 2;
-    const containerCenterY = containerRect.height / 2;
-    
-    // Calculate offset to center the zoom on the click point
-    const newOffsetX = containerCenterX - (point.x * newScale);
-    const newOffsetY = containerCenterY - (point.y * newScale);
-    
-    const clampedOffset = clampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
-    
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const newOffsetX = centerX - (point.x * newScale);
+    const newOffsetY = centerY - (point.y * newScale);
+    const clamped = clampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
     setScale(newScale);
-    setOffset(clampedOffset);
+    setOffset(clamped);
   }, [clampOffset]);
 
   const resetZoom = useCallback(() => {
@@ -192,20 +179,13 @@ const EditImageInterface: React.FC = () => {
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (!imageContainerRef.current) return;
-    
-    const container = imageContainerRef.current;
-    const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newScale = Math.max(0.1, Math.min(6, scale + delta));
-    
-    if (newScale !== scale) {
-      zoomToPoint({ x: mouseX, y: mouseY }, newScale);
-    }
+    const next = Math.max(0.1, Math.min(6, scale + delta));
+    if (next !== scale) zoomToPoint({ x: mx, y: my }, next);
   }, [scale, zoomToPoint]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -304,6 +284,35 @@ const EditImageInterface: React.FC = () => {
       (document.documentElement as HTMLElement).style.overflow = prevHtmlOverflow;
     };
   }, []);
+
+  // Close image menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!showImageMenu) return;
+      const target = event.target as Node | null;
+      const menuEl = menuRef.current;
+      const btnEl = menuButtonRef.current;
+      if (menuEl && menuEl.contains(target as Node)) return;
+      if (btnEl && btnEl.contains(target as Node)) return;
+      setShowImageMenu(false);
+    };
+
+    if (showImageMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showImageMenu]);
+
+  // Debug menu state
+  useEffect(() => {
+    if (showImageMenu) {
+      console.log('🎯 MENU IS NOW VISIBLE! showImageMenu:', showImageMenu);
+      console.log('TEST: Menu is now visible, outputs:', outputs[selectedFeature]);
+    }
+  }, [showImageMenu, outputs, selectedFeature]);
 
   const features = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
@@ -561,142 +570,203 @@ const EditImageInterface: React.FC = () => {
     }
   };
 
-  const inferExtensionFromType = (contentType: string | null | undefined, fallbackExt: string = 'png') => {
-    if (!contentType) return fallbackExt
-    const map: Record<string, string> = {
-      'image/png': 'png',
-      'image/jpeg': 'jpg',
-      'image/jpg': 'jpg',
-      'image/webp': 'webp',
-    }
-    return map[contentType.toLowerCase()] || fallbackExt
-  }
+  
 
-  const inferExtensionFromUrl = (url: string, fallbackExt: string = 'png') => {
-    try {
-      const u = new URL(url)
-      const pathname = u.pathname || ''
-      const m = pathname.match(/\.([a-zA-Z0-9]+)$/)
-      if (m && m[1]) return m[1].toLowerCase()
-    } catch { }
-    const m2 = url.match(/\.([a-zA-Z0-9]+)(?:\?|$)/)
-    if (m2 && m2[1]) return m2[1].toLowerCase()
-    return fallbackExt
-  }
+  
+
+  
+
+  // Helper functions from ImagePreviewModal.tsx
+  const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) {
+      return urlOrPath.substring(ZATA_PREFIX.length);
+    }
+    return urlOrPath;
+  }, []);
+
+  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+  };
 
   const handleDownloadOutput = async () => {
     try {
       const url = outputs[selectedFeature]
-      if (!url) return
-      // Try proxy first if available
-      const possibleProxy = `/api/proxy/external?url=${encodeURIComponent(url)}`
-      let res = await fetch(possibleProxy)
-      if (!res.ok) {
-        // fallback to direct fetch
-        res = await fetch(url, { credentials: 'include' as any })
-      }
-      if (!res.ok) throw new Error('Download failed')
-      const ct = res.headers.get('content-type')
-      const blob = await res.blob()
-      const extByType = inferExtensionFromType(ct, inferExtensionFromUrl(url))
-      const fileName = `edit-output-${Date.now()}.${extByType}`
-      const a = document.createElement('a')
-      const objectUrl = URL.createObjectURL(blob)
-      a.href = objectUrl
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(objectUrl)
-    } catch (e) {
-      console.error('[EditImage] download.error', e)
-      alert('Failed to download output')
-    }
-  }
-
-  const buildShareUrl = (rawUrl: string) => `/api/proxy/external?url=${encodeURIComponent(rawUrl)}`
-
-  const handleShareOutput = async () => {
-    try {
-      const url = outputs[selectedFeature]
-      if (!url) return
-      // Fetch blob (prefer proxy)
-      const proxyUrl = buildShareUrl(url)
-      let res = await fetch(proxyUrl)
-      if (!res.ok) {
-        res = await fetch(url, { credentials: 'include' as any })
-      }
-      if (!res.ok) throw new Error('Share fetch failed')
-      const blob = await res.blob()
-      const ext = inferExtensionFromType(blob.type, inferExtensionFromUrl(url))
-      const fileName = `edited-image.${ext}`
-      if ((navigator as any).share && (navigator as any).canShare?.({ files: [new File([blob], fileName, { type: blob.type })] })) {
-        const file = new File([blob], fileName, { type: blob.type || 'image/*' })
-        await (navigator as any).share({
-          title: 'Wild Mind Edited Image',
-          text: 'Check out this edited image!',
-          files: [file],
-        })
+      if (!url) {
+        alert('No image available to download')
         return
       }
-      // Fallback: copy link
-      await navigator.clipboard.writeText(proxyUrl)
-      setShareCopied(true)
-      setTimeout(() => setShareCopied(false), 1500)
+      
+      // Use the same logic as ImagePreviewModal
+      const downloadUrl = toProxyDownloadUrl(url);
+      if (!downloadUrl) {
+        // Fallback to direct download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `edited-image-${Date.now()}.jpg`;
+        a.target = '_blank';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      const baseName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
+      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : 'generated-image.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
     } catch (e) {
-      console.error('[EditImage] share.error', e)
-      try {
-        const url = outputs[selectedFeature]
-        if (!url) return
-        await navigator.clipboard.writeText(buildShareUrl(url))
-        setShareCopied(true)
-        setTimeout(() => setShareCopied(false), 1500)
-      } catch { }
+      console.error('[EditImage] download.error', e)
+      alert('Failed to download image. Please try again.')
     }
   }
+
+  const handleShareOutput = async () => {
+    const shareUrl = outputs[selectedFeature] || '';
+    try {
+      if (!shareUrl) {
+        alert('No image available to share')
+        return
+      }
+      
+      // Use the same logic as ImagePreviewModal
+      if (!navigator.share) {
+        // Fallback: Copy image URL to clipboard
+        await copyToClipboard(shareUrl);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 1500);
+        alert('Image URL copied to clipboard!');
+        return;
+      }
+
+      // Fetch the image as a blob
+      const downloadUrl = toProxyDownloadUrl(shareUrl);
+      if (!downloadUrl) {
+        await copyToClipboard(shareUrl);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 1500);
+        alert('Image URL copied to clipboard!');
+        return;
+      }
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      
+      const blob = await response.blob();
+      const fileName = (toProxyPath(shareUrl) || 'generated-image').split('/').pop() || 'generated-image.jpg';
+      
+      // Create a File from the blob
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      // Use Web Share API
+      await navigator.share({
+        title: 'Wild Mind AI Generated Image',
+        text: `Check out this AI-generated image!`,
+        files: [file]
+      });
+      
+      console.log('Image shared successfully');
+    } catch (error: any) {
+      // Handle user cancellation gracefully
+      if (error.name === 'AbortError') {
+        console.log('Share cancelled by user');
+        return;
+      }
+      
+      // Fallback to copying URL
+      console.error('Share failed:', error);
+      try {
+        await copyToClipboard(shareUrl);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 1500);
+        alert('Sharing not supported. Image URL copied to clipboard!');
+      } catch (copyError) {
+        console.error('Copy failed:', copyError);
+        alert('Unable to share image. Please try downloading instead.');
+      }
+    }
+  }
+
+  const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
 
   return (
     <div className="h-screen overflow-hidden bg-[#07070B]">
-      {/* Global horizontal headers */}
-      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B]">
-        <h1 className="text-base font-semibold text-white">Edit Images</h1>
-        <p className="text-white/60 text-xs">Transform your images with AI</p>
-      </div>
-      <div className="w-screen px-4 pt-2 pb-2 bg-[#07070B]">
-        <div className="flex gap-3 overflow-x-auto no-scrollbar">
-          {features.map((feature) => (
+      {/* Header + Feature cards in a single row so the heading sits in the left gap */}
+      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] 2xl:px-6 2xl:pt-4 2xl:pb-3">
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14">
+            <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
+            <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar 2xl:gap-9 ml-6 sm:ml-8 md:ml-12 2xl:ml-34">
+              {features.map((feature) => (
             <div
-              key={feature.id}
-              onClick={() => {
-                setSelectedFeature(feature.id);
-                setOutputs((prev) => ({ ...prev, [feature.id]: null }));
+                  key={feature.id}
+                  onClick={() => { 
+                    setSelectedFeature(feature.id); 
                 setProcessing((p) => ({ ...p, [feature.id]: false }));
               }}
-              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all ${selectedFeature === feature.id
+              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all 2xl:min-w-[260px] 2xl:p-3 ${selectedFeature === feature.id
                   ? 'border-white/30 bg-white/10'
                   : 'border-white/10 hover:bg-white/10'
                 }`}
             >
               <div className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded flex items-center justify-center ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
+                <div className={`w-6 h-6 rounded flex items-center justify-center 2xl:w-7 2xl:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
                   }`}>
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 text-white 2xl:w-3.5 2xl:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                </div>
-                <div>
-                  <h3 className="text-white text-xs font-medium">{feature.label}</h3>
-                </div>
-              </div>
             </div>
+                <div>
+                  <h3 className="text-white text-xs font-medium 2xl:text-sm">{feature.label}</h3>
+            </div>
+          </div>
+                </div>
           ))}
-        </div>
+          </div>
+            </div>
       </div>
       <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative">
+        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative 2xl:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
           {/* Error Message */}
-          {errorMsg && (
+            {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
               <p className="text-red-400 text-xs">{errorMsg}</p>
             </div>
@@ -704,16 +774,16 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Input Image Upload */}
-          <div className="p-3">
-            <h3 className="text-xs font-medium text-white/80 mb-2">Input Image</h3>
+          <div className="p-3 2xl:p-4">
+            <h3 className="text-xs px-4 font-medium text-white/80 mb-2 2xl:text-lg -ml-2">Input Image</h3>
             <div className="relative">
-              <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] lg:min-h-[16rem]">
+              <div className="bg-white/5 px-4 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] 2xl:min-h-[18rem]">
                   {inputs[selectedFeature] ? (
                     <>
                     <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-cover rounded-xl" />
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-1 left-1 right-1 bg-black/70 hover:bg-black/80 text-white text-xs py-0.5 px-1 rounded-full transition-colors"
+                      className="absolute bottom-1 left-1 right-1 bg-black/70 hover:bg-black/80 text-white text-xs py-0.5 px-1 rounded-full transition-colors 2xl:text-sm 2xl:py-1"
                       >
                         Change
                       </button>
@@ -724,20 +794,20 @@ const EditImageInterface: React.FC = () => {
                         setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                         setProcessing((p) => ({ ...p, [selectedFeature]: false }));
                       }}
-                      className="absolute top-1 right-1 w-6 h-6 bg-red-500/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+                      className="absolute top-1 right-1 w-6 h-6 bg-red-500/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold transition-colors 2xl:w-7 2xl:h-7"
                     >
                       ×
-                    </button>
+                      </button>
                     </>
                   ) : (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                     className="absolute inset-0 flex flex-col items-center justify-center text-white/50 hover:text-white transition-colors"
                     >
-                    <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 mb-1 2xl:w-7 2xl:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <span className="text-sm">Upload Image</span>
+                    <span className="text-sm 2xl:text-base">Upload Image</span>
                     </button>
                   )}
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
@@ -746,63 +816,63 @@ const EditImageInterface: React.FC = () => {
                       </div>
 
           {/* Action Buttons - moved under upload image */}
-          <div className="px-3 pb-3">
-            <div className="flex gap-2">
-              <button
+          <div className="px-3 pb-3 2xl:px-4">
+            <div className="flex gap-2 2xl:gap-3">
+                        <button
                 onClick={handleReset}
-                className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              >
-                Reset
-              </button>
-              <button
+                className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors 2xl:text-sm 2xl:py-2"
+                        >
+                          Reset
+                        </button>
+                        <button
                 onClick={handleRun}
                 disabled={!inputs[selectedFeature] || processing[selectedFeature]}
-                className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"
+                className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors 2xl:text-sm 2xl:py-2"
               >
                 {processing[selectedFeature] ? 'Processing...' : 'Generate'}
-              </button>
-            </div>
+                        </button>
           </div>
-
+        </div>
+ 
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-          <div className="flex-1 min-h-0 p-3 overflow-hidden">
-            <h3 className="text-xs font-medium text-white/80 mb-2">Parameters</h3>
+          <div className="flex-1 min-h-0 p-3 overflow-hidden 2xl:p-4">
+            <h3 className="text-xs font-medium text-white/80 mb-2 2xl:text-sm">Parameters</h3>
 
               {selectedFeature === 'using-prompt' ? (
-              <>
+                <>
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Edit Prompt</label>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Edit Prompt</label>
                     <textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Describe the edit you want to apply to the image"
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Describe the edit you want to apply to the image"
                       rows={2}
-                      className="w-full h-16 px-3 py-4 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none flex items-center justify-center text-center"
-                      />
-                    </div>
+                      className="w-full h-16 px-3 py-4 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none flex items-center justify-center text-center 2xl:text-sm 2xl:h-20"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1">Aspect Ratio</label>
-                      <FrameSizeDropdown openDirection="up" />
+                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Aspect Ratio</label>
+                    <FrameSizeDropdown openDirection="up" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1">Style</label>
-                      <StyleSelector />
-                    </div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Style</label>
+                    <StyleSelector />
+                  </div>
                   </div>
                 </div>
                 {/* Buttons moved to bottom footer */}
-              </>
+                </>
               ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Model</label>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
                   <select
                     value={model}
                       onChange={(e) => { setModel(e.target.value as any); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
-                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark]"
+                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark] 2xl:text-sm 2xl:py-2"
                   >
                       <option value="" disabled hidden>Select model</option>
                     {selectedFeature === 'remove-bg' ? (
@@ -819,11 +889,11 @@ const EditImageInterface: React.FC = () => {
                   </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Output Format</label>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output Format</label>
                     <select
                       value={output}
                       onChange={(e) => setOutput(e.target.value as any)}
-                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark]"
+                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark] 2xl:text-sm 2xl:py-2"
                     >
                       <option value="" disabled hidden>Select format</option>
                       <option value="png">PNG</option>
@@ -836,37 +906,37 @@ const EditImageInterface: React.FC = () => {
 
                 {selectedFeature !== 'remove-bg' && (
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Prompt (Optional)</label>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Prompt (Optional)</label>
                     <textarea
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="Describe details to guide the edit"
                       rows={1}
-                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
+                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none 2xl:text-sm 2xl:py-2"
                     />
                   </div>
                   )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Scale Factor</label>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale Factor</label>
                   <input
                     type="text"
                     value={scaleFactor}
                     onChange={(e) => setScaleFactor(e.target.value)}
                       placeholder="e.g., 2x or 4x"
-                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                     />
                   </div>
                   {selectedFeature === 'remove-bg' && (
                     <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1">Background Type</label>
+                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Background Type</label>
                       <input
                         type="text"
                         value={backgroundType}
                         onChange={(e) => setBackgroundType(e.target.value)}
                         placeholder="e.g., rgba or white"
-                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                       />
               </div>
             )}
@@ -876,13 +946,13 @@ const EditImageInterface: React.FC = () => {
 
                 {selectedFeature === 'remove-bg' && (
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1">Threshold</label>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Threshold</label>
                       <input
                         type="text"
                         value={threshold}
                         onChange={(e) => setThreshold(e.target.value)}
                       placeholder="0.0 to 1.0"
-                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                     />
                   </div>
                 )}
@@ -890,23 +960,23 @@ const EditImageInterface: React.FC = () => {
                 {selectedFeature === 'upscale' && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1">Dynamic</label>
+                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Dynamic</label>
                         <input
                           type="text"
                           value={dynamic}
                           onChange={(e) => setDynamic(e.target.value)}
                         placeholder="0-10 (optional)"
-                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                       />
                       </div>
                     <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1">Sharpen</label>
+                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Sharpen</label>
                         <input
                           type="text"
                           value={sharpen}
                           onChange={(e) => setSharpen(e.target.value)}
                         placeholder="0.0-1.0 (optional)"
-                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                       />
                       </div>
                   </div>
@@ -914,9 +984,9 @@ const EditImageInterface: React.FC = () => {
               </div>
               )}
             </div>
-
+ 
             {/* Footer removed; buttons are rendered at the end of Parameters above */}
-
+ 
           </div>
  
         {/* Right Main Area - Image Display */}
@@ -924,18 +994,74 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="p-4 flex items-start justify-center mt-5">
-              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem] w-full max-w-2xl">
-              <div className="absolute top-3 left-3 z-10">
-                <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded">Output Image</span>
+          <div className="p-4 flex items-start justify-center mt-5 2xl:p-6">
+              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-4xl xl:max-w-4xl 2xl:max-w-6xl -ml-2 sm:-ml-4 md:-ml-6 lg:-ml-8 2xl:-ml-36">
+                {/* Dotted grid background overlay */}
+                <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="absolute top-3 left-3 z-10 2xl:top-4 2xl:left-4">
+                <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
               </div>
+              
+
+              {/* Themed three dots menu - only show when there's an output */}
+              {outputs[selectedFeature] && (
+                <div className="absolute bottom-3 left-3 z-50 2xl:bottom-4 2xl:left-4">
+                  <button
+                    ref={menuButtonRef}
+                    onClick={() => {
+                      console.log('Three dots clicked!')
+                      setShowImageMenu(!showImageMenu)
+                    }}
+                    className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all duration-200 border border-white/20 hover:border-white/30 backdrop-blur-sm 2xl:p-3"
+                  >
+                    <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <circle cx="5" cy="12" r="2"/>
+                      <circle cx="12" cy="12" r="2"/>
+                      <circle cx="19" cy="12" r="2"/>
+                    </svg>
+                  </button>
+                  
+                  {/* Themed dropdown menu */}
+                  {showImageMenu && (
+                    <div ref={menuRef} className="absolute bottom-12 left-0 bg-white/5 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl min-w-[160px] overflow-hidden 2xl:min-w-[200px]">
+                      <button
+                        onClick={async () => {
+                          console.log('Download clicked!')
+                          await handleDownloadOutput();
+                          setShowImageMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/10 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 2xl:text-base 2xl:py-3.5"
+                      >
+                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-5-5m5 5l5-5" />
+                        </svg>
+                        Download
+                      </button>
+                      <button
+                        onClick={async () => {
+                          console.log('Share clicked!')
+                          await handleShareOutput();
+                          setShowImageMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/10 text-sm flex items-center gap-3 transition-colors duration-200 2xl:text-base 2xl:py-3.5"
+                      >
+                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367-2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                        </svg>
+                        {shareCopied ? 'Copied!' : 'Share'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {outputs[selectedFeature] ? (
                 <div className="w-full h-full relative">
                   {selectedFeature === 'upscale' && inputs[selectedFeature] ? (
                     // Upscale with toggle between comparison and zoom
-                    <div className="w-full h-full relative min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]">
-                      {/* View Mode Toggle - moved to bottom right */}
-                      <div className="absolute bottom-3 left-3 z-30">
+                    <div className="w-full h-full relative min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
+                      {/* View Mode Toggle - centered at bottom */}
+                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
                         <div className="flex bg-black/80 rounded-lg p-1">
                           <button
                             onClick={() => setUpscaleViewMode('comparison')}
@@ -968,7 +1094,7 @@ const EditImageInterface: React.FC = () => {
                               src={inputs[selectedFeature] as string}
                               alt="Original"
                               fill
-                              className="object-contain"
+                              className="object-contain object-center"
                             />
                           </div>
                           <div 
@@ -981,7 +1107,7 @@ const EditImageInterface: React.FC = () => {
                               src={outputs[selectedFeature] as string}
                               alt="Generated"
                               fill
-                              className="object-contain"
+                              className="object-contain object-center"
                             />
                           </div>
                           <div className="absolute inset-0">
@@ -1001,12 +1127,12 @@ const EditImageInterface: React.FC = () => {
                           <div className="absolute top-2 right-2 z-30">
                             <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded">Generated</span>
                           </div>
-                        </>
-                      ) : (
+                          </>
+                       ) : (
                         // Zoom mode
                         <div
                           ref={imageContainerRef}
-                          className="w-full h-full relative cursor-move select-none min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]"
+                          className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]"
                           onMouseDown={handleMouseDown}
                           onMouseMove={handleMouseMove}
                           onMouseUp={handleMouseUp}
@@ -1021,7 +1147,7 @@ const EditImageInterface: React.FC = () => {
                             src={outputs[selectedFeature] as string}
                             alt="Output"
                             fill
-                            className="object-contain"
+                            className="object-contain object-center"
                             style={{
                               transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                               transformOrigin: 'center center',
@@ -1034,8 +1160,8 @@ const EditImageInterface: React.FC = () => {
                           />
                           
                           {/* Zoom Controls */}
-                          <div className="absolute bottom-3 right-3 z-30">
-                            <div className="flex items-center gap-1">
+                          <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
+                            <div className="flex items-center gap-1 2xl:gap-1.5">
                               <button
                                 onClick={() => {
                                   const newScale = Math.max(0.1, scale - 0.1);
@@ -1043,11 +1169,11 @@ const EditImageInterface: React.FC = () => {
                                   setOffset(clampOffset(offset, newScale));
                                 }}
                                 disabled={scale <= 0.1}
-                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
                               >
                                 −
                               </button>
-                              <span className="text-white/80 text-xs px-1.5">
+                              <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
                                 {Math.round(scale * 100)}%
                               </span>
                               <button
@@ -1057,13 +1183,13 @@ const EditImageInterface: React.FC = () => {
                                   setOffset(clampOffset(offset, newScale));
                                 }}
                                 disabled={scale >= 6}
-                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
                               >
                                 +
                               </button>
                               <button
                                 onClick={resetZoom}
-                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center"
+                                className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
                               >
                                 ⌂
                               </button>
@@ -1076,7 +1202,7 @@ const EditImageInterface: React.FC = () => {
                     // Regular image viewer with zoom controls
                     <div
                       ref={imageContainerRef}
-                      className="w-full h-full relative cursor-move select-none min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]"
+                      className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
@@ -1091,7 +1217,7 @@ const EditImageInterface: React.FC = () => {
                         src={outputs[selectedFeature] as string}
                         alt="Output"
                         fill
-                        className="object-contain"
+                        className="object-contain object-center"
                         style={{
                           transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                           transformOrigin: 'center center',
@@ -1104,8 +1230,8 @@ const EditImageInterface: React.FC = () => {
                       />
                       
                       {/* Zoom Controls */}
-                      <div className="absolute bottom-3 right-3 z-30">
-                        <div className="flex items-center gap-1">
+                      <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
+                        <div className="flex items-center gap-1 2xl:gap-1.5">
                           <button
                             onClick={() => {
                               const newScale = Math.max(0.1, scale - 0.1);
@@ -1113,11 +1239,11 @@ const EditImageInterface: React.FC = () => {
                               setOffset(clampOffset(offset, newScale));
                             }}
                             disabled={scale <= 0.1}
-                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
                           >
                             −
                           </button>
-                          <span className="text-white/80 text-xs px-1.5">
+                          <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
                             {Math.round(scale * 100)}%
                           </span>
                           <button
@@ -1127,13 +1253,13 @@ const EditImageInterface: React.FC = () => {
                               setOffset(clampOffset(offset, newScale));
                             }}
                             disabled={scale >= 6}
-                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
                           >
                             +
                           </button>
                           <button
                             onClick={resetZoom}
-                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center"
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
                           >
                             ⌂
                           </button>
@@ -1143,7 +1269,7 @@ const EditImageInterface: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]">
+                <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
                   <div className="text-center">
                     {processing[selectedFeature] ? (
                       <>
@@ -1163,9 +1289,9 @@ const EditImageInterface: React.FC = () => {
               )}
             </div>
           </div>
-            </div>
-          </div>
         </div>
+      </div>
+    </div>
   );
 };
 
