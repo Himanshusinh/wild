@@ -98,9 +98,17 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
                   </svg>
                 </button>
               </div>
-              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
                 {getUserPrompt(entry.prompt)}
               </div>
+              {isLongPrompt && (
+                <button
+                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                  className="mt-2 text-xs text-white/70 hover:text-white underline"
+                >
+                  Read {isPromptExpanded ? 'less' : 'more'}
+                </button>
+              )}
             </div>
             
             {/* Date */}

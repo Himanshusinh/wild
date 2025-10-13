@@ -1,7 +1,7 @@
 'use client';
 
 // components/CommunityCreations.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
 
@@ -107,15 +107,15 @@ function Chip({
 }
 
 /* ---------- Card (unchanged) ---------- */
-function Card({ item }: { item: Creation }) {
+function Card({ item, isVisible, setRef }: { item: Creation; isVisible: boolean; setRef: (el: HTMLDivElement | null) => void }) {
   const ratio = item.width && item.height ? item.height / item.width : 4 / 5;
   const src = item.src || ''
   const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
   const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
 
   return (
-    <div className="break-inside-avoid mb-5">
-      <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
+    <div ref={setRef} className={`break-inside-avoid mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
+      <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
         <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
           {isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
@@ -157,7 +157,7 @@ function Card({ item }: { item: Creation }) {
             )}
           </div>
         </div>
-        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-2xl pointer-events-none transition" />
+        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
       </div>
     </div>
   );
@@ -175,6 +175,7 @@ export default function CommunityCreations({
 }) {
   const [active, setActive] = useState<Category>(initialFilter);
   const router = useRouter();
+  const [loading, setLoading] = useState<boolean>(false);
 
   const filtered = useMemo(() => {
     if (active === 'All') return items;
@@ -184,6 +185,37 @@ export default function CommunityCreations({
   // Limit to ~4-5 rows (with 4 columns ≈ 16-20 items)
   const limited = useMemo(() => filtered.slice(0, 20), [filtered]);
   const showOverlay = useMemo(() => active === 'All' && limited.length >= 12, [active, limited]);
+
+  // Staggered reveal like ArtStation
+  const [visibleTiles, setVisibleTiles] = useState<Set<string>>(new Set());
+  const revealRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  useEffect(() => {
+    const io = new IntersectionObserver(entries => {
+      setVisibleTiles(prev => {
+        const next = new Set(prev)
+        entries.forEach(e => {
+          const id = (e.target as HTMLElement).dataset.revealId
+          if (!id) return
+          if (e.isIntersecting) next.add(id)
+        })
+        return next
+      })
+    }, { root: null, rootMargin: '200px 0px', threshold: 0.1 })
+    Object.entries(revealRefs.current).forEach(([id, el]) => {
+      if (el) {
+        el.dataset.revealId = id
+        io.observe(el)
+      }
+    })
+    return () => io.disconnect()
+  }, [limited])
+
+  // Mimic category-wise loading like ArtStation when switching categories
+  useEffect(() => {
+    setLoading(true)
+    const id = setTimeout(() => setLoading(false), 350)
+    return () => clearTimeout(id)
+  }, [active])
 
   return (
     <section className={`w-full ${className}`}>
@@ -220,11 +252,24 @@ export default function CommunityCreations({
 
       {/* Masonry grid with conditional overlay */}
       <div className="relative">
-        <div className="columns-1 sm:columns-2 md:columns-4 lg:columns-4 xl:columns-4 gap-5 ">
-          {limited.map((item) => (
-            <Card key={item.id} item={item} />
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
+          {limited.map((item, idx) => (
+            <Card
+              key={item.id}
+              item={item}
+              isVisible={visibleTiles.has(item.id)}
+              setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
+            />
           ))}
         </div>
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              <p className="text-white/60 mt-2">{active === 'All' ? 'Loading...' : `Loading ${active}...`}</p>
+            </div>
+          </div>
+        )}
         {showOverlay && (
           <>
             {/* Explore Art Station Overlay - positioned over the images */}

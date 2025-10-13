@@ -50,6 +50,7 @@ export default function ArtStationPage() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const [currentUid, setCurrentUid] = useState<string | null>(null)
   // layout fixed to masonry (no toggle)
@@ -318,6 +319,11 @@ export default function ArtStationPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, deepLinkId, hasMore, loading])
+
+  // Reset prompt expansion when preview item changes
+  useEffect(() => {
+    setIsPromptExpanded(false)
+  }, [preview?.item?.id])
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''
@@ -772,10 +778,25 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         )}
                       </button>
                       </div>
-                      <div className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
-                        {cleanPromptByType(preview.item.prompt, preview.item.generationType)}
-                        
-                      </div>
+                      {(() => {
+                        const cleaned = cleanPromptByType(preview.item.prompt, preview.item.generationType)
+                        const isLong = (cleaned || '').length > 280
+                        return (
+                          <>
+                            <div className={`text-white/90 text-sm leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLong ? 'line-clamp-4' : ''}`}>
+                              {cleaned}
+                            </div>
+                            {isLong && (
+                              <button
+                                onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                                className="mt-2 text-xs text-white/70 hover:text-white underline"
+                              >
+                                Read {isPromptExpanded ? 'less' : 'more'}
+                              </button>
+                            )}
+                          </>
+                        )
+                      })()}
                       
                       
                     </div>
