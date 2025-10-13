@@ -996,6 +996,8 @@ const EditImageInterface: React.FC = () => {
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center mt-5 2xl:p-6">
               <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-4xl xl:max-w-4xl 2xl:max-w-6xl -ml-2 sm:-ml-4 md:-ml-6 lg:-ml-8 2xl:-ml-36">
+                {/* Dotted grid background overlay */}
+                <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               <div className="absolute top-3 left-3 z-10 2xl:top-4 2xl:left-4">
                 <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
               </div>
