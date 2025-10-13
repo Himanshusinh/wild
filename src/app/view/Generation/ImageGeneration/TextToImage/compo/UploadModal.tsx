@@ -116,7 +116,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                     }
                     if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
                   }}
-                  className="border-2 border-dashed border-white/30 rounded-xl h-[50vh] flex items-center justify-center cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar"
+                  className={`border-2 border-dashed border-white/30 rounded-xl h-[52vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
@@ -145,7 +145,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                       <div className="mt-2 text-sm">Drop images here or click to browse</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 md:grid-cols-5 gap-3 p-3 w-full py-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3  w-full place-content-start">
                       {localUploads.map((url, idx) => (
                         <div key={`${url}-${idx}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
                           <Image src={url} alt={`upload-${idx}`} fill className="object-cover" />
