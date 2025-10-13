@@ -194,10 +194,10 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       return false
     }
     
-    // Create session with backend via Next.js proxy to avoid cross-domain cookie issues
+    // Create session directly with backend to avoid proxy issues
     try {
-      // Use Next.js API route instead of direct backend call to avoid cross-domain cookie issues
-      const sessionResponse = await fetch('/api/auth/session', {
+      const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+      const sessionResponse = await fetch(`${backendBase}/api/auth/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,9 +301,10 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(original)
       }
       const freshIdToken = await currentUser.getIdToken(true)
-      // Refresh session via same-origin Next.js proxy to avoid ngrok CORS
+      // Refresh session directly with backend
+      const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
       await axiosInstance.post(
-        '/api/auth/session',
+        `${backendBase}/api/auth/session`,
         { idToken: freshIdToken },
         { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
       )

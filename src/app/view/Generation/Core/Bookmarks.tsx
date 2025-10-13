@@ -15,7 +15,7 @@ const Bookmarks = () => {
   };
 
   return (
-    <div className="min-h-screen bg-transparent text-theme-primary p-6">
+    <div className="min-h-screen bg-[#07070B] text-theme-primary p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
