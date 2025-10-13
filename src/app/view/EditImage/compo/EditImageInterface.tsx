@@ -3,14 +3,16 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { FilePlus } from 'lucide-react';
+import { FilePlus, ChevronUp } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
+import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'using-prompt';
+type EditFeature = 'upscale' | 'remove-bg' | 'resize';
 
 const EditImageInterface: React.FC = () => {
   const searchParams = useSearchParams();
@@ -19,20 +21,17 @@ const EditImageInterface: React.FC = () => {
     'upscale': null,
     'remove-bg': null,
     'resize': null,
-    'using-prompt': null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
     'upscale': null,
     'remove-bg': null,
     'resize': null,
-    'using-prompt': null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
     'upscale': false,
     'remove-bg': false,
     'resize': false,
-    'using-prompt': false,
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
@@ -54,28 +53,40 @@ const EditImageInterface: React.FC = () => {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
-  const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('');
+  const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
   const [dynamic, setDynamic] = useState('');
   const [sharpen, setSharpen] = useState('');
   const [backgroundType, setBackgroundType] = useState('');
   const [threshold, setThreshold] = useState<string>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | ''>('');
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
   const selectedStyle = useAppSelector((state: any) => state.generation?.style || 'none');
   const reduxUploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
+  const dispatch = useAppDispatch();
+
+  // Upload modal state
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const historyEntries = useAppSelector((s:any)=> (s.history?.entries || []).filter((e:any)=> e.generationType === 'text-to-image'));
+  const historyLoading = useAppSelector((s:any)=> s.history?.loading || false);
+  const historyHasMore = useAppSelector((s:any)=> s.history?.hasMore || false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize from query params: feature and image
   useEffect(() => {
+    // Ensure we have some history for the upload modal library tab
+    (async () => {
+      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch {}
+    })();
     try {
       const featureParam = (searchParams?.get('feature') || '').toLowerCase();
       const imageParam = searchParams?.get('image') || '';
       const storagePathParam = searchParams?.get('sp') || '';
-      const validFeature = ['upscale', 'remove-bg', 'resize', 'using-prompt'].includes(featureParam)
+      const validFeature = ['upscale', 'remove-bg', 'resize'].includes(featureParam)
         ? (featureParam as EditFeature)
         : null;
       if (validFeature) {
@@ -289,23 +300,33 @@ const EditImageInterface: React.FC = () => {
   // Close image menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!showImageMenu) return;
-      const target = event.target as Node | null;
-      const menuEl = menuRef.current;
-      const btnEl = menuButtonRef.current;
-      if (menuEl && menuEl.contains(target as Node)) return;
-      if (btnEl && btnEl.contains(target as Node)) return;
-      setShowImageMenu(false);
+      // Close image actions menu
+      if (showImageMenu) {
+        const target = event.target as Node | null;
+        const menuEl = menuRef.current;
+        const btnEl = menuButtonRef.current;
+        if (menuEl && menuEl.contains(target as Node)) return;
+        if (btnEl && btnEl.contains(target as Node)) return;
+        setShowImageMenu(false);
+      }
+
+      // Close edit dropdowns (model/output)
+      if (activeDropdown) {
+        const el = event.target as HTMLElement | null;
+        if (!(el && el.closest('.edit-dropdown'))) {
+          setActiveDropdown('');
+        }
+      }
     };
 
-    if (showImageMenu) {
+    if (showImageMenu || activeDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showImageMenu]);
+  }, [showImageMenu, activeDropdown]);
 
   // Debug menu state
   useEffect(() => {
@@ -318,9 +339,7 @@ const EditImageInterface: React.FC = () => {
   const features = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
     { id: 'remove-bg', label: 'Remove Background', description: 'Remove background from your image' },
-    { id: 'using-prompt', label: 'Using Prompt', description: 'Edit image using text prompts' },
     { id: 'resize', label: 'Resize (coming Soon....)', description: 'Resize image to specific dimensions' },
-
   ] as const;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -334,6 +353,8 @@ const EditImageInterface: React.FC = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  const handleOpenUploadModal = () => setIsUploadOpen(true);
 
   const handleRun = async () => {
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
@@ -383,7 +404,7 @@ const EditImageInterface: React.FC = () => {
         console.log('[EditImage] remove-bg.res', res?.data);
         const out = res?.data?.data?.url || res?.data?.data?.image || res?.data?.data?.images?.[0]?.url || res?.data?.url || res?.data?.image || '';
         if (out) setOutputs((prev) => ({ ...prev, ['remove-bg']: out }));
-      } else if (selectedFeature === 'using-prompt') {
+      } else if (false) {
         // Route to provider based on selected model
         const chosenModel = selectedGeneratorModel || 'gemini-25-flash-image';
         const isRunway = chosenModel === 'gen4_image' || chosenModel === 'gen4_image_turbo' || chosenModel === 'gemini_2.5_flash';
@@ -449,7 +470,7 @@ const EditImageInterface: React.FC = () => {
             }
             
             if (imageUrl) {
-              setOutputs((prev) => ({ ...prev, ['using-prompt']: imageUrl as string }));
+              // no-op after removing using-prompt feature
             } else {
               throw new Error('Runway generation did not complete in time');
             }
@@ -476,7 +497,7 @@ const EditImageInterface: React.FC = () => {
             // Use Replicate generate endpoint (same as image generation flow)
             const res = await axiosInstance.post('/api/replicate/generate', payload);
             const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-            if (out) setOutputs((prev) => ({ ...prev, ['using-prompt']: out }));
+            if (out) {}
             return;
           } else {
             // Google Nano Banana (gemini-25-flash-image)
@@ -494,7 +515,7 @@ const EditImageInterface: React.FC = () => {
           }
           const res = await axiosInstance.post('/api/fal/generate', payload);
           const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) setOutputs((prev) => ({ ...prev, ['using-prompt']: out }));
+          if (out) {}
         } else if (isFluxKontext) {
           // Flux Kontext I2I through the same payload shape as text-to-image
           const payload: any = {
@@ -509,7 +530,7 @@ const EditImageInterface: React.FC = () => {
           };
           const res = await axiosInstance.post('/api/bfl/generate', payload);
           const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) setOutputs((prev) => ({ ...prev, ['using-prompt']: out }));
+          if (out) {}
         }
       } else {
         const parseScale = (fallback: number) => {
@@ -551,8 +572,8 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'using-prompt': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'using-prompt': null });
+    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null });
+    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
@@ -763,6 +784,30 @@ const EditImageInterface: React.FC = () => {
           </div>
             </div>
       </div>
+      {/* Upload from Library/Computer Modal */}
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        historyEntries={historyEntries as any}
+        remainingSlots={1}
+        hasMore={historyHasMore}
+        loading={historyLoading}
+        onLoadMore={async () => {
+          try {
+            if (!historyHasMore || historyLoading) return;
+            await (dispatch as any)(loadMoreHistory({
+              filters: { generationType: 'text-to-image' },
+              paginationParams: { limit: 20 }
+            })).unwrap();
+          } catch {}
+        }}
+        onAdd={(urls: string[]) => {
+          const first = urls[0];
+          if (first) {
+            setInputs((prev) => ({ ...prev, [selectedFeature]: first }));
+          }
+        }}
+      />
       <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Left Sidebar - Controls */}
         <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative 2xl:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
@@ -775,15 +820,15 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Input Image Upload */}
-          <div className="p-3 2xl:p-4">
-            <h3 className="text-xs px-4 font-medium text-white/80 mb-2 2xl:text-lg -ml-2">Input Image</h3>
+          <div className="px-3 2xl:px-4">
+            <h3 className="text-xs pl-1  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
             <div className="relative">
               <div className="bg-white/5 px-4 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] 2xl:min-h-[18rem]">
                   {inputs[selectedFeature] ? (
                     <>
-                    <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-cover rounded-xl" />
+                    <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-contain rounded-xl p-2" />
                       <button
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={handleOpenUploadModal}
                         className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
                         aria-label="Change image"
                       >
@@ -803,7 +848,7 @@ const EditImageInterface: React.FC = () => {
                     </>
                   ) : (
                     <button
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={handleOpenUploadModal}
                       className="absolute inset-0 flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
                     >
                       <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 2xl:w-7 2xl:h-7" />
@@ -815,175 +860,177 @@ const EditImageInterface: React.FC = () => {
                         </div>
                       </div>
 
-          {/* Action Buttons - moved under upload image */}
-          <div className="px-3 pb-3 2xl:px-4">
-            <div className="flex gap-2 2xl:gap-3">
-                        <button
-                onClick={handleReset}
-                className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors 2xl:text-sm 2xl:py-2"
-                        >
-                          Reset
-                        </button>
-                        <button
-                onClick={handleRun}
-                disabled={!inputs[selectedFeature] || processing[selectedFeature]}
-                className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors 2xl:text-sm 2xl:py-2"
-              >
-                {processing[selectedFeature] ? 'Processing...' : 'Generate'}
-                        </button>
-          </div>
-        </div>
+          {/* Action Buttons moved to bottom under Parameters */}
  
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
           <div className="flex-1 min-h-0 p-3 overflow-hidden 2xl:p-4">
             <h3 className="text-xs font-medium text-white/80 mb-2 2xl:text-sm">Parameters</h3>
 
-              {selectedFeature === 'using-prompt' ? (
-                <>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Edit Prompt</label>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="Describe the edit you want to apply to the image"
-                      rows={2}
-                      className="w-full h-16 px-3 py-4 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none flex items-center justify-center text-center 2xl:text-sm 2xl:h-20"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Aspect Ratio</label>
-                    <FrameSizeDropdown openDirection="up" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Style</label>
-                    <StyleSelector />
-                  </div>
-                  </div>
-                </div>
-                {/* Buttons moved to bottom footer */}
-                </>
-              ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
-                  <select
-                    value={model}
-                      onChange={(e) => { setModel(e.target.value as any); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
-                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark] 2xl:text-sm 2xl:py-2"
-                  >
-                      <option value="" disabled hidden>Select model</option>
-                    {selectedFeature === 'remove-bg' ? (
-                      <>
-                          <option value="851-labs/background-remover">851-labs/background-remover</option>
-                          <option value="lucataco/remove-bg">lucataco/remove-bg</option>
-                      </>
-                    ) : (
-                      <>
-                          <option value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
-                          <option value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
-                      </>
-                    )}
-                  </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output Format</label>
-                    <select
-                      value={output}
-                      onChange={(e) => setOutput(e.target.value as any)}
-                      className="w-full px-2 pr-6 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 [color-scheme:dark] 2xl:text-sm 2xl:py-2"
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
+                  <div className="relative edit-dropdown">
+                    <button
+                      onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+                      className={`h-[32px] w-full px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
                     >
-                      <option value="" disabled hidden>Select format</option>
-                      <option value="png">PNG</option>
-                      <option value="jpg">JPG</option>
-                      <option value="jpeg">JPEG</option>
-                      <option value="webp">WEBP</option>
-                    </select>
+                      <span className="truncate">
+                        {model || 'Select model'}
+                      </span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'model' && (
+                      <div className={`absolute top-full mt-2 left-0 w-64 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                        {(selectedFeature === 'remove-bg'
+                          ? [
+                              { label: '851-labs/background-remover', value: '851-labs/background-remover' },
+                              { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
+                            ]
+                          : [
+                              { label: 'NightmareAI Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+                              { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
+                            ]
+                        ).map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => { setModel(opt.value as any); setActiveDropdown(''); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
+                            className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span className="truncate">{opt.label}</span>
+                            {model === opt.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {selectedFeature !== 'remove-bg' && (
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Prompt (Optional)</label>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="Describe details to guide the edit"
-                      rows={1}
-                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none 2xl:text-sm 2xl:py-2"
-                    />
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output Format</label>
+                  <div className="relative edit-dropdown">
+                    <button
+                      onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                      className={`h-[32px] w-full px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                    >
+                      <span className="truncate">{output || 'Select format'}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'output' && (
+                      <div className={`absolute top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                        {['png','jpg','jpeg','webp'].map((fmt) => (
+                          <button
+                            key={fmt}
+                            onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                            className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span className="uppercase">{fmt}</span>
+                            {output === fmt && <div className="w-2 h-2 bg-black rounded-full" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  )}
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale Factor</label>
+              {selectedFeature !== 'remove-bg' && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Prompt (Optional)</label>
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe details to guide the edit"
+                    rows={1}
+                    className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none 2xl:text-sm 2xl:py-2"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale Factor</label>
                   <input
                     type="text"
                     value={scaleFactor}
                     onChange={(e) => setScaleFactor(e.target.value)}
-                      placeholder="e.g., 2x or 4x"
-                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                    />
-                  </div>
-                  {selectedFeature === 'remove-bg' && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Background Type</label>
-                      <input
-                        type="text"
-                        value={backgroundType}
-                        onChange={(e) => setBackgroundType(e.target.value)}
-                        placeholder="e.g., rgba or white"
-                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                      />
-              </div>
-            )}
-
-            {/* Buttons moved to bottom footer */}
-          </div>
-
+                    placeholder="e.g., 2x or 4x"
+                    className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                  />
+                </div>
                 {selectedFeature === 'remove-bg' && (
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Threshold</label>
-                      <input
-                        type="text"
-                        value={threshold}
-                        onChange={(e) => setThreshold(e.target.value)}
-                      placeholder="0.0 to 1.0"
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Background Type</label>
+                    <input
+                      type="text"
+                      value={backgroundType}
+                      onChange={(e) => setBackgroundType(e.target.value)}
+                      placeholder="e.g., rgba or white"
                       className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                     />
                   </div>
                 )}
 
-                {selectedFeature === 'upscale' && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Dynamic</label>
-                        <input
-                          type="text"
-                          value={dynamic}
-                          onChange={(e) => setDynamic(e.target.value)}
-                        placeholder="0-10 (optional)"
-                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                      />
-                      </div>
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Sharpen</label>
-                        <input
-                          type="text"
-                          value={sharpen}
-                          onChange={(e) => setSharpen(e.target.value)}
-                        placeholder="0.0-1.0 (optional)"
-                        className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                      />
-                      </div>
-                  </div>
-                  )}
+                {/* Buttons moved to bottom footer */}
               </div>
+
+              {selectedFeature === 'remove-bg' && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Threshold</label>
+                  <input
+                    type="text"
+                    value={threshold}
+                    onChange={(e) => setThreshold(e.target.value)}
+                    placeholder="0.0 to 1.0"
+                    className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                  />
+                </div>
+              )}
+
+              {selectedFeature === 'upscale' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Dynamic</label>
+                    <input
+                      type="text"
+                      value={dynamic}
+                      onChange={(e) => setDynamic(e.target.value)}
+                      placeholder="0-10 (optional)"
+                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Sharpen</label>
+                    <input
+                      type="text"
+                      value={sharpen}
+                      onChange={(e) => setSharpen(e.target.value)}
+                      placeholder="0.0-1.0 (optional)"
+                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                    />
+                  </div>
+                </div>
               )}
             </div>
+
+            {/* Bottom action buttons under parameters */}
+            <div className="mt-3 pt-2 border-t border-white/10">
+              <div className="flex gap-2 2xl:gap-3">
+                <button
+                  onClick={handleReset}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors 2xl:text-sm 2xl:py-2"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={handleRun}
+                  disabled={!inputs[selectedFeature] || processing[selectedFeature]}
+                  className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors 2xl:text-sm 2xl:py-2"
+                >
+                  {processing[selectedFeature] ? 'Processing...' : 'Generate'}
+                </button>
+              </div>
+            </div>
+          </div>
  
             {/* Footer removed; buttons are rendered at the end of Parameters above */}
  
@@ -994,7 +1041,7 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="p-4 flex items-start justify-center mt-5 2xl:p-6">
+          <div className="p-4 flex items-start justify-center pt-7  ">
               <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-4xl xl:max-w-4xl 2xl:max-w-6xl -ml-2 sm:-ml-4 md:-ml-6 lg:-ml-8 2xl:-ml-36">
                 {/* Dotted grid background overlay */}
                 <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
