@@ -597,7 +597,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 }}
                 className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                Remix in editor
+                Remix 
               </button>
               </div>
               
