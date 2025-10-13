@@ -32,7 +32,7 @@ const LiveChatModelsDropdown: React.FC = () => {
       }
       timeoutRef.current = setTimeout(() => {
         setOpen(false);
-      }, 5000);
+      }, 20000);
     } else {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -50,17 +50,17 @@ const LiveChatModelsDropdown: React.FC = () => {
     { 
       name: 'Flux Kontext Pro', 
       value: 'flux-kontext-pro',
-      description: 'High-quality image generation'
+      // description: 'High-quality image generation'
     },
     { 
       name: 'Flux Kontext Max', 
       value: 'flux-kontext-max',
-      description: 'Maximum quality generation'
+      // description: 'Maximum quality generation'
     },
     { 
       name: 'Google Nano Banana', 
       value: 'gemini-25-flash-image',
-      description: 'Fast Google model'
+      // description: 'Fast Google model'
     },
   ];
 
@@ -99,25 +99,19 @@ const LiveChatModelsDropdown: React.FC = () => {
                 dispatch(setSelectedModel(model.value));
                 setOpen(false);
               }}
-              className={`w-full px-4 py-3 text-left transition text-[13px] flex items-center justify-between ${
-                selectedModel === model.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                ? 'bg-white text-black'
+                : 'text-white/90 hover:bg-white/10'
+                }`}
             >
-              <div className="flex flex-col">
-                <span className="font-medium">{model.name}</span>
-                <span className={`text-xs mt-0.5 ${
-                  selectedModel === model.value ? 'text-black/70' : 'text-white/60'
-                }`}>{model.description}</span>
+              <div className="flex flex-col mb-1">
+                <span>{model.name}</span>
                 {model.credits && (
-                  <span className={`text-xs mt-0.5 ${
-                    selectedModel === model.value ? 'text-black/70' : 'opacity-70'
-                  }`}>{model.credits} credits</span>
+                  <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
                 )}
               </div>
               {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-black rounded-full"></div>
               )}
             </button>
           ))}

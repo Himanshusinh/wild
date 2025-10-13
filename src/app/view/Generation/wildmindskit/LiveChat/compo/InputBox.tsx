@@ -8,6 +8,7 @@ import { addAndSaveHistoryEntry } from "@/store/slices/historySlice";
 import { HistoryEntry, GeneratedImage, LiveChatMessage } from "@/types/history";
 import { saveLiveChatSession } from '@/lib/historyService';
 import Image from "next/image";
+import { Trash2 } from 'lucide-react';
 import LiveChatModelsDropdown from "./LiveChatModelsDropdown";
 import { useEffect } from 'react';
 // Live chat persistence will be handled by backend history endpoints
@@ -18,7 +19,7 @@ const LiveChatInputBox: React.FC = () => {
   const uploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || "flux-dev");
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
-  const style = useAppSelector((state: any) => state.generation?.style || 'realistic');
+  const style = useAppSelector((state: any) => state.generation?.style || 'none');
   const inputEl = useRef<HTMLTextAreaElement>(null);
   const historyEntries = useAppSelector((s:any)=> (s.history?.entries || []).filter((e:any)=> e.generationType === 'live-chat'));
 
@@ -93,7 +94,7 @@ const LiveChatInputBox: React.FC = () => {
                     <img src={u} alt={`ref-${i}`} className="w-full h-full object-cover transition-opacity group-hover:opacity-30" />
                     <button
                       aria-label="Remove reference"
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
                       onClick={(e) => {
                         e.stopPropagation();
                         const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
@@ -103,7 +104,7 @@ const LiveChatInputBox: React.FC = () => {
                         }
                       }}
                     >
-                      
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -112,7 +113,7 @@ const LiveChatInputBox: React.FC = () => {
 
             {/* Upload button */}
             <label className="p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer">
-              <Image src="/icons/fileuploadwhite.svg" alt="Attach" width={18} height={18} className="opacity-90" />
+              <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
               <input
                 type="file"
                 accept="image/*"

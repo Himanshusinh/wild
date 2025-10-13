@@ -15,7 +15,8 @@ interface StylePopupProps {
 const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const dispatch = useAppDispatch();
   const currentStyle = useAppSelector((state: any) => state.generation?.style || 'none');
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
+  // Do not force any default model here; empty string means no model chosen yet
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || '');
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const [mounted, setMounted] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);

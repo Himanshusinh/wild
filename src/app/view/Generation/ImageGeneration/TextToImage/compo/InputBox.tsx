@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import Image from "next/image";
+import { ChevronUp } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -2062,17 +2063,32 @@ const InputBox = () => {
               <PhoenixOptions />
               <FileTypeDropdown />
               {selectedModel === 'seedream-v4' && (
-                <div className="flex items-center gap-2">
-                  <select
-                    value={seedreamSize}
-                    onChange={(e)=>setSeedreamSize(e.target.value as any)}
-                    className="h-[32px] px-3 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition"
-                  >
-                    <option className="bg-black" value="1K">1K</option>
-                    <option className="bg-black" value="2K">2K</option>
-                    <option className="bg-black" value="4K">4K</option>
-                    <option className="bg-black" value="custom">Custom</option>
-                  </select>
+                <div className="flex items-center gap-2 relative">
+                  <div className="relative dropdown-container">
+                    <button
+                      onClick={() => dispatch(toggleDropdown('seedreamSize'))}
+                      className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                    >
+                      {seedreamSize}
+                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'seedreamSize' && (
+                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                        {['1K','2K','4K','custom'].map((opt) => (
+                          <button
+                            key={opt}
+                            onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
+                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span>{opt}</span>
+                            {seedreamSize === opt && (
+                              <span className="w-2 h-2 bg-black rounded-full"></span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {seedreamSize === 'custom' && (
                     <>
                       <input
