@@ -117,7 +117,7 @@ const PhoenixOptions = () => {
           onClick={handleDropdownClick}
           className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
         >
-          <span>Phoenix Options</span>
+          <span>Other Options</span>
           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'phoenixOptions' ? 'rotate-180' : ''}`} />
         </button>
 
