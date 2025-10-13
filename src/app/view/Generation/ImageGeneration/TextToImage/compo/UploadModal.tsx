@@ -60,7 +60,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
           <div className="p-4">
             {tab === 'library' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3">Select up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
+                <div className="text-white/70 text-sm mb-3 ">Select up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
                 <div
                   ref={listRef}
                   onScroll={(e) => {
@@ -69,7 +69,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
                     if (nearBottom && hasMore && !loading) onLoadMore();
                   }}
-                  className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] overflow-y-auto custom-scrollbar pr-1"
+                  className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
                   {historyEntries.flatMap((entry: any) => ((entry?.images || []).map((im: any) => ({ entry, im })))).map(({ entry, im }: any) => {
                     const selected = selection.has(im.url);
@@ -147,8 +147,25 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   ) : (
                     <div className="grid grid-cols-3 md:grid-cols-5 gap-3 p-3 w-full py-4">
                       {localUploads.map((url, idx) => (
-                        <div key={`${url}-${idx}`} className="relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
+                        <div key={`${url}-${idx}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
                           <Image src={url} alt={`upload-${idx}`} fill className="object-cover" />
+                          <button
+                            aria-label="Remove"
+                            title="Remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocalUploads(prev => prev.filter((u, i) => !(u === url && i === idx)));
+                            }}
+                            className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+                              <path d="M3 6h18" />
+                              <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6" />
+                              <path d="M14 11v6" />
+                            </svg>
+                          </button>
                         </div>
                       ))}
                     </div>
