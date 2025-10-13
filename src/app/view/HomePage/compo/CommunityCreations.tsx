@@ -127,7 +127,14 @@ function Card({ item }: { item: Creation }) {
               </div>
             </div>
           ) : isVideo ? (
-            <video src={src} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
+            (() => {
+              const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+              const path = src.startsWith(ZATA_PREFIX) ? src.substring(ZATA_PREFIX.length) : src;
+              const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+              return (
+                <video src={proxied} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
+              );
+            })()
           ) : (
             <Image
               src={src}

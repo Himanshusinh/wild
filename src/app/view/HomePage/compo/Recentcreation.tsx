@@ -640,22 +640,29 @@ const Recentcreation: React.FC = () => {
               <div className="relative h-[250px] rounded-xl overflow-hidden">
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
-                    <video
-                      src={item.src}
-                      className="w-full h-full object-cover"
-                      muted
-                      loop
-                      playsInline
-                      onLoadedMetadata={(e) => {
-                        const video = e.target as HTMLVideoElement
-                        const w = video.videoWidth || 1
-                        const h = video.videoHeight || 1
-                        const g = gcd(w, h)
-                        const rw = Math.round(w / g)
-                        const rh = Math.round(h / g)
-                        setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
-                      }}
-                    />
+                    (() => {
+                      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+                      const path = item.src.startsWith(ZATA_PREFIX) ? item.src.substring(ZATA_PREFIX.length) : item.src;
+                      const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                      return (
+                        <video
+                          src={proxied}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          playsInline
+                          onLoadedMetadata={(e) => {
+                            const video = e.target as HTMLVideoElement
+                            const w = video.videoWidth || 1
+                            const h = video.videoHeight || 1
+                            const g = gcd(w, h)
+                            const rw = Math.round(w / g)
+                            const rh = Math.round(h / g)
+                            setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
+                          }}
+                        />
+                      );
+                    })()
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
                       <div className="text-center">
