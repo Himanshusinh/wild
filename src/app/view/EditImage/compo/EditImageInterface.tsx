@@ -726,13 +726,14 @@ const EditImageInterface: React.FC = () => {
 
   return (
     <div className="h-screen overflow-hidden bg-[#07070B]">
-      {/* Global horizontal headers */}
+      {/* Header + Feature cards in a single row so the heading sits in the left gap */}
       <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] 2xl:px-6 2xl:pt-4 2xl:pb-3">
-        <h1 className="text-base font-semibold text-white 2xl:text-xl">Edit Images</h1>
-        <p className="text-white/60 text-xs 2xl:text-sm">Transform your images with AI</p>
-      </div>
-      <div className="w-screen px-4 pt-2 pb-2 bg-[#07070B] 2xl:px-6">
-        <div className="flex gap-3 overflow-x-auto no-scrollbar 2xl:gap-4">
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14">
+            <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
+            <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar 2xl:gap-9 ml-6 sm:ml-8 md:ml-12 2xl:ml-34">
               {features.map((feature) => (
             <div
                   key={feature.id}
@@ -758,11 +759,12 @@ const EditImageInterface: React.FC = () => {
           </div>
                 </div>
           ))}
+          </div>
             </div>
       </div>
       <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative 2xl:w-96">
+        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative 2xl:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
           {/* Error Message */}
             {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
@@ -773,9 +775,9 @@ const EditImageInterface: React.FC = () => {
 
           {/* Input Image Upload */}
           <div className="p-3 2xl:p-4">
-            <h3 className="text-xs font-medium text-white/80 mb-2 2xl:text-sm">Input Image</h3>
+            <h3 className="text-xs px-4 font-medium text-white/80 mb-2 2xl:text-lg -ml-2">Input Image</h3>
             <div className="relative">
-              <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] 2xl:min-h-[18rem]">
+              <div className="bg-white/5 px-4 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] 2xl:min-h-[18rem]">
                   {inputs[selectedFeature] ? (
                     <>
                     <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-cover rounded-xl" />
@@ -993,9 +995,9 @@ const EditImageInterface: React.FC = () => {
 
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center mt-5 2xl:p-6">
-              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[20rem] md:min-h-[24rem] 2xl:min-h-[32rem] w-full max-w-2xl 2xl:max-w-4xl">
+              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-4xl xl:max-w-4xl 2xl:max-w-6xl -ml-2 sm:-ml-4 md:-ml-6 lg:-ml-8 2xl:-ml-36">
               <div className="absolute top-3 left-3 z-10 2xl:top-4 2xl:left-4">
-                <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Output Image</span>
+                <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
               </div>
               
 
@@ -1055,9 +1057,9 @@ const EditImageInterface: React.FC = () => {
                 <div className="w-full h-full relative">
                   {selectedFeature === 'upscale' && inputs[selectedFeature] ? (
                     // Upscale with toggle between comparison and zoom
-                    <div className="w-full h-full relative min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]">
-                      {/* View Mode Toggle - moved to bottom right */}
-                      <div className="absolute bottom-3 left-3 z-30">
+                    <div className="w-full h-full relative min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
+                      {/* View Mode Toggle - centered at bottom */}
+                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
                         <div className="flex bg-black/80 rounded-lg p-1">
                           <button
                             onClick={() => setUpscaleViewMode('comparison')}
@@ -1090,7 +1092,7 @@ const EditImageInterface: React.FC = () => {
                               src={inputs[selectedFeature] as string}
                               alt="Original"
                               fill
-                              className="object-contain"
+                              className="object-contain object-center"
                             />
                           </div>
                           <div 
@@ -1103,7 +1105,7 @@ const EditImageInterface: React.FC = () => {
                               src={outputs[selectedFeature] as string}
                               alt="Generated"
                               fill
-                              className="object-contain"
+                              className="object-contain object-center"
                             />
                           </div>
                           <div className="absolute inset-0">
@@ -1128,7 +1130,7 @@ const EditImageInterface: React.FC = () => {
                         // Zoom mode
                         <div
                           ref={imageContainerRef}
-                          className="w-full h-full relative cursor-move select-none min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]"
+                          className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]"
                           onMouseDown={handleMouseDown}
                           onMouseMove={handleMouseMove}
                           onMouseUp={handleMouseUp}
@@ -1143,7 +1145,7 @@ const EditImageInterface: React.FC = () => {
                             src={outputs[selectedFeature] as string}
                             alt="Output"
                             fill
-                            className="object-contain"
+                            className="object-contain object-center"
                             style={{
                               transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                               transformOrigin: 'center center',
@@ -1198,7 +1200,7 @@ const EditImageInterface: React.FC = () => {
                     // Regular image viewer with zoom controls
                     <div
                       ref={imageContainerRef}
-                      className="w-full h-full relative cursor-move select-none min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]"
+                      className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
@@ -1213,7 +1215,7 @@ const EditImageInterface: React.FC = () => {
                         src={outputs[selectedFeature] as string}
                         alt="Output"
                         fill
-                        className="object-contain"
+                        className="object-contain object-center"
                         style={{
                           transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                           transformOrigin: 'center center',
@@ -1265,7 +1267,7 @@ const EditImageInterface: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center min-h-[20rem] md:min-h-[24rem] lg:min-h-[28rem]">
+                <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
                   <div className="text-center">
                     {processing[selectedFeature] ? (
                       <>
