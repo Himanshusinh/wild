@@ -42,6 +42,8 @@ export default function ArtStationPage() {
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const [currentUid, setCurrentUid] = useState<string | null>(null)
+  // Track which media tiles have finished loading so we can fade them in
+  const [loadedTiles, setLoadedTiles] = useState<Set<string>>(new Set())
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
@@ -394,6 +396,15 @@ export default function ArtStationPage() {
     return out
   }, [filteredItems])
 
+  const markTileLoaded = (tileId: string) => {
+    setLoadedTiles(prev => {
+      if (prev.has(tileId)) return prev
+      const next = new Set(prev)
+      next.add(tileId)
+      return next
+    })
+  }
+
   return (
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
@@ -430,7 +441,8 @@ export default function ArtStationPage() {
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
-          <div className="columns-1 sm:columns-2 md:columns-4 lg:columns-4 xl:columns-4 gap-2">
+          {/* Masonry layout using CSS columns */}
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-4">
              {cards.map(({ item, media, kind }, idx) => {
               // Clean aspect ratios for organized grid
               const ratios = ['1/1', '4/3', '3/4', '16/9', '9/16', '2/1', '1/2', '3/2', '2/3']
@@ -443,7 +455,7 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className="break-inside-avoid mb-2 cursor-pointer group relative"
+                  className="break-inside-avoid mb-4 cursor-pointer group relative [content-visibility:auto]"
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
                    onClick={() => {
@@ -454,17 +466,48 @@ export default function ArtStationPage() {
                    }}
                 >
                   <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
-                    <div style={{ aspectRatio: randomRatio }}>
-                      {kind === 'video' ? (
-                        (() => {
-                          const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                          const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
-                          const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                          return <video src={proxied} className="w-full h-full object-cover" controls muted />
-                        })()
-                      ) : (
-                        <Image src={media.url} alt={item.prompt || ''} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                    <div
+                      style={{ aspectRatio: randomRatio }}
+                      className={`relative transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform] ${loadedTiles.has(cardId) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+                    >
+                      {!loadedTiles.has(cardId) && (
+                        <div className="absolute inset-0 animate-pulse bg-white/10" />
                       )}
+                      {(() => {
+                        const isPriority = idx < 8
+                        const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
+                        const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
+                        return kind === 'video' ? (
+                          (() => {
+                            const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                            const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
+                            const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                            return (
+                              <video
+                                src={proxied}
+                                className="w-full h-full object-cover"
+                                controls
+                                muted
+                                preload="metadata"
+                                onLoadedData={() => markTileLoaded(cardId)}
+                              />
+                            )
+                          })()
+                        ) : (
+                          <Image
+                            src={media.url}
+                            alt={item.prompt || ''}
+                            fill
+                            sizes={sizes}
+                            className="object-cover"
+                            placeholder="blur"
+                            blurDataURL={blur}
+                            priority={isPriority}
+                            fetchPriority={isPriority ? 'high' : 'auto'}
+                            onLoadingComplete={() => markTileLoaded(cardId)}
+                          />
+                        )
+                      })()}
                     </div>
                     
                     {/* Hover Overlay - Profile and Like Button */}
