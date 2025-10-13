@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import { FilePlus } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
@@ -783,9 +784,10 @@ const EditImageInterface: React.FC = () => {
                     <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-cover rounded-xl" />
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-1 left-1 right-1 bg-black/70 hover:bg-black/80 text-white text-xs py-0.5 px-1 rounded-full transition-colors 2xl:text-sm 2xl:py-1"
+                        className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
+                        aria-label="Change image"
                       >
-                        Change
+                        <img src="/icons/fileupload.svg" alt="Upload" className="w-4 h-4" />
                       </button>
                     <button
                       onClick={(e) => {
@@ -802,12 +804,10 @@ const EditImageInterface: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                    className="absolute inset-0 flex flex-col items-center justify-center text-white/50 hover:text-white transition-colors"
+                      className="absolute inset-0 flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
                     >
-                    <svg className="w-6 h-6 mb-1 2xl:w-7 2xl:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    <span className="text-sm 2xl:text-base">Upload Image</span>
+                      <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 2xl:w-7 2xl:h-7" />
+                      <span className="text-sm 2xl:text-base">Upload Image</span>
                     </button>
                   )}
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
@@ -998,8 +998,8 @@ const EditImageInterface: React.FC = () => {
               <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-4xl xl:max-w-4xl 2xl:max-w-6xl -ml-2 sm:-ml-4 md:-ml-6 lg:-ml-8 2xl:-ml-36">
                 {/* Dotted grid background overlay */}
                 <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
-              <div className="absolute top-3 left-3 z-10 2xl:top-4 2xl:left-4">
-                <span className="text-xs font-medium text-white/80 bg-black/50 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
+              <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
+                <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
               </div>
               
 
@@ -1012,7 +1012,7 @@ const EditImageInterface: React.FC = () => {
                       console.log('Three dots clicked!')
                       setShowImageMenu(!showImageMenu)
                     }}
-                    className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all duration-200 border border-white/20 hover:border-white/30 backdrop-blur-sm 2xl:p-3"
+                    className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-full transition-all duration-200 border border-white/30 2xl:p-3"
                   >
                     <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
                       <circle cx="5" cy="12" r="2"/>
@@ -1023,14 +1023,14 @@ const EditImageInterface: React.FC = () => {
                   
                   {/* Themed dropdown menu */}
                   {showImageMenu && (
-                    <div ref={menuRef} className="absolute bottom-12 left-0 bg-white/5 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl min-w-[160px] overflow-hidden 2xl:min-w-[200px]">
+                    <div ref={menuRef} className="absolute bottom-12 left-0 bg-black/80 border border-white/30 rounded-xl shadow-2xl min-w-[160px] overflow-hidden 2xl:min-w-[200px]">
                       <button
                         onClick={async () => {
                           console.log('Download clicked!')
                           await handleDownloadOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-white/10 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 2xl:text-base 2xl:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 2xl:text-base 2xl:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-5-5m5 5l5-5" />
@@ -1043,7 +1043,7 @@ const EditImageInterface: React.FC = () => {
                           await handleShareOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-white/10 text-sm flex items-center gap-3 transition-colors duration-200 2xl:text-base 2xl:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 2xl:text-base 2xl:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367-2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
@@ -1100,7 +1100,7 @@ const EditImageInterface: React.FC = () => {
                           <div 
                             className="absolute inset-0"
                             style={{
-                              clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`
+                              clipPath: `inset(0 0 0 ${sliderPosition}%)`
                             }}
                           >
                             <Image
@@ -1108,6 +1108,7 @@ const EditImageInterface: React.FC = () => {
                               alt="Generated"
                               fill
                               className="object-contain object-center"
+                              style={{ objectPosition: 'center 55%' }}
                             />
                           </div>
                           <div className="absolute inset-0">
@@ -1124,8 +1125,8 @@ const EditImageInterface: React.FC = () => {
                               style={{ left: `${sliderPosition}%` }}
                             />
                           </div>
-                          <div className="absolute top-2 right-2 z-30">
-                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded">Generated</span>
+                          <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
+                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
                           </div>
                           </>
                        ) : (
@@ -1151,6 +1152,7 @@ const EditImageInterface: React.FC = () => {
                             style={{
                               transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                               transformOrigin: 'center center',
+                              objectPosition: 'center 55%'
                             }}
                             onLoad={(e) => {
                               const img = e.target as HTMLImageElement;
@@ -1161,7 +1163,7 @@ const EditImageInterface: React.FC = () => {
                           
                           {/* Zoom Controls */}
                           <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
-                            <div className="flex items-center gap-1 2xl:gap-1.5">
+                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
                               <button
                                 onClick={() => {
                                   const newScale = Math.max(0.1, scale - 0.1);
@@ -1221,6 +1223,7 @@ const EditImageInterface: React.FC = () => {
                         style={{
                           transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                           transformOrigin: 'center center',
+                          objectPosition: 'center 55%'
                         }}
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
@@ -1231,7 +1234,7 @@ const EditImageInterface: React.FC = () => {
                       
                       {/* Zoom Controls */}
                       <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
-                        <div className="flex items-center gap-1 2xl:gap-1.5">
+                        <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
                           <button
                             onClick={() => {
                               const newScale = Math.max(0.1, scale - 0.1);
