@@ -288,14 +288,14 @@ const LiveChatInputBox: React.FC = () => {
               </div>
             </div>
             <div ref={stripRef} className="w-full overflow-x-auto">
-              <div className="flex flex-row items-center gap-4 pb-2 justify-start">
+              <div className="flex flex-row items-center gap-3 pb-2 justify-start">
                 {isProcessing && (
-                  <div className="relative w-[85vw] h-[85vw] md:w-[60vh] md:h-[60vh] lg:w-[70vh] lg:h-[70vh] rounded-xl overflow-hidden bg-black/70 flex-shrink-0 flex items-center justify-center">
+                  <div className="relative  rounded-xl overflow-hidden bg-black/70 flex-shrink-0 flex items-center justify-center">
                     <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
                   </div>
                 )}
                 {sessionImages.map((img, idx) => (
-                  <div key={`${img.id || 'img'}-${idx}-${img.url}`} className="relative w-[85vw] h-[85vw] md:w-[60vh] md:h-[60vh] lg:w-[70vh] lg:h-[70vh] rounded-xl overflow-hidden bg-black/70 flex-shrink-0">
+                  <div key={`${img.id || 'img'}-${idx}-${img.url}`} className="relative w-[60vw] h-[60vw] md:w-[22vh] md:h-[22vh] lg:w-[22vh] lg:h-[22vh] rounded-xl overflow-hidden bg-black/70 flex-shrink-0">
                     <Image src={img.url} alt="generated" fill className="object-contain" />
                   </div>
                 ))}
