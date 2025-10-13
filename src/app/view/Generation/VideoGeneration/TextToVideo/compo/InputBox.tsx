@@ -1681,11 +1681,17 @@ const InputBox = () => {
                             <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                               {(video.firebaseUrl || video.url) ? (
                                 <div className="relative w-full h-full">
-                                  <video
-                                    src={video.firebaseUrl || video.url}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                    onLoadedData={(e) => {
+                                  {(() => {
+                                    const raw = (video.firebaseUrl || video.url) as string;
+                                    const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
+                                    const path = raw?.startsWith(ZATA_PREFIX) ? raw.substring(ZATA_PREFIX.length) : raw;
+                                    const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                                    return (
+                                      <video
+                                        src={proxied}
+                                        className="w-full h-full object-cover"
+                                        muted
+                                        onLoadedData={(e) => {
                                       // Create thumbnail from video
                                       const videoElement = e.target as HTMLVideoElement;
                                       const canvas = document.createElement('canvas');
@@ -1704,8 +1710,10 @@ const InputBox = () => {
                                           shimmer.style.opacity = '0';
                                         }
                                       }, 100);
-                                    }}
-                                  />
+                                        }}
+                                      />
+                                    );
+                                  })()}
                                   {/* Shimmer loading effect */}
                                   <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                                 </div>

@@ -456,7 +456,12 @@ export default function ArtStationPage() {
                   <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
                     <div style={{ aspectRatio: randomRatio }}>
                       {kind === 'video' ? (
-                        <video src={media.url} className="w-full h-full object-cover" controls muted />
+                        (() => {
+                          const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                          const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
+                          const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                          return <video src={proxied} className="w-full h-full object-cover" controls muted />
+                        })()
                       ) : (
                         <Image src={media.url} alt={item.prompt || ''} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
                       )}
@@ -587,7 +592,12 @@ export default function ArtStationPage() {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         return (
                           <div className="relative w-full h-full">
-                            <video src={vid.url} className="w-full h-full" controls autoPlay />
+                            {(() => {
+                              const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                              const path = vid.url?.startsWith(ZATA_PREFIX) ? vid.url.substring(ZATA_PREFIX.length) : vid.url;
+                              const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                              return <video src={proxied} className="w-full h-full" controls autoPlay />
+                            })()}
                           </div>
                         )
                       }
@@ -687,7 +697,12 @@ export default function ArtStationPage() {
                               onClick={() => setSelectedVideoIndex(idx)}
                               className={`relative aspect-square rounded-md overflow-hidden border ${selectedVideoIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
-                              <video src={vd.url} className="w-full h-full object-cover" muted />
+                              {(() => {
+                                const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                                const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
+                                const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                                return <video src={proxied} className="w-full h-full object-cover" muted />
+                              })()}
                             </button>
                           ))}
                         </div>
