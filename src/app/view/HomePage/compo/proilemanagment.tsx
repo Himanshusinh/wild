@@ -265,14 +265,14 @@ const ProfileManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
+      <div className="min-h-screen bg-[#07070B] flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white p-6">
+    <div className="min-h-screen bg-[#07070B] text-white p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-6 mb-12">

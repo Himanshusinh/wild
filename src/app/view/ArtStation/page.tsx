@@ -395,7 +395,7 @@ export default function ArtStationPage() {
   }, [filteredItems])
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-10">
         <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => {}} onGenerationTypeChange={() => {}} onWildmindSkitClick={() => {}} /></div>
