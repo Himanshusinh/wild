@@ -87,6 +87,24 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'imagen-4-ultra',
+    creditModelName: 'Imagen 4 Ultra',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'imagen-4',
+    creditModelName: 'Imagen 4',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'imagen-4-fast',
+    creditModelName: 'Imagen 4 Fast',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
     frontendValue: 'seedream-v4',
     creditModelName: 'Seedream v4 (T2I)',
     generationType: 'image',
@@ -95,6 +113,24 @@ export const MODEL_MAPPING: ModelMapping[] = [
   {
     frontendValue: 'ideogram-ai/ideogram-v3',
     creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'ideogram-ai/ideogram-v3-quality',
+    creditModelName: 'replicate/ideogram-ai/ideogram-v3-quality',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'leonardoai/lucid-origin',
+    creditModelName: 'replicate/leonardoai/lucid-origin',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'leonardoai/phoenix-1.0',
+    creditModelName: 'replicate/leonardoai/phoenix-1.0',
     generationType: 'image',
     provider: 'replicate'
   },

@@ -15,6 +15,7 @@ import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory, r
 import axiosInstance from '@/lib/axiosInstance';
 import { setCurrentView } from '@/store/slices/uiSlice';
 import { Download, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const History = () => {
   const dispatch = useAppDispatch();
@@ -54,6 +55,26 @@ const History = () => {
   const [dragEnd, setDragEnd] = useState<{ x: number; y: number } | null>(null);
   const [dragBox, setDragBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const wasDraggingRef = useRef(false);
+
+  // Helper function to get clean prompt without style
+  const getCleanPrompt = (promptText: string): string => {
+    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
+  };
+
+  // Copy prompt to clipboard
+  const copyPrompt = async (e: React.MouseEvent, text: string) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      toast.success('Prompt copied');
+    } catch {
+      try {
+        toast.error('Failed to copy');
+      } catch {}
+    }
+  };
 
   // Debug logs removed for cleaner console
 
@@ -1253,6 +1274,29 @@ const History = () => {
                             <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                               <span className="text-xs text-white">Video</span>
                             </div>
+                            {/* Hover prompt overlay */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                              <span
+                                title={getCleanPrompt(entry.prompt)}
+                                className="text-xs text-white flex-1 leading-snug"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3 as any,
+                                  WebkitBoxOrient: 'vertical' as any,
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {getCleanPrompt(entry.prompt)}
+                              </span>
+                              <button
+                                aria-label="Copy prompt"
+                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
+                            </div>
                           </div>
                         ) : audio ? (
                           <div className="w-full h-full bg-gradient-to-br from-green-900/20 to-blue-900/20 flex items-center justify-center relative">
@@ -1270,6 +1314,29 @@ const History = () => {
                             </div>
                             <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                               <span className="text-xs text-white">Audio</span>
+                            </div>
+                            {/* Hover prompt overlay */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                              <span
+                                title={getCleanPrompt(entry.prompt)}
+                                className="text-xs text-white flex-1 leading-snug"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3 as any,
+                                  WebkitBoxOrient: 'vertical' as any,
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {getCleanPrompt(entry.prompt)}
+                              </span>
+                              <button
+                                aria-label="Copy prompt"
+                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
                             </div>
                           </div>
                         ) : (
@@ -1299,6 +1366,29 @@ const History = () => {
                               </div>
                             )}
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                            {/* Hover prompt overlay */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                              <span
+                                title={getCleanPrompt(entry.prompt)}
+                                className="text-xs text-white flex-1 leading-snug"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3 as any,
+                                  WebkitBoxOrient: 'vertical' as any,
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {getCleanPrompt(entry.prompt)}
+                              </span>
+                              <button
+                                aria-label="Copy prompt"
+                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
+                            </div>
                           </div>
                         )}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />

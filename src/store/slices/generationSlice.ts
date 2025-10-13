@@ -19,6 +19,18 @@ interface GenerationState {
     status: string;
   } | null;
   uploadedImages: string[];
+  // Lucid Origin options
+  lucidStyle: string;
+  lucidContrast: string;
+  lucidMode: string;
+  lucidPromptEnhance: boolean;
+  // Phoenix 1.0 options
+  phoenixStyle: string;
+  phoenixContrast: string;
+  phoenixMode: string;
+  phoenixPromptEnhance: boolean;
+  // Output format for Imagen models
+  outputFormat: string;
 }
 
 const initialState: GenerationState = {
@@ -26,12 +38,24 @@ const initialState: GenerationState = {
   selectedModel: 'gemini-25-flash-image',
   imageCount: 1,
   frameSize: '1:1',
-  style: 'realistic',
+  style: 'none',
   isGenerating: false,
   error: null,
   lastGeneratedImages: [],
   generationProgress: null,
   uploadedImages: [],
+  // Lucid Origin defaults
+  lucidStyle: 'none',
+  lucidContrast: 'medium',
+  lucidMode: 'standard',
+  lucidPromptEnhance: false,
+  // Phoenix 1.0 defaults
+  phoenixStyle: 'none',
+  phoenixContrast: 'medium',
+  phoenixMode: 'fast',
+  phoenixPromptEnhance: false,
+  // Output format default
+  outputFormat: 'jpeg',
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -61,7 +85,7 @@ export const generateImages = createAsyncThunk(
       const api = getApiClient();
 
       // Decide provider based on model
-      const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
+  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
       const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
 
       // Resolve isPublic from backend policy when not explicitly provided
@@ -123,7 +147,7 @@ export const generateLiveChatImage = createAsyncThunk(
     try {
       const api = getApiClient();
       // Use different endpoints based on model
-      const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4';
+  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
       const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
       
       // Resolve isPublic if absent
@@ -330,6 +354,36 @@ const generationSlice = createSlice({
     setUploadedImages: (state, action: PayloadAction<string[]>) => {
       state.uploadedImages = action.payload;
     },
+    // Lucid Origin options
+    setLucidStyle: (state, action: PayloadAction<string>) => {
+      state.lucidStyle = action.payload;
+    },
+    setLucidContrast: (state, action: PayloadAction<string>) => {
+      state.lucidContrast = action.payload;
+    },
+    setLucidMode: (state, action: PayloadAction<string>) => {
+      state.lucidMode = action.payload;
+    },
+    setLucidPromptEnhance: (state, action: PayloadAction<boolean>) => {
+      state.lucidPromptEnhance = action.payload;
+    },
+    // Phoenix 1.0 options
+    setPhoenixStyle: (state, action: PayloadAction<string>) => {
+      state.phoenixStyle = action.payload;
+    },
+    setPhoenixContrast: (state, action: PayloadAction<string>) => {
+      state.phoenixContrast = action.payload;
+    },
+    setPhoenixMode: (state, action: PayloadAction<string>) => {
+      state.phoenixMode = action.payload;
+    },
+    setPhoenixPromptEnhance: (state, action: PayloadAction<boolean>) => {
+      state.phoenixPromptEnhance = action.payload;
+    },
+    // Output format
+    setOutputFormat: (state, action: PayloadAction<string>) => {
+      state.outputFormat = action.payload;
+    },
     clearGenerationState: (state) => {
       state.prompt = '';
       state.uploadedImages = [];
@@ -435,6 +489,18 @@ export const {
   setLastGeneratedImages,
   setGenerationProgress,
   setUploadedImages,
+  // Lucid Origin options
+  setLucidStyle,
+  setLucidContrast,
+  setLucidMode,
+  setLucidPromptEnhance,
+  // Phoenix 1.0 options
+  setPhoenixStyle,
+  setPhoenixContrast,
+  setPhoenixMode,
+  setPhoenixPromptEnhance,
+  // Output format
+  setOutputFormat,
   clearGenerationState,
 } = generationSlice.actions;
 

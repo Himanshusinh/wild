@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import Image from "next/image";
+import { ChevronUp } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -35,6 +37,9 @@ import ModelsDropdown from "./ModelsDropdown";
 import ImageCountDropdown from "./ImageCountDropdown";
 import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
+import LucidOriginOptions from "./LucidOriginOptions";
+import PhoenixOptions from "./PhoenixOptions";
+import FileTypeDropdown from "./FileTypeDropdown";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
@@ -249,12 +254,16 @@ const InputBox = () => {
   // Copy prompt to clipboard (used on hover overlay)
   const copyPrompt = async (e: React.MouseEvent, text: string) => {
     try {
+      console.log("beti")
       e.stopPropagation();
+      e.preventDefault();
       if (!text) return;
       await navigator.clipboard.writeText(text);
-      toast.success('Prompt copied');
+      (await import('react-hot-toast')).default.success('Prompt copied');
     } catch {
-      toast.error('Failed to copy');
+      try {
+        (await import('react-hot-toast')).default.error('Failed to copy');
+      } catch {}
     }
   };
 
@@ -301,6 +310,16 @@ const InputBox = () => {
   const style = useAppSelector(
     (state: any) => state.generation?.style || "realistic"
   );
+  // Lucid Origin and Phoenix 1.0 options
+  const lucidStyle = useAppSelector((state: any) => state.generation?.lucidStyle || 'none');
+  const lucidContrast = useAppSelector((state: any) => state.generation?.lucidContrast || 'medium');
+  const lucidMode = useAppSelector((state: any) => state.generation?.lucidMode || 'standard');
+  const lucidPromptEnhance = useAppSelector((state: any) => state.generation?.lucidPromptEnhance || false);
+  const phoenixStyle = useAppSelector((state: any) => state.generation?.phoenixStyle || 'none');
+  const phoenixContrast = useAppSelector((state: any) => state.generation?.phoenixContrast || 'medium');
+  const phoenixMode = useAppSelector((state: any) => state.generation?.phoenixMode || 'fast');
+  const phoenixPromptEnhance = useAppSelector((state: any) => state.generation?.phoenixPromptEnhance || false);
+  const outputFormat = useAppSelector((state: any) => state.generation?.outputFormat || 'jpeg');
   const isGenerating = useAppSelector(
     (state: any) => state.generation?.isGenerating || false
   );
@@ -1048,6 +1067,49 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana');
           return;
         }
+      } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
+        // Imagen 4 models via FAL generate endpoint
+        try {
+          const result = await dispatch(falGenerate({
+            prompt: `${prompt} [Style: ${style}]`,
+            model: selectedModel,
+            aspect_ratio: frameSize as any,
+            num_images: imageCount,
+            uploadedImages: (uploadedImages || []).map((u: string) => toAbsoluteFromProxy(u)),
+            output_format: outputFormat,
+            generationType: 'text-to-image',
+            isPublic,
+          })).unwrap();
+
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          // Handle credit success
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Imagen 4');
+          return;
+        }
       } else if (selectedModel === 'seedream-v4') {
         // Replicate Seedream v4 (supports T2I and I2I with multi-image input)
         try {
@@ -1162,6 +1224,205 @@ const InputBox = () => {
             await handleGenerationFailure(transactionId);
           }
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
+          return;
+        }
+      } else if (selectedModel === 'ideogram-ai/ideogram-v3-quality') {
+        // Ideogram v3 Quality via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for ideogram (validator list)
+          const allowedAspect = new Set([
+            '1:3','3:1','1:2','2:1','9:16','16:9','10:16','16:10','2:3','3:2','3:4','4:3','4:5','5:4','1:1'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Ideogram v3 Quality doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            // Sensible defaults (can be expanded to UI later)
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'ideogram-ai/ideogram-v3-quality',
+              aspect_ratio: aspect,
+              // Provide safe defaults accepted by backend validator/model
+              resolution: 'None',
+              style_type: 'Auto',
+              magic_prompt_option: 'Auto',
+            };
+
+            // If user provided a reference image, pass a single image (v3 supports I2I prompt image)
+            if (uploadedImages && uploadedImages.length > 0) {
+              payload.image = toAbsoluteFromProxy(uploadedImages[0]);
+            }
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3 Quality');
+          return;
+        }
+      } else if (selectedModel === 'leonardoai/lucid-origin') {
+        // Lucid Origin via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for Lucid Origin
+          const allowedAspect = new Set([
+            '1:1','16:9','9:16','3:2','2:3','4:5','5:4','3:4','4:3','2:1','1:2','3:1','1:3'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'leonardoai/lucid-origin',
+              aspect_ratio: aspect,
+              // Use Redux state values for Lucid Origin
+              style: lucidStyle,
+              contrast: lucidContrast,
+              generation_mode: lucidMode,
+              prompt_enhance: lucidPromptEnhance,
+              num_images: 1
+            };
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Lucid Origin');
+          return;
+        }
+      } else if (selectedModel === 'leonardoai/phoenix-1.0') {
+        // Phoenix 1.0 via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for Phoenix 1.0
+          const allowedAspect = new Set([
+            '1:1','16:9','9:16','3:2','2:3','4:5','5:4','3:4','4:3','2:1','1:2','3:1','1:3'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+
+          // Phoenix 1.0 doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            const payload: any = {
+              prompt: `${prompt} [Style: ${style}]`,
+              model: 'leonardoai/phoenix-1.0',
+              aspect_ratio: aspect,
+              // Use Redux state values for Phoenix 1.0
+              style: phoenixStyle,
+              contrast: phoenixContrast,
+              generation_mode: phoenixMode,
+              prompt_enhance: phoenixPromptEnhance,
+              num_images: 1
+            };
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          await refreshAllHistory();
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Phoenix 1.0');
           return;
         }
       } else {
@@ -1492,10 +1753,10 @@ const InputBox = () => {
                         <div className="relative w-full h-full group">
                           <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
                           {/* Hover prompt overlay */}
-                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                             <span
                               title={getCleanPrompt(prompt)}
-                              className="text-md md:text-sm text-white flex-1 leading-snug"
+                              className="text-xs text-white flex-1 leading-snug"
                               style={{
                                 display: '-webkit-box',
                                 WebkitLineClamp: 3 as any,
@@ -1508,7 +1769,8 @@ const InputBox = () => {
                             <button
                               aria-label="Copy prompt"
                               className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
-                              onClick={(e) => copyPrompt(e, getCleanPrompt(prompt))}
+                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
+                              onMouseDown={(e) => e.stopPropagation()}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
@@ -1579,10 +1841,10 @@ const InputBox = () => {
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
-                                  className="text-base md:text-lg text-white/90 flex-1 leading-snug"
+                                  className="text-xs text-white flex-1 leading-snug"
                                   style={{
                                     display: '-webkit-box',
                                     WebkitLineClamp: 3 as any,
@@ -1595,7 +1857,8 @@ const InputBox = () => {
                                 <button
                                   aria-label="Copy prompt"
                                   className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
-                                  onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                                  onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                  onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
@@ -1663,7 +1926,7 @@ const InputBox = () => {
                       />
                       <button
                         aria-label="Remove reference"
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
                         onClick={(e) => {
                           e.stopPropagation();
                           const next = uploadedImages.filter(
@@ -1672,7 +1935,7 @@ const InputBox = () => {
                           dispatch(setUploadedImages(next));
                         }}
                       >
-                        ×
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -1796,18 +2059,36 @@ const InputBox = () => {
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
+              <LucidOriginOptions />
+              <PhoenixOptions />
+              <FileTypeDropdown />
               {selectedModel === 'seedream-v4' && (
-                <div className="flex items-center gap-2">
-                  <select
-                    value={seedreamSize}
-                    onChange={(e)=>setSeedreamSize(e.target.value as any)}
-                    className="h-[32px] px-3 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition"
-                  >
-                    <option className="bg-black" value="1K">1K</option>
-                    <option className="bg-black" value="2K">2K</option>
-                    <option className="bg-black" value="4K">4K</option>
-                    <option className="bg-black" value="custom">Custom</option>
-                  </select>
+                <div className="flex items-center gap-2 relative">
+                  <div className="relative dropdown-container">
+                    <button
+                      onClick={() => dispatch(toggleDropdown('seedreamSize'))}
+                      className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                    >
+                      {seedreamSize}
+                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'seedreamSize' && (
+                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                        {['1K','2K','4K','custom'].map((opt) => (
+                          <button
+                            key={opt}
+                            onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
+                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span>{opt}</span>
+                            {seedreamSize === opt && (
+                              <span className="w-2 h-2 bg-black rounded-full"></span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {seedreamSize === 'custom' && (
                     <>
                       <input

@@ -122,6 +122,52 @@ export const creditDistributionData: ModelCreditInfo[] = [
       free: 31.69230769
     }
   },
+  // Imagen 4 family (Google) - image generation
+  {
+    srNo: 6.1,
+    modelName: "Imagen 4 Ultra",
+    priceToPay: 0.06,
+    overCharge: 0.015,
+    userCost: 0.075,
+    creditsPerGeneration: 150,
+    plans: {
+      planA: 82.4,
+      planB: 164.8,
+      planC: 412,
+      planD: 1318.4,
+      free: 27.46666667
+    }
+  },
+  {
+    srNo: 6.2,
+    modelName: "Imagen 4",
+    priceToPay: 0.04,
+    overCharge: 0.015,
+    userCost: 0.055,
+    creditsPerGeneration: 110,
+    plans: {
+      planA: 112.3636364,
+      planB: 224.7272727,
+      planC: 561.8181818,
+      planD: 1797.818182,
+      free: 37.45454545
+    }
+  },
+  {
+    srNo: 6.3,
+    modelName: "Imagen 4 Fast",
+    priceToPay: 0.02,
+    overCharge: 0.015,
+    userCost: 0.035,
+    creditsPerGeneration: 70,
+    plans: {
+      planA: 176.5714286,
+      planB: 353.1428571,
+      planC: 882.8571429,
+      planD: 2825.142857,
+      free: 58.85714286
+    }
+  },
   {
     srNo: 7,
     modelName: "Runway Gen 4 Image 720p",
@@ -593,6 +639,33 @@ export const creditDistributionData: ModelCreditInfo[] = [
   },
   {
     srNo: 39,
+    modelName: "replicate/ideogram-ai/ideogram-v3-quality",
+    priceToPay: 0.09,
+    overCharge: 0.015,
+    userCost: 0.105,
+    creditsPerGeneration: 210,
+    plans: { planA: 58.85714286, planB: 117.7142857, planC: 294.2857143, planD: 941.7142857, free: 19.61904762 }
+  },
+  {
+    srNo: 40,
+    modelName: "replicate/leonardoai/lucid-origin",
+    priceToPay: 0.0765,
+    overCharge: 0.015,
+    userCost: 0.0915,
+    creditsPerGeneration: 183,
+    plans: { planA: 67.54098361, planB: 135.0819672, planC: 337.704918, planD: 1080.655738, free: 22.5136612 }
+  },
+  {
+    srNo: 41,
+    modelName: "replicate/leonardoai/phoenix-1.0",
+    priceToPay: 0.075,
+    overCharge: 0.015,
+    userCost: 0.09,
+    creditsPerGeneration: 180,
+    plans: { planA: 68.66666667, planB: 137.3333333, planC: 343.3333333, planD: 1098.666667, free: 22.88888889 }
+  },
+  {
+    srNo: 42,
     modelName: "replicate/fermatresearch/magic-image-refiner",
     priceToPay: 0.027,
     overCharge: 0.015,
@@ -644,6 +717,53 @@ export const creditDistributionData: ModelCreditInfo[] = [
     userCost: 0.0215,
     creditsPerGeneration: 43,
     plans: { planA: 287.4418605, planB: 574.8837209, planC: 1488.372093, planD: 4599.069767, free: 95.81395349 }
+  }
+  ,
+  // New Replicate models pricing
+  {
+    srNo: 45,
+    modelName: "Ideogram 3 Quality",
+    priceToPay: 0.09,
+    overCharge: 0.015,
+    userCost: 0.105,
+    creditsPerGeneration: 210,
+    plans: {
+      planA: 58.85714286,
+      planB: 117.7142857,
+      planC: 294.2857143,
+      planD: 941.7142857,
+      free: 19.61904762
+    }
+  },
+  {
+    srNo: 46,
+    modelName: "Lucid Origin",
+    priceToPay: 0.0765,
+    overCharge: 0.015,
+    userCost: 0.0915,
+    creditsPerGeneration: 183,
+    plans: {
+      planA: 67.54098361,
+      planB: 135.0819672,
+      planC: 337.704918,
+      planD: 1080.655738,
+      free: 22.5136612
+    }
+  },
+  {
+    srNo: 47,
+    modelName: "Phoenix 1.0",
+    priceToPay: 0.075,
+    overCharge: 0.015,
+    userCost: 0.09,
+    creditsPerGeneration: 180,
+    plans: {
+      planA: 68.66666667,
+      planB: 137.3333333,
+      planC: 343.3333333,
+      planD: 1098.666667,
+      free: 22.88888889
+    }
   }
 ];
 

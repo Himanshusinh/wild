@@ -78,6 +78,23 @@ const ProductWithModelPoseInputBox = () => {
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
 
+  // Helpers: clean prompt and copy
+  const getCleanPrompt = (text: string): string => {
+    try { return (text || '').replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim(); } catch { return text; }
+  };
+  const copyPrompt = async (e: React.MouseEvent, text: string) => {
+    try { 
+      e.stopPropagation(); 
+      e.preventDefault();
+      await navigator.clipboard.writeText(text); 
+      (await import('react-hot-toast')).default.success('Prompt copied'); 
+    } catch { 
+      try { 
+        (await import('react-hot-toast')).default.error('Failed to copy'); 
+      } catch {} 
+    }
+  };
+
   // Product and model image states
   const [productImage, setProductImage] = useState<string | null>(null);
   const [modelImage, setModelImage] = useState<string | null>(null);
@@ -689,7 +706,7 @@ GENERATOR HINTS:
                             </div>
                           ) : (
                             // Completed product with shimmer loading (match TextToImage)
-                            <div className="relative w-full h-full">
+                            <div className="relative w-full h-full group">
                               <Image
                                 src={image.url || image.originalUrl || '/placeholder-product.png'}
                                 alt={entry.prompt}
@@ -705,6 +722,19 @@ GENERATOR HINTS:
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              {/* Hover prompt overlay */}
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
+                                <span
+                                  title={getCleanPrompt(entry.prompt)}
+                                  className="text-xs text-white/90 flex-1 leading-snug"
+                                  style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
+                                >
+                                  {getCleanPrompt(entry.prompt)}
+                                </span>
+                                <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                              </div>
                             </div>
                           )}
                           

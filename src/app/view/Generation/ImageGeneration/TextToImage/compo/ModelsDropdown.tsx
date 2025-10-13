@@ -32,6 +32,12 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
     { name: 'Seedream v4', value: 'seedream-v4' },
     { name: 'Ideogram v3', value: 'ideogram-ai/ideogram-v3' },
+    { name: 'Ideogram v3 Quality', value: 'ideogram-ai/ideogram-v3-quality' },
+    { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
+    { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
+    { name: 'Imagen 4 Ultra', value: 'imagen-4-ultra' },
+    { name: 'Imagen 4', value: 'imagen-4' },
+    { name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -63,7 +69,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'minimax-image-01' ||
       m.value === 'gemini-25-flash-image' ||
       m.value === 'seedream-v4' ||
-      m.value === 'ideogram-ai/ideogram-v3'
+      m.value === 'ideogram-ai/ideogram-v3' ||
+      m.value === 'ideogram-ai/ideogram-v3-quality' ||
+      m.value === 'leonardoai/lucid-origin' ||
+      m.value === 'leonardoai/phoenix-1.0' ||
+      m.value === 'imagen-4-ultra' ||
+      m.value === 'imagen-4' ||
+      m.value === 'imagen-4-fast'
     );
   }
 
@@ -132,33 +144,85 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50`}>
-          {filteredModels.map((model) => (
-            <button
-              key={model.value}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleModelSelect(model.value);
-              }}
-
-              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                ? 'bg-white text-black'
-                : 'text-white/90 hover:bg-white/10'
-                }`}
-            >
-              <div className="flex flex-col">
-                <span>{model.name}</span>
-                {model.credits && (
-                  <span className="text-xs opacity-70">{model.credits} credits</span>
-                )}
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar`}>
+          {(() => {
+            // Priority models moved to LEFT column and marked with crown
+            const leftValues = [
+              'gemini-25-flash-image', // Google Nano Banana
+              'imagen-4-ultra',
+              'flux-kontext-max',
+              'flux-kontext-pro',
+              'flux-pro-1.1-ultra',
+              'leonardoai/phoenix-1.0',
+              'seedream-v4',
+              'ideogram-ai/ideogram-v3-quality',
+              'imagen-4',
+            ];
+            const leftSet = new Set(leftValues);
+            const leftModels = filteredModels
+              .filter(m => leftSet.has(m.value))
+              .sort((a, b) => leftValues.indexOf(a.value) - leftValues.indexOf(b.value));
+            const rightModels = filteredModels.filter(m => !leftSet.has(m.value));
+            return (
+              <div className="grid grid-cols-2 gap-0">
+                {/* Left column (priority models with crown) */}
+                <div className="divide-y divide-white/10">
+                  {leftModels.map((model) => (
+                    <button
+                      key={`left-${model.value}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleModelSelect(model.value);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        ? 'bg-white text-black'
+                        : 'text-white/90 hover:bg-white/10'
+                        }`}
+                    >
+                      <div className="flex flex-col mb-0">
+                        <span className="flex items-center gap-2">
+                          {model.name}
+                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                        </span>
+                        {model.credits && (
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                        )}
+                      </div>
+                      {selectedModel === model.value && (
+                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {/* Right column (all remaining models) */}
+                <div className="border-l border-white/10 divide-y divide-white/10">
+                  {rightModels.map((model) => (
+                    <button
+                      key={`right-${model.value}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleModelSelect(model.value);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        ? 'bg-white text-black'
+                        : 'text-white/90 hover:bg-white/10'
+                        }`}
+                    >
+                      <div className="flex flex-col -mb-0">
+                        <span>{model.name}</span>
+                        {model.credits && (
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                        )}
+                      </div>
+                      {selectedModel === model.value && (
+                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-              {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-              )}
-
-
-            </button>
-          ))}
+            );
+          })()}
         </div>
       )}
     </div>

@@ -63,7 +63,7 @@ const EditImageInterface: React.FC = () => {
   const [threshold, setThreshold] = useState<string>('');
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
-  const selectedStyle = useAppSelector((state: any) => state.generation?.style || 'realistic');
+  const selectedStyle = useAppSelector((state: any) => state.generation?.style || 'none');
   const reduxUploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -503,7 +503,7 @@ const EditImageInterface: React.FC = () => {
             frameSize: frameSize,
             generationType: 'text-to-image',
             uploadedImages: [currentInput],
-            style: 'realistic',
+            style: 'none',
             isPublic,
           };
           const res = await axiosInstance.post('/api/bfl/generate', payload);

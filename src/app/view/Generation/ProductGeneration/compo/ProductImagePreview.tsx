@@ -19,7 +19,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   onClose,
   entry
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
@@ -102,13 +102,15 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
     return legacy;
   };
 
-  const handleCopyPrompt = async () => {
+  const copyPrompt = async (prompt: string, buttonId: string) => {
     try {
-      await navigator.clipboard.writeText(getUserPrompt(entry.prompt));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Copy failed:', error);
+      await navigator.clipboard.writeText(prompt);
+      setCopiedButtonId(buttonId);
+      setTimeout(() => {
+        setCopiedButtonId(null);
+      }, 2000); // Hide after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy prompt:', err);
     }
   };
 
@@ -258,14 +260,28 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
               <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
                 <span>Prompt</span>
                 <button 
-                  onClick={handleCopyPrompt}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
-                  title="Copy prompt"
+                  onClick={() => copyPrompt(userPrompt, `preview-${entry.id}`)}
+                  className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                    copiedButtonId === `preview-${entry.id}` 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : 'bg-white/10 hover:bg-white/20'
+                  }`}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white/60 hover:text-white">
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                  </svg>
+                  {copiedButtonId === `preview-${entry.id}` ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </>
+                  )}
                 </button>
               </div>
               <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">

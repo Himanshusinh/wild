@@ -35,6 +35,40 @@ export const STYLE_CATALOG: StyleDef[] = [
   { name: 'Graffiti', value: 'graffiti', image: '/styles/graffiti.jpg', description: 'Street art vibe', prompt: 'Graffiti mural of a phoenix on a brick wall; bold colors, paint drips, urban energy.' },
   { name: 'Renaissance', value: 'renaissance', image: '/styles/renaissance.jpg', description: 'Chiaroscuro portrait', prompt: 'Renaissance oil portrait of a modern woman with AirPods; chiaroscuro lighting, ornate frame.' },
   { name: 'Pop Art', value: 'pop_art', image: '/styles/pop_art.jpg', description: 'Bold comic style', prompt: 'Pop art illustration of a burger; bright primary colors, halftone dots, comic style.' },
+  
+  // Lucid Origin and Phoenix 1.0 specific styles
+  { name: 'Bokeh', value: 'bokeh', image: '/styles/bokeh.jpg', description: 'Shallow depth of field', prompt: 'Portrait with beautiful bokeh background, soft focus, professional photography.' },
+  { name: 'Cinematic', value: 'cinematic', image: '/styles/cinematic.jpg', description: 'Movie-like quality', prompt: 'Cinematic shot with dramatic lighting, film grain, professional cinematography.' },
+  { name: 'Cinematic Close Up', value: 'cinematic_close_up', image: '/styles/cinematic_close_up.jpg', description: 'Close-up cinematic shot', prompt: 'Cinematic close-up with shallow depth of field, dramatic lighting, film quality.' },
+  { name: 'Creative', value: 'creative', image: '/styles/creative.jpg', description: 'Artistic and imaginative', prompt: 'Creative artistic interpretation with unique composition and vibrant colors.' },
+  { name: 'Dynamic', value: 'dynamic', image: '/styles/dynamic.jpg', description: 'High energy and movement', prompt: 'Dynamic composition with strong movement, energy, and visual impact.' },
+  { name: 'Fashion', value: 'fashion', image: '/styles/fashion.jpg', description: 'Fashion photography style', prompt: 'Fashion photography with clean lighting, professional styling, editorial quality.' },
+  { name: 'Film', value: 'film', image: '/styles/film.jpg', description: 'Film photography aesthetic', prompt: 'Film photography with natural grain, warm tones, analog feel.' },
+  { name: 'Food', value: 'food', image: '/styles/food.jpg', description: 'Food photography style', prompt: 'Professional food photography with appetizing lighting and composition.' },
+  { name: 'HDR', value: 'hdr', image: '/styles/hdr.jpg', description: 'High dynamic range', prompt: 'HDR photography with enhanced contrast and detail in highlights and shadows.' },
+  { name: 'Long Exposure', value: 'long_exposure', image: '/styles/long_exposure.jpg', description: 'Long exposure photography', prompt: 'Long exposure shot with motion blur and light trails, ethereal quality.' },
+  { name: 'Macro', value: 'macro', image: '/styles/macro.jpg', description: 'Macro photography', prompt: 'Macro photography with extreme close-up detail and shallow depth of field.' },
+  { name: 'Monochrome', value: 'monochrome', image: '/styles/monochrome.jpg', description: 'Single color palette', prompt: 'Monochrome image with single color tone, artistic and minimalist.' },
+  { name: 'Moody', value: 'moody', image: '/styles/moody.jpg', description: 'Dark and atmospheric', prompt: 'Moody atmosphere with dark tones, dramatic shadows, emotional depth.' },
+  { name: 'Neutral', value: 'neutral', image: '/styles/neutral.jpg', description: 'Balanced and natural', prompt: 'Neutral photography with balanced colors and natural lighting.' },
+  { name: 'Portrait', value: 'portrait', image: '/styles/portrait.jpg', description: 'Portrait photography', prompt: 'Professional portrait with flattering lighting and composition.' },
+  { name: 'Retro', value: 'retro', image: '/styles/retro.jpg', description: 'Vintage aesthetic', prompt: 'Retro style with vintage colors, film grain, nostalgic feel.' },
+  { name: 'Stock Photo', value: 'stock_photo', image: '/styles/stock_photo.jpg', description: 'Commercial stock style', prompt: 'Clean commercial photography suitable for business use.' },
+  { name: 'Unprocessed', value: 'unprocessed', image: '/styles/unprocessed.jpg', description: 'Raw and natural', prompt: 'Unprocessed natural photography without heavy editing or filters.' },
+  { name: 'Vibrant', value: 'vibrant', image: '/styles/vibrant.jpg', description: 'Bright and colorful', prompt: 'Vibrant image with saturated colors and high energy.' },
+  
+  // Phoenix 1.0 specific additional styles
+  { name: 'Cinematic Concept', value: 'cinematic_concept', image: '/styles/cinematic_concept.jpg', description: 'Conceptual cinematic', prompt: 'Cinematic concept art with dramatic composition and storytelling elements.' },
+  { name: 'Graphic Design Pop Art', value: 'graphic_design_pop_art', image: '/styles/graphic_design_pop_art.jpg', description: 'Pop art graphic design', prompt: 'Graphic design in pop art style with bold colors and commercial appeal.' },
+  { name: 'Graphic Design Vector', value: 'graphic_design_vector', image: '/styles/graphic_design_vector.jpg', description: 'Vector graphic design', prompt: 'Clean vector graphic design with geometric shapes and modern aesthetics.' },
+  { name: 'Illustration', value: 'illustration', image: '/styles/illustration.jpg', description: 'Illustrative style', prompt: 'Illustrative artwork with artistic interpretation and creative composition.' },
+  { name: 'Pro BW Photography', value: 'pro_bw_photography', image: '/styles/pro_bw_photography.jpg', description: 'Professional black and white', prompt: 'Professional black and white photography with high contrast and artistic composition.' },
+  { name: 'Pro Color Photography', value: 'pro_color_photography', image: '/styles/pro_color_photography.jpg', description: 'Professional color photography', prompt: 'Professional color photography with accurate color reproduction and composition.' },
+  { name: 'Pro Film Photography', value: 'pro_film_photography', image: '/styles/pro_film_photography.jpg', description: 'Professional film photography', prompt: 'Professional film photography with natural grain and authentic analog feel.' },
+  { name: 'Portrait Fashion', value: 'portrait_fashion', image: '/styles/portrait_fashion.jpg', description: 'Fashion portrait', prompt: 'Fashion portrait with editorial styling and professional lighting.' },
+  { name: 'Ray Traced', value: 'ray_traced', image: '/styles/ray_traced.jpg', description: 'Ray traced rendering', prompt: 'Ray traced 3D rendering with realistic lighting and reflections.' },
+  { name: 'Sketch BW', value: 'sketch_bw', image: '/styles/sketch_bw.jpg', description: 'Black and white sketch', prompt: 'Black and white sketch with artistic line work and shading.' },
+  { name: 'Sketch Color', value: 'sketch_color', image: '/styles/sketch_color.jpg', description: 'Color sketch', prompt: 'Color sketch with artistic interpretation and creative use of color.' },
 ]
 
 export const getStyleByValue = (value: string) => STYLE_CATALOG.find(s => s.value === value)

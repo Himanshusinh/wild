@@ -50,7 +50,7 @@ const StyleSelector = () => {
               : 'bg-transparent text-white/90 hover:bg-white/5'
             }`}
         >
-          <span className="capitalize">{style}</span>
+          <span className="capitalize">{style === 'none' ? 'Style' : style}</span>
           <div className={`w-4 h-4 flex  items-center justify-center ${style !== 'none' ? 'text-white/90' : 'text-white/90'
             }`}>
             <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isStylePopupOpen ? 'rotate-180' : ''}`} />
