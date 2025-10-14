@@ -126,20 +126,20 @@
     <div className="py-10 w-full">
       <div className="w-full">
         <div className="text-left">
-          <h1 className="text-white text-4xl font-semibold mb-7 mt-5">Compare Plans</h1>
+          <h1 className="text-gray-900 dark:text-white text-4xl font-semibold mb-7 mt-5">Compare Plans</h1>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr>  
-                <th className="text-left p-4 border-b border-white/10 text-white/80 font-semibold min-w-[160px] text-sm">
+                <th className="text-left p-4 border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white/80 font-semibold min-w-[160px] text-sm">
                   Features
                 </th>
                 {plans.map((plan) => (
                   <th 
                     key={plan.key}
-                    className="text-center p-4 border-b border-white/10 text-white font-semibold text-base min-w-[160px]"
+                    className="text-center p-4 border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white font-semibold text-base min-w-[160px]"
                   >
                     {plan.name}
                   </th>
@@ -148,23 +148,23 @@
             </thead>
             <tbody>
               {features.map((feature, index) => (
-                <tr key={index} className="border-b border-white/10">
-                  <td className="p-4 text-white/80 font-medium min-w-[180px] text-sm">
+                <tr key={index} className="border-b border-gray-200 dark:border-white/10">
+                  <td className="p-4 text-gray-900 dark:text-white/80 font-medium min-w-[180px] text-sm">
                     {feature.name}
                   </td>
-                  <td className="p-4 text-center text-white min-w-[160px] text-sm">
+                  <td className="p-4 text-center text-gray-900 dark:text-white min-w-[160px] text-sm">
                     {feature.hobbyist}
                   </td>
-                  <td className="p-4 text-center text-white min-w-[160px] text-sm">
+                  <td className="p-4 text-center text-gray-900 dark:text-white min-w-[160px] text-sm">
                     {feature.creator}
                   </td>
-                  <td className="p-4 text-center text-white min-w-[160px] text-sm">
+                  <td className="p-4 text-center text-gray-900 dark:text-white min-w-[160px] text-sm">
                     {feature.professional}
                   </td>
-                  <td className="p-4 text-center text-white min-w-[160px] text-sm">
+                  <td className="p-4 text-center text-gray-900 dark:text-white min-w-[160px] text-sm">
                     {feature.collective}
                   </td>
-                  <td className="p-4 text-center text-white min-w-[160px] text-sm">
+                  <td className="p-4 text-center text-gray-900 dark:text-white min-w-[160px] text-sm">
                     {feature.enterprise}
                   </td>
                 </tr>
@@ -174,27 +174,27 @@
               <tr>
                 <td className="p-4"></td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-blue-600 hover:bg-blue-700 dark:bg-[#1C303D] dark:hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-gray-300 dark:ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-blue-600 hover:bg-blue-700 dark:bg-[#1C303D] dark:hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-gray-300 dark:ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-blue-600 hover:bg-blue-700 dark:bg-[#1C303D] dark:hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-gray-300 dark:ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-blue-600 hover:bg-blue-700 dark:bg-[#1C303D] dark:hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-gray-300 dark:ring-white/15 transition-colors whitespace-nowrap">
                     Get Started
                   </button>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="bg-[#1C303D] hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-white/15 transition-colors whitespace-nowrap">
+                  <button className="bg-blue-600 hover:bg-blue-700 dark:bg-[#1C303D] dark:hover:bg-[#1c3c52] text-white font-medium px-4 py-2 rounded-full text-sm ring-1 ring-gray-300 dark:ring-white/15 transition-colors whitespace-nowrap">
                     Contact Sales
                   </button>
                 </td>

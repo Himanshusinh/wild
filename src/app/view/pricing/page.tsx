@@ -45,7 +45,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B]">
+    <div className="min-h-screen bg-white dark:bg-[#07070B] transition-colors duration-300">
       {/* Navigation - fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Nav />
@@ -63,10 +63,10 @@ export default function Home() {
 
         {/* Main Content Area - takes remaining width */}
         <div className="flex-1 min-w-0">
-          <main className="text-white min-h-screen">
+          <main className="text-gray-900 dark:text-white min-h-screen">
             <section className="header space-y-4 px-6 py-6 w-full">
-              <h2 className="head text-4xl font-semibold text-center mt-20">Plans Made for Everyone</h2>
-              <p className="line text-center font-xs">Scalable solutions tailored to teams of all sizes.</p>
+              <h2 className="head text-4xl font-semibold text-center mt-20 text-gray-900 dark:text-white">Plans Made for Everyone</h2>
+              <p className="line text-center font-xs text-gray-600 dark:text-gray-300">Scalable solutions tailored to teams of all sizes.</p>
 
               {/* Toggle Switch - simplified style like reference */}
               <div className="flex items-center justify-center mt-10">
@@ -74,7 +74,7 @@ export default function Home() {
                   <button
                     onClick={() => setIsAnnual(false)}
                     aria-pressed={!isAnnual}
-                    className={`text-base font-medium transition-colors ${!isAnnual ? 'text-white' : 'text-white/70'}`}
+                    className={`text-base font-medium transition-colors ${!isAnnual ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'}`}
                   >
                     Monthly
                   </button>
@@ -82,10 +82,10 @@ export default function Home() {
                     type="button"
                     onClick={() => setIsAnnual(!isAnnual)}
                     aria-label="Toggle billing period"
-                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-300 ${isAnnual ? 'bg-[#1C303D]' : 'bg-white'}`}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-300 ${isAnnual ? 'bg-blue-600 dark:bg-[#1C303D]' : 'bg-gray-300 dark:bg-white'}`}
                   >
                     <span
-                      className={`inline-block h-5 w-5 transform rounded-full shadow transition-transform duration-300 ${isAnnual ? 'bg-white translate-x-7' : 'bg-[#1C303D] translate-x-1'}`}
+                      className={`inline-block h-5 w-5 transform rounded-full shadow transition-transform duration-300 ${isAnnual ? 'bg-white translate-x-7' : 'bg-gray-600 dark:bg-[#1C303D] translate-x-1'}`}
                     />
                   </button>
                   <div className="relative flex items-center justify-center">
@@ -95,7 +95,7 @@ export default function Home() {
                     <button
                       onClick={() => setIsAnnual(true)}
                       aria-pressed={isAnnual}
-                      className={`text-base font-medium transition-colors ${isAnnual ? 'text-white' : 'text-white/70'}`}
+                      className={`text-base font-medium transition-colors ${isAnnual ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'}`}
                     >
                       Annually
                     </button>
@@ -128,7 +128,7 @@ export default function Home() {
               </div>
             </section>
                 
-            <div className="w-full bg-[#0C0C10]">
+            <div className="w-full bg-gray-100 dark:bg-[#0C0C10]">
               <FooterNew />
             </div>
           </main>

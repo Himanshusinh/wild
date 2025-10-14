@@ -39,10 +39,10 @@ const Header: React.FC<HeaderProps> = ({ activeCategory, onCategoryChange, onSea
     <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
       {/* Title Section */}
       <div className="mb-6 sm:mb-8">
-        <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+        <h3 className="text-black dark:text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
           Coming Soon... 
         </h3>
-        <p className="text-white/80 text-base sm:text-lg md:text-xl">
+        <p className="text-black/70 dark:text-white/80 text-base sm:text-lg md:text-xl">
           Explore AI tools that make your creative process easier and better
         </p>
       </div>
@@ -59,8 +59,8 @@ const Header: React.FC<HeaderProps> = ({ activeCategory, onCategoryChange, onSea
                 onClick={() => onCategoryChange(category)}
                 className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 text-white/80 hover:bg-white/15 hover:text-white'
+                    ? 'bg-black text-white dark:bg-white dark:text-black'
+                    : 'bg-black/10 dark:bg-white/10 text-black/70 dark:text-white/80 hover:bg-black/15 dark:hover:bg-white/15 hover:text-black dark:hover:text-white'
                 }`}
               >
                 {category}
@@ -76,9 +76,9 @@ const Header: React.FC<HeaderProps> = ({ activeCategory, onCategoryChange, onSea
             placeholder="Search"
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full px-4 sm:px-6 py-2 sm:py-2.5 bg-white/10 border border-white/20 rounded-full text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:border-white/40 focus:bg-white/15 transition-all duration-200"
+            className="w-full px-4 sm:px-6 py-2 sm:py-2.5 bg-black/5 dark:bg-white/10 border border-black/20 dark:border-white/20 rounded-full text-black dark:text-white text-sm sm:text-base placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:border-black/30 dark:focus:border-white/40 focus:bg-black/10 dark:focus:bg-white/15 transition-all duration-200"
           />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50">
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/50">
             <svg 
               width="20" 
               height="20" 

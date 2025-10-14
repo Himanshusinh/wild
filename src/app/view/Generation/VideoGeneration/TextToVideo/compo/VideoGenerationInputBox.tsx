@@ -344,19 +344,19 @@ const VideoGenerationInputBox: React.FC = () => {
   return (
     <div className="w-full max-w-[840px] mx-auto space-y-6">
       {/* Mode Toggle */}
-      <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+      <div className="flex items-center gap-4 p-4 bg-black/5 dark:bg-white/5 rounded-lg">
         <div className="flex items-center gap-2">
           <ImageIcon className="w-5 h-5 text-blue-400" />
-          <span className="text-white font-medium">Mode:</span>
+          <span className="text-black dark:text-white font-medium">Mode:</span>
         </div>
         
-        <div className="flex bg-white/10 rounded-lg p-1">
+        <div className="flex bg-black/10 dark:bg-white/10 rounded-lg p-1">
           <button
             onClick={() => setState(prev => ({ ...prev, mode: 'image_to_video' }))}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
               state.mode === 'image_to_video'
-                ? 'bg-white text-black'
-                : 'text-white hover:bg-white/10'
+                ? 'bg-black dark:bg-white text-white dark:text-black'
+                : 'text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10'
             }`}
           >
             Image → Video
@@ -365,8 +365,8 @@ const VideoGenerationInputBox: React.FC = () => {
             onClick={() => setState(prev => ({ ...prev, mode: 'video_to_video' }))}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
               state.mode === 'video_to_video'
-                ? 'bg-white text-black'
-                : 'text-white hover:bg-white/10'
+                ? 'bg-black dark:bg-white text-white dark:text-black'
+                : 'text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10'
             }`}
           >
             Video → Video
@@ -380,7 +380,7 @@ const VideoGenerationInputBox: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-purple-400" />
-            <span className="text-white font-medium">Model:</span>
+            <span className="text-black dark:text-white font-medium">Model:</span>
           </div>
           
           <select
@@ -409,7 +409,7 @@ const VideoGenerationInputBox: React.FC = () => {
                 }));
               }
             }}
-            className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 bg-white/10 dark:bg-black/10 border border-black/20 dark:border-white/20 rounded-lg text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-white dark:[&>option]:bg-black [&>option]:text-black dark:[&>option]:text-white"
           >
             {state.mode === 'image_to_video' ? (
               <>
@@ -432,7 +432,7 @@ const VideoGenerationInputBox: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 text-green-400">📐</div>
-            <span className="text-white font-medium">Aspect Ratio:</span>
+            <span className="text-black dark:text-white font-medium">Aspect Ratio:</span>
           </div>
           
           <select
@@ -451,7 +451,7 @@ const VideoGenerationInputBox: React.FC = () => {
                 }));
               }
             }}
-            className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 bg-white/10 dark:bg-black/10 border border-black/20 dark:border-white/20 rounded-lg text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-white dark:[&>option]:bg-black [&>option]:text-black dark:[&>option]:text-white"
           >
             {getAvailableRatios(getCurrentState().model).map(ratio => (
               <option key={ratio} value={ratio}>{ratio}</option>
@@ -464,7 +464,7 @@ const VideoGenerationInputBox: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 text-yellow-400">⏱️</div>
-              <span className="text-white font-medium">Duration:</span>
+              <span className="text-black dark:text-white font-medium">Duration:</span>
             </div>
             
             <select
@@ -476,7 +476,7 @@ const VideoGenerationInputBox: React.FC = () => {
                   duration: parseInt(e.target.value) as 5 | 10
                 }
               }))}
-              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-white/10 dark:bg-black/10 border border-black/20 dark:border-white/20 rounded-lg text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-white dark:[&>option]:bg-black [&>option]:text-black dark:[&>option]:text-white"
             >
               <option value={5}>5 seconds</option>
               <option value={10}>10 seconds</option>
@@ -488,8 +488,8 @@ const VideoGenerationInputBox: React.FC = () => {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 text-orange-400">✍️</div>
-            <span className="text-white font-medium">Prompt:</span>
-            <div className="flex items-center gap-1 text-xs text-white/60">
+            <span className="text-black dark:text-white font-medium">Prompt:</span>
+            <div className="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
               <HelpCircle className="w-3 h-3" />
               <span>Describe style, motion, lighting. Max 1000 chars.</span>
             </div>
@@ -514,11 +514,11 @@ const VideoGenerationInputBox: React.FC = () => {
             }}
             placeholder="Describe the video you want to generate..."
             maxLength={1000}
-            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
+            className="w-full px-4 py-3 bg-white/10 dark:bg-black/10 border border-black/20 dark:border-white/20 rounded-lg text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
             style={{ maxHeight: '96px' }}
           />
           
-          <div className="flex justify-between text-xs text-white/60">
+          <div className="flex justify-between text-xs text-black/60 dark:text-white/60">
             <span>
               {state.mode === 'image_to_video' 
                 ? state.imageToVideo.promptText?.length || 0 
@@ -532,8 +532,8 @@ const VideoGenerationInputBox: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 text-pink-400">🎲</div>
-            <span className="text-white font-medium">Seed:</span>
-            <div className="flex items-center gap-1 text-xs text-white/60">
+            <span className="text-black dark:text-white font-medium">Seed:</span>
+            <div className="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
               <HelpCircle className="w-3 h-3" />
               <span>Use the same seed to reproduce similar results.</span>
             </div>
@@ -559,7 +559,7 @@ const VideoGenerationInputBox: React.FC = () => {
               }
             }}
             placeholder="Random"
-            className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+            className="px-3 py-2 bg-white/10 dark:bg-black/10 border border-black/20 dark:border-white/20 rounded-lg text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
           />
         </div>
 
@@ -569,7 +569,7 @@ const VideoGenerationInputBox: React.FC = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <ImageIcon className="w-5 h-5 text-blue-400" />
-              <span className="text-white font-medium">Input Image:</span>
+              <span className="text-black dark:text-white font-medium">Input Image:</span>
             </div>
             
             <div className="flex items-center gap-4">
@@ -594,7 +594,7 @@ const VideoGenerationInputBox: React.FC = () => {
                   <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center">
                     <ImageIcon className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-white text-sm">Image uploaded</span>
+                  <span className="text-black dark:text-white text-sm">Image uploaded</span>
                   <button
                     onClick={() => setState(prev => ({
                       ...prev,
@@ -614,8 +614,8 @@ const VideoGenerationInputBox: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Video className="w-5 h-5 text-green-400" />
-                <span className="text-white font-medium">Input Video:</span>
-                <div className="flex items-center gap-1 text-xs text-white/60">
+                <span className="text-black dark:text-white font-medium">Input Video:</span>
+                <div className="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
                   <HelpCircle className="w-3 h-3" />
                   <span>≤16 MB and serve with correct Content-Type.</span>
                 </div>
@@ -643,7 +643,7 @@ const VideoGenerationInputBox: React.FC = () => {
                     <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center">
                       <Play className="w-4 h-4 text-white" />
                     </div>
-                    <span className="text-white text-sm">Video uploaded</span>
+                    <span className="text-black dark:text-white text-sm">Video uploaded</span>
                     <button
                       onClick={() => setState(prev => ({
                         ...prev,
@@ -662,8 +662,8 @@ const VideoGenerationInputBox: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-purple-400" />
-                <span className="text-white font-medium">Style References:</span>
-                <div className="flex items-center gap-1 text-xs text-white/60">
+                <span className="text-black dark:text-white font-medium">Style References:</span>
+                <div className="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
                   <HelpCircle className="w-3 h-3" />
                   <span>Add 1–5 images to guide style/palette. Motion comes from your video.</span>
                 </div>
@@ -716,16 +716,16 @@ const VideoGenerationInputBox: React.FC = () => {
       <div className="space-y-4">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors"
         >
           <Settings className="w-4 h-4" />
           <span>Advanced Settings</span>
         </button>
         
         {showAdvanced && (
-          <div className="p-4 bg-white/5 rounded-lg space-y-4">
+          <div className="p-4 bg-black/5 dark:bg-white/5 rounded-lg space-y-4">
             <div className="flex items-center gap-4">
-              <span className="text-white font-medium">Content Moderation:</span>
+              <span className="text-black dark:text-white font-medium">Content Moderation:</span>
               <select
                 value={getCurrentState().contentModeration?.publicFigureThreshold || 'auto'}
                 onChange={(e) => {
@@ -748,7 +748,7 @@ const VideoGenerationInputBox: React.FC = () => {
                     }));
                   }
                 }}
-                className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 bg-white/10 dark:bg-black/10 border border-black/20 dark:border-white/20 rounded-lg text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-white dark:[&>option]:bg-black [&>option]:text-black dark:[&>option]:text-white"
               >
                 <option value="auto">Auto (default)</option>
                 <option value="low">Low</option>
@@ -785,12 +785,12 @@ const VideoGenerationInputBox: React.FC = () => {
 
       {/* Generation Progress */}
       {generationProgress && (
-        <div className="p-4 bg-white/5 rounded-lg">
-          <div className="flex items-center justify-between text-white mb-2">
+        <div className="p-4 bg-black/5 dark:bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between text-black dark:text-white mb-2">
             <span className="text-sm">{generationProgress.status}</span>
             <span className="text-sm">{generationProgress.current}%</span>
           </div>
-          <div className="w-full bg-white/20 rounded-full h-2">
+          <div className="w-full bg-black/20 dark:bg-white/20 rounded-full h-2">
             <div
               className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${generationProgress.current}%` }}

@@ -290,27 +290,27 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
-      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+  <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
+      <div className="relative w-full max-w-6xl bg-white/95 dark:bg-black/40 ring-1 ring-black/10 dark:ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <div className="text-white/70 text-sm">{entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/10 dark:bg-black/40 backdrop-blur-sm border-b border-black/10 dark:border-white/10">
+          <div className="text-black/70 dark:text-white/70 text-sm">{entry.model}</div>
           <div className="flex items-center gap-2">
             <button 
-              className="p-2 rounded-full  text-white transition-colors" 
+              className="p-2 rounded-full  text-black dark:text-white transition-colors" 
               onClick={handleDelete}
               aria-label="Delete image"
             >
               <Trash2 className="w-5 h-5" />
             </button>
-            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+            <button aria-label="Close" className="text-black/70 dark:text-white/80 hover:text-black dark:hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
         <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-black/5 dark:bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
                 src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
@@ -321,12 +321,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
               />
             )}
             {isUserUploadSelected && (
-              <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
+              <div className="absolute top-3 left-3 bg-black/10 dark:bg-white/20 text-black dark:text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-black/20 dark:border-white/30">User upload</div>
             )}
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 left-3 p-2 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -339,12 +339,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="px-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[60vh] md:h-full md:w-[34%] overflow-y-none">
+          <div className="px-4 md:p-5 text-black dark:text-white border-t md:border-t-0 md:border-l border-black/10 dark:border-white/10 bg-white/90 dark:bg-black/30 h-[60vh] md:h-full md:w-[34%] overflow-y-none">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <button
                 onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-black/20 dark:border-white/25 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-sm"
               >
                 <Download className="h-4 w-4" />
                 Download
@@ -352,7 +352,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
               <button
                 onClick={() => shareImage(selectedImage?.url)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-black/20 dark:border-white/25 bg-black/10 dark:bg:white/10 hover:bg-black/20 dark:hover:bg-white/20 text-sm"
               >
                 <Share className="h-4 w-4" />
                 Share
@@ -361,14 +361,14 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
             {/* Prompt */}
             <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+              <div className="flex items-center justify-between text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-2">
                 <span>Prompt</span>
                 <button 
                   onClick={() => copyPrompt(getUserPrompt(entry.prompt), `preview-${entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                  className={`flex items-center gap-2 px-2 py-1.5 text-black dark:text-white text-xs rounded-lg transition-colors ${
                     copiedButtonId === `preview-${entry.id}` 
                       ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-white/10 hover:bg-white/20'
+                      : 'bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20'
                   }`}
                 >
                   {copiedButtonId === `preview-${entry.id}` ? (
@@ -388,7 +388,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                   )}
                 </button>
               </div>
-              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
+              <div className="text-black dark:text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words borde">
                 {getUserPrompt(entry.prompt)}
               </div>
               {isLongPrompt && (
@@ -403,21 +403,21 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
             {/* Date */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+              <div className="text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-black dark:text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
             </div>
 
             {/* Details */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white text-sm">{entry.model}</span>
+                  <span className="text-black/60 dark:text-white/60 text-sm">Model:</span>
+                  <span className="text-black dark:text-white text-sm">{entry.model}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Format:</span>
-                  <span className="text-white text-sm">Logo</span>
+                  <span className="text-black/60 dark:text-white/60 text-sm">Format:</span>
+                  <span className="text-black dark:text-white text-sm">Logo</span>
                 </div>
               </div>
             </div>
@@ -425,15 +425,15 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             {/* Gallery */}
             {galleryImages.length > 1 && (
               <div className="mb-4">
-                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Logos ({galleryImages.length})</div>
+                <div className="text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Logos ({galleryImages.length})</div>
                 <div className="grid grid-cols-2 gap-2">
                   {galleryImages.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-all ${selectedImageIndex === index
-                          ? 'border-white ring-2 ring-white/30'
-                          : 'border-white/20 hover:border-white/40'
+                          ? 'border-black dark:border-white ring-2 ring-black/30 dark:ring-white/30'
+                          : 'border-black/20 dark:border-white/20 hover:border-black/40 dark:hover:border-white/40'
                         }`}
                     >
                       <Image
@@ -444,7 +444,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                         unoptimized
                       />
                       {index < inputImages.length && (
-                        <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
+                        <div className="absolute top-1 left-1 bg-black/30 dark:bg-black/50 text-black dark:text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
                       )}
                     </button>
                   ))}
@@ -464,9 +464,9 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           </div>
         </div>
         {isFsOpen && (
-          <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="fixed inset-0 z-[80] bg-white/95 dark:bg-black/95 backdrop-blur-sm flex items-center justify-center">
             <div className="absolute top-3 right-4 z-[90]">
-              <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
+              <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white text-sm ring-1 ring-black/20 dark:ring-white/30">✕</button>
             </div>
             <div
               ref={fsContainerRef}

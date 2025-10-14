@@ -49,9 +49,9 @@ const FooterNew: React.FC = () => {
   // ];
 
   return (
-    <footer className="relative z-[10] bg-black w-full">
+    <footer className="relative z-[10] bg-white dark:bg-black w-full transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 md:px-4 lg:px-1 lg:max-w-7xl md:max-w-6xl">
-        <div className="relative z-0 pb-2 max-w-7xl mx-auto text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-t-3xl border border-b-0 border-white/20 overflow-hidden ">
+        <div className="relative z-0 pb-2 max-w-7xl mx-auto text-black dark:text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-t-3xl border border-b-0 border-white/20 overflow-hidden transition-colors duration-300">
            {/* Background decorative grid */}
            <div className="absolute inset-0 opacity-10">
              <Squares 
@@ -77,7 +77,7 @@ const FooterNew: React.FC = () => {
                       className="h-8 w-auto md:h-7 lg:h-8"
                     />
                   </div>
-                  <p className="text-gray-400 text-sm leading-relaxed max-w-xs md:max-w-sm">
+                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed max-w-xs md:max-w-sm">
                     WildMind uses advanced AI to turn imagination into high-quality, creative visuals.
                   </p>
                   
@@ -98,37 +98,37 @@ const FooterNew: React.FC = () => {
 
                 {/* Home Category */}
                 <div className="space-y-4 ml-6">
-                  <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
+                  <h3 className="text-black dark:text-white font-semibold text-sm uppercase tracking-wider">
                   Solutions
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.WORKFLOWS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={NAV_ROUTES.WORKFLOWS} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                         Wild Magic (Coming Soon)
                       </Link>
                     </li>
                     <li>
-                      <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       AI Image Generation
                       </Link>
                     </li>
                     <li>
-                      <Link href={FEATURE_ROUTES.VIDEO_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={FEATURE_ROUTES.VIDEO_GENERATION} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       AI Video Generation
                       </Link>
                     </li>
                     <li>
-                      <Link href={MUSICGENERATION.TEXT_TO_MUSIC} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={MUSICGENERATION.TEXT_TO_MUSIC} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       AI Audio Generation
                       </Link>                      </li>
                       <li>
 
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       AI Filming tools
                       </Link>                      </li>
                       <li>
 
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       AI 3D Generation
                       </Link>
                     </li>
@@ -137,46 +137,46 @@ const FooterNew: React.FC = () => {
 
                 {/* Features Category */}
                 <div className="space-y-4 ml-6">
-                  <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
+                  <h3 className="text-black dark:text-white font-semibold text-sm uppercase tracking-wider">
                   Product
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={NAV_ROUTES.PRICING} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Pricing                      </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Enterprise
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       FAQs
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Documentation
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Terms for Use
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Privacy Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Cookie Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Cookie Settings
                       </Link>
                     </li>
@@ -185,42 +185,42 @@ const FooterNew: React.FC = () => {
 
                 {/* Company Category */}
                 <div className="space-y-4 ml-6">
-                  <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
+                  <h3 className="text-black dark:text-white font-semibold text-sm uppercase tracking-wider">
                     Company
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={NAV_ROUTES.BLOG} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                         Blog
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                         Careers
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                         Support
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                         About us
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Newsletter
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Affiliate Program
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Wild Mind Creator Program
                       </Link>
                     </li>
@@ -228,37 +228,37 @@ const FooterNew: React.FC = () => {
                 </div>
 
                 <div className="space-y-4 ml-6">
-                  <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
+                  <h3 className="text-black dark:text-white font-semibold text-sm uppercase tracking-wider">
                   Stay Connected
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Facebook
                       </Link>
                     </li>
                     <li>
-                      <Link href={SOCIAL_LINKS.X} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.X} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       X
                       </Link>
                     </li>
                     <li>
-                      <Link href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Instagram
                       </Link>
                     </li>
                     <li>
-                      <Link href={SOCIAL_LINKS.YOUTUBE} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.YOUTUBE} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Youtube
                       </Link>
                     </li>
                     <li>
-                      <Link href={SOCIAL_LINKS.LINKEDIN} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.LINKEDIN} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       LinkedIn
                       </Link>
                     </li>
                     <li>
-                      <Link href={SOCIAL_LINKS.THREADS} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.THREADS} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200">
                       Threads
                       </Link>
                     </li>
@@ -270,7 +270,7 @@ const FooterNew: React.FC = () => {
 
             {/* Bottom Section */}
             <div className="py-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="text-gray-400 text-sm mb:text-xs text-center">
+              <div className="text-gray-600 dark:text-gray-400 text-sm mb:text-xs text-center">
                 Copyright © 2025 WildMind Pvt Ltd. All rights reserved.
               </div>
               
@@ -280,7 +280,7 @@ const FooterNew: React.FC = () => {
                   <Link
                     key={link.name}
                     href={link.href}
-                    className="text-gray-400 text-sm hover:text-white transition-colors duration-200 mb:text-xs"
+                    className="text-gray-600 dark:text-gray-400 text-sm hover:text-black dark:hover:text-white transition-colors duration-200 mb:text-xs"
                   >
                     {link.name}
                   </Link>

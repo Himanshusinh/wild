@@ -67,10 +67,10 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 transition flex items-center gap-1 ${
           selectedModel !== 'gemini-25-flash-image'
-            ? 'bg-white text-black'
-            : 'bg-transparent text-white/90 hover:bg-white/5'
+            ? 'bg-white text-black dark:bg-white dark:text-black'
+            : 'bg-transparent text-black/80 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5'
         }`}
       >
         {(() => {
@@ -80,7 +80,7 @@ const ModelsDropdown = () => {
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-white/95 dark:bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-xl overflow-hidden ring-1 ring-black/20 dark:ring-white/30 pb-2 pt-2">
           {modelsWithCredits.map((model) => (
             <button
               key={model.value}
@@ -90,23 +90,23 @@ const ModelsDropdown = () => {
               }}
               className={`w-full px-4 py-3 text-left transition text-[13px] flex items-center justify-between ${
                 selectedModel === model.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'text-black/80 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
               }`}
             >
               <div className="flex flex-col">
                 <span className="font-medium">{model.name}</span>
                 <span className={`text-xs mt-0.5 ${
-                  selectedModel === model.value ? 'text-black/70' : 'text-white/60'
+                  selectedModel === model.value ? 'text-white/70 dark:text-black/70' : 'text-black/60 dark:text-white/60'
                 }`}>{model.description}</span>
                 {model.credits && (
                   <span className={`text-xs mt-0.5 ${
-                    selectedModel === model.value ? 'text-black/70' : 'opacity-70'
+                    selectedModel === model.value ? 'text-white/70 dark:text-black/70' : 'text-black/60 dark:text-white/70'
                   }`}>{model.credits} credits</span>
                 )}
               </div>
               {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-white dark:bg-black rounded-full flex-shrink-0"></div>
               )}
             </button>
           ))}

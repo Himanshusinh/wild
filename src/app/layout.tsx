@@ -24,6 +24,40 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('theme') || 'dark';
+                  const root = document.documentElement;
+                  
+                  if (theme === 'auto') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    if (prefersDark) {
+                      root.classList.add('dark');
+                      root.classList.remove('light');
+                    } else {
+                      root.classList.remove('dark');
+                      root.classList.add('light');
+                    }
+                  } else if (theme === 'dark') {
+                    root.classList.add('dark');
+                    root.classList.remove('light');
+                  } else {
+                    root.classList.remove('dark');
+                    root.classList.add('light');
+                  }
+                } catch (e) {
+                  // Default to dark mode if there's an error
+                  document.documentElement.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

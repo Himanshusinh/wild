@@ -843,8 +843,8 @@ const History = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-          <div className="text-white text-lg">Loading your generation history...</div>
+          <div className="w-12 h-12 border-2 border-gray-300 dark:border-white/20 border-t-gray-600 dark:border-t-white/60 rounded-full animate-spin"></div>
+          <div className="text-gray-900 dark:text-white text-lg">Loading your generation history...</div>
         </div>
       </div>
     );
@@ -859,10 +859,10 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070B] text-white p-2 select-none">
+    <div className="min-h-screen bg-white dark:bg-[#07070B] text-gray-900 dark:text-white p-2 select-none transition-colors duration-300">
       {/* Fixed Header to match TextToImage style */}
-      <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-white/10 rounded-2xl">
-        <h2 className="text-xl font-semibold text-white">{headerTitle}</h2>
+      <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/90 dark:bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-gray-200 dark:border-white/10 rounded-2xl">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{headerTitle}</h2>
       </div>
       {/* Spacer below fixed header */}
       <div className="h-0"></div>
@@ -879,7 +879,7 @@ const History = () => {
         <div className="flex items-center gap-2">
           {/* Drag Selection Hint */}
           {selectedImages.size === 0 && historyEntries.length > 0 && (
-            <div className="px-3 py-1.5 rounded text-white/60 text-sm">
+            <div className="px-3 py-1.5 rounded text-gray-600 dark:text-white/60 text-sm">
               Drag to select multiple images
             </div>
           )}
@@ -893,8 +893,8 @@ const History = () => {
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z" />
             </svg>
           </button> */}
-          <span className="text-md text-white/80">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
-          {hasMore && <span className="text-md text-white/80">• Scroll to load more</span>}
+          <span className="text-md text-gray-700 dark:text-white/80">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
+          {hasMore && <span className="text-md text-gray-700 dark:text-white/80">• Scroll to load more</span>}
         </div>
         <div className="flex items-right justify-end gap-2 pr-28 ">
           {([
@@ -952,7 +952,7 @@ const History = () => {
                 setPillLoading(false);
                 setOverlayLoading(false);
               }}
-              className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'
+              className={`px-4 py-2 rounded-full text-sm transition-colors ${quickFilter === key ? 'bg-gray-900 dark:bg-white ring-1 ring-gray-300 dark:ring-white/5 text-white dark:text-black' : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white/80'
                 }`}
             >
               {label}
@@ -968,12 +968,12 @@ const History = () => {
           <div className="ml-8 flex items-center gap-2">
             <button
               onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
-              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'desc' ? 'bg-gray-900 dark:bg-white ring-1 ring-gray-300 dark:ring-white/5 text-white dark:text-black' : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white/80'}`}
               title="Newest first"
             >Newest</button>
             <button
               onClick={() => setSortOrder(prev => prev === 'asc' ? null : 'asc')}
-              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              className={`px-3 py-2 rounded-full text-sm ${sortOrder === 'asc' ? 'bg-gray-900 dark:bg-white ring-1 ring-gray-300 dark:ring-white/5 text-white dark:text-black' : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white/80'}`}
               title="Oldest first"
             >Oldest</button>
           </div>
@@ -981,20 +981,20 @@ const History = () => {
           <div className="relative ml-0">
             <button
               onClick={() => setShowDatePicker(v => !v)}
-              className={`px-3 py-2 rounded-full text-sm ${dateRange.start ? 'bg-white/20 ring-1 ring-white/30 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              className={`px-3 py-2 rounded-full text-sm ${dateRange.start ? 'bg-gray-200 dark:bg-white/20 ring-1 ring-gray-300 dark:ring-white/30 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white/80'}`}
               title="Filter by date"
             >Date</button>
             {showDatePicker && (
-              <div className="absolute right-0 mt-2 z-40 p-3 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/20 shadow-2xl">
+              <div className="absolute right-0 mt-2 z-40 p-3 bg-white/90 dark:bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-gray-200 dark:ring-white/20 shadow-2xl">
                 <div className="flex items-center gap-2">
                   <input
                     type="date"
                     value={dateInput}
                     onChange={(e) => setDateInput(e.target.value)}
-                    className="bg-white/10 text-white text-sm rounded px-2 py-1 ring-1 ring-white/20"
+                    className="bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white text-sm rounded px-2 py-1 ring-1 ring-gray-300 dark:ring-white/20"
                   />
                   <button
-                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm"
+                    className="px-3 py-1 rounded bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white text-sm"
                     onClick={async () => {
                       if (!dateInput) return;
                       const d = new Date(dateInput + 'T00:00:00');
@@ -1012,7 +1012,7 @@ const History = () => {
                     }}
                   >Apply</button>
                   <button
-                    className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-sm z-100"
+                    className="px-3 py-1 rounded bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white text-sm z-100"
                     onClick={async () => {
                       setDateInput('');
                       setDateRange({ start: null, end: null });
@@ -1078,12 +1078,12 @@ const History = () => {
         {/* History Entries - TextToImage-like UI: date-grouped tiles */}
       {(getFilteredItemsCount() === 0 && !overlayLoading && !loading) ? (
         <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 text-white/20">
+          <div className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-white/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-white/70 mb-2">
+          <h3 className="text-lg font-medium text-gray-600 dark:text-white/70 mb-2">
             {(() => {
               if (quickFilter === 'user-uploads') return 'No uploads found';
               if (quickFilter === 'videos') return 'No video generations found';
@@ -1092,7 +1092,7 @@ const History = () => {
               return 'No generations found';
             })()}
           </h3>
-          <p className="text-white/50 mb-4">
+          <p className="text-gray-500 dark:text-white/50 mb-4">
             {(() => {
               const hasFilters = Object.keys(filters).length > 0 || Boolean((filters as any)?.dateRange);
               const subject = quickFilter === 'user-uploads' ? 'uploads' : quickFilter === 'videos' ? 'videos' : quickFilter === 'music' ? 'tracks' : quickFilter === 'images' ? 'images' : 'generations';
@@ -1103,7 +1103,7 @@ const History = () => {
           {Object.keys(filters).length > 0 && (
             <button
               onClick={clearAllFilters}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-lg transition-colors"
             >
               Clear All Filters
             </button>
@@ -1117,8 +1117,8 @@ const History = () => {
           {overlayLoading && (
             <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                <div className="text-white text-lg">Loading generations...</div>
+                <div className="w-12 h-12 border-2 border-gray-300 dark:border-white/20 border-t-gray-600 dark:border-t-white/60 rounded-full animate-spin"></div>
+                <div className="text-gray-900 dark:text-white text-lg">Loading generations...</div>
               </div>
             </div>
           )}  
@@ -1163,12 +1163,12 @@ const History = () => {
               <div key={dateKey} className="space-y-4">
                 {/* Date Header */}
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                  <div className="w-6 h-6 bg-gray-100 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-gray-600 dark:text-white/60">
                       <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                     </svg>
                   </div>
-                  <h3 className="text-sm font-medium text-white/70">
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-white/70">
                     {new Date(dateKey).toLocaleDateString('en-US', {
                       weekday: 'short',
                       year: 'numeric',
@@ -1223,10 +1223,10 @@ const History = () => {
                         key={`${entry.id}-${video ? 'video' : (audio ? 'audio' : 'image')}-${mediaIndex}`}
                         data-image-id={`${entry.id}-${media.id || mediaIndex}`}
                         onClick={(e) => handleImageClick(e, entry, media, mediaIndex)}
-                        className={`relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 transition-all duration-200 cursor-pointer group flex-shrink-0 ${
+                        className={`relative rounded-lg overflow-hidden bg-gray-100 dark:bg-black/40 backdrop-blur-xl ring-1 transition-all duration-200 cursor-pointer group flex-shrink-0 ${
                           selectedImages.has(`${entry.id}-${media.id || mediaIndex}`)
                             ? 'ring-blue-400 ring-2 w-46 h-46 scale-98'
-                            : 'ring-white/10 hover:ring-white/20 w-48 h-48'
+                            : 'ring-gray-200 dark:ring-white/10 hover:ring-gray-300 dark:hover:ring-white/20 w-48 h-48'
                         }`}
                       >
                         {/* Selection Indicator */}
@@ -1240,23 +1240,23 @@ const History = () => {
                           </div>
                         )}
                         {entry.status === 'generating' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900">
                             <div className="flex flex-col items-center gap-2">
-                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">Generating...</div>
+                              <div className="w-6 h-6 border-2 border-gray-400 dark:border-white/20 border-t-gray-600 dark:border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-gray-600 dark:text-white/60">Generating...</div>
                             </div>
                           </div>
                         ) : entry.status === 'failed' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20">
                             <div className="flex flex-col items-center gap-2">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-500 dark:text-red-400">
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                               </svg>
-                              <div className="text-xs text-red-400">Failed</div>
+                              <div className="text-xs text-red-500 dark:text-red-400">Failed</div>
                             </div>
                           </div>
                         ) : video ? (
-                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
+                          <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 flex items-center justify-center relative">
                             {mediaUrl ? (
                               (() => {
                                 const proxied = toFrontendProxyMediaUrl(mediaUrl);
@@ -1265,18 +1265,18 @@ const History = () => {
                                 );
                               })()
                             ) : (
-                              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                <span className="text-gray-400 text-xs">Video not available</span>
+                              <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                                <span className="text-gray-500 dark:text-gray-400 text-xs">Video not available</span>
                               </div>
                             )}
                             {isUserUpload && (
-                              <div className="absolute top-2 left-2 bg-white/15 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/20">
+                              <div className="absolute top-2 left-2 bg-white/80 dark:bg-white/15 text-gray-900 dark:text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-300 dark:border-white/20">
                                 User upload
                               </div>
                             )}
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                              <div className="w-12 h-12 bg-white/80 dark:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-gray-900 dark:text-white">
                                   <path d="M8 5v14l11-7z" />
                                 </svg>
                               </div>
@@ -1285,10 +1285,10 @@ const History = () => {
                               <span className="text-xs text-white">Video</span>
                             </div>
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-gray-100/90 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                               <span
                                 title={getCleanPrompt(entry.prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
+                                className="text-xs text-gray-900 dark:text-white flex-1 leading-snug"
                                 style={{
                                   display: '-webkit-box',
                                   WebkitLineClamp: 3 as any,
@@ -1300,7 +1300,7 @@ const History = () => {
                               </span>
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
@@ -1309,15 +1309,15 @@ const History = () => {
                             </div>
                           </div>
                         ) : audio ? (
-                          <div className="w-full h-full bg-gradient-to-br from-green-900/20 to-blue-900/20 flex items-center justify-center relative">
-                            <div className="w-full h-full bg-black/30 flex items-center justify-center">
-                              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-white/80">
+                          <div className="w-full h-full bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/20 dark:to-blue-900/20 flex items-center justify-center relative">
+                            <div className="w-full h-full bg-gray-200 dark:bg-black/30 flex items-center justify-center">
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-gray-600 dark:text-white/80">
                                 <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z" />
                               </svg>
                             </div>
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                              <div className="w-12 h-12 bg-white/80 dark:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-gray-900 dark:text-white">
                                   <path d="M8 5v14l11-7z" />
                                 </svg>
                               </div>
@@ -1326,10 +1326,10 @@ const History = () => {
                               <span className="text-xs text-white">Audio</span>
                             </div>
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-gray-100/90 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                               <span
                                 title={getCleanPrompt(entry.prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
+                                className="text-xs text-gray-900 dark:text-white flex-1 leading-snug"
                                 style={{
                                   display: '-webkit-box',
                                   WebkitLineClamp: 3 as any,
@@ -1341,7 +1341,7 @@ const History = () => {
                               </span>
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
@@ -1366,21 +1366,21 @@ const History = () => {
                                 }}
                               />
                             ) : (
-                              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                <span className="text-gray-400 text-xs">Image not available</span>
+                              <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                                <span className="text-gray-500 dark:text-gray-400 text-xs">Image not available</span>
                               </div>
                             )}
                             {isUserUpload && (
-                              <div className="absolute top-2 left-2 bg-white/15 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/20">
+                              <div className="absolute top-2 left-2 bg-white/80 dark:bg-white/15 text-gray-900 dark:text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-300 dark:border-white/20">
                                 User upload
                               </div>
                             )}
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-gray-100/90 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                               <span
                                 title={getCleanPrompt(entry.prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
+                                className="text-xs text-gray-900 dark:text-white flex-1 leading-snug"
                                 style={{
                                   display: '-webkit-box',
                                   WebkitLineClamp: 3 as any,
@@ -1392,7 +1392,7 @@ const History = () => {
                               </span>
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
@@ -1414,8 +1414,8 @@ const History = () => {
           {hasMore && loading && (
             <div className="flex items-center justify-center py-8">
               <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                <div className="text-sm text-white/60">Loading more generations...</div>
+                <div className="w-8 h-8 border-2 border-gray-300 dark:border-white/20 border-t-gray-600 dark:border-t-white/60 rounded-full animate-spin"></div>
+                <div className="text-sm text-gray-600 dark:text-white/60">Loading more generations...</div>
               </div>
             </div>
           )}
@@ -1440,7 +1440,7 @@ const History = () => {
       {/* Download Bar */}
 
       {showDownloadBar && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-t border-white/10 p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-t border-gray-200 dark:border-white/10 p-4">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
@@ -1451,10 +1451,10 @@ const History = () => {
                 </svg>
               </div>
               <div>
-                <div className="text-white font-medium text-sm">
+                <div className="text-gray-900 dark:text-white font-medium text-sm">
                   {selectedImages.size} item{selectedImages.size !== 1 ? 's' : ''} selected
                 </div>
-                <div className="text-white/60 text-xs">
+                <div className="text-gray-600 dark:text-white/60 text-xs">
                   Ready to download
                 </div>
               </div>
@@ -1462,7 +1462,7 @@ const History = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={clearSelection}
-                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -1526,10 +1526,10 @@ const History = () => {
       )}
       {audioPreview && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setAudioPreview(null)}>
-          <div className="bg-black/80 border border-white/10 rounded-2xl w-full max-w-2xl p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/90 dark:bg-black/80 border border-gray-200 dark:border-white/10 rounded-2xl w-full max-w-2xl p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-white/90 text-sm font-medium">Audio Preview</h3>
-              <button className="text-white/60 hover:text-white/90" onClick={() => setAudioPreview(null)} aria-label="Close">
+              <h3 className="text-gray-900 dark:text-white/90 text-sm font-medium">Audio Preview</h3>
+              <button className="text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white/90" onClick={() => setAudioPreview(null)} aria-label="Close">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
