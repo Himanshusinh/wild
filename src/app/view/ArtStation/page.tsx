@@ -502,7 +502,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
-          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-1 [overflow-anchor:none]">
+          <div className="columns-1 sm:columns-2 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-1 [overflow-anchor:none]">
              {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
@@ -532,7 +532,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                 >
                    <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
                     <div
-                      style={{ aspectRatio: tileRatio, minHeight: 200 }}
+                      style={{ aspectRatio: tileRatio, minHeight: 280 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] ${loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'}`}
                     >
                       {!loadedTiles.has(cardId) && (
@@ -540,7 +540,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                       )}
                       {(() => {
                         const isPriority = idx < 8
-                        const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
+                        const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw'
                         const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
                         return kind === 'video' ? (
                           (() => {
@@ -854,7 +854,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-white/10' : 'border-white/20 hover:border-white/30'}`}
                             >
                               <div className="flex items-center gap-2 text-sm text-white/90">
-                                <span className="inline-block w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
+                                <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
                                 <span>Track {idx + 1}</span>
                               </div>
                             </button>
