@@ -135,7 +135,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   }, [generationMode, availableModels, selectedModel, onModelChange]);
 
   return (
-    <div className="relative dropdown-container">
+    <div ref={dropdownRef} className="relative dropdown-container">
       <button
         onClick={() => {
           // Close other dropdowns if they exist
@@ -182,7 +182,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                     <Sparkles className="w-3 h-3 text-yellow-400" />
                   )}
                   {model.provider === "fal" && (
-                    <Zap className="w-3 h-3 text-blue-400" />
+                    <img src="/icons/crown.svg" alt="priority" className="w-4 h-4 opacity-90" />
                   )}
                 </div>
                 <span className="text-xs opacity-70">{model.description}</span>
@@ -190,9 +190,14 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   <span className="text-xs opacity-70 mt-0.5">{model.displayText}</span>
                 )}
               </div>
-              {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-              )}
+              <div className="flex items-center gap-2">
+                {/* {model.value.startsWith('veo3') && (
+                  <img src="/icons/crown.svg" alt="priority" className="w-4 h-4 opacity-90" />
+                )} */}
+                {selectedModel === model.value && (
+                  <div className="w-2 h-2 bg-black rounded-full"></div>
+                )}
+              </div>
             </button>
           ))}
         </div>
