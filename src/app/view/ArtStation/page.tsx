@@ -529,8 +529,11 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                      setPreview({ kind, url: media.url, item })
                    }}
                 >
-                  <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-gray-200 dark:ring-white/10 bg-gray-50 dark:bg-white/5 group shadow-sm dark:shadow-none hover:shadow-md dark:hover:shadow-lg transition-shadow duration-300">
-                    <div style={{ aspectRatio: randomRatio }}>
+                  <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                    <div
+                      style={{ aspectRatio: tileRatio, minHeight: 280 }}
+                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] ${loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'}`}
+                    >
                       {kind === 'video' ? (
                         (() => {
                           const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
@@ -539,7 +542,31 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           return <video src={proxied} className="w-full h-full object-cover" controls muted />
                         })()
                       ) : (
-                        <Image src={media.url} alt={item.prompt || ''} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                        (() => {
+                          const isPriority = idx < 8
+                          const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw'
+                          const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' 
+                          return (
+                            <Image
+                              src={media.url}
+                              alt={item.prompt || ''}
+                              fill
+                              sizes={sizes}
+                              className="object-cover"
+                              placeholder="blur"
+                              blurDataURL={blur}
+                              priority={isPriority}
+                              fetchPriority={isPriority ? 'high' : 'auto'}
+                              onLoadingComplete={(img) => {
+                                try {
+                                  const el = img as unknown as HTMLImageElement
+                                  if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                } catch {}
+                                markTileLoaded(cardId)
+                              }}
+                            />
+                          )
+                        })()
                       )}
                     </div>
                     
@@ -797,7 +824,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-blue-50 dark:bg-white/10' : 'border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/30'}`}
                             >
                               <div className="flex items-center gap-2 text-sm text-white/90">
-                                <span className="inline-block w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
+                                <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
                                 <span>Track {idx + 1}</span>
                               </div>
                             </button>
