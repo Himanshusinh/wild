@@ -69,7 +69,7 @@ const EditImageInterface: React.FC = () => {
   const [backgroundType, setBackgroundType] = useState('');
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | ''>('');
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
@@ -886,7 +886,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'model' && (
-                      <div className={`absolute top-full mt-2 z-70 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full mt-2 z-30 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {(selectedFeature === 'remove-bg'
                           ? [
                               { label: '851-labs/background-remover', value: '851-labs/background-remover' },
@@ -922,7 +922,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'output' && (
-                      <div className={`absolute top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {['png','jpg','jpeg','webp'].map((fmt) => (
                           <button
                             key={fmt}
@@ -955,41 +955,78 @@ const EditImageInterface: React.FC = () => {
               )}
 
               <div className="grid grid-cols-2 gap-2">
-                {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Background Type</label>
-                    <input
-                      type="text"
-                      value={backgroundType}
-                      onChange={(e) => setBackgroundType(e.target.value)}
-                      placeholder="e.g., rgba or white"
-                      className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                    />
+              {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Background Type</label>
+                  <div className="relative edit-dropdown">
+                    <button
+                      onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
+                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                    >
+                      <span className="truncate">{backgroundType || 'Select background type'}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'backgroundType' && (
+                      <div className={`absolute top-full z-30 mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-44 overflow-y-auto dropdown-scrollbar`}>
+                        {[
+                          { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
+                          { label: 'white', value: 'white', description: 'Solid white background' },
+                          { label: 'green', value: 'green', description: 'Solid green background' },
+                          { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
+                          { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
+                          { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
+                            className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="truncate font-medium">{opt.label}</span>
+                              {backgroundType === opt.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                            </div>
+                            <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
+                              {opt.description}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
 
                 {/* Buttons moved to bottom footer */}
               </div>
 
               {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Threshold</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Threshold (0.0-1.0)</label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.1"
                     value={threshold}
                     onChange={(e) => setThreshold(e.target.value)}
-                    placeholder="0.0 to 1.0"
-                    className="w-full px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                    placeholder="0.0 (soft alpha) to 1.0"
+                    className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                   />
+                  <div className="mt-1 text-xs text-white/50">
+                    Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
+                  </div>
                   <div className="mt-2">
                     <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
                     <button
                       type="button"
                       onClick={() => setReverseBg(v => !v)}
-                      className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                      className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
                     >
                       {reverseBg ? 'Enabled' : 'Disabled'}
                     </button>
+                    <div className="mt-1 text-xs text-white/50">
+                      Remove foreground instead of background
+                    </div>
                   </div>
                 </div>
               )}

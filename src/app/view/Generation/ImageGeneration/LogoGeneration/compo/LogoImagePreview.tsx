@@ -23,6 +23,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   // Fullscreen state for in-place zoom/pan viewer
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -268,6 +269,8 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     // Fallback to old format (remove "Logo:" prefix)
     return rawPrompt.replace(/^Logo:\s*/i, '').trim();
   };
+
+  const isLongPrompt = (getUserPrompt(entry.prompt) || '').length > 200;
 
   const copyPrompt = async (prompt: string, buttonId: string) => {
     try {
