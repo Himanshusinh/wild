@@ -502,7 +502,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
-          <div className="columns-1 sm:columns-2 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-1 [overflow-anchor:none]">
+          <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
              {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')

@@ -15,11 +15,13 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
   const [copied, setCopied] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const getUserPrompt = (raw: string | undefined) => (raw || '').replace(/^Mockup:\s*/i, '').trim();
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const isLongPrompt = (getUserPrompt(entry.prompt) || '').length > 200;
   
   if (!isOpen) return null;
 
   const selected = entry.images[selectedIndex];
-  const getUserPrompt = (raw: string | undefined) => (raw || '').replace(/^Mockup:\s*/i, '').trim();
 
   const handleCopyPrompt = async () => {
     try {
