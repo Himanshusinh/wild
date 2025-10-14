@@ -112,7 +112,7 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
               <div className="col-span-2">
                 <label className="text-sm text-white/80">Model</label>
                 <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
-                  <option className='text-white bg-black/70' value="851-labs/background-remover">851-labs/background-remover</option>
+                  <option className='text-white bg-black/70' value="851-labs/background-remover">851-labs/background-remover (default)</option>
                   <option className='text-white bg-black/70' value="lucataco/remove-bg">lucataco/remove-bg</option>
                 </select>
               </div>

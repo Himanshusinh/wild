@@ -102,7 +102,7 @@ const EditImageInterface: React.FC = () => {
         setSelectedFeature(validFeature);
         // Set default model based on feature
         if (validFeature === 'remove-bg') {
-          setModel('lucataco/remove-bg');
+          setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
           setModel('nightmareai/real-esrgan');
         }
@@ -586,7 +586,7 @@ const EditImageInterface: React.FC = () => {
     setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
-      setModel('lucataco/remove-bg');
+      setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
       setModel('nightmareai/real-esrgan');
     }
@@ -773,7 +773,7 @@ const EditImageInterface: React.FC = () => {
                     setSelectedFeature(feature.id); 
                     // Ensure sensible default model per feature when switching tabs
                     if (feature.id === 'remove-bg') {
-                      setModel('lucataco/remove-bg');
+                      setModel('851-labs/background-remover');
                     } else if (feature.id === 'upscale') {
                       setModel('nightmareai/real-esrgan');
                     }
