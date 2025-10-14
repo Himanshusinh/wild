@@ -66,7 +66,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value.startsWith('flux-kontext') ||
       m.value === 'gen4_image' ||
       m.value === 'gen4_image_turbo' ||
-      m.value === 'minimax-image-01' ||
       m.value === 'gemini-25-flash-image' ||
       m.value === 'seedream-v4'
     );
@@ -78,7 +77,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     const isIdeogram = typeof selectedModel === 'string' && selectedModel.startsWith('ideogram-ai/ideogram-v3');
     const isImagen4 = typeof selectedModel === 'string' && (selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'imagen-4-ultra');
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
-    if (isIdeogram || isImagen4 || isLucidOrPhoenix) {
+    const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
+    if (isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
       const fallback = filteredModels[0]?.value || 'gemini-25-flash-image';
       dispatch(setSelectedModel(fallback));
     }
