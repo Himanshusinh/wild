@@ -68,16 +68,21 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'gen4_image_turbo' ||
       m.value === 'minimax-image-01' ||
       m.value === 'gemini-25-flash-image' ||
-      m.value === 'seedream-v4' ||
-      m.value === 'ideogram-ai/ideogram-v3' ||
-      m.value === 'ideogram-ai/ideogram-v3-quality' ||
-      m.value === 'leonardoai/lucid-origin' ||
-      m.value === 'leonardoai/phoenix-1.0' ||
-      m.value === 'imagen-4-ultra' ||
-      m.value === 'imagen-4' ||
-      m.value === 'imagen-4-fast'
+      m.value === 'seedream-v4'
     );
   }
+
+  // If user switches to image-to-image (uploaded images) while an Ideogram model is selected, auto-switch to a supported model
+  useEffect(() => {
+    if (!restrictForImages) return;
+    const isIdeogram = typeof selectedModel === 'string' && selectedModel.startsWith('ideogram-ai/ideogram-v3');
+    const isImagen4 = typeof selectedModel === 'string' && (selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'imagen-4-ultra');
+    const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
+    if (isIdeogram || isImagen4 || isLucidOrPhoenix) {
+      const fallback = filteredModels[0]?.value || 'gemini-25-flash-image';
+      dispatch(setSelectedModel(fallback));
+    }
+  }, [restrictForImages, selectedModel, filteredModels, dispatch]);
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('models'));
