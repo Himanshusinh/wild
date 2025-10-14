@@ -32,20 +32,20 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     <>
       {/* Backdrop with blur */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] left-[68px]"
+        className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-[60] left-[68px]"
         onClick={onClose}
       />
       
       {/* Modal Content */}
       <div className="fixed inset-0 left-[68px] z-[70] flex items-center justify-center p-6 overflow-y-auto">
         <div 
-          className="bg-[#1E1E1E] rounded-3xl w-full max-w-5xl relative"
+          className="bg-white/95 dark:bg-[#1E1E1E] rounded-3xl w-full max-w-5xl relative ring-1 ring-black/10 dark:ring-white/10 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-6 right-6 text-white/80 hover:text-white transition-colors z-10"
+            className="absolute top-6 right-6 text-black/70 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors z-10"
           >
             <svg 
               width="32" 
@@ -64,7 +64,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
           <div className="p-8 md:p-12">
             {/* Description Text */}
-            <p className="text-white text-base md:text-lg mb-6">
+            <p className="text-black dark:text-white text-base md:text-lg mb-6">
               {description}
             </p>
 
@@ -72,7 +72,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
               {/* Main Image */}
               <div className="relative w-full md:w-auto md:flex-shrink-0">
-                <div className="relative aspect-square w-full md:w-[400px] rounded-2xl overflow-hidden bg-white/5">
+                <div className="relative aspect-square w-full md:w-[400px] rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5">
                   <Image
                     src={mainImage}
                     alt={title}
@@ -84,7 +84,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
               
               {/* Upload Image Button - Parallel at top */}
               <div className="flex items-start pt-0">
-                <button className="flex items-center gap-3 px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/20 rounded-full text-white transition-all duration-200">
+                <button className="flex items-center gap-3 px-6 py-3 bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 border border-black/20 dark:border-white/20 rounded-full text-black dark:text-white transition-all duration-200">
                   <svg 
                     width="20" 
                     height="20" 
@@ -109,7 +109,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
               {additionalImages.map((img, index) => (
                 <div 
                   key={index}
-                  className="relative aspect-square rounded-xl overflow-hidden bg-white/5 cursor-pointer hover:ring-2 hover:ring-white/30 transition-all"
+                  className="relative aspect-square rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 cursor-pointer hover:ring-2 hover:ring-black/30 dark:hover:ring-white/30 transition-all"
                 >
                   <Image
                     src={img}

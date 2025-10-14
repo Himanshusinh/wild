@@ -1647,8 +1647,8 @@ const InputBox = () => {
         <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-2 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-white/10 backdrop-blur-lg shadow-xl md:pl-6 pl-4 border border-white/10 rounded-2xl ">
-              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
+            <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-black/10 dark:bg-white/10 backdrop-blur-lg shadow-xl md:pl-6 pl-4 border border-black/10 dark:border-white/10 rounded-2xl transition-colors duration-300">
+              <h2 className="md:text-xl text-md font-semibold text-black dark:text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
@@ -1657,8 +1657,8 @@ const InputBox = () => {
             {loading && historyEntries.length === 0 && (
               <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-white text-lg">Loading your generation history...</div>
+                  <div className="w-12 h-12 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-black dark:text-white text-lg">Loading your generation history...</div>
                 </div>
               </div>
             )}
@@ -1668,19 +1668,19 @@ const InputBox = () => {
               <div className="space-y-4">
                 {/* Date Header */}
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                  <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-black/60 dark:text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
                   </div>
-                  <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
+                  <h3 className="text-sm font-medium text-black/70 dark:text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
                 </div>
                 <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                    <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10">
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                            <div className="text-xs text-white/60">Generating...</div>
+                            <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                            <div className="text-xs text-black/60 dark:text-white/60">Generating...</div>
                           </div>
                         </div>
                       ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -1696,7 +1696,7 @@ const InputBox = () => {
                         </div>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No image</div>
+                          <div className="text-xs text-black/60 dark:text-white/60">No image</div>
                         </div>
                       )}
                     </div>
@@ -1711,18 +1711,18 @@ const InputBox = () => {
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
                         height="12"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="text-white/60"
+                        className="text-black/60 dark:text-white/60"
                       >
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                       </svg>
                     </div>
-                    <h3 className="text-sm font-medium text-white/70">
+                    <h3 className="text-sm font-medium text-black/70 dark:text-white/70">
                       {new Date(date).toLocaleDateString('en-US', {
                         weekday: 'short',
                         year: 'numeric',
@@ -1738,12 +1738,12 @@ const InputBox = () => {
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                                 <div className="flex flex-col items-center gap-2">
-                                  <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                  <div className="text-xs text-white/60">Generating...</div>
+                                  <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                                  <div className="text-xs text-black/60 dark:text-white/60">Generating...</div>
                                 </div>
                               </div>
                             ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -1759,10 +1759,10 @@ const InputBox = () => {
                         <div className="relative w-full h-full group">
                           <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
                           {/* Hover prompt overlay */}
-                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/5 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                             <span
                               title={getCleanPrompt(prompt)}
-                              className="text-xs text-white flex-1 leading-snug"
+                              className="text-xs text-black dark:text-white flex-1 leading-snug"
                               style={{
                                 display: '-webkit-box',
                                 WebkitLineClamp: 3 as any,
@@ -1774,7 +1774,7 @@ const InputBox = () => {
                             </span>
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                              className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90"
                               onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
@@ -1783,8 +1783,8 @@ const InputBox = () => {
                           </div>
                         </div>
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/20 flex items-center justify-center text-white/60">
-                                <div className="text-xs text-white/60">No image</div>
+                              <div className="w-full h-full bg-gradient-to-br from-gray-200 dark:from-white/20 to-gray-300 dark:to-white/20 flex items-center justify-center text-black/60 dark:text-white/60">
+                                <div className="text-xs text-black/60 dark:text-white/60">No image</div>
                               </div>
                             )}
                           </div>
@@ -1797,14 +1797,14 @@ const InputBox = () => {
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreview({ entry, image })}
-                          className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-white/60">
+                                <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-black/60 dark:text-white/60">
                                   Generating...
                                 </div>
                               </div>
@@ -1847,10 +1847,10 @@ const InputBox = () => {
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/5 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
-                                  className="text-xs text-white flex-1 leading-snug"
+                                  className="text-xs text-black dark:text-white flex-1 leading-snug"
                                   style={{
                                     display: '-webkit-box',
                                     WebkitLineClamp: 3 as any,
@@ -1862,7 +1862,7 @@ const InputBox = () => {
                                 </span>
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
@@ -1883,8 +1883,8 @@ const InputBox = () => {
               {hasMore && loading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                    <div className="text-sm text-white/60">Loading more generations...</div>
+                    <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                    <div className="text-sm text-black/60 dark:text-white/60">Loading more generations...</div>
                   </div>
                 </div>
               )}
@@ -1893,7 +1893,7 @@ const InputBox = () => {
         </div>
       )}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto">
-        <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
+        <div className="rounded-2xl bg-white/40 dark:bg-black/40 backdrop-blur-3xl ring-1 ring-black/20 dark:ring-white/20 shadow-2xl transition-colors duration-300">
           {/* Top row: prompt + actions */}
           <div className="flex items-center gap-0 p-3">
             <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5 w-full">
@@ -1905,7 +1905,7 @@ const InputBox = () => {
                   dispatch(setPrompt(e.target.value));
                   adjustTextareaHeight(e.target);
                 }}
-                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
+                className={`flex-1 bg-transparent text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-black dark:text-white' : 'text-black/70 dark:text-white/70'
                   }`}
                 rows={1}
                 style={{
@@ -1922,7 +1922,7 @@ const InputBox = () => {
                   {uploadedImages.map((u: string, i: number) => (
                     <div
                       key={i}
-                      className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
+                      className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-black/20 dark:ring-white/20 group"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -1948,13 +1948,13 @@ const InputBox = () => {
                 </div>
               )}
               <button
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0"
+                className="p-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 transition cursor-pointer flex items-center gap-0"
                 onClick={() => setIsUploadOpen(true)}
                 type="button"
                 aria-label="Upload"
               >
-                <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
-                <span className="text-white text-sm"> </span>
+                <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90 brightness-50 dark:brightness-100 transition-all duration-300" />
+                <span className="text-black dark:text-white text-sm"> </span>
               </button>
             </div>
 
@@ -2017,22 +2017,22 @@ const InputBox = () => {
                   <div className="relative dropdown-container">
                     <button
                       onClick={() => dispatch(toggleDropdown('seedreamSize'))}
-                      className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                      className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-2"
                     >
                       {seedreamSize}
                       <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'seedreamSize' && (
-                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-white/90 dark:bg-black/90 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-black/30 dark:ring-white/30 py-1 z-50`}>
                         {['1K','2K','4K','custom'].map((opt) => (
                           <button
                             key={opt}
                             onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
-                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'}`}
                           >
                             <span>{opt}</span>
                             {seedreamSize === opt && (
-                              <span className="w-2 h-2 bg-black rounded-full"></span>
+                              <span className="w-2 h-2 bg-white dark:bg-black rounded-full"></span>
                             )}
                           </button>
                         ))}
@@ -2048,7 +2048,7 @@ const InputBox = () => {
                         value={seedreamWidth}
                         onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
                         placeholder="Width"
-                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-black/20 dark:ring-white/20 bg-transparent text-black/90 dark:text-white/90 placeholder-black/40 dark:placeholder-white/40"
                       />
                       <input
                         type="number"
@@ -2057,7 +2057,7 @@ const InputBox = () => {
                         value={seedreamHeight}
                         onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
                         placeholder="Height"
-                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-black/20 dark:ring-white/20 bg-transparent text-black/90 dark:text-white/90 placeholder-black/40 dark:placeholder-white/40"
                       />
                     </>
                   )}

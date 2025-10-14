@@ -1486,8 +1486,8 @@ const InputBox = () => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-white/10 rounded-2xl ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation </h2>
+          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-black/10 dark:bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-black/10 dark:border-white/10 rounded-2xl ">
+            <h2 className="text-xl font-semibold text-black dark:text-white pl-0 ">Video Generation </h2>
           </div>
           {/* Spacer to keep content below fixed header */}
           <div className="h-0"></div>
@@ -1496,8 +1496,8 @@ const InputBox = () => {
             {loading && historyEntries.length === 0 && (
               <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-white text-lg">Loading your generation history...</div>
+                  <div className="w-12 h-12 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-black dark:text-white text-lg">Loading your generation history...</div>
                 </div>
               </div>
             )}
@@ -1509,22 +1509,22 @@ const InputBox = () => {
               {localVideoPreview && !groupedByDate[todayKey] && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                    <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-black/60 dark:text-white/60">
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                       </svg>
                     </div>
-                    <h3 className="text-sm font-medium text-white/70">
+                    <h3 className="text-sm font-medium text-black/70 dark:text-white/70">
                       {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                     </h3>
                   </div>
                   <div className="flex flex-wrap gap-3 ml-9">
-                    <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10">
                       {localVideoPreview.status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                            <div className="text-xs text-white/60">Generating...</div>
+                            <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                            <div className="text-xs text-black/60 dark:text-white/60">Generating...</div>
                           </div>
                         </div>
                       ) : localVideoPreview.status === 'failed' ? (
@@ -1542,7 +1542,7 @@ const InputBox = () => {
                         </div>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No preview</div>
+                          <div className="text-xs text-black/60 dark:text-white/60">No preview</div>
                         </div>
                       )}
                     </div>
@@ -1553,18 +1553,18 @@ const InputBox = () => {
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
                         height="12"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="text-white/60"
+                        className="text-black/60 dark:text-white/60"
                       >
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                       </svg>
                     </div>
-                    <h3 className="text-sm font-medium text-white/70">
+                    <h3 className="text-sm font-medium text-black/70 dark:text-white/70">
                       {new Date(date).toLocaleDateString('en-US', {
                         weekday: 'short',
                         year: 'numeric',
@@ -1648,14 +1648,14 @@ const InputBox = () => {
                             }
                             setPreview({ entry, video });
                           }}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-white/60">
+                                <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-black/60 dark:text-white/60">
                                   Generating...
                                 </div>
                               </div>
@@ -1731,10 +1731,10 @@ const InputBox = () => {
                                 </div>
                               </div>
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/5 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                                 <span
                                   title={getCleanPrompt(entry.prompt)}
-                                  className="text-xs text-white flex-1 leading-snug"
+                                  className="text-xs text-black dark:text-white flex-1 leading-snug"
                                   style={{
                                     display: '-webkit-box',
                                     WebkitLineClamp: 3 as any,
@@ -1746,7 +1746,7 @@ const InputBox = () => {
                                 </span>
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
@@ -1771,8 +1771,8 @@ const InputBox = () => {
               {hasMore && loading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                    <div className="text-sm text-white/60">Loading more generations...</div>
+                    <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                    <div className="text-sm text-black/60 dark:text-white/60">Loading more generations...</div>
                   </div>
                 </div>
               )}
@@ -1785,7 +1785,7 @@ const InputBox = () => {
      
       {/* Main Input Box */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
-        <div className={`rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${
+        <div className={`rounded-2xl bg-white/40 dark:bg-transparent backdrop-blur-3xl ring-1 ring-black/20 dark:ring-white/20 shadow-2xl transition-all duration-300 ${
           (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
         }`}>
           {/* Top row: prompt + actions */}
@@ -1799,8 +1799,8 @@ const InputBox = () => {
                   setPrompt(e.target.value);
                   adjustTextareaHeight(e.target);
                 }}
-                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
-                  prompt ? 'text-white' : 'text-white/70'
+                className={`flex-1 bg-transparent text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
+                  prompt ? 'text-black dark:text-white' : 'text-black/70 dark:text-white/70'
                 }`}
                 rows={1}
               style={{
@@ -1820,7 +1820,7 @@ const InputBox = () => {
                   <div className="relative camera-movement-container">
             <button
                       onClick={() => setCameraMovementPopupOpen(!cameraMovementPopupOpen)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm text-white/80 hover:text-white"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors text-sm text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white"
                       title="Camera Movement Options"
                     >
                       <span>Camera Movements</span>
@@ -1836,12 +1836,12 @@ const InputBox = () => {
                     </button>
 
                     {cameraMovementPopupOpen && (
-                      <div className="absolute bottom-full left-0 mb-2 p-4 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[280px]">
+                      <div className="absolute bottom-full left-0 mb-2 p-4 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl border border-black/20 dark:border-white/20 shadow-2xl z-50 min-w-[280px]">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-medium text-white">Select One Camera Movement</h3>
+                          <h3 className="text-sm font-medium text-black dark:text-white">Select One Camera Movement</h3>
                           <button
                             onClick={() => setCameraMovementPopupOpen(false)}
-                            className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                            className="w-5 h-5 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 flex items-center justify-center transition-colors"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                               <path d="M18 6L6 18M6 6l12 12" />
@@ -1849,7 +1849,7 @@ const InputBox = () => {
                           </button>
                         </div>
                        
-                        <div className="text-xs text-white/60 mb-3 text-center">
+                        <div className="text-xs text-black/60 dark:text-white/60 mb-3 text-center">
                           Click a movement to select it, then add to your prompt
                         </div>
 
@@ -1868,7 +1868,7 @@ const InputBox = () => {
                               className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                                 selectedCameraMovements.includes(movement)
                                   ? 'bg-blue-500 text-white'
-                                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                                  : 'bg-black/10 dark:bg-white/10 text-black/70 dark:text-white/70 hover:bg-black/20 dark:hover:bg-white/20 hover:text-black dark:hover:text-white'
                               }`}
                             >
                               {movement}
@@ -1894,13 +1894,13 @@ const InputBox = () => {
                           </button>
                           <button
                             onClick={() => setSelectedCameraMovements([])}
-                            className="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
+                            className="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
                           >
                             Clear
                           </button>
                         </div>
 
-                        <div className="mt-3 text-xs text-white/60">This model responds accurately to camera movement instructions for shot control</div>
+                        <div className="mt-3 text-xs text-black/60 dark:text-white/60">This model responds accurately to camera movement instructions for shot control</div>
                       </div>
                     )}
                   </div>
@@ -1933,12 +1933,12 @@ const InputBox = () => {
                    
                     {/* References Count Badge */}
                     {references.length > 0 && (
-                      <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
+                      <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white ${
                         (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                         (generationMode === "video_to_video" && references.length >= 4)
                           ? 'bg-red-500' : 'bg-green-500'
                       }`}>
-                        <span className="text-xs text-white font-bold">{references.length}</span>
+                        <span className="text-xs font-bold">{references.length}</span>
                       </div>
                     )}
                     <input
@@ -1954,8 +1954,8 @@ const InputBox = () => {
                  
                   {/* References Preview Popup */}
                   {references.length > 0 && (
-                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
-                      <div className="text-xs text-white/60 mb-2">
+                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl border border-black/20 dark:border-white/20 shadow-2xl z-50 min-w-[200px]">
+                      <div className="text-xs text-black/60 dark:text-white/60 mb-2">
                         {generationMode === "image_to_video" && selectedModel === "S2V-01"
                           ? `Character Reference (${references.length}/1)`
                           : `References (${references.length}/4)`
@@ -1964,14 +1964,14 @@ const InputBox = () => {
                       <div className="space-y-2">
                         {references.map((ref, index) => (
                           <div key={index} className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black/10 dark:bg-white/10">
                               <img
                                 src={ref}
                                 alt={`Reference ${index + 1}`}
                                 className="w-full h-full object-cover"
                               />
                             </div>
-                            <span className="text-xs text-white/80 flex-1">Reference {index + 1}</span>
+                            <span className="text-xs text-black/80 dark:text-white/80 flex-1">Reference {index + 1}</span>
                             <button
                               onClick={() => removeReference(index)}
                               className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
@@ -2001,7 +2001,7 @@ const InputBox = () => {
                       alt="Upload Image"
                       width={22}
                       height={22}
-                      className="text-white transition-all duration-200 hover:text-blue-300 hover:scale-110"
+                      className="transition-all duration-200 hover:scale-110 brightness-50 dark:brightness-100"
                     />
                     <input
                       type="file"
@@ -2026,7 +2026,7 @@ const InputBox = () => {
                       alt="Upload First Frame Image"
                       width={22}
                       height={22}
-                      className="text-white transition-all duration-200 hover:text-blue-300 hover:scale-110"
+                      className="transition-all duration-200 hover:scale-110 brightness-50 dark:brightness-100"
                     />
                     <input
                       type="file"
@@ -2082,17 +2082,17 @@ const InputBox = () => {
                  
                   {/* Last Frame Image Preview */}
                   {lastFrameImage && (
-                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
-                      <div className="text-xs text-white/60 mb-2">Last Frame Image</div>
+                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl border border-black/20 dark:border-white/20 shadow-2xl z-50 min-w-[200px]">
+                      <div className="text-xs text-black/60 dark:text-white/60 mb-2">Last Frame Image</div>
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-black/10 dark:bg-white/10">
                           <img
                             src={lastFrameImage}
                             alt="Last Frame"
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="text-xs text-white/80 flex-1">Last Frame</span>
+                        <span className="text-xs text-black/80 dark:text-white/80 flex-1">Last Frame</span>
                         <button
                           onClick={() => setLastFrameImage("")}
                           className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
@@ -2116,7 +2116,7 @@ const InputBox = () => {
                   >
                     <FilePlay
                       size={22}
-                      className="text-white transition-all duration-200 hover:text-purple-300 hover:scale-110"
+                      className="text-black dark:text-white transition-all duration-200 hover:text-purple-300 hover:scale-110"
                     />
                     <input
                       type="file"
@@ -2172,12 +2172,12 @@ const InputBox = () => {
             {/* Uploaded Images */}
             {uploadedImages.length > 0 && (
               <div className="mb-3">
-                <div className="text-xs text-white/60 mb-2">Uploaded Images ({uploadedImages.length})</div>
+                <div className="text-xs text-black/60 dark:text-white/60 mb-2">Uploaded Images ({uploadedImages.length})</div>
                 <div className="flex gap-2">
                   {uploadedImages.map((image, index) => (
                     <div key={index} className="relative group">
                       <div
-                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-black/20 dark:ring-white/20 cursor-pointer"
                         onClick={() => {
                           const previewEntry: HistoryEntry = {
                             id: `preview-${index}`,
@@ -2219,10 +2219,10 @@ const InputBox = () => {
             {/* Uploaded Video */}
             {uploadedVideo && (
               <div className="mb-3">
-                <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
+                <div className="text-xs text-black/60 dark:text-white/60 mb-2">Uploaded Video</div>
                 <div className="relative group">
                   <div
-                    className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                    className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-black/20 dark:ring-white/20 cursor-pointer"
                     onClick={() => {
                       const previewEntry: HistoryEntry = {
                         id: "preview-video",
@@ -2325,12 +2325,12 @@ const InputBox = () => {
                     return (
                       <>
                         {/* Fixed Resolution Display */}
-                        <div className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                        <div className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 bg-black/10 dark:bg-white/10 text-black/70 dark:text-white/70 flex items-center gap-1">
                           <TvMinimalPlay className="w-4 h-4 mr-1" />
                           720P (Fixed)
                         </div>
                         {/* Fixed Duration Display */}
-                        <div className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                        <div className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 bg-black/10 dark:bg-white/10 text-black/70 dark:text-white/70 flex items-center gap-1">
                           <Clock className="w-4 h-4 mr-1" />
                           6s (Fixed)
       </div>
@@ -2462,18 +2462,14 @@ const InputBox = () => {
                                   setTimeout(() => setCloseModelsDropdown(false), 0);
                                   setResolutionDropdownOpen(!resolutionDropdownOpen);
                                 }}
-                                className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-                                  selectedResolution !== '1080P'
-                                    ? 'bg-white text-black'
-                                    : 'bg-transparent text-white/90 hover:bg-white/5'
-                                }`}
+                                className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
                               >
                                 <TvMinimalPlay className="w-4 h-4 mr-1" />
                                 {selectedResolution}
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
                               </button>
                               {resolutionDropdownOpen && (
-                                <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+                                <div className="absolute bottom-full left-0 mb-2 w-32 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2">
                                   {/* Available resolutions based on duration */}
                                   {selectedMiniMaxDuration === 6 && (
                                     <>
@@ -2485,12 +2481,12 @@ const InputBox = () => {
                                             setResolutionDropdownOpen(false);
                                           }}
                                           className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                            selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                            selectedResolution === "512P" ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                           }`}
                                         >
                                           <span>512P</span>
                                           {selectedResolution === "512P" && (
-                                            <div className="w-2 h-2 bg-black rounded-full"></div>
+                                            <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                           )}
                                         </button>
                                       )}
@@ -2500,12 +2496,12 @@ const InputBox = () => {
                                           setResolutionDropdownOpen(false);
                                         }}
                                         className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          selectedResolution === "768P" ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                         }`}
                                       >
                                         <span>768P</span>
                                         {selectedResolution === "768P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                         )}
                                       </button>
                                       <button
@@ -2514,12 +2510,12 @@ const InputBox = () => {
                                           setResolutionDropdownOpen(false);
                                         }}
                                         className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "1080P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          selectedResolution === "1080P" ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                         }`}
                                       >
                                         <span>1080P</span>
                                         {selectedResolution === "1080P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                         )}
                                       </button>
                                     </>
@@ -2534,12 +2530,12 @@ const InputBox = () => {
                                             setResolutionDropdownOpen(false);
                                           }}
                                           className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                            selectedResolution === "512P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                            selectedResolution === "512P" ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                           }`}
                                         >
                                           <span>512P</span>
                                           {selectedResolution === "512P" && (
-                                            <div className="w-2 h-2 bg-black rounded-full"></div>
+                                            <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                           )}
                                         </button>
                                       )}
@@ -2549,12 +2545,12 @@ const InputBox = () => {
                                           setResolutionDropdownOpen(false);
                                         }}
                                         className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                          selectedResolution === "768P" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                          selectedResolution === "768P" ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                         }`}
                                       >
                                         <span>768P</span>
                                         {selectedResolution === "768P" && (
-                                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                                          <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                         )}
                                       </button>
                                     </>
@@ -2580,30 +2576,26 @@ const InputBox = () => {
                                   setTimeout(() => setCloseModelsDropdown(false), 0);
                                   setDurationDropdownOpen(!durationDropdownOpen);
                                 }}
-                                className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-                                  selectedMiniMaxDuration !== 6
-                                    ? 'bg-white text-black'
-                                    : 'bg-transparent text-white/90 hover:bg-white/5'
-                                }`}
+                                className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
                               >
                                 <Clock className="w-4 h-4 mr-1" />
                                 {selectedMiniMaxDuration}s
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${durationDropdownOpen ? 'rotate-180' : ''}`} />
                               </button>
                               {durationDropdownOpen && (
-                                <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+                                <div className="absolute bottom-full left-0 mb-2 w-32 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2">
                                   <button
                                     onClick={() => {
                                       setSelectedMiniMaxDuration(6);
                                       setDurationDropdownOpen(false);
                                     }}
                                     className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                      selectedMiniMaxDuration === 6 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                      selectedMiniMaxDuration === 6 ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                     }`}
                                   >
                                     <span>6s</span>
                                     {selectedMiniMaxDuration === 6 && (
-                                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                                      <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                     )}
                                   </button>
                                   <button
@@ -2612,12 +2604,12 @@ const InputBox = () => {
                                       setDurationDropdownOpen(false);
                                     }}
                                     className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                      selectedMiniMaxDuration === 10 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                      selectedMiniMaxDuration === 10 ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                                     }`}
                                   >
                                     <span>10s</span>
                                     {selectedMiniMaxDuration === 10 && (
-                                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                                      <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                                     )}
                                   </button>
                                 </div>
@@ -2640,13 +2632,13 @@ const InputBox = () => {
 
             </div>
 
-            <div className="flex bg-white/10 rounded-lg p-1">
+            <div className="flex bg-black/10 dark:bg-white/10 rounded-lg p-1">
               <button
                 onClick={() => setGenerationMode("text_to_video")}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   generationMode === "text_to_video"
-                    ? 'bg-white text-black'
-                    : 'text-white hover:bg-white/10'
+                    ? 'bg-black dark:bg-white text-white dark:text-black'
+                    : 'text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10'
                 }`}
               >
                 Text→Video
@@ -2655,8 +2647,8 @@ const InputBox = () => {
                 onClick={() => setGenerationMode("image_to_video")}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   generationMode === "image_to_video"
-                    ? 'bg-white text-black'
-                    : 'text-white hover:bg-white/10'
+                    ? 'bg-black dark:bg-white text-white dark:text-black'
+                    : 'text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10'
                 }`}
               >
                 Image→Video
@@ -2665,8 +2657,8 @@ const InputBox = () => {
                 onClick={() => setGenerationMode("video_to_video")}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   generationMode === "video_to_video"
-                    ? 'bg-white text-black'
-                    : 'text-white hover:bg-white/10'
+                    ? 'bg-black dark:bg-white text-white dark:text-black'
+                    : 'text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10'
                 }`}
               >
                 Video→Video

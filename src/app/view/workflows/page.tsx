@@ -33,7 +33,7 @@ const WorkflowsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B]">
+    <div className="min-h-screen bg-white dark:bg-[#07070B] transition-colors duration-300">
       {/* Navigation - fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Nav />

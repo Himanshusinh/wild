@@ -95,8 +95,8 @@ function Chip({
       onClick={onClick}
       className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
         active
-          ? 'bg-white  text-black shadow-sm'
-          : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+          ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm'
+          : 'bg-gradient-to-b from-black/5 dark:from-white/5 to-black/5 dark:to-white/5 border-black/10 dark:border-white/10 text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10'
       }`}
     >
       {leftIcon && <span className="text-white/90">{leftIcon}</span>}
@@ -115,7 +115,7 @@ function Card({ item }: { item: Creation }) {
 
   return (
     <div className="break-inside-avoid mb-5">
-      <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
+      <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-black/10 dark:ring-white/10 bg-black/5 dark:bg-white/5 group transition-colors duration-300">
         <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
           {isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
@@ -157,7 +157,7 @@ function Card({ item }: { item: Creation }) {
             )}
           </div>
         </div>
-        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-2xl pointer-events-none transition" />
+        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-black/20 dark:group-hover:ring-white/20 rounded-2xl pointer-events-none transition" />
       </div>
     </div>
   );
@@ -187,7 +187,7 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className="text-4xl md:text-4xl font-medium text-white mb-5">
+      <h2 className="text-4xl md:text-4xl font-medium text-black dark:text-white mb-5">
         Community Creations
       </h2>
 
@@ -198,7 +198,7 @@ export default function CommunityCreations({
             const isActive = chip.key === active;
             return (
               <Chip
-                key={`${chip.label}-${idx}`}
+                key={`${chip.label}-${idx}`}  
                 active={isActive}
                 onClick={() => setActive(chip.key)}
               >

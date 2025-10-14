@@ -19,6 +19,26 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedLyrics, setCopiedLyrics] = useState(false);
   const [lyricsExpanded, setLyricsExpanded] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Detect theme changes
+  useEffect(() => {
+    const checkTheme = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setIsDarkMode(isDark);
+    };
+    
+    checkTheme();
+    
+    // Watch for theme changes
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -239,13 +259,13 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
         {/* Prompt block with label and copy */
         }
         <div className="flex items-start gap-2">
-          <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Prompt</div>
-          <div className="flex-1 bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/90 text-sm leading-relaxed">
+          <div className="text-xs uppercase tracking-wide text-black/40 dark:text-white/50 mt-2">Prompt</div>
+          <div className="flex-1 bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/90 text-sm leading-relaxed">
             {promptToShow}
           </div>
           <button
             onClick={() => copyToClipboard(promptToShow, 'prompt')}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white mt-2"
+            className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white mt-2"
             title="Copy prompt"
           >
             {copiedPrompt ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -255,12 +275,12 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
         {/* Download button under copy icon */}
         <div className="flex justify-end items-center gap-2 -mt-2">
           {/* File type label (left of download) */}
-          <span className="px-2 py-0.5 rounded bg-white/10 ring-1 ring-white/15 text-white/70 text-[10px] tracking-wide">
+          <span className="px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 ring-1 ring-black/15 dark:ring-white/15 text-black/60 dark:text-white/70 text-[10px] tracking-wide">
             {fileTypeLabel}
           </span>
           <button
             onClick={handleDownload}
-            className="mt-1 inline-flex items-center p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/80 ring-1 ring-white/15"
+            className="mt-1 inline-flex items-center p-1.5 rounded-md bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black/70 dark:text-white/80 ring-1 ring-black/15 dark:ring-white/15"
             title="Download audio"
           >
             <Download className="w-4 h-4" />
@@ -270,10 +290,10 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
         {/* Lyrics block with label, copy, and collapse */}
         {lyrics && (
           <div className="flex items-start gap-2">
-            <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Lyrics</div>
+            <div className="text-xs uppercase tracking-wide text-black/40 dark:text-white/50 mt-2">Lyrics</div>
             <div className="flex-1">
               <div
-                className="bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/80 text-sm leading-relaxed cursor-pointer hover:bg-white/10"
+                className="bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10 rounded-lg px-3 py-2 text-black/70 dark:text-white/80 text-sm leading-relaxed cursor-pointer hover:bg-black/10 dark:hover:bg-white/10"
                 onClick={() => setLyricsExpanded(!lyricsExpanded)}
                 title={lyricsExpanded ? 'Click to collapse' : 'Click to expand'}
               >
@@ -283,14 +303,14 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
                   </div>
                 ) : (
                   <div className="max-h-40 overflow-y-auto scrollbar-hide">
-                    <pre className="whitespace-pre-wrap font-mono text-[12px] text-white/80">{lyrics}</pre>
+                    <pre className="whitespace-pre-wrap font-mono text-[12px] text-black/70 dark:text-white/80">{lyrics}</pre>
                   </div>
                 )}
               </div>
             </div>
             <button
               onClick={() => copyToClipboard(lyrics, 'lyrics')}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white mt-2"
+              className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white mt-2"
               title="Copy lyrics"
             >
               {copiedLyrics ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -299,11 +319,11 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
         )}
         
         {/* Music Box: Image + Play Button + Track Progress */}
-        <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4 ring-1 ring-white/20 w-full">
+        <div className="bg-gray-200/60 dark:bg-black/60 backdrop-blur-sm rounded-lg p-4 ring-1 ring-black/20 dark:ring-white/20 w-full">
           <div className="flex items-center gap-4">
             {/* Music Image */}
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg flex items-center justify-center ring-1 ring-white/20 flex-shrink-0">
-              <Music4 className="w-10 h-10 text-white/60" />
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg flex items-center justify-center ring-1 ring-black/20 dark:ring-white/20 flex-shrink-0">
+              <Music4 className="w-10 h-10 text-black/50 dark:text-white/60" />
             </div>
             
             {/* Play Button + Track Progress */}
@@ -328,12 +348,12 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
                   max={duration || 0}
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                  className="w-full h-1.5 bg-black/20 dark:bg-white/20 rounded-lg appearance-none cursor-pointer slider"
                   style={{
-                    background: `linear-gradient(to right, #2F6BFF ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%)`
+                    background: `linear-gradient(to right, #2F6BFF ${(currentTime / (duration || 1)) * 100}%, ${isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'} ${(currentTime / (duration || 1)) * 100}%)`
                   }}
                 />
-                <div className="flex justify-between text-xs text-white/60">
+                <div className="flex justify-between text-xs text-black/50 dark:text-white/60">
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>

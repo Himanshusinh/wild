@@ -66,7 +66,7 @@ const LiveChatInputBox: React.FC = () => {
   return (
     <>
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[120]">
-      <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
+      <div className="rounded-2xl bg-white/95 dark:bg-transparent backdrop-blur-3xl ring-1 ring-black/10 dark:ring-white/20 shadow-2xl">
         {/* Top row: prompt + actions */}
         <div className="flex items-center gap-3 p-3">
           <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
@@ -78,8 +78,8 @@ const LiveChatInputBox: React.FC = () => {
                 dispatch(setPrompt(e.target.value));
                 adjustTextareaHeight(e.target);
               }}
-              className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
-                prompt ? 'text-white' : 'text-white/70'
+              className={`flex-1 bg-transparent text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
+                prompt ? 'text-black dark:text-white' : 'text-black/70 dark:text-white/70'
               }`}
               rows={1}
               style={{ minHeight: '24px', maxHeight: '96px', lineHeight: '1.2' }}
@@ -89,7 +89,7 @@ const LiveChatInputBox: React.FC = () => {
             {uploadedImages.length > 0 && (
               <div className="flex items-center gap-1.5 pr-1">
                 {uploadedImages.map((u: string, i: number) => (
-                  <div key={i} className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group">
+                  <div key={i} className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-black/10 dark:ring-white/20 group">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={u} alt={`ref-${i}`} className="w-full h-full object-cover transition-opacity group-hover:opacity-30" />
                     <button
@@ -112,7 +112,7 @@ const LiveChatInputBox: React.FC = () => {
             )}
 
             {/* Upload button */}
-            <label className="p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer">
+            <label className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer">
               <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
               <input
                 type="file"
@@ -226,11 +226,11 @@ const LiveChatInputBox: React.FC = () => {
         <div className="absolute inset-0 flex items-start justify-center p-6 pt-16 pb-[140px]">
           <div className="relative bg-transparent max-w-[95vw] w-full px-2 py-2">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-white/80 text-sm flex items-center gap-2">
+              <div className="text-black/70 dark:text-white/80 text-sm flex items-center gap-2">
                 <span>Live Chat session</span>
                 {isProcessing && (
-                  <span className="inline-flex items-center gap-2 text-white/70">
-                    <span className="w-3 h-3 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
+                  <span className="inline-flex items-center gap-2 text-black/60 dark:text-white/70">
+                    <span className="w-3 h-3 border-2 border-black/30 dark:border-white/30 border-t-black dark:border-t-white/80 rounded-full animate-spin" />
                     <span className="text-xs">Generating…</span>
                   </span>
                 )}
@@ -281,7 +281,7 @@ const LiveChatInputBox: React.FC = () => {
                     setSessionImages([]);
                     setMessages([]);
                   }}
-                  className="px-3 py-1.5 text-xs rounded-full bg-white text-black hover:bg-gray-200 transition"
+                  className="px-3 py-1.5 text-xs rounded-full bg-black text-white dark:bg-white dark:text-black hover:bg-black/80 dark:hover:bg-gray-200 transition"
                 >
                   Done
                 </button>
@@ -290,12 +290,12 @@ const LiveChatInputBox: React.FC = () => {
             <div ref={stripRef} className="w-full overflow-x-auto">
               <div className="flex flex-row items-center gap-3 pb-2 justify-start">
                 {isProcessing && (
-                  <div className="relative  rounded-xl overflow-hidden bg-black/70 flex-shrink-0 flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  <div className="relative  rounded-xl overflow-hidden bg-gray-200/60 dark:bg-black/70 flex-shrink-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
                   </div>
                 )}
                 {sessionImages.map((img, idx) => (
-                  <div key={`${img.id || 'img'}-${idx}-${img.url}`} className="relative w-[60vw] h-[60vw] md:w-[22vh] md:h-[22vh] lg:w-[22vh] lg:h-[22vh] rounded-xl overflow-hidden bg-black/70 flex-shrink-0">
+                  <div key={`${img.id || 'img'}-${idx}-${img.url}`} className="relative w-[60vw] h-[60vw] md:w-[22vh] md:h-[22vh] lg:w-[22vh] lg:h-[22vh] rounded-xl overflow-hidden bg-gray-200/60 dark:bg-black/70 flex-shrink-0">
                     <Image src={img.url} alt="generated" fill className="object-contain" />
                   </div>
                 ))}

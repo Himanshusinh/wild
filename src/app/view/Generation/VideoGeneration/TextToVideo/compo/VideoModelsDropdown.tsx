@@ -144,20 +144,16 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           }
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax') || selectedModel.includes('veo3')
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
       >
         <Cpu className="w-4 h-4 mr-1" />
         {selectedModelInfo?.label || selectedModel}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-64 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2">
           {/* Mode indicator */}
-          <div className="px-4 py-2 text-xs text-white/60 border-b border-white/10">
+          <div className="px-4 py-2 text-xs text-black/60 dark:text-white/60 border-b border-black/10 dark:border-white/10">
             {generationMode === "text_to_video" ? "Text → Video Models" : 
              generationMode === "image_to_video" ? "Image → Video Models" : "Video → Video Models"}
           </div>
@@ -171,8 +167,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
               }}
               className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
                 selectedModel === model.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
+                  ? 'bg-black dark:bg-white text-white dark:text-black'
+                  : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
               }`}
             >
               <div className="flex flex-col items-start">
@@ -191,7 +187,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                 )}
               </div>
               {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
+                <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
               )}
             </button>
           ))}

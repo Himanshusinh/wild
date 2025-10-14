@@ -230,7 +230,7 @@ const HomePage: React.FC = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#07070B]">
+    <div className="min-h-screen bg-white dark:bg-[#07070B] transition-colors duration-300">
       {/* DEBUG: This is HomePage component */}
       {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
         🔍 DEBUG: HomePage Component is Rendering
@@ -258,25 +258,25 @@ const HomePage: React.FC = () => {
           <Header />
           <Recentcreation />
           <Second />
-          <main className="min-h-screen bg-[#07070B] text-white py-10">
+          <main className="min-h-screen bg-white dark:bg-[#07070B] text-black dark:text-white py-10 transition-colors duration-300">
             <div className="w-full px-4 md:px-8 lg:px-12 mt-32">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-6 ">Workflow</h2>
+              <h2 className="text-black dark:text-white text-4xl md:text-4xl font-medium ml-6">Workflow</h2>
               <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
             </div>
           </main>
 
-          <main className="min-h-screen bg-[#07070B] text-white px-4 md:px-8 py-10">
+          <main className="min-h-screen bg-white dark:bg-[#07070B] text-black dark:text-white px-4 md:px-8 py-10 transition-colors duration-300">
             <div className="w-full px-4 md:px-8 lg:px-12">
               <CommunityCreations items={artItems} initialFilter="All" />
             </div>
           </main>
 
           {/* WobbleCard Section */}
-          <main className="bg-[#07070B] text-white px-4 md:px-8 py-6 mb-32 mt-32">
+          <main className="bg-white dark:bg-[#07070B] text-black dark:text-white px-4 md:px-8 py-6 mb-32 mt-32 transition-colors duration-300">
             <div className="w-full px-4 md:px-8 lg:px-12">
               <div className="w-full">
                 <WobbleCard
-                  containerClassName="w-full bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]"
+                  containerClassName="w-full bg-[#E8F4F8] dark:bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px] transition-colors duration-300"
                   className="!p-0 !py-0 !h-full !min-h-full"
                 >
                   <div
@@ -286,16 +286,16 @@ const HomePage: React.FC = () => {
                     {/* Left side content */}
                     <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
                       <div className="w-full">
-                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-black dark:text-white font-poppins">
                           Plans That Grow With You
                         </h2>
-                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
-                          Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
+                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-gray-700 dark:text-neutral-200 mr-2 font-medium">
+                          Whether you're a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don't just save money—you unlock endless creative possibilities.
                         </p>
                       </div>
 
                       {/* Join Community Button - Bottom Left */}
-                      <button className="font-poppins text-lg bg-white text-[#1C303D] font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
+                      <button className="font-poppins text-lg bg-black dark:bg-white text-white dark:text-[#1C303D] font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
                         Pricing Plans
                       </button>
                     </div>
@@ -328,20 +328,20 @@ const HomePage: React.FC = () => {
         <>
           {/* Overlay */}
           <div
-            className="fixed inset-0 bg-black z-[200] flex items-center justify-center"
+            className="fixed inset-0 bg-black/80 dark:bg-black z-[200] flex items-center justify-center"
             onClick={() => setShowWildmindSkitPopup(false)}
           >
             {/* Popup Content */}
             <div
-              className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
+              className="bg-white dark:bg-black backdrop-blur-xl border border-gray-300 dark:border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto transition-colors duration-300"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-white text-3xl font-bold">Choose Style</h2>
+                <h2 className="text-black dark:text-white text-3xl font-bold">Choose Style</h2>
                 <button
                   onClick={() => setShowWildmindSkitPopup(false)}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -368,7 +368,7 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="text-4xl mb-4">📹</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Video Ads</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Video Ads</h3>
                 </div>
 
                 {/* Jewelry - Coming Soon */}
@@ -376,7 +376,7 @@ const HomePage: React.FC = () => {
                   <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
                     <div className="text-4xl mb-4">💎</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Jewelry</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Jewelry</h3>
                   <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
                 </div>
 
@@ -396,7 +396,7 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="text-4xl mb-4">💬</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Live Chat</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Live Chat</h3>
                 </div>
 
                 {/* Virtual Try-On - Coming Soon */}
@@ -404,7 +404,7 @@ const HomePage: React.FC = () => {
                   <div className="bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
                     <div className="text-4xl mb-4">👗</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
                   <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
                 </div>
               </div>

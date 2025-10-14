@@ -41,20 +41,20 @@
   return(
     <div className="w-full">
       <div className="w-full">
-        <h1 className="text-white text-4xl font-semibold text-left mb-7 mt-5">Additional Credits</h1>
+        <h1 className="text-gray-900 dark:text-white text-4xl font-semibold text-left mb-7 mt-5">Additional Credits</h1>
         
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
           {creditPackages.map((pkg) => (
             <div 
               key={pkg.id}
-              className={`relative text-white rounded-[2rem]
-              bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
-              border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-1 ring-white/10
+              className={`relative text-gray-900 dark:text-white rounded-[2rem]
+              bg-white/90 dark:bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
+              border border-gray-200 dark:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-1 ring-gray-200 dark:ring-white/10
               p-5 py-6 w-full overflow-hidden isolate flex flex-col`}
             >
               {/* Glass highlight */}
-              <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-              <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-gray-100/50 dark:from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
 
               <div className="relative z-10 min-h-[120px]">
                 <div className="flex justify-between items-start mb-3 mx-4">
@@ -62,7 +62,7 @@
                   {pkg.credits && (
                     <div className="text-right">
                       <p className="text-xl font-bold leading-none">{pkg.credits}</p>
-                      <p className="text-xs text-white/70 mt-1">Credits</p>
+                      <p className="text-xs text-gray-900 dark:text-gray-600 dark:text-white/70 mt-1">Credits</p>
                     </div>
                   )}
                 </div>
@@ -71,11 +71,11 @@
                   <p className="text-xl font-bold mt-1">{pkg.price}</p>
                 </div>
 
-                <p className="text-xs text-white/70 mt-2 mx-3 leading-snug break-words">{pkg.eligibility}</p>
+                <p className="text-xs text-gray-900 dark:text-gray-600 dark:text-white/70 mt-2 mx-3 leading-snug break-words">{pkg.eligibility}</p>
               </div>
 
               <div className="my-4 mx-3 mt-auto">
-                <button className="mt-4 bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-5 py-2 text-xs font-medium ring-1 ring-white/15 transition-colors w-full">
+                <button className="mt-4 bg-blue-600 hover:bg-blue-700 dark:bg-[#1C303D] dark:hover:bg-[#1c3c52] text-white rounded-full px-5 py-2 text-xs font-medium ring-1 ring-gray-300 dark:ring-white/15 transition-colors w-full">
                   Purchase
                 </button>
               </div>

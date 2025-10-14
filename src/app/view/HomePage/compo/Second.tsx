@@ -37,7 +37,7 @@ export default function HowToGuidesShared() {
   return (
     <MotionConfig transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
       <div className="w-full px-4 md:px-8 lg:px-12 py-8 mt-32">
-        <h2 className="text-white text-4xl md:text-4xl font-medium mb-6 ml-6">
+        <h2 className="text-black dark:text-white text-4xl md:text-4xl font-medium mb-6 ml-6">
           How To Use & Guides
         </h2>
 
@@ -51,7 +51,7 @@ export default function HowToGuidesShared() {
               muted 
               className="hidden"
             />
-            <div className="relative h-[320px] md:h-[420px] lg:h-[480px] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-black/30">
+            <div className="relative h-[320px] md:h-[420px] lg:h-[480px] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/10 dark:ring-white/10 bg-white/30 dark:bg-black/30 transition-colors duration-300">
               <motion.div
                 key={main.id}
                 layoutId={`card-${main.id}`} // shared element id
@@ -61,7 +61,7 @@ export default function HowToGuidesShared() {
                 <div className="absolute inset-0">
                   <video 
                     src={main.src} 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full object-cover"
                     autoPlay 
                     muted 
                     loop 
@@ -121,7 +121,7 @@ export default function HowToGuidesShared() {
               key={nextSlide.id}
               layoutId={`card-${nextSlide.id}`}
               onClick={() => go(nextIndex)}
-              className="relative w-[200px] md:w-[300px] h-[140px] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-white/20 focus:outline-none"
+              className="relative w-[200px] md:w-[300px] h-[140px] rounded-2xl overflow-hidden ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 focus:outline-none transition-colors duration-300"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.25 }}
               aria-label="Open next slide"
@@ -148,7 +148,7 @@ export default function HowToGuidesShared() {
               key={thirdSlide.id}
               layoutId={`card-${thirdSlide.id}`}
               onClick={() => go(thirdIndex)}
-              className="relative h-[140px] w-[10%] min-w-[22px] max-w-[36px] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-white/20 focus:outline-none"
+              className="relative h-[140px] w-[10%] min-w-[22px] max-w-[36px] rounded-2xl overflow-hidden ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 focus:outline-none transition-colors duration-300"
               aria-label="Peek third slide"
             >
               <video 

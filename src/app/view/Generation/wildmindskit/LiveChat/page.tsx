@@ -104,14 +104,14 @@ const LiveChatGrid: React.FC = () => {
           <div key={group.key} className="space-y-4">
             {/* Header with prompt and meta */}
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-black/60 dark:text-white/60"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
               </div>
               <div className="flex flex-col">
                 <div className="flex flex-row-reverse items-center gap-2">
-                  <p className="text-white/90 text-sm leading-relaxed flex-1 max-w-[500px] break-words">{headerEntry.prompt}</p>
+                  <p className="text-black/80 dark:text-white/90 text-sm leading-relaxed flex-1 max-w-[500px] break-words">{headerEntry.prompt}</p>
                 </div>
-                <div className="flex items-center gap-4 mt-2 text-xs text-white/50">
+                <div className="flex items-center gap-4 mt-2 text-xs text-black/50 dark:text-white/50">
                   <span>{new Date(headerEntry.timestamp).toLocaleDateString()}</span>
                   {headerEntry.model && <span>{headerEntry.model}</span>}
                   {Array.isArray(headerEntry.images) && <span>{headerEntry.images.length} image{headerEntry.images.length !== 1 ? 's' : ''}</span>}
@@ -131,11 +131,11 @@ const LiveChatGrid: React.FC = () => {
                   <div
                     key={img.id}
                     onClick={() => setPreviewUrl(img.url)}
-                    className="relative aspect-square w-40 md:w-20 lg:w-20 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 flex-shrink-0 cursor-pointer snap-start"
+                    className="relative aspect-square w-40 md:w-20 lg:w-20 rounded-lg overflow-hidden bg-gray-200/60 dark:bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition-all duration-200 flex-shrink-0 cursor-pointer snap-start"
                   >
                     {img._entryStatus === 'generating' ? (
-                      <div className="w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                      <div className="w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 flex items-center justify-center bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-800 dark:to-gray-900">
+                        <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
                       </div>
                     ) : (
                       <Image src={img.url} alt={img._entryPrompt || 'generated'} fill className="object-cover" />
@@ -149,9 +149,9 @@ const LiveChatGrid: React.FC = () => {
       })}
       {/* Image preview modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-[130] bg-black/70 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setPreviewUrl(null)}>
-          <div className="relative bg-black/90 ring-1 ring-white/20 rounded-2xl overflow-hidden max-w-4xl w-full max-h-[85vh]" onClick={(e)=> e.stopPropagation()}>
-            <button onClick={() => setPreviewUrl(null)} className="absolute top-3 right-3 px-3 py-1.5 text-xs rounded-full bg-white text-black hover:bg-gray-200 transition z-10">Close</button>
+        <div className="fixed inset-0 z-[130] bg-black/60 dark:bg-black/70 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setPreviewUrl(null)}>
+          <div className="relative bg-white/95 dark:bg-black/90 ring-1 ring-black/10 dark:ring-white/20 rounded-2xl overflow-hidden max-w-4xl w-full max-h-[85vh]" onClick={(e)=> e.stopPropagation()}>
+            <button onClick={() => setPreviewUrl(null)} className="absolute top-3 right-3 px-3 py-1.5 text-xs rounded-full bg-black text-white dark:bg-white dark:text-black hover:bg-black/80 dark:hover:bg-gray-200 transition z-10">Close</button>
             <div className="relative w-full h-[75vh]">
               <Image src={previewUrl} alt="Preview" fill className="object-contain" />
             </div>

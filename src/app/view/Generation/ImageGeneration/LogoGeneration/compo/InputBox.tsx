@@ -436,8 +436,8 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
         <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-white/10 rounded-2xl ">
-              <h2 className="text-xl font-semibold text-white pl-0 ">
+            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/90 dark:bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-black/10 dark:border-white/10 rounded-2xl ">
+              <h2 className="text-xl font-semibold text-black dark:text-white pl-0 ">
                 Logo Generation History
               </h2>
             </div>
@@ -446,10 +446,10 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
 
             {/* Scoped overlay loader while first page loads */}
           {(initialLoading || (loading && logoHistoryEntries.length === 0)) && (
-            <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/30 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-white text-lg">Loading generations...</div>
+                  <div className="w-12 h-12 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-black dark:text-white text-lg">Loading generations...</div>
                 </div>
               </div>
             )}
@@ -461,19 +461,19 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                 <div className="space-y-4">
                   {/* Date Header */}
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
                     </div>
-                    <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
+                    <h3 className="text-sm font-medium text-black/60 dark:text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
         </div>
                   <div className="flex flex-wrap gap-3 ml-9">
                     {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                      <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                      <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-200/60 dark:bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10">
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                             <div className="flex flex-col items-center gap-2">
-                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">Generating...</div>
+                              <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-black/60 dark:text-white/60">Generating...</div>
             </div>
           </div>
                         ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -488,15 +488,15 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                             <Image src={image.url || image.originalUrl || '/placeholder-logo.png'} alt={localGeneratingEntries[0].prompt} fill loading="lazy" className="object-cover" sizes="192px" />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-t-xl bg-black/20 dark:bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 flex items-center gap-2 min-h-[40px]">
                               <span
                                 title={getCleanPrompt(localGeneratingEntries[0].prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
+                                className="text-xs text-black dark:text-white flex-1 leading-snug"
                                 style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
                               >
                                 {getCleanPrompt(localGeneratingEntries[0].prompt)}
                               </span>
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
@@ -512,7 +512,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
               <div key={date} className="space-y-4">
                 {/* Date Header */}
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                     <svg
                       width="12"
                       height="12"
@@ -523,7 +523,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                       <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                     </svg>
                   </div>
-                  <h3 className="text-sm font-medium text-white/70">
+                  <h3 className="text-sm font-medium text-black/60 dark:text-white/70">
                     {new Date(date).toLocaleDateString('en-US', { 
                       weekday: 'short', 
                       year: 'numeric', 
@@ -542,14 +542,14 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           (image: any, idx: number) => (
                             <div
                               key={`local-${idx}`}
-                              className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-200/60 dark:bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10"
                             >
                               {localGeneratingEntries[0].status ===
                               "generating" ? (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                                   <div className="flex flex-col items-center gap-2">
-                                    <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                    <div className="text-xs text-white/60">
+                                  <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                                  <div className="text-xs text-black/60 dark:text-white/60">
                                       Generating...
                                     </div>
                                   </div>
@@ -605,14 +605,14 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                         key={`${entry.id}-${image.id}`}
                         data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreviewEntry(entry)}
-                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-200/60 dark:bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                       >
                           {entry.status === "generating" ? (
                           // Loading frame
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                             <div className="flex flex-col items-center gap-2">
-                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">
+                              <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                              <div className="text-xs text-black/60 dark:text-white/60">
                                 Generating...
                               </div>
                             </div>
@@ -652,15 +652,15 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/10 dark:bg-black/40 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px]">
                               <span
                                 title={getCleanPrompt(entry.prompt)}
-                                className="text-sm text-white/90 flex-1 leading-snug"
+                                className="text-sm text-black dark:text-white/90 flex-1 leading-snug"
                                 style={{ display: '-webkit-box', WebkitLineClamp: 3 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}
                               >
                                 {getCleanPrompt(entry.prompt)}
                               </span>
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
@@ -683,8 +683,8 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           {hasMore && loading && logoHistoryEntries.length > 0 && (
           <div className="flex items-center justify-center py-10">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-              <div className="text-sm text-white/60">Loading more logos...</div>
+              <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+              <div className="text-sm text-black/60 dark:text-white/60">Loading more logos...</div>
             </div>
           </div>
         )}
@@ -695,7 +695,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
 
       {/* Input Section */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[780px] z-[60]">
-        <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
+        <div className="rounded-2xl bg-white/95 dark:bg-transparent backdrop-blur-3xl ring-1 ring-black/10 dark:ring-white/20 shadow-2xl">
           <div className="flex items-center gap-3 p-3">
             <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
               <input
@@ -703,7 +703,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                 placeholder="Type your logo prompt..."
                 value={prompt}
                 onChange={(e) => dispatch(setPrompt(e.target.value))}
-                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
+                className="flex-1 bg-transparent text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 outline-none text-[15px] leading-none"
               />
             </div>
             <div className="flex flex-col items-end gap-2">

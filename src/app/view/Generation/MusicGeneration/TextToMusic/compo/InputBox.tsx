@@ -387,8 +387,8 @@ const InputBox = () => {
       <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 scrollbar-hide">
           <div className="py-6 pl-4 "> 
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-white/10 rounded-2xl ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Music Generation </h2>
+          <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/90 dark:bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-black/10 dark:border-white/10 rounded-2xl ">
+            <h2 className="text-xl font-semibold text-black dark:text-white pl-0 ">Music Generation </h2>
           </div>
           {/* Spacer to keep content below fixed header */}
           <div className="h-0"></div>
@@ -397,8 +397,8 @@ const InputBox = () => {
           {storeLoading && historyEntries.length === 0 && (
               <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-white text-lg">Loading your generation history...</div>
+                  <div className="w-12 h-12 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                  <div className="text-black dark:text-white text-lg">Loading your generation history...</div>
                 </div>
               </div>
             )}
@@ -407,11 +407,11 @@ const InputBox = () => {
           {!storeLoading && historyEntries.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
-                  <Music4 className="w-8 h-8 text-white/60" />
+                <div className="w-16 h-16 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center">
+                  <Music4 className="w-8 h-8 text-black/50 dark:text-white/60" />
                 </div>
-                <div className="text-white text-lg">No music generations yet</div>
-                <div className="text-white/60 text-sm max-w-md">
+                <div className="text-black dark:text-white text-lg">No music generations yet</div>
+                <div className="text-black/50 dark:text-white/60 text-sm max-w-md">
                   Create your first piece of AI-generated music using the interface below
                 </div>
               </div>
@@ -423,18 +423,18 @@ const InputBox = () => {
             <div className="space-y-4">
               {/* Date Header */}
               <div className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                   <svg
                     width="12"
                     height="12"
                     viewBox="0 0 24 24"
                     fill="currentColor"
-                    className="text-white/60"
+                    className="text-black/50 dark:text-white/60"
                   >
                     <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-white/70">
+                <h3 className="text-sm font-medium text-black/60 dark:text-white/70">
                   {new Date(todayKey).toLocaleDateString('en-US', { 
                     weekday: 'short', 
                     year: 'numeric', 
@@ -458,18 +458,18 @@ const InputBox = () => {
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-6 h-6 bg-black/10 dark:bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
                         height="12"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="text-white/60"
+                        className="text-black/50 dark:text-white/60"
                       >
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                       </svg>
                     </div>
-                    <h3 className="text-sm font-medium text-white/70">
+                    <h3 className="text-sm font-medium text-black/60 dark:text-white/70">
                       {new Date(date).toLocaleDateString('en-US', { 
                         weekday: 'short', 
                         year: 'numeric', 
@@ -488,14 +488,14 @@ const InputBox = () => {
                         <div
                           key={`${entry.id}-${audio.id}`}
                           onClick={() => setSelectedAudio({ entry, audio })}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-200/60 dark:bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-800 dark:to-gray-900">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-white/60">
+                                <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                                <div className="text-xs text-black/50 dark:text-white/60">
                                   Generating...
                                 </div>
                               </div>
@@ -518,15 +518,15 @@ const InputBox = () => {
                             </div>
                           ) : (
                             // Completed music track
-                            <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center relative">
+                            <div className="w-full h-full bg-gradient-to-br from-purple-500/30 to-blue-500/30 dark:from-purple-900/20 dark:to-blue-900/20 flex items-center justify-center relative">
                               {/* Song Logo/Icon */}
-                              <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                <Music4 className="w-8 h-8 text-white/80" />
+                              <div className="w-16 h-16 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <Music4 className="w-8 h-8 text-black/70 dark:text-white/80" />
                               </div>
                               
                               {/* Play button overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 dark:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-12 h-12 bg-black/30 dark:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
                                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
                                     <path d="M8 5v14l11-7z" />
                                   </svg>
@@ -534,12 +534,12 @@ const InputBox = () => {
                               </div>
                               
                           {/* Music track label */}
-                          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                          <div className="absolute bottom-2 right-2 bg-black/60 dark:bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                             {/* <span className="text-xs text-white">Audio</span> */}
                           </div>
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          <div className="absolute inset-0 bg-transparent group-hover:bg-black/10 dark:group-hover:bg-black/20 transition-colors" />
                         </div>
                       ))
                     )}
@@ -551,8 +551,8 @@ const InputBox = () => {
               {storeHasMore && storeLoading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                    <div className="text-sm text-white/60">Loading more generations...</div>
+                    <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+                    <div className="text-sm text-black/50 dark:text-white/60">Loading more generations...</div>
                   </div>
                 </div>
               )}
@@ -566,7 +566,7 @@ const InputBox = () => {
       {errorMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
           <div className="rounded-2xl bg-red-500/15 ring-1 ring-red-500/30 p-3">
-            <div className="text-red-300 text-sm">{errorMessage}</div>
+            <div className="text-red-600 dark:text-red-300 text-sm">{errorMessage}</div>
           </div>
         </div>
       )}
@@ -583,13 +583,13 @@ const InputBox = () => {
 
       {/* Audio Player Modal */}
       {selectedAudio && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
+          <div className="bg-white/95 dark:bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-black/20 dark:ring-white/20">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Music Track</h3>
+              <h3 className="text-black dark:text-white text-lg font-semibold">Music Track</h3>
               <button
                 onClick={() => setSelectedAudio(null)}
-                className="text-white/60 hover:text-white transition-colors"
+                className="text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
@@ -614,12 +614,12 @@ export default InputBox;
 
 // Helper component for music preview tile
 const MusicTileFromPreview = ({ preview }: { preview: any }) => (
-  <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 flex-shrink-0">
+  <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-200/60 dark:bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 flex-shrink-0">
     {preview.status === 'generating' ? (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-800 dark:to-gray-900">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-          <div className="text-xs text-white/60">Composing...</div>
+          <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+          <div className="text-xs text-black/50 dark:text-white/60">Composing...</div>
         </div>
       </div>
     ) : preview.status === 'failed' ? (
@@ -632,15 +632,15 @@ const MusicTileFromPreview = ({ preview }: { preview: any }) => (
         </div>
       </div>
     ) : (
-      <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center relative">
+      <div className="w-full h-full bg-gradient-to-br from-purple-500/30 to-blue-500/30 dark:from-purple-900/20 dark:to-blue-900/20 flex items-center justify-center relative">
         {/* Song Logo/Icon */}
-        <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-          <Music4 className="w-8 h-8 text-white/80" />
+        <div className="w-16 h-16 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+          <Music4 className="w-8 h-8 text-black/70 dark:text-white/80" />
         </div>
         
         {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 dark:bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
+          <div className="w-12 h-12 bg-black/30 dark:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
               <path d="M8 5v14l11-7z"/>
             </svg>
@@ -648,6 +648,6 @@ const MusicTileFromPreview = ({ preview }: { preview: any }) => (
         </div>
       </div>
     )}
-    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Music</div>
+    <div className="absolute bottom-2 left-2 bg-black/60 dark:bg-black/60 text-white text-xs px-2 py-0.5 rounded">Music</div>
   </div>
 );

@@ -74,7 +74,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
+        className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
       >
         <FileImage className="w-4 h-4 mr-1" />
         {selectedFileType?.name || 'File Type'}
@@ -82,7 +82,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
       </button>
 
       {activeDropdown === 'fileType' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-white/90 dark:bg-black/90 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2 z-50`}>
           {fileTypes.map((fileType) => (
             <button
               key={fileType.value}
@@ -91,8 +91,8 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
                 handleFileTypeSelect(fileType.value);
               }}
               className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${outputFormat === fileType.value
-                ? 'bg-white text-black'
-                : 'text-white/90 hover:bg-white/10'
+                ? 'bg-black dark:bg-white text-white dark:text-black'
+                : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                 }`}
             >
               <div className="flex flex-col">
@@ -100,7 +100,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
                 <span className="text-xs opacity-70">{fileType.description}</span>
               </div>
               {outputFormat === fileType.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
+                <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
               )}
             </button>
           ))}

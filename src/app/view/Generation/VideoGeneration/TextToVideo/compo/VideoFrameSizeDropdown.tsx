@@ -133,18 +133,14 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           }
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedFrameSize !== '16:9' 
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
       >
         <Crop className="w-4 h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-44 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-44 bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2">
           {availableFrameSizes.map((size) => (
             <button
               key={size.value}
@@ -154,39 +150,39 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
               }}
               className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between gap-3 ${
                 selectedFrameSize === size.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
+                  ? 'bg-black dark:bg-white text-white dark:text-black'
+                  : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
               }`}
             >
               <span className="flex items-center gap-2">
                 {/* Icon */}
                 {size.icon === 'square' && (
                   <span className={`inline-block w-4 h-4 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    selectedFrameSize === size.value ? 'border-white dark:border-black' : 'border-black/60 dark:border-white/60'
                   }`}></span>
                 )}
                 {size.icon === 'portrait' && (
                   <span className={`inline-block w-3 h-4 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    selectedFrameSize === size.value ? 'border-white dark:border-black' : 'border-black/60 dark:border-white/60'
                   }`}></span>
                 )}
                 {size.icon === 'landscape' && (
                   <span className={`inline-block w-4 h-3 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    selectedFrameSize === size.value ? 'border-white dark:border-black' : 'border-black/60 dark:border-white/60'
                   }`}></span>
                 )}
                 {size.icon === 'ultrawide' && (
                   <span className={`inline-block w-5 h-2 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    selectedFrameSize === size.value ? 'border-white dark:border-black' : 'border-black/60 dark:border-white/60'
                   }`}></span>
                 )}
                 <span>{size.label}</span>
                 <span className={`text-[12px] ${
-                  selectedFrameSize === size.value ? 'text-black/70' : 'text-white/50'
+                  selectedFrameSize === size.value ? 'text-white/70 dark:text-black/70' : 'text-black/50 dark:text-white/50'
                 }`}>{size.value}</span>
               </span>
               {selectedFrameSize === size.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
+                <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
               )}
             </button>
           ))}

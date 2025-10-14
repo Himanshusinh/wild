@@ -287,27 +287,27 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative w-full max-w-6xl bg-white/95 dark:bg-black/40 ring-1 ring-gray-200 dark:ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <div className="text-white/70 text-sm">{preview.entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gray-100/80 dark:bg-black/40 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
+          <div className="text-gray-600 dark:text-white/70 text-sm">{preview.entry.model}</div>
           <div className="flex items-center gap-2">
             <button 
-              className="p-2 rounded-full  text-white transition-colors" 
+              className="p-2 rounded-full text-gray-700 dark:text-white transition-colors" 
               onClick={handleDelete}
               aria-label="Delete video"
             >
               <Trash2 className="w-5 h-5" />
             </button>
-            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+            <button aria-label="Close" className="text-gray-700 dark:text-white/80 hover:text-gray-900 dark:hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
         <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-gray-50 dark:bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {videoUrl && videoUrl.length > 0 ? (
               videoUrl.startsWith('data:image/') ? (
                 <img 
@@ -339,8 +339,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 </div>
               )
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-white/5 rounded-lg">
-                <div className="text-center text-white/60">
+              <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-lg">
+                <div className="text-center text-gray-600 dark:text-white/60">
                   <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
@@ -349,13 +349,13 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               </div>
             )}
             {(((preview.entry as any)?.inputVideos || []) as any[]).some((v: any) => (v?.storagePath && v.storagePath === (preview.video as any)?.storagePath) || (v?.url && v.url === (preview.video as any)?.url)) && (
-              <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
+              <div className="absolute top-3 left-3 bg-white/80 dark:bg-white/20 text-gray-900 dark:text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-300 dark:border-white/30">User upload</div>
             )}
             
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute top-3 left-3 p-2 rounded-full bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-700 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -368,12 +368,12 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+          <div className="p-4 md:p-5 text-gray-900 dark:text-white border-t md:border-t-0 md:border-l border-gray-200 dark:border-white/10 bg-white/90 dark:bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <button
                 onClick={() => downloadVideo(videoUrl)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/25 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-sm"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                   <path d="M12 3v12" />
@@ -385,7 +385,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               
               <button
                 onClick={() => shareVideo(videoUrl)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/25 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-sm"
               >
                 <Share className="h-4 w-4" />
                 Share
@@ -394,14 +394,14 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
             {/* Prompt */}
             <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+              <div className="flex items-center justify-between text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-2">
                 <span>Prompt</span>
                 <button 
                   onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                  className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg transition-colors ${
                     copiedButtonId === `preview-${preview.entry.id}` 
                       ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-white/10 hover:bg-white/20'
+                      : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white'
                   }`}
                 >
                   {copiedButtonId === `preview-${preview.entry.id}` ? (
@@ -421,40 +421,40 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   )}
                 </button>
               </div>
-              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+              <div className="text-gray-900 dark:text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
                 {cleanPrompt}
               </div>
             </div>
             
             {/* Date */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleString()}</div>
+              <div className="text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-gray-900 dark:text-white text-sm">{new Date(preview.entry.timestamp).toLocaleString()}</div>
             </div>
             
             {/* Details */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white text-sm">{preview.entry.model}</span>
+                  <span className="text-gray-600 dark:text-white/60 text-sm">Model:</span>
+                  <span className="text-gray-900 dark:text-white text-sm">{preview.entry.model}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Style:</span>
-                  <span className="text-white text-sm">{displayedStyle}</span>
+                  <span className="text-gray-600 dark:text-white/60 text-sm">Style:</span>
+                  <span className="text-gray-900 dark:text-white text-sm">{displayedStyle}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Aspect ratio:</span>
-                  <span className="text-white text-sm">{displayedAspect}</span>
+                  <span className="text-gray-600 dark:text-white/60 text-sm">Aspect ratio:</span>
+                  <span className="text-gray-900 dark:text-white text-sm">{displayedAspect}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Duration:</span>
-                  <span className="text-white text-sm">{(preview.entry as any).duration || '—'}s</span>
+                  <span className="text-gray-600 dark:text-white/60 text-sm">Duration:</span>
+                  <span className="text-gray-900 dark:text-white text-sm">{(preview.entry as any).duration || '—'}s</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Format:</span>
-                  <span className="text-white text-sm">Video</span>
+                  <span className="text-gray-600 dark:text-white/60 text-sm">Format:</span>
+                  <span className="text-gray-900 dark:text-white text-sm">Video</span>
                 </div>
               </div>
             </div>
@@ -472,9 +472,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         </div>
       </div>
       {isFsOpen && (
-        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] bg-white/95 dark:bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
           <div className="absolute top-3 right-4 z-[90]">
-            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-900 dark:text-white text-sm ring-1 ring-gray-300 dark:ring-white/30">✕</button>
           </div>
           <div
             ref={fsContainerRef}
