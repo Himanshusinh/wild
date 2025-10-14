@@ -759,13 +759,13 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className="h-screen overflow-hidden bg-[#07070B]">
       {/* Header + Feature cards in a single row so the heading sits in the left gap */}
-      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] 2xl:px-6 2xl:pt-4 2xl:pb-3">
+      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] md:px-6 md:pt-4 md:pb-3">
         <div className="flex items-center gap-4">
           <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14">
             <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
             <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar 2xl:gap-9 ml-6 sm:ml-8 md:ml-12 2xl:ml-34">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar md:gap-9 ml-6 sm:ml-8 md:ml-12 md:ml-34">
               {features.map((feature) => (
             <div
                   key={feature.id}
@@ -779,20 +779,20 @@ const EditImageInterface: React.FC = () => {
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
-              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all 2xl:min-w-[260px] 2xl:p-3 ${selectedFeature === feature.id
+              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-[260px] md:p-3 ${selectedFeature === feature.id
                   ? 'border-white/30 bg-white/10'
                   : 'border-white/10 hover:bg-white/10'
                 }`}
             >
               <div className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded flex items-center justify-center 2xl:w-7 2xl:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
+                <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
                   }`}>
-                  <svg className="w-3 h-3 text-white 2xl:w-3.5 2xl:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 text-white md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
             </div>
                 <div>
-                  <h3 className="text-white text-xs font-medium 2xl:text-sm">{feature.label}</h3>
+                  <h3 className="text-white text-xs font-medium md:text-sm">{feature.label}</h3>
             </div>
           </div>
                 </div>
@@ -826,7 +826,7 @@ const EditImageInterface: React.FC = () => {
       />
       <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative 2xl:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
+        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
           {/* Error Message */}
             {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
@@ -836,10 +836,10 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Input Image Upload */}
-          <div className="px-3 2xl:px-4">
+          <div className="px-3 md:px-4">
             <h3 className="text-xs pl-1  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
             <div className="relative">
-              <div className="bg-white/5 px-4 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] 2xl:min-h-[18rem]">
+              <div className="bg-white/5 px-4 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] md:min-h-[18rem]">
                   {inputs[selectedFeature] ? (
                     <>
                     <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-contain rounded-xl p-2" />
@@ -856,8 +856,8 @@ const EditImageInterface: React.FC = () => {
                       onClick={handleOpenUploadModal}
                       className="absolute inset-0 flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
                     >
-                      <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 2xl:w-7 2xl:h-7" />
-                      <span className="text-sm 2xl:text-base">Upload Image</span>
+                      <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 md:w-7 md:h-7" />
+                      <span className="text-sm md:text-base">Upload Image</span>
                     </button>
                   )}
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
@@ -868,13 +868,13 @@ const EditImageInterface: React.FC = () => {
           {/* Action Buttons moved to bottom under Parameters */}
  
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-          <div className="flex-1 min-h-0 p-3 overflow-hidden 2xl:p-4">
-            <h3 className="text-xs font-medium text-white/80 mb-2 2xl:text-sm">Parameters</h3>
+          <div className="flex-1 min-h-0 p-3 overflow-hidden md:p-4">
+            <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
 
             <div className="space-y-1">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
                   <div className="relative edit-dropdown">
                     <button
                       onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
@@ -912,7 +912,7 @@ const EditImageInterface: React.FC = () => {
                 </div>
                 {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output Format</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
                   <div className="relative edit-dropdown">
                     <button
                       onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
@@ -943,13 +943,13 @@ const EditImageInterface: React.FC = () => {
               {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
               {selectedFeature === 'resize' && (
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Prompt (Optional)</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt (Optional)</label>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Describe details to guide the edit"
                     rows={1}
-                    className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none 2xl:text-sm 2xl:py-2"
+                    className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2"
                   />
                 </div>
               )}
@@ -957,7 +957,7 @@ const EditImageInterface: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
               {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Background Type</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
                   <div className="relative edit-dropdown">
                     <button
                       onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
@@ -1001,7 +1001,7 @@ const EditImageInterface: React.FC = () => {
 
               {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Threshold (0.0-1.0)</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
                   <input
                     type="number"
                     min="0"
@@ -1123,24 +1123,24 @@ const EditImageInterface: React.FC = () => {
 
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center pt-7  ">
-              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-4xl xl:max-w-4xl 2xl:max-w-6xl -ml-2 sm:-ml-4 md:-ml-6 lg:-ml-8 2xl:-ml-36">
+              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
                 {/* Dotted grid background overlay */}
                 <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
-                <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
+                <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
               </div>
               
 
               {/* Themed three dots menu - only show when there's an output */}
               {outputs[selectedFeature] && (
-                <div className="absolute bottom-3 left-3 z-50 2xl:bottom-4 2xl:left-4">
+                <div className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4">
                       <button
                     ref={menuButtonRef}
                     onClick={() => {
                       console.log('Three dots clicked!')
                       setShowImageMenu(!showImageMenu)
                     }}
-                    className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-full transition-all duration-200 border border-white/30 2xl:p-3"
+                    className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-full transition-all duration-200 border border-white/30 md:p-3"
                   >
                     <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
                       <circle cx="5" cy="12" r="2"/>
@@ -1151,14 +1151,14 @@ const EditImageInterface: React.FC = () => {
                   
                   {/* Themed dropdown menu */}
                   {showImageMenu && (
-                    <div ref={menuRef} className="absolute bottom-12 left-0 bg-black/80 border border-white/30 rounded-xl shadow-2xl min-w-[160px] overflow-hidden 2xl:min-w-[200px]">
+                    <div ref={menuRef} className="absolute bottom-12 left-0 bg-black/80 border border-white/30 rounded-xl shadow-2xl min-w-[160px] overflow-hidden md:min-w-[200px]">
                       <button
                         onClick={async () => {
                           console.log('Download clicked!')
                           await handleDownloadOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 2xl:text-base 2xl:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-5-5m5 5l5-5" />
@@ -1171,7 +1171,7 @@ const EditImageInterface: React.FC = () => {
                           await handleShareOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 2xl:text-base 2xl:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367-2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
@@ -1192,7 +1192,7 @@ const EditImageInterface: React.FC = () => {
                             setShowImageMenu(false);
                           }
                         }}
-                        className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 2xl:text-base 2xl:py-3.5"
+                          className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6v12m8-12v12M5 6l1 14a2 2 0 002 2h8a2 2 0 002-2l1-14M10 6V4a2 2 0 012-2h0a2 2 0 012 2v2" />
