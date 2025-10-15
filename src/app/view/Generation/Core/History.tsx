@@ -566,6 +566,11 @@ const History = () => {
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
+  const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+  };
+
   // Helper function to download single file using proxy URLs
   const downloadSingleFile = async (url: string, filename: string) => {
     try {
@@ -1253,7 +1258,12 @@ const History = () => {
                         ) : video ? (
                           <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
                             {mediaUrl ? (
-                              <video src={mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                              (() => {
+                                const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                return (
+                                  <video src={proxied || mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                                );
+                              })()
                             ) : (
                               <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">Video not available</span>

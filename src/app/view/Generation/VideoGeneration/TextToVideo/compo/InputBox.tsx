@@ -968,6 +968,9 @@ const InputBox = () => {
     // Backend handles history creation - no frontend history ID needed
 
     try {
+      // Resolve isPublic from backend policy so completed videos appear in the public feed when enabled
+      const { getIsPublic } = await import('@/lib/publicFlag');
+      const isPublic = await getIsPublic();
       let requestBody;
       let generationType: string;
       let apiEndpoint: string;
@@ -985,7 +988,8 @@ const InputBox = () => {
               duration: selectedMiniMaxDuration,
               resolution: selectedResolution
             }),
-            generationType: "text-to-video"
+            generationType: "text-to-video",
+            isPublic,
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
@@ -1001,7 +1005,7 @@ const InputBox = () => {
             generate_audio: true,
             enhance_prompt: true,
             auto_fix: true,
-            isPublic: false
+            isPublic
           };
           generationType = "text-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3/text-to-video/fast/submit' : '/api/fal/veo3/text-to-video/submit';
@@ -1065,7 +1069,8 @@ const InputBox = () => {
                 image: [references[0]]
               }]
             }),
-            generationType: "image-to-video"
+            generationType: "image-to-video",
+            isPublic,
           };
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
@@ -1083,7 +1088,7 @@ const InputBox = () => {
             duration: "8s", // Veo3 I2V only supports 8s duration
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
-            isPublic: false
+            isPublic
           };
           generationType = "image-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3/image-to-video/fast/submit' : '/api/fal/veo3/image-to-video/submit';
@@ -1100,7 +1105,8 @@ const InputBox = () => {
               duration: duration as 5 | 10,
               promptImage: uploadedImages[0]
             }),
-            generationType: "image-to-video"
+            generationType: "image-to-video",
+            isPublic,
           };
           apiEndpoint = '/api/runway/video';
         }
@@ -1132,7 +1138,8 @@ const InputBox = () => {
                 uri: ref
               })) : undefined,
             }),
-            generationType: "video-to-video"
+            generationType: "video-to-video",
+            isPublic,
           };
           apiEndpoint = '/api/runway/video';
         }
@@ -1681,11 +1688,17 @@ const InputBox = () => {
                             <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                               {(video.firebaseUrl || video.url) ? (
                                 <div className="relative w-full h-full">
-                                  <video
-                                    src={video.firebaseUrl || video.url}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                    onLoadedData={(e) => {
+                                  {(() => {
+                                    const raw = (video.firebaseUrl || video.url) as string;
+                                    const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
+                                    const path = raw?.startsWith(ZATA_PREFIX) ? raw.substring(ZATA_PREFIX.length) : raw;
+                                    const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                                    return (
+                                      <video
+                                        src={proxied}
+                                        className="w-full h-full object-cover"
+                                        muted
+                                        onLoadedData={(e) => {
                                       // Create thumbnail from video
                                       const videoElement = e.target as HTMLVideoElement;
                                       const canvas = document.createElement('canvas');
@@ -1704,8 +1717,10 @@ const InputBox = () => {
                                           shimmer.style.opacity = '0';
                                         }
                                       }, 100);
-                                    }}
-                                  />
+                                        }}
+                                      />
+                                    );
+                                  })()}
                                   {/* Shimmer loading effect */}
                                   <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                                 </div>

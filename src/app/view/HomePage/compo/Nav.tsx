@@ -324,7 +324,7 @@ const Nav = () => {
                       }}
                       className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
                     >
-                      <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0.5 left-0.5`} />
+                      <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0 left-0.5`} />
                     </button>
                   </div>
 

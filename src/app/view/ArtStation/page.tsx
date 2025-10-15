@@ -27,6 +27,16 @@ type PublicItem = {
 type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
 
 export default function ArtStationPage() {
+  const formatDate = (input?: string) => {
+    if (!input) return ''
+    const d = new Date(input)
+    if (Number.isNaN(d.getTime())) return ''
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    const time = d.toLocaleTimeString()
+    return `${dd}-${mm}-${yyyy} ${time}`
+  }
   const [items, setItems] = useState<PublicItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,8 +50,18 @@ export default function ArtStationPage() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const [currentUid, setCurrentUid] = useState<string | null>(null)
+  // layout fixed to masonry (no toggle)
+  // Track which media tiles have finished loading so we can fade them in
+  const [loadedTiles, setLoadedTiles] = useState<Set<string>>(new Set())
+  // Cache measured aspect ratios to reserve space and prevent column jumps
+  const [measuredRatios, setMeasuredRatios] = useState<Record<string, string>>({})
+  // Fancy reveal observer state
+  const [visibleTiles, setVisibleTiles] = useState<Set<string>>(new Set())
+  const revealRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // (deduped) measuredRatios declared above
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
@@ -300,6 +320,11 @@ export default function ArtStationPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, deepLinkId, hasMore, loading])
 
+  // Reset prompt expansion when preview item changes
+  useEffect(() => {
+    setIsPromptExpanded(false)
+  }, [preview?.item?.id])
+
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''
     let p = prompt.replace(/\r\n/g, '\n').trim()
@@ -394,6 +419,52 @@ export default function ArtStationPage() {
     return out
   }, [filteredItems])
 
+  const markTileLoaded = (tileId: string) => {
+    setLoadedTiles(prev => {
+      if (prev.has(tileId)) return prev
+      const next = new Set(prev)
+      next.add(tileId)
+      return next
+    })
+  }
+
+const noteMeasuredRatio = (key: string, width: number, height: number) => {
+  if (!width || !height) return
+  setMeasuredRatios(prev => {
+    if (prev[key]) return prev
+    const w = Math.max(1, Math.round(width))
+    const h = Math.max(1, Math.round(height))
+    return { ...prev, [key]: `${w}/${h}` }
+  })
+}
+
+  // Observe tiles for smooth reveal (staggered)
+  useEffect(() => {
+    const io = new IntersectionObserver(entries => {
+      setVisibleTiles(prev => {
+        const next = new Set(prev)
+        entries.forEach(e => {
+          const id = (e.target as HTMLElement).dataset.revealId
+          if (!id) return
+          if (e.isIntersecting) next.add(id)
+        })
+        return next
+      })
+    }, { root: null, rootMargin: '200px 0px', threshold: 0.1 })
+
+    Object.entries(revealRefs.current).forEach(([id, el]) => {
+      if (el) {
+        el.dataset.revealId = id
+        io.observe(el)
+      }
+    })
+    return () => io.disconnect()
+  }, [cards])
+
+  // (columns masonry) no measurement needed
+
+// duplicate removed
+
   return (
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
@@ -425,16 +496,20 @@ export default function ArtStationPage() {
                   {category}
                 </button>
               ))}
+              
             </div>
           </div>
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
-          <div className="columns-1 sm:columns-2 md:columns-4 lg:columns-4 xl:columns-4 gap-2">
+          <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
              {cards.map(({ item, media, kind }, idx) => {
-              // Clean aspect ratios for organized grid
-              const ratios = ['1/1', '4/3', '3/4', '16/9', '9/16', '2/1', '1/2', '3/2', '2/3']
-              const randomRatio = ratios[idx % ratios.length]
+              // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
+              const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
+              const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
+              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3']
+              const ratioKey = (media && (media.storagePath || media.url)) || `${item.id}-${idx}`
+              const tileRatio = m ? `${m[1]}/${m[2]}` : (measuredRatios[ratioKey] || fallbackRatios[idx % fallbackRatios.length])
               
               const cardId = `${item.id}-${media.id}-${idx}`
               const isHovered = hoveredCard === cardId
@@ -443,7 +518,8 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className="break-inside-avoid mb-2 cursor-pointer group relative"
+                  className={`break-inside-avoid mb-1 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] inline-block w-full align-top ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  style={{ transitionDelay: `${(idx % 12) * 35}ms` }}
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
                    onClick={() => {
@@ -452,14 +528,61 @@ export default function ArtStationPage() {
                      setSelectedAudioIndex(0)
                      setPreview({ kind, url: media.url, item })
                    }}
+                  ref={(el) => { revealRefs.current[cardId] = el }}
                 >
-                  <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 group">
-                    <div style={{ aspectRatio: randomRatio }}>
-                      {kind === 'video' ? (
-                        <video src={media.url} className="w-full h-full object-cover" controls muted />
-                      ) : (
-                        <Image src={media.url} alt={item.prompt || ''} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                   <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                    <div
+                      style={{ aspectRatio: tileRatio, minHeight: 200 }}
+                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] ${loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'}`}
+                    >
+                      {!loadedTiles.has(cardId) && (
+                        <div className="absolute inset-0 bg-white/10" />
                       )}
+                      {(() => {
+                        const isPriority = idx < 8
+                        const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
+                        const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
+                        return kind === 'video' ? (
+                          (() => {
+                            const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                            const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
+                            const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                            return (
+                              <video
+                                src={proxied}
+                                className="w-full h-full object-cover"
+                                controls
+                                muted
+                                preload="metadata"
+                                onLoadedData={(e) => {
+                                  const v = e.currentTarget as HTMLVideoElement
+                                  try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch {}
+                                  markTileLoaded(cardId)
+                                }}
+                              />
+                            )
+                          })()
+                        ) : (
+                          <Image
+                            src={media.url}
+                            alt={item.prompt || ''}
+                            fill
+                            sizes={sizes}
+                            className="object-cover"
+                            placeholder="blur"
+                            blurDataURL={blur}
+                            priority={isPriority}
+                            fetchPriority={isPriority ? 'high' : 'auto'}
+                            onLoadingComplete={(img) => {
+                              try {
+                                const el = img as unknown as HTMLImageElement
+                                if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                              } catch {}
+                              markTileLoaded(cardId)
+                            }}
+                          />
+                        )
+                      })()}
                     </div>
                     
                     {/* Hover Overlay - Profile and Like Button */}
@@ -502,7 +625,7 @@ export default function ArtStationPage() {
                       </div>
                     </div>
                     
-                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-2xl pointer-events-none transition" />
+                     <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
                   </div>
                 </div>
               )
@@ -513,7 +636,7 @@ export default function ArtStationPage() {
           {loading && items.length > 0 && (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">Loading more...</p>
+              <p className="text-white/60 mt-2">{activeCategory === 'All' ? 'Loading more...' : `Loading ${activeCategory}...`}</p>
             </div>
           )}
 
@@ -521,7 +644,7 @@ export default function ArtStationPage() {
           {loading && items.length === 0 && (
             <div className="text-center py-16">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-4">Loading Art Station...</p>
+              <p className="text-white/60 mt-4">{activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}</p>
             </div>
           )}
 
@@ -587,7 +710,12 @@ export default function ArtStationPage() {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         return (
                           <div className="relative w-full h-full">
-                            <video src={vid.url} className="w-full h-full" controls autoPlay />
+                            {(() => {
+                              const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                              const path = vid.url?.startsWith(ZATA_PREFIX) ? vid.url.substring(ZATA_PREFIX.length) : vid.url;
+                              const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                              return <video src={proxied} className="w-full h-full" controls autoPlay />
+                            })()}
                           </div>
                         )
                       }
@@ -616,10 +744,10 @@ export default function ArtStationPage() {
                     </div>
                     
                     {/* Date */}
-                    <div className="mb-4">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-                      <div className="text-white text-sm">{new Date(preview.item.createdAt || preview.item.updatedAt || '').toLocaleString()}</div>
-                    </div>
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+                        <div className="text-white text-sm">{formatDate(preview.item.createdAt || preview.item.updatedAt || '')}</div>
+                      </div>
                     
                     {/* Prompt */}
                     <div className="pb-4 ">
@@ -650,10 +778,25 @@ export default function ArtStationPage() {
                         )}
                       </button>
                       </div>
-                      <div className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
-                        {cleanPromptByType(preview.item.prompt, preview.item.generationType)}
-                        
-                      </div>
+                      {(() => {
+                        const cleaned = cleanPromptByType(preview.item.prompt, preview.item.generationType)
+                        const isLong = (cleaned || '').length > 280
+                        return (
+                          <>
+                            <div className={`text-white/90 text-sm leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLong ? 'line-clamp-4' : ''}`}>
+                              {cleaned}
+                            </div>
+                            {isLong && (
+                              <button
+                                onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                                className="mt-2 text-xs text-white/70 hover:text-white underline"
+                              >
+                                Read {isPromptExpanded ? 'less' : 'more'}
+                              </button>
+                            )}
+                          </>
+                        )
+                      })()}
                       
                       
                     </div>
@@ -687,7 +830,12 @@ export default function ArtStationPage() {
                               onClick={() => setSelectedVideoIndex(idx)}
                               className={`relative aspect-square rounded-md overflow-hidden border ${selectedVideoIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
-                              <video src={vd.url} className="w-full h-full object-cover" muted />
+                              {(() => {
+                                const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                                const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
+                                const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                                return <video src={proxied} className="w-full h-full object-cover" muted />
+                              })()}
                             </button>
                           ))}
                         </div>

@@ -42,6 +42,7 @@ import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
+import UploadModal from "./UploadModal";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
@@ -61,6 +62,10 @@ const InputBox = () => {
   const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
   const [isRemoveBgOpen, setIsRemoveBgOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadTab, setUploadTab] = useState<'library' | 'computer'>('library');
+  const [librarySelection, setLibrarySelection] = useState<Set<string>>(new Set());
+  const dropRef = useRef<HTMLDivElement>(null);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -405,6 +410,7 @@ const InputBox = () => {
 
   // Function to auto-adjust textarea height
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
+    if (!element) return;
     element.style.height = 'auto';
     element.style.height = element.scrollHeight + 'px';
   };
@@ -1941,71 +1947,15 @@ const InputBox = () => {
                   ))}
                 </div>
               )}
-              <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0">
-                <Image
-                  src="/icons/fileupload.svg"
-                  alt="Attach"
-                  width={18}
-                  height={18}
-                  className="opacity-90"
-                />
+              <button
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0"
+                onClick={() => setIsUploadOpen(true)}
+                type="button"
+                aria-label="Upload"
+              >
+                <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
                 <span className="text-white text-sm"> </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={async (e) => {
-                    const inputEl = e.currentTarget as HTMLInputElement;
-                    const files = Array.from(inputEl.files || []).slice(0, 4);
-                    const urls: string[] = [];
-
-                    // Check file sizes (2MB limit per file)
-                    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
-                    const oversizedFiles = files.filter(file => file.size > maxSize);
-
-                    if (oversizedFiles.length > 0) {
-                      toast.error(`Image(s) too large. Maximum size is 2MB per image. ${oversizedFiles.length} file(s) exceed the limit.`);
-                      // Clear the input
-                      if (inputEl) inputEl.value = "";
-                      return;
-                    }
-
-                    for (const file of files) {
-                      const reader = new FileReader();
-                      const asDataUrl: string = await new Promise((res) => {
-                        reader.onload = () => res(reader.result as string);
-                        reader.readAsDataURL(file);
-                      });
-                      urls.push(asDataUrl);
-                    }
-                    // append to existing stack (max 4)
-                    const next = [...uploadedImages, ...urls].slice(0, 4);
-                    dispatch(setUploadedImages(next));
-
-                    // Only auto-switch models if this is the first upload AND we're not using an image-to-image model
-                    if (uploadedImages.length === 0 && next.length > 0) {
-                      // Check if current model is an image-to-image model
-                      const isImageToImageModel = selectedModel === "gen4_image_turbo" || selectedModel === "gen4_image" || selectedModel === 'gemini-25-flash-image';
-
-                      if (!isImageToImageModel) {
-                        // Only auto-switch for text-to-image models
-                        console.log('Auto-switching model for text-to-image generation');
-                        if (next.length > 1) {
-                          dispatch(setSelectedModel("flux-kontext-pro"));
-                        } else {
-                          // Single image - could use MiniMax or Kontext Pro
-                          dispatch(setSelectedModel("flux-kontext-pro"));
-                        }
-                      } else {
-                        console.log('Keeping current image-to-image model:', selectedModel);
-                      }
-                    }
-                    // clear input so the same file can be reselected
-                    if (inputEl) inputEl.value = "";
-                  }}
-                />
-              </label>
+              </button>
             </div>
 
             {/* Small + button (between attach and Generate in the mock) */}
@@ -2152,6 +2102,29 @@ const InputBox = () => {
           // Open frame size dropdown programmatically (optional improvement)
           const dropdown = document.querySelector('[data-frame-size-dropdown]') as HTMLElement | null;
           if (dropdown) dropdown.click();
+        }}
+      />
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        historyEntries={historyEntries as any}
+        remainingSlots={Math.max(0, 4 - (uploadedImages?.length || 0))}
+        hasMore={hasMore}
+        loading={loading}
+        onLoadMore={async () => {
+          try {
+            if (!hasMore || loading) return;
+            await (dispatch as any)(loadMoreHistory({
+              filters: { generationType: 'text-to-image' },
+              paginationParams: { limit: 10 }
+            })).unwrap();
+          } catch {}
+        }}
+        onAdd={(urls: string[]) => {
+          const next = [...uploadedImages, ...urls].slice(0, 4);
+          dispatch(setUploadedImages(next));
         }}
       />
     </>

@@ -15,11 +15,13 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
   const [copied, setCopied] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const getUserPrompt = (raw: string | undefined) => (raw || '').replace(/^Mockup:\s*/i, '').trim();
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const isLongPrompt = (getUserPrompt(entry.prompt) || '').length > 200;
   
   if (!isOpen) return null;
 
   const selected = entry.images[selectedIndex];
-  const getUserPrompt = (raw: string | undefined) => (raw || '').replace(/^Mockup:\s*/i, '').trim();
 
   const handleCopyPrompt = async () => {
     try {
@@ -98,15 +100,23 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
                   </svg>
                 </button>
               </div>
-              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
                 {getUserPrompt(entry.prompt)}
               </div>
+              {isLongPrompt && (
+                <button
+                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                  className="mt-2 text-xs text-white/70 hover:text-white underline"
+                >
+                  Read {isPromptExpanded ? 'less' : 'more'}
+                </button>
+              )}
             </div>
             
             {/* Date */}
             <div className="mb-4">
               <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
+              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
             </div>
             {/* Details */}
             <div className="mb-4">

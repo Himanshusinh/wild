@@ -131,10 +131,10 @@ const LiveChatGrid: React.FC = () => {
                   <div
                     key={img.id}
                     onClick={() => setPreviewUrl(img.url)}
-                    className="relative aspect-square w-40 md:w-48 lg:w-56 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 flex-shrink-0 cursor-pointer snap-start"
+                    className="relative aspect-square w-40 md:w-20 lg:w-20 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 flex-shrink-0 cursor-pointer snap-start"
                   >
                     {img._entryStatus === 'generating' ? (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                      <div className="w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                         <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
                       </div>
                     ) : (

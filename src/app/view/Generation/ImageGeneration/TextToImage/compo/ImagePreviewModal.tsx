@@ -457,7 +457,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
              {/* Date */}
              <div className="mb-4">
               <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleString()}</div>
+              <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(preview.entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
             </div>
 
             
@@ -491,9 +491,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   )}
                 </button>
               </div>
-              <div className="text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
                 {cleanPrompt}
               </div>
+              {isLongPrompt && (
+                <button
+                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                  className="mt-2 text-xs text-white/70 hover:text-white underline"
+                >
+                  Read {isPromptExpanded ? 'less' : 'more'}
+                </button>
+              )}
             </div>
             
            
@@ -545,7 +553,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="flex gap-2">
                 <button
                   onClick={() => navigateToEdit('upscale')}
-                  className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm  text-white text-sm ring-1 ring-white/20 transition"
+                  className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
                 >
                   Upscale
                 </button>
