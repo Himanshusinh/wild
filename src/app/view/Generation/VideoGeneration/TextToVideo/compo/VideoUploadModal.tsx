@@ -3,18 +3,18 @@
 import React from 'react';
 import Image from 'next/image';
 
-type UploadModalProps = {
+type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[]) => void;
   historyEntries: any[];
-  remainingSlots: number; // how many images can still be added (max 4 total)
+  remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
   onLoadMore?: () => void;
   hasMore?: boolean;
   loading?: boolean;
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
+const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
@@ -44,6 +44,22 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
     onClose();
   };
 
+  // Filter history entries to only show videos
+  const videoEntries = historyEntries.filter((entry: any) => {
+    // Check if entry has videos
+    if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+      return true;
+    }
+    // Check if entry has video URLs in images array (fallback)
+    if (entry.images && Array.isArray(entry.images)) {
+      return entry.images.some((img: any) => {
+        const url = img.url || img.firebaseUrl || img.originalUrl;
+        return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+      });
+    }
+    return false;
+  });
+
   return (
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -60,7 +76,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
           <div className="p-4">
             {tab === 'library' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3 ">Select up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
+                <div className="text-white/70 text-sm mb-3">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
                 <div
                   ref={listRef}
                   onScroll={(e) => {
@@ -71,16 +87,35 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {historyEntries.flatMap((entry: any) => ((entry?.images || []).map((im: any) => ({ entry, im })))).map(({ entry, im }: any) => {
-                    const selected = selection.has(im.url);
-                    const key = `${entry.id}-${im.id}`;
+                  {videoEntries.flatMap((entry: any) => {
+                    // Get videos from entry.videos or from entry.images (fallback)
+                    const videos = entry.videos || [];
+                    const fallbackVideos = (entry.images || []).filter((img: any) => {
+                      const url = img.url || img.firebaseUrl || img.originalUrl;
+                      return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+                    });
+                    const allVideos = videos.length > 0 ? videos : fallbackVideos;
+                    
+                    return allVideos.map((video: any) => ({ entry, video }));
+                  }).map(({ entry, video }: any) => {
+                    const selected = selection.has(video.url || video.firebaseUrl || video.originalUrl);
+                    const videoUrl = video.url || video.firebaseUrl || video.originalUrl;
+                    const key = `${entry.id}-${video.id || videoUrl}`;
                     return (
                       <button key={key} onClick={() => {
                         const next = new Set(selection);
-                        if (selected) next.delete(im.url); else next.add(im.url);
+                        if (selected) next.delete(videoUrl); else next.add(videoUrl);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        <Image src={im.url} alt="library" fill className="object-cover" />
+                        <video
+                          src={videoUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                          onLoadedData={(e) => {
+                            const video = e.target as HTMLVideoElement;
+                            video.currentTime = 1; // Show frame at 1 second
+                          }}
+                        />
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>
@@ -97,7 +132,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
               </div>
             ) : (
               <div>
-                <div className="text-white/70 text-sm mb-3">Choose up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'}</div>
+                <div className="text-white/70 text-sm mb-3">Choose up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'}</div>
                 <div
                   ref={dropRef}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -106,13 +141,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
-                    const maxSize = 2 * 1024 * 1024;
+                    const maxSize = 50 * 1024 * 1024; // 50MB for videos
                     const urls: string[] = [];
                     for (const file of files) {
                       if (file.size > maxSize) continue;
-                      const reader = new FileReader();
-                      const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
-                      urls.push(asDataUrl);
+                      if (file.type.startsWith('video/')) {
+                        const reader = new FileReader();
+                        const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
+                        urls.push(asDataUrl);
+                      }
                     }
                     if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
                   }}
@@ -120,19 +157,21 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
-                    input.accept = 'image/*';
-                    input.multiple = true;
+                    input.accept = 'video/*';
+                    input.multiple = remainingSlots > 1;
                     input.onchange = async () => {
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 2 * 1024 * 1024;
+                      const maxSize = 50 * 1024 * 1024; // 50MB for videos
                       const urls: string[] = [];
                       for (const file of files) {
                         if (file.size > maxSize) { continue; }
-                        const reader = new FileReader();
-                        const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
-                        urls.push(asDataUrl);
+                        if (file.type.startsWith('video/')) {
+                          const reader = new FileReader();
+                          const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
+                          urls.push(asDataUrl);
+                        }
                       }
                       if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
                     };
@@ -140,15 +179,23 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   }}
                 >
                   {localUploads.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-white/60 select-none ">
+                    <div className="flex flex-col items-center justify-center text-white/60 select-none">
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                      <div className="mt-2 text-sm">Drop images here or click to browse</div>
+                      <div className="mt-2 text-sm">Drop videos here or click to browse</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3  w-full place-content-start">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full place-content-start">
                       {localUploads.map((url, idx) => (
                         <div key={`${url}-${idx}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
-                          <Image src={url} alt={`upload-${idx}`} fill className="object-cover" />
+                          <video
+                            src={url}
+                            className="w-full h-full object-cover"
+                            muted
+                            onLoadedData={(e) => {
+                              const video = e.target as HTMLVideoElement;
+                              video.currentTime = 1; // Show frame at 1 second
+                            }}
+                          />
                           <button
                             aria-label="Remove"
                             title="Remove"
@@ -184,6 +231,4 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
   );
 };
 
-export default UploadModal;
-
-
+export default VideoUploadModal;

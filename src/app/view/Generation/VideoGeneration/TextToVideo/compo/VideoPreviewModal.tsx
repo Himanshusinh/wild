@@ -262,8 +262,25 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   }, [fsScale, fsZoomToPoint]);
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault(); setFsIsPanning(true); setFsLastPoint({ x: e.clientX, y: e.clientY });
-  }, []);
+    e.preventDefault();
+    if (fsContainerRef.current) {
+      const rect = fsContainerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+      const atFit = fsScale <= fsFitScale + 0.001;
+      if (e.button === 0) {
+        if (atFit) {
+          const next = Math.min(6, fsScale * 1.2);
+          if (next !== fsScale) { fsZoomToPoint({ x: mx, y: my }, next); return; }
+        } else { setFsIsPanning(true); setFsLastPoint({ x: e.clientX, y: e.clientY }); return; }
+      }
+      if (e.button === 1) { setFsIsPanning(true); setFsLastPoint({ x: e.clientX, y: e.clientY }); return; }
+      if (e.button === 2) {
+        const next = Math.max(0.5, fsScale / 1.2);
+        if (next !== fsScale) { fsZoomToPoint({ x: mx, y: my }, next); return; }
+      }
+    }
+    setFsIsPanning(true); setFsLastPoint({ x: e.clientX, y: e.clientY });
+  }, [fsScale, fsFitScale, fsZoomToPoint]);
   const fsOnMouseMove = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!fsIsPanning) return; e.preventDefault();
     const dx = e.clientX - fsLastPoint.x; const dy = e.clientY - fsLastPoint.y;
@@ -492,6 +509,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             onMouseMove={fsOnMouseMove}
             onMouseUp={fsOnMouseUp}
             onMouseLeave={fsOnMouseUp}
+            onContextMenu={(e)=>{e.preventDefault();}}
             style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
           >
             <div
@@ -510,6 +528,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 }}
               />
             </div>
+          </div>
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
+            Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
           </div>
         </div>
       )}

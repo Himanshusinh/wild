@@ -49,6 +49,7 @@ import { getIsPublic } from '@/lib/publicFlag';
 import { Button } from "@/components/ui/Button";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import axiosInstance from "@/lib/axiosInstance";
+import WildMindLogoGenerating from "@/app/components/WildMindLogoGenerating";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -298,6 +299,16 @@ const InputBox = () => {
   const refreshAllHistory = async () => {
     try {
       await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
+    } catch { }
+  };
+
+  // Simple refresh function like Logo Generation
+  const refreshHistory = async () => {
+    try {
+      await (dispatch as any)(loadHistory({ 
+        filters: { generationType: 'text-to-image' }, 
+        paginationParams: { limit: 50 } 
+      })).unwrap();
     } catch { }
   };
 
@@ -792,7 +803,7 @@ const InputBox = () => {
                     },
                   });
                   console.log(`✅ Firebase updated with image ${index + 1}`);
-                  await refreshAllHistory();
+                  await refreshHistory();
                 } catch (firebaseError) {
                   console.error(`❌ Failed to update Firebase with image ${index + 1}:`, firebaseError);
                 }
@@ -954,7 +965,8 @@ const InputBox = () => {
           
           toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
-          await refreshAllHistory();
+          
+          await refreshHistory();
 
           // Handle credit success
           if (transactionId) {
@@ -1019,7 +1031,8 @@ const InputBox = () => {
         // Show success notification
         toast.success(`MiniMax generation completed! Generated ${result.images.length} image(s)`);
         clearInputs();
-        await refreshAllHistory();
+        
+        await refreshHistory();
 
         // Handle credit success
         if (transactionId) {
@@ -1054,9 +1067,10 @@ const InputBox = () => {
             setLocalGeneratingEntries([completedEntry]);
           } catch {}
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-          clearInputs();
-          await refreshAllHistory();
+        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+        clearInputs();
+        
+        await refreshHistory();
 
           // Handle credit success
           if (transactionId) {
@@ -1101,9 +1115,15 @@ const InputBox = () => {
             setLocalGeneratingEntries([completedEntry]);
           } catch {}
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-          clearInputs();
-          await refreshAllHistory();
+        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+        clearInputs();
+        
+        // Keep local entries visible for a moment before refreshing
+        setTimeout(() => {
+          setLocalGeneratingEntries([]);
+        }, 1000);
+        
+        await refreshHistory();
 
           // Handle credit success
           if (transactionId) {
@@ -1149,9 +1169,15 @@ const InputBox = () => {
             setLocalGeneratingEntries([completedEntry]);
           } catch {}
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-          clearInputs();
-          await refreshAllHistory();
+        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+        clearInputs();
+        
+        // Keep local entries visible for a moment before refreshing
+        setTimeout(() => {
+          setLocalGeneratingEntries([]);
+        }, 1000);
+        
+        await refreshHistory();
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
@@ -1220,7 +1246,13 @@ const InputBox = () => {
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          await refreshAllHistory();
+          
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+          
+          await refreshHistory();
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
@@ -1289,7 +1321,13 @@ const InputBox = () => {
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          await refreshAllHistory();
+          
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+          
+          await refreshHistory();
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
@@ -1354,7 +1392,13 @@ const InputBox = () => {
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          await refreshAllHistory();
+          
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+          
+          await refreshHistory();
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
@@ -1419,7 +1463,13 @@ const InputBox = () => {
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          await refreshAllHistory();
+          
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+          
+          await refreshHistory();
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
@@ -1492,7 +1542,7 @@ const InputBox = () => {
           // Show success notification
           toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`);
           clearInputs();
-          await refreshAllHistory();
+          await refreshHistory();
 
           // Handle credit success
           if (transactionId) {
@@ -1560,7 +1610,7 @@ const InputBox = () => {
           toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
             } successfully!`);
           clearInputs();
-          await refreshAllHistory();
+          await refreshHistory();
 
           // Handle credit success
           if (transactionId) {
@@ -1643,6 +1693,18 @@ const InputBox = () => {
 
   return (
     <>
+      {/* Enhanced spell check styles */}
+      <style jsx global>{`
+        /* Remove underline from placeholder across browsers */
+        textarea::placeholder { text-decoration: none !important; }
+        textarea::-webkit-input-placeholder { text-decoration: none !important; }
+        textarea:-ms-input-placeholder { text-decoration: none !important; }
+        textarea::-ms-input-placeholder { text-decoration: none !important; }
+        
+        /* Keep default browser spellcheck underlines without forcing decoration */
+        textarea[spellcheck="true"] { text-decoration: none; }
+      `}</style>
+      
       {(historyEntries.length > 0 || localGeneratingEntries.length > 0) && (
         <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-2 ">
@@ -1657,8 +1719,13 @@ const InputBox = () => {
             {loading && historyEntries.length === 0 && (
               <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-black dark:text-white text-lg">Loading your generation history...</div>
+                  <WildMindLogoGenerating 
+                    running={loading}
+                    size="md"
+                    speedMs={1600}
+                    className="mx-auto"
+                  />
+                  <div className="text-white text-lg">Loading your generation history...</div>
                 </div>
               </div>
             )}
@@ -1679,8 +1746,14 @@ const InputBox = () => {
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
-                            <div className="text-xs text-black/60 dark:text-white/60">Generating...</div>
+                            <WildMindLogoGenerating 
+                              running={localGeneratingEntries[0].status === 'generating'}
+                              progress={localGeneratingEntries[0].generationProgress?.current && localGeneratingEntries[0].generationProgress?.total ? localGeneratingEntries[0].generationProgress.current / localGeneratingEntries[0].generationProgress.total : 0}
+                              size="md"
+                              speedMs={1600}
+                              className="mx-auto"
+                            />
+                            <div className="text-xs text-white/60 text-center">Generating...</div>
                           </div>
                         </div>
                       ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -1691,8 +1764,24 @@ const InputBox = () => {
                           </div>
                         </div>
                       ) : image.url ? (
-                        <div className="relative w-full h-full">
-                          <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-cover" sizes="192px" />
+                        <div className="relative w-full h-full group">
+                          <Image 
+                            src={image.url} 
+                            alt={`Generated image ${idx + 1}`} 
+                            fill 
+                            className="object-cover transition-opacity duration-300" 
+                            sizes="192px"
+                            onLoad={() => {
+                              // Smooth fade-in effect
+                              const img = document.querySelector(`[alt="Generated image ${idx + 1}"]`) as HTMLElement;
+                              if (img) {
+                                img.style.opacity = '1';
+                              }
+                            }}
+                            style={{ opacity: 0 }}
+                          />
+                          {/* Shimmer loading effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
                         </div>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
@@ -1740,10 +1829,16 @@ const InputBox = () => {
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                           <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                              <div className="w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-xl border border-white/20">
                                 <div className="flex flex-col items-center gap-2">
-                                  <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
-                                  <div className="text-xs text-black/60 dark:text-white/60">Generating...</div>
+                                  <WildMindLogoGenerating 
+                                    running={localGeneratingEntries[0].status === 'generating'}
+                                    progress={localGeneratingEntries[0].generationProgress?.current && localGeneratingEntries[0].generationProgress?.total ? localGeneratingEntries[0].generationProgress.current / localGeneratingEntries[0].generationProgress.total : 0}
+                                    size="md"
+                                    speedMs={1600}
+                                    className="mx-auto"
+                                  />
+                                  <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
                             ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -1757,34 +1852,36 @@ const InputBox = () => {
                               </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <Image src={image.url} alt={`Generated image ${idx + 1}`} fill className="object-contain" sizes="192px" />
-                          {/* Hover prompt overlay */}
-                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/5 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                            <span
-                              title={getCleanPrompt(prompt)}
-                              className="text-xs text-black dark:text-white flex-1 leading-snug"
-                              style={{
-                                display: '-webkit-box',
-                                WebkitLineClamp: 3 as any,
-                                WebkitBoxOrient: 'vertical' as any,
-                                overflow: 'hidden'
-                              }}
-                            >
-                              {getCleanPrompt(prompt)}
-                            </span>
+                          <Image 
+                            src={image.url} 
+                            alt={`Generated image ${idx + 1}`} 
+                            fill 
+                            className="object-contain transition-opacity duration-300" 
+                            sizes="192px"
+                            onLoad={() => {
+                              // Smooth fade-in effect
+                              const img = document.querySelector(`[alt="Generated image ${idx + 1}"]`) as HTMLElement;
+                              if (img) {
+                                img.style.opacity = '1';
+                              }
+                            }}
+                            style={{ opacity: 0 }}
+                          />
+                          {/* Hover copy button overlay */}
+                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90"
+                              className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-sm"
                               onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
                           </div>
                         </div>
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-gray-200 dark:from-white/20 to-gray-300 dark:to-white/20 flex items-center justify-center text-black/60 dark:text-white/60">
-                                <div className="text-xs text-black/60 dark:text-white/60">No image</div>
+                              <div className="w-full h-full bg-black/90 flex items-center justify-center text-white/60">
+                                <div className="text-xs text-white/60">No image</div>
                               </div>
                             )}
                           </div>
@@ -1801,17 +1898,24 @@ const InputBox = () => {
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-6 h-6 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-black/60 dark:text-white/60">
+                                <WildMindLogoGenerating 
+                                  running={entry.status === 'generating'}
+                                  progress={entry.generationProgress?.current && entry.generationProgress?.total ? entry.generationProgress.current / entry.generationProgress.total : 0}
+                                  size="md"
+                                  speedMs={1600}
+                                  className="mx-auto"
+                                />
+
+                                <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>
                               </div>
                             </div>
                           ) : entry.status === "failed" ? (
                             // Error frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
                                 <svg
                                   width="20"
@@ -1846,27 +1950,15 @@ const InputBox = () => {
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/5 dark:bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                                <span
-                                  title={getCleanPrompt(entry.prompt)}
-                                  className="text-xs text-black dark:text-white flex-1 leading-snug"
-                                  style={{
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 3 as any,
-                                    WebkitBoxOrient: 'vertical' as any,
-                                    overflow: 'hidden'
-                                  }}
-                                >
-                                  {getCleanPrompt(entry.prompt)}
-                                </span>
+                              {/* Hover copy button overlay */}
+                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-black/90 dark:text-white/90"
+                                  className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                               </div>
                             </div>
@@ -1883,8 +1975,13 @@ const InputBox = () => {
               {hasMore && loading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
-                    <div className="text-sm text-black/60 dark:text-white/60">Loading more generations...</div>
+                    <WildMindLogoGenerating 
+                      running={loading}
+                      size="md"
+                      speedMs={1600}
+                      className="mx-auto"
+                    />
+                    <div className="text-sm text-white/60">Loading more generations...</div>
                   </div>
                 </div>
               )}
@@ -1896,7 +1993,7 @@ const InputBox = () => {
         <div className="rounded-2xl bg-white/40 dark:bg-black/40 backdrop-blur-3xl ring-1 ring-black/20 dark:ring-white/20 shadow-2xl transition-colors duration-300">
           {/* Top row: prompt + actions */}
           <div className="flex items-center gap-0 p-3">
-            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5 w-full">
+            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5 w-full relative">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -1905,7 +2002,12 @@ const InputBox = () => {
                   dispatch(setPrompt(e.target.value));
                   adjustTextareaHeight(e.target);
                 }}
-                className={`flex-1 bg-transparent text-black dark:text-white placeholder-black/50 dark:placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-black dark:text-white' : 'text-black/70 dark:text-white/70'
+                spellCheck={true}
+                lang="en"
+                autoComplete="off"
+                autoCorrect="on"
+                autoCapitalize="on"
+                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
                   }`}
                 rows={1}
                 style={{
@@ -1916,6 +2018,36 @@ const InputBox = () => {
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
                 }}
               />
+              {/* Clear prompt button - only show when there's text */}
+              {prompt.trim() && (
+                <button
+                  onClick={() => {
+                    dispatch(setPrompt(''));
+                    if (inputEl.current) {
+                      inputEl.current.focus();
+                    }
+                  }}
+                  className="ml-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                  aria-label="Clear prompt"
+                  title="Clear prompt"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-white/80"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  Clear Prompt
+                </button>
+              )}
               {/* Previews just to the left of upload */}
               {uploadedImages.length > 0 && (
                 <div className="flex items-center gap-1.5 pr-1">
@@ -2064,27 +2196,6 @@ const InputBox = () => {
                 </div>
               )}
             </div>
-            {/* moved previews near upload above */}
-            {!(pathname && pathname.includes('/wildmindskit/LiveChat')) && (
-              <div className="flex items-center gap-2 ml-auto mt-2 md:mt-0 shrink-0 ">
-                <button
-                  aria-label="Edit"
-                  title="Edit"
-                  // borderRadius="1.5rem"
-                  // containerClassName="h-10 w-auto"
-                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-7 py-2 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                  onClick={() => router.push('/edit-image')}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white/80">
-                      <path d="M12 20h9"/>
-                      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                    </svg>
-                    <span className="text-sm text-white">Edit</span>
-                  </div>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

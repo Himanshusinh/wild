@@ -787,10 +787,10 @@ const EditImageInterface: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
                   }`}>
-                  <svg className="w-3 h-3 text-white md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-            </div>
+                  {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
+                  {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4 md:w-5 md:h-5" />)}
+                  {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4 md:w-5 md:h-5" />)}
+                </div>
                 <div>
                   <h3 className="text-white text-xs font-medium md:text-sm">{feature.label}</h3>
             </div>
@@ -903,7 +903,6 @@ const EditImageInterface: React.FC = () => {
                             className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                           >
                             <span className="truncate">{opt.label}</span>
-                            {model === opt.value && <div className="w-2 h-2 bg-black rounded-full" />}
                           </button>
                         ))}
                       </div>
@@ -930,7 +929,6 @@ const EditImageInterface: React.FC = () => {
                             className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                           >
                             <span className="uppercase">{fmt}</span>
-                            {output === fmt && <div className="w-2 h-2 bg-black rounded-full" />}
                           </button>
                         ))}
                       </div>
@@ -983,7 +981,6 @@ const EditImageInterface: React.FC = () => {
                           >
                             <div className="flex items-center justify-between w-full">
                               <span className="truncate font-medium">{opt.label}</span>
-                              {backgroundType === opt.value && <div className="w-2 h-2 bg-black rounded-full" />}
                             </div>
                             <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
                               {opt.description}
@@ -1081,7 +1078,6 @@ const EditImageInterface: React.FC = () => {
                                 className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${swinTask === t ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                               >
                                 <span className="text-left pr-4">{getSwinTaskLabel(t)}</span>
-                                {swinTask === t && <div className="w-2 h-2 bg-black rounded-full" />}
                               </button>
                             ))}
                           </div>
@@ -1133,14 +1129,16 @@ const EditImageInterface: React.FC = () => {
 
               {/* Themed three dots menu - only show when there's an output */}
               {outputs[selectedFeature] && (
-                <div className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4">
-                      <button
+                <div
+                  className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4"
+                  onMouseEnter={() => setShowImageMenu(true)}
+                  onMouseLeave={() => setShowImageMenu(false)}
+                >
+                  <button
                     ref={menuButtonRef}
-                    onClick={() => {
-                      console.log('Three dots clicked!')
-                      setShowImageMenu(!showImageMenu)
-                    }}
                     className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-full transition-all duration-200 border border-white/30 md:p-3"
+                    aria-haspopup="menu"
+                    aria-expanded={showImageMenu}
                   >
                     <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
                       <circle cx="5" cy="12" r="2"/>
@@ -1158,10 +1156,10 @@ const EditImageInterface: React.FC = () => {
                           await handleDownloadOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-green-500/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-5-5m5 5l5-5" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
                         Download
                       </button>
@@ -1171,10 +1169,10 @@ const EditImageInterface: React.FC = () => {
                           await handleShareOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-blue-500/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367-2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z" />
                         </svg>
                         {shareCopied ? 'Copied!' : 'Share'}
                       </button>
@@ -1195,7 +1193,7 @@ const EditImageInterface: React.FC = () => {
                           className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6v12m8-12v12M5 6l1 14a2 2 0 002 2h8a2 2 0 002-2l1-14M10 6V4a2 2 0 012-2h0a2 2 0 012 2v2" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                         </svg>
                         Delete
                       </button>

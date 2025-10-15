@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Share, Trash2 } from 'lucide-react';
 // Redirect to Edit Image page rather than opening inline popups
 import { useRouter } from 'next/navigation';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
@@ -51,6 +51,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
+  const wheelNavCooldown = React.useRef(false);
   
   // -------- Fullscreen helpers (declared before any early returns) ---------
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -103,6 +104,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     const onResize = () => computeFit();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
+    
   }, [isFsOpen, fsNaturalSize]);
 
   // Lock background scroll while fullscreen is open
@@ -113,23 +115,120 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return () => { document.body.style.overflow = prev; };
   }, [isFsOpen]);
 
+  // Build gallery from images in the SAME ENTRY (same generation run)
+  const sameDateGallery = React.useMemo(() => {
+    try {
+      if (!preview?.entry) return [] as Array<{ entry: any, image: any }>;
+      const imgs = (preview.entry as any)?.images || [];
+      return imgs.map((im: any) => ({ entry: preview.entry, image: im }));
+    } catch { return []; }
+  }, [preview]);
+
+  const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
+    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
+    setSelectedIndex((idx) => {
+      const total = (sameDateGallery as any[]).length;
+      if (total <= 1) return idx;
+      const prevIdx = (idx - 1 + total) % total;
+      try {
+        const prevPair: any = (sameDateGallery as any[])[prevIdx];
+        console.log('[Fullscreen] Prev image clicked', { fromIndex: idx, toIndex: prevIdx, total, url: prevPair?.image?.url || prevPair?.image?.storagePath });
+      } catch {}
+      return prevIdx;
+    });
+  }, [sameDateGallery]);
+
+  const goNext = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
+    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
+    setSelectedIndex((idx) => {
+      const total = (sameDateGallery as any[]).length;
+      if (total <= 1) return idx;
+      const nextIdx = (idx + 1) % total;
+      try {
+        const nextPair: any = (sameDateGallery as any[])[nextIdx];
+        console.log('[Fullscreen] Next image clicked', { fromIndex: idx, toIndex: nextIdx, total, url: nextPair?.image?.url || nextPair?.image?.storagePath });
+      } catch {}
+      return nextIdx;
+    });
+  }, [sameDateGallery]);
+
   const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!fsContainerRef.current) return;
+
+    // If not zoomed in, use wheel to navigate between images
+    if (fsScale <= fsFitScale + 0.001) {
+      if (wheelNavCooldown.current) return;
+      const dy = e.deltaY || 0;
+      const dx = e.deltaX || 0;
+      const delta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+      if (delta > 20) {
+        goNext();
+      } else if (delta < -20) {
+        goPrev();
+      }
+      wheelNavCooldown.current = true;
+      setTimeout(() => { wheelNavCooldown.current = false; }, 250);
+      return;
+    }
+
+    // When zoomed, keep existing zoom-to-point behavior
     const rect = fsContainerRef.current.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const next = Math.max(0.5, Math.min(6, fsScale + delta));
+    const deltaZoom = e.deltaY > 0 ? -0.1 : 0.1;
+    const next = Math.max(0.5, Math.min(6, fsScale + deltaZoom));
     if (next !== fsScale) fsZoomToPoint({ x: mx, y: my }, next);
-  }, [fsScale, fsZoomToPoint]);
+  }, [fsScale, fsFitScale, fsZoomToPoint, goNext, goPrev]);
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    // Determine click position relative to container for zoom-to-point
+    if (fsContainerRef.current) {
+      const rect = fsContainerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const atFit = fsScale <= fsFitScale + 0.001;
+
+      // Left button
+      if (e.button === 0) {
+        if (atFit) {
+          // Zoom in to point from fit
+          const next = Math.min(6, fsScale * 1.2);
+          if (next !== fsScale) {
+            fsZoomToPoint({ x: mx, y: my }, next);
+            return;
+          }
+        } else {
+          // When zoomed, start panning with left button
+          setFsIsPanning(true);
+          setFsLastPoint({ x: e.clientX, y: e.clientY });
+          return;
+        }
+      }
+
+      // Middle button -> always pan
+      if (e.button === 1) {
+        setFsIsPanning(true);
+        setFsLastPoint({ x: e.clientX, y: e.clientY });
+        return;
+      }
+
+      // Right button -> zoom out from point
+      if (e.button === 2) {
+        const next = Math.max(0.5, fsScale / 1.2);
+        if (next !== fsScale) {
+          fsZoomToPoint({ x: mx, y: my }, next);
+          return;
+        }
+      }
+    }
+
+    // Fallback: start panning
     setFsIsPanning(true);
     setFsLastPoint({ x: e.clientX, y: e.clientY });
-  }, []);
+  }, [fsScale, fsFitScale, fsZoomToPoint]);
 
   const fsOnMouseMove = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!fsIsPanning) return;
@@ -142,22 +241,55 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
 
   const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
-  
-  // Build gallery with user uploads first, then generated outputs
-  const inputImages = React.useMemo(() => ((preview as any)?.inputImages) || [], [preview]);
-  const outputImages = React.useMemo(() => preview?.entry?.images || [], [preview]);
-  const galleryImages = React.useMemo(() => [...inputImages, ...outputImages], [inputImages, outputImages]);
 
-  // Select the clicked image as initial selection
+  // Keyboard navigation in fullscreen
+  React.useEffect(() => {
+    if (!isFsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPrev();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeFullscreen();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFsOpen, goPrev, goNext, closeFullscreen]);
+  
+  // (moved above for navigation callbacks)
+
+  // Select clicked image within same-date gallery
   const initialIndex = React.useMemo(() => {
     if (!preview) return 0;
     const mUrl = (preview.image as any)?.url;
-    const mPath = (preview.image as any)?.storagePath;
-    const idx = galleryImages.findIndex((im: any) => (mUrl && im?.url === mUrl) || (mPath && im?.storagePath && im.storagePath === mPath));
+    const mId = (preview.image as any)?.id;
+    const mEntryId = (preview.entry as any)?.id;
+    const idx = sameDateGallery.findIndex((pair: any) => {
+      return (pair?.entry?.id === mEntryId) && ((mId && pair?.image?.id === mId) || (mUrl && pair?.image?.url === mUrl));
+    });
     return idx >= 0 ? idx : 0;
-  }, [galleryImages, preview]);
+  }, [sameDateGallery, preview]);
 
   React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
+
+  // Only show immediate neighbors (left/right) in the sidebar thumbnails
+  const windowGallery = React.useMemo(() => {
+    const total = (sameDateGallery as any[]).length;
+    if (total === 0) return [] as any[];
+    if (total === 1) return [sameDateGallery[0]] as any[];
+    const prevIdx = (selectedIndex - 1 + total) % total;
+    const nextIdx = (selectedIndex + 1) % total;
+    const result: any[] = [];
+    result.push(sameDateGallery[prevIdx]);
+    result.push(sameDateGallery[selectedIndex]);
+    if (total > 2) result.push(sameDateGallery[nextIdx]);
+    return result;
+  }, [sameDateGallery, selectedIndex]);
 
   // Lock background scroll while modal is open
   React.useEffect(() => {
@@ -179,7 +311,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     setObjectUrl('');
     const run = async () => {
       try {
-        const selectedImage = galleryImages[selectedIndex] || preview.image;
+        const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+        const selectedImage = selectedPair.image || preview.image;
         const url = toProxyResourceUrl(selectedImage?.url || preview.image.url);
         if (!url) return;
         const res = await fetch(url, {
@@ -197,7 +330,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return () => {
       if (revoke) URL.revokeObjectURL(revoke);
     };
-  }, [selectedIndex, preview, galleryImages, toProxyResourceUrl]);
+  }, [selectedIndex, preview, sameDateGallery, toProxyResourceUrl]);
 
   if (!preview) return null;
 
@@ -338,13 +471,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-  const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
-  const displayedAspect = preview.entry.frameSize || '—';
-  const cleanPrompt = getCleanPrompt(preview.entry.prompt);
+  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+  const selectedImage: any = selectedPair.image || preview?.image;
+  const selectedEntry: any = selectedPair.entry || preview?.entry;
+  const isUserUploadSelected = false;
+
+  const displayedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '—';
+  const displayedAspect = selectedEntry?.frameSize || '—';
+  const cleanPrompt = getCleanPrompt(selectedEntry?.prompt || '');
   const isLongPrompt = cleanPrompt.length > 280;
 
-  const selectedImage: any = galleryImages[selectedIndex] || preview.image;
-  const isUserUploadSelected = selectedIndex < inputImages.length;
+
 
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
@@ -389,8 +526,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gray-100/80 dark:bg-black/40 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
-          <div className="text-gray-600 dark:text-white/70 text-sm">{preview.entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+          <div className="text-white/70 text-sm">{selectedEntry?.model}</div>
           <div className="flex items-center gap-2">
             <button 
               className="p-2 rounded-full text-gray-700 dark:text-white transition-colors" 
@@ -409,7 +546,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <div className="relative bg-gray-50 dark:bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
             {selectedImage?.url && (
               <div className="relative w-full h-full flex items-center justify-center">
-                <img src={objectUrl || selectedImage.url || toProxyResourceUrl(selectedImage.url)} alt={preview.entry.prompt} className="max-w-full max-h-full object-contain" />
+                <img src={objectUrl || selectedImage.url || toProxyResourceUrl(selectedImage.url)} alt={selectedEntry?.prompt} className="max-w-full max-h-full object-contain" />
                 {isUserUploadSelected && (
                   <div className="absolute top-3 left-3 bg-white/80 dark:bg-white/20 text-gray-900 dark:text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-300 dark:border-white/30">User upload</div>
                 )}
@@ -456,8 +593,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
              {/* Date */}
              <div className="mb-4">
-              <div className="text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-gray-900 dark:text-white text-sm">{new Date(preview.entry.timestamp).toLocaleString()}</div>
+              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+              <div className="text-white text-sm">{new Date(selectedEntry?.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(selectedEntry?.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
             </div>
 
             
@@ -510,8 +647,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-white/60 text-sm">Model:</span>
-                  <span className="text-gray-900 dark:text-white text-sm">{preview.entry.model}</span>
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white text-sm">{selectedEntry?.model}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-white/60 text-sm">Style:</span>
@@ -527,21 +664,20 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </div>
               </div>
             </div>
-            {/* Gallery */}
-            {galleryImages.length > 1 && (
+            {/* Gallery - show all images from this generation run in original order */}
+            {Array.isArray((selectedEntry as any)?.images) && (selectedEntry as any).images.length > 1 && (
               <div className="mb-4">
-                <div className="text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Images ({galleryImages.length})</div>
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Images</div>
                 <div className="grid grid-cols-3 gap-2">
-                  {galleryImages.map((im, idx) => (
+                  {sameDateGallery.map((pair: any, idx: number) => (
                     <button
-                      key={im.id || idx}
-                      onClick={() => setSelectedIndex(idx)}
-                      className={`relative aspect-square rounded-md overflow-hidden border ${selectedIndex === idx ? 'border-gray-900 dark:border-white ring-2 ring-gray-900/30 dark:ring-white/30' : 'border-gray-300 dark:border-white/20 hover:border-gray-400 dark:hover:border-white/40'}`}
+                      key={pair.image?.id || idx}
+                      onClick={() => {
+                        try { setSelectedIndex(idx); } catch {}
+                      }}
+                      className={`relative aspect-square rounded-md overflow-hidden border ${selectedIndex === idx ? 'border-white ring-2 ring-white/30' : 'border-white/20 hover:border-white/40'}`}
                     >
-                      <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
-                      {idx < inputImages.length && (
-                        <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
-                      )}
+                      <img src={pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -588,15 +724,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     if (imgUrl) qs.set('image', imgUrl);
                     if (storagePath) qs.set('sp', storagePath);
                     // also pass model, frameSize and style for preselection
-                    console.log('preview.entry', preview.entry);
-                    if (preview.entry?.model) {
+                    console.log('preview.entry', selectedEntry);
+                    if (selectedEntry?.model) {
                       // Map backend model ids to UI dropdown ids where needed
-                      const m = String(preview.entry.model);
+                      const m = String(selectedEntry.model);
                       const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
                       qs.set('model', mapped);
                     }
-                    if (preview.entry?.frameSize) qs.set('frame', String(preview.entry.frameSize));
-                    const sty = preview.entry?.style || extractStyleFromPrompt(preview.entry?.prompt || '') || '';
+                    if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
+                    const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
                     if (sty) qs.set('style', String(sty));
                     // Client-side navigation to avoid full page reload
                     router.push(`/text-to-image?${qs.toString()}`);
@@ -621,6 +757,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               ✕
             </button>
           </div>
+          {/* Navigation arrows (only when multiple images in this run) */}
+          {(sameDateGallery.length > 1) && <button
+            aria-label="Previous image"
+            onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          </button>}
+          {(sameDateGallery.length > 1) && <button
+            aria-label="Next image"
+            onClick={(e) => { e.stopPropagation(); goNext(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+          </button>}
           <div
             ref={fsContainerRef}
             className="relative w-full h-full cursor-zoom-in"
@@ -629,6 +784,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             onMouseMove={fsOnMouseMove}
             onMouseUp={fsOnMouseUp}
             onMouseLeave={fsOnMouseUp}
+            onContextMenu={(e) => { e.preventDefault(); }}
             style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
           >
             <div
@@ -641,7 +797,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             >
               <img
                 src={objectUrl || selectedImage?.url || preview.image.url}
-                alt={preview.entry.prompt}
+                alt={selectedEntry?.prompt}
                 onLoad={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
                   setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
@@ -650,6 +806,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 draggable={false}
               />
             </div>
+          </div>
+          {/* Instructions */}
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
+            Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
           </div>
         </div>
       )}
