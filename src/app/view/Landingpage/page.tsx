@@ -403,11 +403,11 @@ const LandingPage: React.FC = () => {
         </h2>
         <div className="max-w-7xl mx-auto">
           {loadCarousel ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+            <React.Suspense fallback={<div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />}>
               <LazyCarousel items={carouselItems} />
             </React.Suspense>
           ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />
           )}
         </div>
       </div>
@@ -430,16 +430,16 @@ const LandingPage: React.FC = () => {
         </div>
         <div>
           {loadFeatures ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+            <React.Suspense fallback={<div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />}>
               <LazyFeaturesAll />
             </React.Suspense>
           ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />
           )}
         </div>
 
         {/* Additional ScrollFloat under Features section - ensure visibility even with short content */}
-        <div className="relative z-[10] bg-[#0a1116] px-8 md:px-6 lg:px-8 pt-12 md:pt-8 lg:pt-12 flex flex-col items-center min-h-[30vh] md:min-h-[24vh] lg:min-h-[28vh] text-center">
+        <div className="relative z-[10] bg-[#07070B] px-8 md:px-6 lg:px-8 pt-12 md:pt-8 lg:pt-12 flex flex-col items-center min-h-[30vh] md:min-h-[24vh] lg:min-h-[28vh] text-center">
           <ScrollFloat
             containerClassName="text-center"
             textClassName="text-white font-semibold font-poppins text-[clamp(6rem,8vw,6rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
@@ -468,11 +468,11 @@ const LandingPage: React.FC = () => {
         {/* LayoutGrid section */}
         {/* <div className="px-8 md:px-6 lg:px-8 -mt-4 md:-mt-2 lg:-mt-4">
           {loadLayoutGrid ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+            <React.Suspense fallback={<div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />}>
               <LazyLayoutGrid cards={layoutGridCards} />
             </React.Suspense>
           ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />
           )}
         </div> */}
 
@@ -580,14 +580,14 @@ const LandingPage: React.FC = () => {
             />
           </h2>
           {loadWorldMap ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+            <React.Suspense fallback={<div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />}>
               <LazyWorldMap 
                 dots={worldMapDots}
                 lineColor="#0ea5e9"
               />
             </React.Suspense>
           ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />
           )}
         </div> */}
 
@@ -655,7 +655,7 @@ const LandingPage: React.FC = () => {
             />
           </h2>
           {loadPricing ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+            <React.Suspense fallback={<div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />}>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-3 lg:gap-4 max-w-7xl mx-auto w-full">
                 <LazyWobbleCard
                   containerClassName="col-span-1 lg:col-span-2 md:col-span-2 h-full bg-pink-800 min-h-[500px] md:min-h-[350px] lg:min-h-[400px]"
@@ -713,7 +713,7 @@ const LandingPage: React.FC = () => {
               </div>
             </React.Suspense>
           ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />
           )}
         </div>
 
@@ -768,7 +768,7 @@ const LandingPage: React.FC = () => {
                 {/* First gallery */}
                 <div className="relative mt-30 z-[30]">
                   <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
-                    <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
+                    <React.Suspense fallback={<div className="h-full bg-[#07070B] rounded-lg animate-pulse" />}>
                       <LazyCircularGallery
                         bend={0}
                         textColor="#ffffff"
@@ -793,7 +793,7 @@ const LandingPage: React.FC = () => {
                 {/* Second gallery below, opposite direction */}
                 <div className="relative -mt-[96px] md:-mt-[140px] lg:-mt-[180px] z-[30]">
                   <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
-                    <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
+                    <React.Suspense fallback={<div className="h-full bg-[#07070B] rounded-lg animate-pulse" />}>
                       <LazyCircularGallery
                         bend={0}
                         textColor="#ffffff"
@@ -818,7 +818,7 @@ const LandingPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+              <div className="h-96 bg-[#07070B] rounded-lg animate-pulse" />
             )}
         </div>
       </div>
@@ -828,7 +828,7 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="relative z-[10] bg-[#0a1116] mt-16">
+        <div className="relative z-[10] bg-[#07070B] mt-16">
           <FooterNew />
         </div>
       </div>

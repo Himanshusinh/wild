@@ -49,8 +49,8 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({ onSubmit }) => {
   }
 
   return (
-    <div className="relative z-0 mb-4 max-w-7xl lg:max-w-7xl md:max-w-6xl mx-auto text-white p-6 sm:p-10 mb:p-4 mb:pb-12 rounded-3xl border border-white/20 backdrop-blur-lg bg-gradient-to-br from-white/5 to-transparent shadow-2xl overflow-hidden">
-      <div className="absolute inset-[1px] bg-[#0a1116] rounded-2xl pointer-events-none z-0" />
+    <div className="relative z-0 mb-4 max-w-7xl lg:max-w-7xl md:max-w-6xl mx-auto text-white p-6 sm:p-10 mb:p-4 mb:pb-12 rounded-3xl border border-white/20 backdrop-blur-lg bg-[#07070B] shadow-2xl overflow-hidden">
+      <div className="absolute inset-[1px] bg-[#07070B] rounded-2xl pointer-events-none z-0" />
 
       <div className="relative z-10 flex flex-col md:flex-row items-start justify-between gap-12 md:gap-20 mb:gap-6">
         {/* Left: Form */}

@@ -49,7 +49,7 @@ const FooterNew: React.FC = () => {
   // ];
 
   return (
-    <footer className="relative z-[10] bg-white dark:bg-black w-full transition-colors duration-300">
+    <footer className="relative z-[10] bg-[#07070B] w-full transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 md:px-4 lg:px-1 lg:max-w-7xl md:max-w-6xl">
         <div className="relative z-0 pb-2 max-w-7xl mx-auto text-black dark:text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-t-3xl border border-b-0 border-white/20 overflow-hidden transition-colors duration-300">
            {/* Background decorative grid */}

@@ -466,16 +466,16 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 // duplicate removed
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#07070B] transition-colors duration-300">
+    <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-10">
         <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => {}} onGenerationTypeChange={() => {}} onWildmindSkitClick={() => {}} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
           <div className="mb-6 sm:mb-8">
-            <h3 className="text-gray-900 dark:text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+            <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
               Art Station
             </h3>
-            <p className="text-gray-600 dark:text-white/80 text-base sm:text-lg md:text-xl">
+            <p className="text-white/80 text-base sm:text-lg md:text-xl">
               Discover amazing AI-generated content from our creative community
             </p>
           </div>
@@ -487,10 +487,10 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border shadow-sm ${
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
                     activeCategory === category
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 border-blue-400 dark:border-blue-500/50 text-white shadow-blue-500/20 dark:shadow-blue-600/30'
-                      : 'bg-white/90 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/90 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                      ? 'bg-white border-white/5 text-black shadow-sm'
+                      : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {category}
@@ -500,7 +500,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
             </div>
           </div>
 
-          {error && <div className="text-red-600 dark:text-red-400 mb-4 text-sm bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-4 py-3">{error}</div>}
+          {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
              {cards.map(({ item, media, kind }, idx) => {
@@ -528,57 +528,72 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                      setSelectedAudioIndex(0)
                      setPreview({ kind, url: media.url, item })
                    }}
+                  ref={(el) => { revealRefs.current[cardId] = el }}
                 >
-                  <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                   <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
                     <div
-                      style={{ aspectRatio: tileRatio, minHeight: 280 }}
+                      style={{ aspectRatio: tileRatio, minHeight: 200 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] ${loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'}`}
                     >
-                      {kind === 'video' ? (
-                        (() => {
-                          const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                          const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
-                          const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                          return <video src={proxied} className="w-full h-full object-cover" controls muted />
-                        })()
-                      ) : (
-                        (() => {
-                          const isPriority = idx < 8
-                          const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw'
-                          const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' 
-                          return (
-                            <Image
-                              src={media.url}
-                              alt={item.prompt || ''}
-                              fill
-                              sizes={sizes}
-                              className="object-cover"
-                              placeholder="blur"
-                              blurDataURL={blur}
-                              priority={isPriority}
-                              fetchPriority={isPriority ? 'high' : 'auto'}
-                              onLoadingComplete={(img) => {
-                                try {
-                                  const el = img as unknown as HTMLImageElement
-                                  if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                } catch {}
-                                markTileLoaded(cardId)
-                              }}
-                            />
-                          )
-                        })()
+                      {!loadedTiles.has(cardId) && (
+                        <div className="absolute inset-0 bg-white/10" />
                       )}
+                      {(() => {
+                        const isPriority = idx < 8
+                        const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
+                        const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
+                        return kind === 'video' ? (
+                          (() => {
+                            const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+                            const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
+                            const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                            return (
+                              <video
+                                src={proxied}
+                                className="w-full h-full object-cover"
+                                controls
+                                muted
+                                preload="metadata"
+                                onLoadedData={(e) => {
+                                  const v = e.currentTarget as HTMLVideoElement
+                                  try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch {}
+                                  markTileLoaded(cardId)
+                                }}
+                              />
+                            )
+                          })()
+                        ) : (
+                          <Image
+                            src={media.url}
+                            alt={item.prompt || ''}
+                            fill
+                            sizes={sizes}
+                            className="object-cover"
+                            placeholder="blur"
+                            blurDataURL={blur}
+                            priority={isPriority}
+                            fetchPriority={isPriority ? 'high' : 'auto'}
+                            onLoadingComplete={(img) => {
+                              try {
+                                const el = img as unknown as HTMLImageElement
+                                if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                              } catch {}
+                              markTileLoaded(cardId)
+                            }}
+                          />
+                        )
+                      })()}
                     </div>
                     
                     {/* Hover Overlay - Profile and Like Button */}
-                    <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900/95 via-gray-900/75 dark:from-black/90 dark:via-black/70 to-transparent p-3 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                       <div className="flex items-center justify-between">
                         {/* Profile Section */}
                         <div className="flex items-center gap-2">
                           {item.createdBy?.photoURL ? (
-                            <img src={`/api/proxy/external?url=${encodeURIComponent(item.createdBy.photoURL)}`} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full ring-2 ring-white/20" />
+                            <img src={`/api/proxy/external?url=${encodeURIComponent(item.createdBy.photoURL)}`} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-white/20 dark:bg-white/20" />
+                            <div className="w-8 h-8 rounded-full bg-white/20" />
                           )}
                           <div className="text-white text-sm font-medium">{item.createdBy?.displayName || item.createdBy?.username || 'User'}</div>
                         </div>
@@ -586,7 +601,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         {/* Like Button and Delete (owner only) */}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
-                          className="p-2 rounded-full bg-white/20 dark:bg-white/20 text-white/80 hover:bg-white/30 dark:hover:bg-white/30 transition-colors"
+                          className="p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -610,7 +625,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                       </div>
                     </div>
                     
-                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-2xl pointer-events-none transition" />
+                     <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
                   </div>
                 </div>
               )
@@ -621,7 +636,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
           {loading && items.length > 0 && (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">Loading more...</p>
+              <p className="text-white/60 mt-2">{activeCategory === 'All' ? 'Loading more...' : `Loading ${activeCategory}...`}</p>
             </div>
           )}
 
@@ -629,22 +644,22 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
           {loading && items.length === 0 && (
             <div className="text-center py-16">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-4">Loading Art Station...</p>
+              <p className="text-white/60 mt-4">{activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}</p>
             </div>
           )}
 
           {/* No items message */}
           {!loading && items.length === 0 && !error && (
             <div className="text-center py-16">
-              <p className="text-gray-700 dark:text-white/60 text-lg">No public generations available yet.</p>
-              <p className="text-gray-500 dark:text-white/40 text-sm mt-2">Be the first to share your creations!</p>
+              <p className="text-white/60 text-lg">No public generations available yet.</p>
+              <p className="text-white/40 text-sm mt-2">Be the first to share your creations!</p>
             </div>
           )}
 
           {/* End message */}
           {!loading && !hasMore && items.length > 0 && (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-white/40 text-sm">You've reached the end</p>
+              <p className="text-white/40 text-sm">You've reached the end</p>
             </div>
           )}
 
@@ -652,11 +667,11 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
           {/* Preview Modals */}
           {preview && (
-            <div className="fixed inset-0 bg-black/80 dark:bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-                <div className="relative w-full max-w-6xl bg-white dark:bg-black/40 ring-1 ring-gray-200 dark:ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+                <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/40 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-white/70 text-sm">
+                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
+                  <div className="flex items-center gap-2 text-white/70 text-sm">
                     <span>{preview.item.model}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -664,21 +679,21 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                     {currentUid && preview.item.createdBy?.uid === currentUid && (
                       <button
                         title="Delete"
-                        className="px-3 py-1.5 rounded-full text-gray-700 dark:text-white text-sm hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                        className="px-3 py-1.5 rounded-full  text-white text-sm"
                         onClick={() => confirmDelete(preview.item)}
                       >
                                       <Trash2 className="w-5 h-5" />
 
                       </button>
                     )}
-                    <button aria-label="Close" className="text-gray-700 dark:text-white/80 hover:text-gray-900 dark:hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
+                    <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
                   {/* Media */}
-                  <div className="relative bg-gray-100 dark:bg-black/30 h-[40vh] md:h-full md:flex-1">
+                  <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1">
                     {(() => {
                       const images = (preview.item.images || []) as any[]
                       const videos = (preview.item.videos || []) as any[]
@@ -714,36 +729,36 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                   </div>
 
                   {/* Sidebar */}
-                  <div className="p-4 md:p-5 text-gray-900 dark:text-white border-t md:border-t-0 md:border-l border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
+                  <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
                     {/* Creator */}
                     <div className="mb-4">
-                      <div className="text-gray-500 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Creator</div>
+                      <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Creator</div>
                       <div className="flex items-center gap-2">
                         {preview.item.createdBy?.photoURL ? (
-                          <img src={`/api/proxy/external?url=${encodeURIComponent(preview.item.createdBy.photoURL)}`} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full ring-2 ring-gray-200 dark:ring-white/10" />
+                          <img src={`/api/proxy/external?url=${encodeURIComponent(preview.item.createdBy.photoURL)}`} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-white/20" />
+                          <div className="w-6 h-6 rounded-full bg-white/20" />
                         )}
-                        <span className="text-gray-900 dark:text-white text-sm font-medium">{preview.item.createdBy?.displayName || preview.item.createdBy?.username || 'User'}</span>
+                        <span className="text-white text-sm font-medium">{preview.item.createdBy?.displayName || preview.item.createdBy?.username || 'User'}</span>
                       </div>
                     </div>
                     
                     {/* Date */}
-                    <div className="mb-4">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-                      <div className="text-white text-sm">{new Date(preview.item.createdAt || preview.item.updatedAt || '').toLocaleString()}</div>
-                    </div>
+                      <div className="mb-4">
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+                        <div className="text-white text-sm">{formatDate(preview.item.createdAt || preview.item.updatedAt || '')}</div>
+                      </div>
                     
                     {/* Prompt */}
                     <div className="pb-4 ">
                       <div className="flex items-center justify-between mb-4">
-                      <div className="text-gray-500 dark:text-white/60 text-xs uppercase tracking-wider mb-0">Prompt</div>
+                      <div className="text-white/60 text-xs uppercase tracking-wider mb-0">Prompt</div>
                       <button 
                         onClick={() => copyPrompt(preview.item.prompt || '', `preview-${preview.item.id}`)}
-                        className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg transition-colors ${
+                        className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
                           copiedButtonId === `preview-${preview.item.id}` 
-                            ? 'bg-green-500/20 text-green-600 dark:text-green-400' 
-                            : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-white/10 hover:bg-white/20'
                         }`}
                       >
                         {copiedButtonId === `preview-${preview.item.id}` ? (
@@ -763,10 +778,25 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         )}
                       </button>
                       </div>
-                      <div className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
-                        {cleanPromptByType(preview.item.prompt, preview.item.generationType)}
-                        
-                      </div>
+                      {(() => {
+                        const cleaned = cleanPromptByType(preview.item.prompt, preview.item.generationType)
+                        const isLong = (cleaned || '').length > 280
+                        return (
+                          <>
+                            <div className={`text-white/90 text-sm leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLong ? 'line-clamp-4' : ''}`}>
+                              {cleaned}
+                            </div>
+                            {isLong && (
+                              <button
+                                onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                                className="mt-2 text-xs text-white/70 hover:text-white underline"
+                              >
+                                Read {isPromptExpanded ? 'less' : 'more'}
+                              </button>
+                            )}
+                          </>
+                        )
+                      })()}
                       
                       
                     </div>
@@ -774,13 +804,13 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                     {/* Images Thumbnails */}
                     {preview.item.images && preview.item.images.length > 1 && (
                       <div className="mb-4">
-                        <div className="text-gray-500 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Images ({preview.item.images.length})</div>
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Images ({preview.item.images.length})</div>
                         <div className="grid grid-cols-3 gap-2">
                           {preview.item.images.map((im: any, idx: number) => (
                             <button
                               key={im.id || idx}
                               onClick={() => setSelectedImageIndex(idx)}
-                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40'}`}
+                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
                               <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
                             </button>
@@ -792,13 +822,13 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                     {/* Videos Thumbnails */}
                     {preview.item.videos && preview.item.videos.length > 1 && (
                       <div className="mb-4">
-                        <div className="text-gray-500 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({preview.item.videos.length})</div>
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({preview.item.videos.length})</div>
                         <div className="grid grid-cols-3 gap-2">
                           {preview.item.videos.map((vd: any, idx: number) => (
                             <button
                               key={vd.id || idx}
                               onClick={() => setSelectedVideoIndex(idx)}
-                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedVideoIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/40'}`}
+                              className={`relative aspect-square rounded-md overflow-hidden border ${selectedVideoIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
                               {(() => {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
@@ -815,16 +845,16 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                     {/* Audios List */}
                     {(preview.item as any).audios && (preview.item as any).audios.length > 1 && (
                       <div className="mb-4">
-                        <div className="text-gray-500 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Tracks ({(preview.item as any).audios.length})</div>
+                        <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Tracks ({(preview.item as any).audios.length})</div>
                         <div className="space-y-2">
                           {((preview.item as any).audios as any[]).map((au: any, idx: number) => (
                             <button
                               key={au.id || idx}
                               onClick={() => setSelectedAudioIndex(idx)}
-                              className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-blue-50 dark:bg-white/10' : 'border-gray-200 dark:border-white/20 hover:border-gray-300 dark:hover:border-white/30'}`}
+                              className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-white/10' : 'border-white/20 hover:border-white/30'}`}
                             >
                               <div className="flex items-center gap-2 text-sm text-white/90">
-                                <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
+                                <span className="inline-block w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
                                 <span>Track {idx + 1}</span>
                               </div>
                             </button>
@@ -835,29 +865,29 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
                     {/* Details */}
                     <div className="mb-4">
-                      <div className="text-gray-500 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+                      <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-white/60 text-sm">Type:</span>
-                          <span className="text-gray-900 dark:text-white text-sm">{preview.item.generationType}</span>
+                          <span className="text-white/60 text-sm">Type:</span>
+                          <span className="text-white text-sm">{preview.item.generationType}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-white/60 text-sm">Model:</span>
-                          <span className="text-gray-900 dark:text-white text-sm">{preview.item.model}</span>
+                          <span className="text-white/60 text-sm">Model:</span>
+                          <span className="text-white text-sm">{preview.item.model}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-white/60 text-sm">Aspect ratio:</span>
-                          <span className="text-gray-900 dark:text-white text-sm">{preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio || '—'}</span>
+                          <span className="text-white/60 text-sm">Aspect ratio:</span>
+                          <span className="text-white text-sm">{preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio || '—'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-white/60 text-sm">Format:</span>
-                          <span className="text-gray-900 dark:text-white text-sm">{preview.kind}</span>
+                          <span className="text-white/60 text-sm">Format:</span>
+                          <span className="text-white text-sm">{preview.kind}</span>
                         </div>
                         {/* Style field - commented out for now */}
                         {/* {preview.item.style && (
                           <div className="flex justify-between">
-                            <span className="text-gray-500 dark:text-white/60 text-sm">Style:</span>
-                            <span className="text-gray-900 dark:text-white text-sm">{preview.item.style}</span>
+                            <span className="text-white/60 text-sm">Style:</span>
+                            <span className="text-white text-sm">{preview.item.style}</span>
                           </div>
                         )} */}
                       </div>
@@ -919,7 +949,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                             console.error('Download failed:', e);
                           }
                         }}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/25 bg-white dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/20 text-sm transition-colors shadow-sm dark:shadow-none"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                           <path d="M12 3v12" />
@@ -943,7 +973,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                             alert('Link copied to clipboard!')
                           }
                         }}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/25 bg-white dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/20 text-sm transition-colors shadow-sm dark:shadow-none"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -965,7 +995,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           dest.searchParams.set('image', url);
                           window.location.href = dest.toString();
                         }}
-                        className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-[#2D6CFF] dark:to-[#255fe6] text-white rounded-lg hover:from-blue-600 hover:to-blue-700 dark:hover:bg-[#255fe6] transition-all text-sm font-medium shadow-md hover:shadow-lg"
+                        className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
                       >
                         Remix
                       </button>
@@ -992,5 +1022,3 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
     </div>
   )
 }
-
-
