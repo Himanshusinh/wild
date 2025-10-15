@@ -22,20 +22,20 @@ const ImageCountDropdown = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-transparent rounded-full border border-white/20 p-1">
+    <div className="flex items-center gap-2 bg-transparent rounded-full border border-black/20 dark:border-white/20 p-1">
       <button
         onClick={handleDecrease}
         disabled={imageCount <= 1}
         className={`w-4 h-4 rounded-full flex items-center justify-center transition ml-2 ${
           imageCount <= 1 
-            ? 'text-white cursor-not-allowed' 
-            : ' text-white hover:bg-white/20'
+            ? 'text-black/40 dark:text-white/40 cursor-not-allowed' 
+            : 'text-black/90 dark:text-white/90 hover:bg-black/20 dark:hover:bg-white/20'
         }`}
       >
         <Minus className="w-4 h-4" />
       </button>
       
-      <span className="px-1 text-md font-medium text-white/90  text-center">
+      <span className="px-1 text-md font-medium text-black/90 dark:text-white/90 text-center">
         {imageCount}
       </span>
       
@@ -44,8 +44,8 @@ const ImageCountDropdown = () => {
         disabled={imageCount >= 4}
         className={`w-4 h-4 rounded-full flex items-center justify-center transition mr-2 ${
           imageCount >= 4 
-            ? ' text-white cursor-not-allowed' 
-            : ' text-white hover:bg-white/20'
+            ? 'text-black/40 dark:text-white/40 cursor-not-allowed' 
+            : 'text-black/90 dark:text-white/90 hover:bg-black/20 dark:hover:bg-white/20'
         }`}
       >
         <Plus className="w-4 h-4" />

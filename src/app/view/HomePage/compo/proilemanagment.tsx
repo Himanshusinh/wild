@@ -265,33 +265,33 @@ const ProfileManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07070B] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-white dark:bg-[#07070B] flex items-center justify-center">
+        <div className="text-gray-900 dark:text-white">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#07070B] text-white p-6">
+    <div className="min-h-screen bg-white dark:bg-[#07070B] text-gray-900 dark:text-white p-6 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-6 mb-12">
           <button
             onClick={handleBack}
-            className="flex items-center justify-center w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-4xl font-semibold">Account Settings</h1>
+          <h1 className="text-4xl font-semibold text-gray-900 dark:text-white">Account Settings</h1>
         </div>
 
         {/* Profile Picture Section - READ ONLY */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Profile Picture</h2>
+        <div className="bg-white/90 dark:bg-white/5 rounded-3xl p-8 mb-8 border border-gray-200 dark:border-white/10 shadow-sm">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-white">Profile Picture</h2>
           
           <div className="flex items-center gap-8">
             <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden border-4 border-white/20">
+              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden border-4 border-gray-200 dark:border-white/20">
                 {(userData?.photoURL && !avatarFailed) ? (
                   <img
                     src={userData.photoURL}
@@ -309,10 +309,10 @@ const ProfileManagement = () => {
             </div>
 
             <div className="flex-1">
-              <p className="text-gray-300 text-base mb-2">
+              <p className="text-gray-600 dark:text-gray-300 text-base mb-2">
                 Profile picture cannot be changed
               </p>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
                 Contact support if you need to update your profile picture
               </p>
             </div>
@@ -320,40 +320,40 @@ const ProfileManagement = () => {
         </div>
 
         {/* Profile Information */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Profile Information</h2>
+        <div className="bg-white/90 dark:bg-white/5 rounded-3xl p-8 mb-8 border border-gray-200 dark:border-white/10 shadow-sm">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-white">Profile Information</h2>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Username - READ ONLY */}
             <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
+              <label className="block text-base font-medium text-gray-600 dark:text-gray-300 mb-3">
                 Username
               </label>
-              <div className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-base">
+              <div className="px-4 py-3 bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/20 rounded-lg text-gray-900 dark:text-white text-base">
                 {userData?.username || 'No username'}
               </div>
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">
                 Username cannot be changed
               </p>
             </div>
 
             {/* Email (read-only) */}
             <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
+              <label className="block text-base font-medium text-gray-600 dark:text-gray-300 mb-3">
                 Email Address
               </label>
-              <div className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-base">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-gray-600 dark:text-gray-400 text-base">
                 {userData?.email || 'No email'}
               </div>
             </div>
 
             {/* Account Status */}
             <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
+              <label className="block text-base font-medium text-gray-600 dark:text-gray-300 mb-3">
                 Account Status
               </label>
               <div className="flex items-center gap-3">
-                <span className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-base">
+                <span className="px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-gray-600 dark:text-gray-400 text-base">
                   {userData?.metadata?.accountStatus || 'Active'}
                 </span>
                 <span className="w-3 h-3 bg-green-400 rounded-full"></span>
@@ -362,10 +362,10 @@ const ProfileManagement = () => {
 
             {/* Member Since */}
             <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
+              <label className="block text-base font-medium text-gray-600 dark:text-gray-300 mb-3">
                 Member Since
               </label>
-              <div className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-base">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-gray-600 dark:text-gray-400 text-base">
                 {userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'Unknown'}
               </div>
             </div>
@@ -373,29 +373,29 @@ const ProfileManagement = () => {
         </div>
 
         {/* Account Details */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Account Details</h2>
+        <div className="bg-white/90 dark:bg-white/5 rounded-3xl p-8 mb-8 border border-gray-200 dark:border-white/10 shadow-sm">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-white">Account Details</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Credits */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <label className="block text-base font-medium text-gray-300 mb-3">
+            <div className="bg-gray-50 dark:bg-white/5 rounded-2xl p-6 border border-gray-200 dark:border-white/10">
+              <label className="block text-base font-medium text-gray-600 dark:text-gray-300 mb-3">
                 Credits Balance
               </label>
               <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-white">
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">
                   {creditBalance ?? userData?.credits ?? 0}
                 </span>
-                <Image src="/icons/coinswhite.svg" alt="credits" width={24} height={24} />
+                <Image src="/icons/coinswhite.svg" alt="credits" width={24} height={24} className="dark:brightness-100 brightness-0" />
               </div>
             </div>
 
             {/* Active Plan */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <label className="block text-base font-medium text-gray-300 mb-3">
+            <div className="bg-gray-50 dark:bg-white/5 rounded-2xl p-6 border border-gray-200 dark:border-white/10">
+              <label className="block text-base font-medium text-gray-600 dark:text-gray-300 mb-3">
                 Active Plan
               </label>
-              <div className="text-xl font-semibold text-white">
+              <div className="text-xl font-semibold text-gray-900 dark:text-white">
                 {userData?.plan || 'Free'}
               </div>
             </div>
@@ -413,15 +413,15 @@ const ProfileManagement = () => {
         </div>
 
         {/* Privacy Settings */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Privacy Settings</h2>
+        <div className="bg-white/90 dark:bg-white/5 rounded-3xl p-8 mb-8 border border-gray-200 dark:border-white/10 shadow-sm">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-white">Privacy Settings</h2>
           
-          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+          <div className="bg-gray-50 dark:bg-white/5 rounded-2xl p-6 border border-gray-200 dark:border-white/10">
             {/* Public Generations */}
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="text-white font-semibold text-lg mb-2">Make Generations Public</h3>
-                <p className="text-gray-400 text-base">
+                <h3 className="text-gray-900 dark:text-white font-semibold text-lg mb-2">Make Generations Public</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-base">
                   Allow others to see your generated content on the public feed
                 </p>
               </div>
@@ -429,9 +429,9 @@ const ProfileManagement = () => {
                 type="button"
                 aria-pressed={isPublic}
                 onClick={handleTogglePublic}
-                className={`w-16 h-8 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
+                className={`w-16 h-8 rounded-full transition-colors ${isPublic ? 'bg-blue-500 dark:bg-blue-600' : 'bg-gray-300 dark:bg-white/20'}`}
               >
-                <span className={`block w-7 h-7 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-8' : 'translate-x-0.5'} relative top-0.5`} />
+                <span className={`block w-7 h-7 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-8' : 'translate-x-0.5'} relative top-0.5`} />
               </button>
             </div>
           </div>
@@ -441,7 +441,7 @@ const ProfileManagement = () => {
         <div className="flex gap-6 mt-8">
           <button
             onClick={handleBack}
-            className="flex items-center gap-3 px-8 py-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors font-medium text-lg"
+            className="flex items-center gap-3 px-8 py-4 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 rounded-xl transition-colors font-medium text-lg text-gray-900 dark:text-white"
           >
             <ArrowLeft size={20} />
             Back
@@ -449,7 +449,7 @@ const ProfileManagement = () => {
           
           <button
             onClick={() => router.push('/view/pricing')}
-            className="flex items-center gap-3 px-8 py-4 bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors font-medium text-lg"
+            className="flex items-center gap-3 px-8 py-4 bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors font-medium text-lg text-white"
           >
             <Image src="/icons/coinswhite.svg" alt="credits" width={20} height={20} />
             Upgrade Plan

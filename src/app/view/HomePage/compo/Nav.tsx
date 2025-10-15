@@ -43,9 +43,15 @@ interface UserData {
 
 const Nav = () => {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [theme, setTheme] = useState<'dark' | 'light' | 'auto'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const stored = localStorage.getItem('theme')
+      return (stored === 'dark' || stored === 'light') ? stored : 'dark'
+    } catch { return 'dark' }
+  })
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [isPublic, setIsPublic] = useState<boolean>(() => {
@@ -55,11 +61,17 @@ const Nav = () => {
     } catch { return false }
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const themeDropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   // Close dropdown when clicking outside
   useOutsideClick(dropdownRef, () => {
     setShowDropdown(false)
+  })
+
+  // Close theme dropdown when clicking outside
+  useOutsideClick(themeDropdownRef, () => {
+    setShowThemeDropdown(false)
   })
 
   // Fetch user and credits from backend
@@ -112,6 +124,30 @@ const Nav = () => {
     return unsubscribe
   }, [])
 
+  // Apply theme to document
+  useEffect(() => {
+    const applyTheme = () => {
+      const root = document.documentElement
+      console.log('Applying theme:', theme)
+      console.log('Current classes before:', root.className)
+      
+      if (theme === 'dark') {
+        console.log('Setting dark mode')
+        root.classList.add('dark')
+        root.classList.remove('light')
+      } else {
+        // light mode
+        console.log('Setting light mode')
+        root.classList.remove('dark')
+        root.classList.add('light')
+      }
+      
+      console.log('Current classes after:', root.className)
+    }
+
+    applyTheme()
+  }, [theme])
+
   const handleLogout = async () => {
     try {
       // Clear local storage
@@ -153,10 +189,15 @@ const Nav = () => {
   }
 
   const toggleTheme = () => {
-    const themes: ('dark' | 'light' | 'auto')[] = ['dark', 'light', 'auto']
-    const currentIndex = themes.indexOf(theme)
-    const nextIndex = (currentIndex + 1) % themes.length
-    setTheme(themes[nextIndex])
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    console.log('Toggling theme to:', newTheme)
+    setTheme(newTheme)
+    try {
+      localStorage.setItem('theme', newTheme)
+      console.log('Theme saved to localStorage:', newTheme)
+    } catch (e) {
+      console.error('Failed to save theme:', e)
+    }
   }
 
   // Redirect functions for pricing page
@@ -176,15 +217,21 @@ const Nav = () => {
     <div className='fixed top-4 right-4 z-50'>
       <div className='flex items-center gap-3'>
         {/* Group 1: search + credits inside shared background */}
-        <div className='flex items-center gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-2 py-1'>
+        <div className='flex items-center gap-3 rounded-full backdrop-blur-3xl bg-black/5 dark:bg-white/5 shadow-lg border border-black/10 dark:border-white/10 px-2 py-1 transition-colors duration-300'>
           {/* <svg className='cursor-pointer p-1' width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
             <path d='M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z' stroke='currentColor' strokeWidth='2' className='text-white/70'/>
             <path d='M21 21l-4.3-4.3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' className='text-white/70'/>
           </svg> */}
-          <button className='flex items-center rounded-full text-white text-lg px-6 py-2 gap-2'>
+          <button className='flex items-center rounded-full text-black dark:text-white text-lg px-6 py-2 gap-2 transition-colors duration-300'>
             {loading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
 
-            <Image className='cursor-pointer' src={imageRoutes.icons.coins} alt='logo' width={25} height={25} />
+            <Image 
+              className='cursor-pointer brightness-50 dark:brightness-100 transition-all duration-300' 
+              src={imageRoutes.icons.coins} 
+              alt='logo' 
+              width={25} 
+              height={25} 
+            />
 
             {/* <svg className='cursor-pointer' width='26' height='26' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <circle cx='12' cy='12' r='9' stroke='#F4D03F' strokeWidth='2' fill='url(#coinGrad)'/>
@@ -201,7 +248,7 @@ const Nav = () => {
 
         {/* Group 2: person icon with dropdown */}
         <div className='relative' ref={dropdownRef}>
-          <div className='rounded-full backdrop-blur-3xl bg-black/30 shadow-lg border border-white/10 '>
+          <div className='rounded-full backdrop-blur-3xl bg-black/20 dark:bg-black/30 shadow-lg border border-black/10 dark:border-white/10 transition-colors duration-300'>
             <button 
               onClick={toggleDropdown}
               className='flex items-center justify-center rounded-full'
@@ -215,7 +262,7 @@ const Nav = () => {
                   className='w-11 h-11 rounded-full object-cover'
                 />
               ) : (
-                <svg width='28' height='28' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' className='text-white/80'>
+                <svg width='28' height='28' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' className='text-black/80 dark:text-white/80'>
                   <circle cx='12' cy='8' r='4' stroke='currentColor' strokeWidth='2'/>
                   <path d='M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8' stroke='currentColor' strokeWidth='2'/>
                 </svg>
@@ -225,10 +272,10 @@ const Nav = () => {
 
           {/* Profile Dropdown */}
           {showDropdown && (
-            <div className='absolute right-0 top-full mt-2 w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden'>
+            <div className='absolute right-0 top-full mt-2 w-80 rounded-2xl backdrop-blur-3xl bg-white/90 dark:bg-white/10 shadow-xl border border-black/10 dark:border-white/10 overflow-hidden transition-colors duration-300'>
               <div className='p-4'>
                 {/* User Info Header */}
-                <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
+                <div className='flex items-center gap-3 mb-4 pb-4 border-b border-black/10 dark:border-white/10'>
                   <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
                     {(!loading && userData?.photoURL && !avatarFailed) ? (
                       <img
@@ -245,10 +292,10 @@ const Nav = () => {
                     )}
                   </div>
                   <div className='flex-1'>
-                    <div className='text-white font-semibold text-lg'>
+                    <div className='text-black dark:text-white font-semibold text-lg'>
                       {loading ? 'Loading...' : ( userData?.username || 'User')}
                     </div>
-                    <div className='text-gray-300 text-sm'>
+                    <div className='text-gray-600 dark:text-gray-300 text-sm'>
                       {loading ? 'Loading...' : (userData?.email || 'user@example.com')}
                     </div>
                     {/* {userData?.metadata?.accountStatus && (
@@ -262,9 +309,9 @@ const Nav = () => {
                 {/* Menu Items */}
                 <div className='space-y-2'>
                   {/* User Info */}
-                  <div className='space-y-1 px-3 py-2 rounded-lg bg-white/5'>
+                  <div className='space-y-1 px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5'>
                     <div className='flex items-center justify-between'>
-                      <span className='text-white text-sm'>Status</span>
+                      <span className='text-black dark:text-white text-sm'>Status</span>
                       <span className='text-green-400 text-sm'>{userData?.metadata?.accountStatus || 'Active'}</span>
                     </div>
                     {/* <div className='flex items-center justify-between'>
@@ -278,38 +325,69 @@ const Nav = () => {
                   </div>
 
                   {/* Active Plan */}
-                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
-                    <span className='text-white text-sm'>Active Plan</span>
-                    <span className='text-gray-300 text-sm'>{userData?.plan || 'Free'}</span>
+                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors'>
+                    <span className='text-black dark:text-white text-sm'>Active Plan</span>
+                    <span className='text-gray-600 dark:text-gray-300 text-sm'>{userData?.plan || 'Free'}</span>
                   </div>
 
                   {/* Upgrade Plan */}
                   <button 
                     onClick={handleUpgradePlan}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors'
                   >
-                    <span className='text-white text-sm'>Upgrade Plan</span>
+                    <span className='text-black dark:text-white text-sm'>Upgrade Plan</span>
                   </button>
 
                   {/* Purchase Credits */}
                   <button 
                     onClick={handlePurchaseCredits}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors'
                   >
-                    <span className='text-white text-sm'>Purchase Additional Credits</span>
+                    <span className='text-black dark:text-white text-sm'>Purchase Additional Credits</span>
                   </button>
 
                   {/* Theme Toggle */}
-                  {/* <button 
-                    onClick={toggleTheme}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
-                  >
-                    <span className='text-white text-sm'>Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-                  </button> */}
+                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors'>
+                    <span className='text-black dark:text-white text-sm'>Theme</span>
+                    <button
+                      type='button'
+                      onClick={toggleTheme}
+                      className={`relative w-14 h-7 rounded-full transition-all duration-500 ${theme === 'dark' ? 'bg-gradient-to-r from-indigo-600 to-blue-500' : 'bg-gradient-to-r from-amber-400 to-orange-400'}`}
+                    >
+                      {/* Background Icons */}
+                      <div className='absolute inset-0 flex items-center justify-between px-1.5'>
+                        {/* Sun Icon (Left) */}
+                        <svg className={`w-3.5 h-3.5 transition-all duration-500 ${theme === 'light' ? 'text-white scale-100 opacity-100' : 'text-white/30 scale-75 opacity-0'}`} fill='currentColor' viewBox='0 0 20 20'>
+                          <path fillRule='evenodd' d='M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z' clipRule='evenodd' />
+                        </svg>
+                        
+                        {/* Moon Icon (Right) */}
+                        <svg className={`w-3.5 h-3.5 transition-all duration-500 ${theme === 'dark' ? 'text-white scale-100 opacity-100' : 'text-white/30 scale-75 opacity-0'}`} fill='currentColor' viewBox='0 0 20 20'>
+                          <path d='M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z' />
+                        </svg>
+                      </div>
+                      
+                      {/* Sliding Knob */}
+                      <span className={`absolute top-0.5 block w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-500 ease-in-out transform ${theme === 'dark' ? 'translate-x-7' : 'translate-x-0.5'}`}>
+                        {/* Inner Icon that rotates */}
+                        <span className='absolute inset-0 flex items-center justify-center'>
+                          {theme === 'dark' ? (
+                            <svg className='w-3.5 h-3.5 text-indigo-600 animate-spin-slow' fill='currentColor' viewBox='0 0 20 20'>
+                              <path d='M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z' />
+                            </svg>
+                          ) : (
+                            <svg className='w-3.5 h-3.5 text-amber-500 animate-pulse' fill='currentColor' viewBox='0 0 20 20'>
+                              <path fillRule='evenodd' d='M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z' clipRule='evenodd' />
+                            </svg>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  </div>
 
                   {/* Make generations public toggle */}
-                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
-                    <span className='text-white text-sm'>Make generations public</span>
+                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors'>
+                    <span className='text-black dark:text-white text-sm'>Make generations public</span>
                     <button
                       type='button'
                       aria-pressed={isPublic}
@@ -322,25 +400,25 @@ const Nav = () => {
                         } catch {}
                         try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
                       }}
-                      className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
+                      className={`w-12 h-6 rounded-full transition-colors ${isPublic ? 'bg-blue-500 dark:bg-blue-600' : 'bg-gray-300 dark:bg-white/20'}`}
                     >
-                      <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0 left-0.5`} />
+                      <span className={`block w-5 h-5 bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0.5`} />
                     </button>
                   </div>
 
                   {/* Account Settings */}
                   <button 
                     onClick={() => {
-                      router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)
+                      router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)  
                       setShowDropdown(false)
                     }}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors'
                   >
-                    <span className='text-white text-sm'>Account Settings</span>
+                    <span className='text-black dark:text-white text-sm'>Account Settings</span>
                   </button>
 
                   {/* Divider */}
-                  <div className='border-t border-white/10 my-2'></div>
+                  <div className='border-t border-black/10 dark:border-white/10 my-2'></div>
 
                   {/* Logout */}
                   <button 

@@ -1,8 +1,24 @@
 @import "tailwindcss";
 
-body {
+@variant dark (.dark &);
+
+@theme {
+  --color-dark-bg: #07070B;
+}
+
+:root {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+:root.dark {
   background-color: #000000;
   color: #ffffff;
+}
+
+body {
+  background-color: inherit;
+  color: inherit;
 }
 
 /* Hide scrollbars utility */
@@ -170,3 +186,17 @@ body {
   background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 100%);
   background-size: 200% 100%;
 }
+
+/* Slow spin animation for theme toggle */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+} 

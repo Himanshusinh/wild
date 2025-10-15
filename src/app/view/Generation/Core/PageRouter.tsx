@@ -204,7 +204,7 @@ export default function PageRouter() {
   // Handle different views
   if (currentView === 'history') {
     return (
-      <div className="min-h-screen p-6">
+      <div className="min-h-screen p-6 bg-white dark:bg-[#07070B] transition-colors duration-300">
         <History />
       </div>
     );

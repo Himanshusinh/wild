@@ -138,7 +138,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
+        className="Z-50 h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
       >
         <Cpu className="w-4 h-4 mr-1" />
         {filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
@@ -149,7 +149,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-[28rem] bg-white/90 dark:bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar transition-colors duration-300`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             const leftValues = [
@@ -171,7 +171,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
             return (
               <div className="grid grid-cols-2 gap-0">
                 {/* Left column (priority models with crown) */}
-                <div className="divide-y divide-white/10">
+                <div className="divide-y divide-black/10 dark:divide-white/10">
                   {leftModels.map((model) => (
                     <button
                       key={`left-${model.value}`}
@@ -180,27 +180,27 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         handleModelSelect(model.value);
                       }}
                       className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                        ? 'bg-white text-black'
-                        : 'text-white/90 hover:bg-white/10'
+                        ? 'bg-black dark:bg-white text-white dark:text-black'
+                        : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                         }`}
                     >
                       <div className="flex flex-col mb-0">
                         <span className="flex items-center gap-2">
                           {model.name}
-                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4 brightness-50 dark:brightness-100" />
                         </span>
                         {model.credits && (
                           <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
                         )}
                       </div>
                       {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                        <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                       )}
                     </button>
                   ))}
                 </div>
                 {/* Right column (all remaining models) */}
-                <div className="border-l border-white/10 divide-y divide-white/10">
+                <div className="border-l border-black/10 dark:border-white/10 divide-y divide-black/10 dark:divide-white/10">
                   {rightModels.map((model) => (
                     <button
                       key={`right-${model.value}`}
@@ -209,8 +209,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         handleModelSelect(model.value);
                       }}
                       className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                        ? 'bg-white text-black'
-                        : 'text-white/90 hover:bg-white/10'
+                        ? 'bg-black dark:bg-white text-white dark:text-black'
+                        : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                         }`}
                     >
                       <div className="flex flex-col -mb-0">
@@ -220,7 +220,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         )}
                       </div>
                       {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                        <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
                       )}
                     </button>
                   ))}

@@ -435,7 +435,7 @@ const Recentcreation: React.FC = () => {
   return (
     <section className="w-full px-4 md:px-8 lg:px-12 mt-32">
       {/* Heading */}
-      <h3 className="text-white text-4xl md:text-4xl font-medium mb-4">Recent Creations</h3>
+      <h3 className="text-black dark:text-white text-4xl md:text-4xl font-medium mb-4">Recent Creations</h3>
 
       {/* Filters + My creations aligned */}
       <div className="flex items-center justify-between mb-6">
@@ -453,8 +453,8 @@ const Recentcreation: React.FC = () => {
                 className={
                   `px-4 py-2 rounded-full text-sm transition ` +
                   (isActive
-                    ? 'bg-white text-[#0b0f17]'
-                    : 'bg-white/10 text-white/80 hover:bg-white/15')
+                    ? 'bg-black dark:bg-white text-white dark:text-[#0b0f17]'
+                    : 'bg-black/10 dark:bg-white/10 text-black/80 dark:text-white/80 hover:bg-black/15 dark:hover:bg-white/15')
                 }
               >
                 {cat}
@@ -464,7 +464,7 @@ const Recentcreation: React.FC = () => {
         </div>
         <button 
           onClick={handleMyCreationsClick}
-          className="text-white/80 hover:text-white text-sm ml-4 mr-4 transition-colors"
+          className="text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white text-sm ml-4 mr-4 transition-colors"
         >
           My Creations <span className="opacity-70"></span>
         </button>
@@ -474,10 +474,10 @@ const Recentcreation: React.FC = () => {
       {loading || isInitialLoad || !hasCheckedForGenerations ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
-              <div className="h-[250px] bg-white/10 rounded-xl mb-3"></div>
-              <div className="h-4 bg-white/10 rounded mb-2"></div>
-              <div className="h-3 bg-white/10 rounded w-2/3"></div>
+            <div key={i} className="rounded-2xl bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10 p-4 animate-pulse">
+              <div className="h-[250px] bg-black/10 dark:bg-white/10 rounded-xl mb-3"></div>
+              <div className="h-4 bg-black/10 dark:bg-white/10 rounded mb-2"></div>
+              <div className="h-3 bg-black/10 dark:bg-white/10 rounded w-2/3"></div>
             </div>
           ))}
         </div>
@@ -529,13 +529,13 @@ const Recentcreation: React.FC = () => {
               </svg>
             )}
           </div>
-          <h3 className="text-lg font-medium text-white/70 mb-2">
+          <h3 className="text-lg font-medium text-black/70 dark:text-white/70 mb-2">
             {active === 'All' 
               ? "No recent creations" 
               : `No ${active.toLowerCase()} yet`
             }
           </h3>
-          <p className="text-white/50 mb-6 max-w-md mx-auto">
+          <p className="text-black/50 dark:text-white/50 mb-6 max-w-md mx-auto">
             {active === 'All' 
               ? "Start creating amazing content to see your recent generations here. Generate images, videos, music, logos, stickers, and more!"
               : active === 'Images' 
@@ -625,8 +625,8 @@ const Recentcreation: React.FC = () => {
         // Show loading when no items but still loading
         <div className="flex items-center justify-center py-12">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-            <div className="text-white text-lg">Loading generations...</div>
+            <div className="w-12 h-12 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin"></div>
+            <div className="text-black dark:text-white text-lg">Loading generations...</div>
           </div>
         </div>
       ) : (
@@ -635,7 +635,7 @@ const Recentcreation: React.FC = () => {
             <article
               key={item.id}
               onClick={() => handleItemClick(item)}
-              className="rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-4 flex flex-col gap-3 cursor-pointer"
+              className="rounded-2xl bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition p-4 flex flex-col gap-3 cursor-pointer"
             >
               <div className="relative h-[250px] rounded-xl overflow-hidden">
                 {item.isVideo ? (
@@ -732,10 +732,10 @@ const Recentcreation: React.FC = () => {
               </div>
               {/* Title and aspect ratio in one row */}
               <div className="flex items-baseline justify-between gap-3">
-                <div className="text-white text-sm truncate">{item.title}</div>
-                <div className="text-white/70 text-sm flex-shrink-0">{ratios[item.id] ?? ''}</div>
+                <div className="text-black dark:text-white text-sm truncate">{item.title}</div>
+                <div className="text-black/70 dark:text-white/70 text-sm flex-shrink-0">{ratios[item.id] ?? ''}</div>
               </div>
-              <div className="text-white/60 text-xs">{item.date}</div>
+              <div className="text-black/60 dark:text-white/60 text-xs">{item.date}</div>
             </article>
           ))}
         </div>
@@ -758,12 +758,12 @@ const Recentcreation: React.FC = () => {
       
       {audioPreview && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
+          <div className="bg-white/90 dark:bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-black/20 dark:ring-white/20">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Music Track</h3>
+              <h3 className="text-black dark:text-white text-lg font-semibold">Music Track</h3>
               <button
                 onClick={() => setAudioPreview(null)}
-                className="text-white/60 hover:text-white transition-colors"
+                className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12"/>

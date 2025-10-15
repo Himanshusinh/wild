@@ -153,7 +153,7 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B]">
+    <div className="min-h-screen bg-white dark:bg-[#07070B] transition-colors duration-300">
       {/* DEBUG: This is MainLayout component */}
       
       
@@ -176,20 +176,20 @@ export default function MainLayout({
         <>
           {/* Overlay */}
           <div 
-            className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center"
+            className="fixed inset-0 bg-black/80 dark:bg-black/50 z-[200] flex items-center justify-center"
             onClick={() => setShowWildmindSkitPopup(false)}
           >
             {/* Popup Content */}
             <div 
-              className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
+              className="bg-white dark:bg-black/90 backdrop-blur-xl border border-gray-300 dark:border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto transition-colors duration-300"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-white text-3xl font-bold">Choose Style</h2>
+                <h2 className="text-black dark:text-white text-3xl font-bold">Choose Style</h2>
                 <button 
                   onClick={() => setShowWildmindSkitPopup(false)}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -216,7 +216,7 @@ export default function MainLayout({
                     </div>
                     <div className="text-4xl mb-4">📹</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Video Ads</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Video Ads</h3>
                 </div>
 
                 {/* Jewelry - Coming Soon */}
@@ -224,7 +224,7 @@ export default function MainLayout({
                   <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
                     <div className="text-4xl mb-4">💎</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Jewelry</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Jewelry</h3>
                   <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
                 </div>
 
@@ -244,7 +244,7 @@ export default function MainLayout({
                     </div>
                     <div className="text-4xl mb-4">💬</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Live Chat</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Live Chat</h3>
                 </div>
 
                 {/* Virtual Try-On - Coming Soon */}
@@ -252,7 +252,7 @@ export default function MainLayout({
                   <div className="bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
                     <div className="text-4xl mb-4">👗</div>
                   </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
+                  <h3 className="text-black dark:text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
                   <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
                 </div>
               </div>

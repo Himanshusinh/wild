@@ -107,7 +107,7 @@ const SidePannelFeatures = ({
 
   return (
     <div
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200 bg-white/10 backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40 border border-white/10 shadow-2xl'
+      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 group transition-all text-black dark:text-white duration-300 bg-black/10 dark:bg-white/10 backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40 border border-black/10 dark:border-white/10 shadow-2xl'
       style={{
         borderTopLeftRadius: '16px',
         borderBottomLeftRadius: '16px',
@@ -130,12 +130,12 @@ const SidePannelFeatures = ({
             alt="Wild Mind Logo"
             width={32}
             height={32}
-            className="w-full h-full"
+            className="w-full h-full brightness-50 dark:brightness-100 transition-all duration-300"
           />
         </div>
         <span
           onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch {}; try { dispatch(setCurrentView('landing')); } catch {}; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
-          className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
+          className='text-black dark:text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap cursor-pointer'>
           WildMind Ai
         </span>
       </div>
@@ -150,54 +150,54 @@ const SidePannelFeatures = ({
             }
             router.push(APP_ROUTES.HOME)
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item`}
         >
-          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
+          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
         </div>
       </div>
 
       <div className="relative">
         <div
           onClick={handleImageGenerationClick}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
+          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
         </div>
       </div>
 
       <div>
         <div
           onClick={() => handleGenerationTypeChange('text-to-video')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Generation</span>
+          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Video Generation</span>
         </div>
       </div>
 
       <div>
         <div
           onClick={() => handleGenerationTypeChange('text-to-music')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.musicGeneration} alt="Music Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Music Generation</span>
+          <Image src={imageRoutes.icons.musicGeneration} alt="Music Generation" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Music Generation</span>
         </div>
       </div>
 
       <div>
         <div
           onClick={() => handleGenerationTypeChange('edit-image')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.editImage} alt="Edit Image" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Edit Image</span>
+          <Image src={imageRoutes.icons.editImage} alt="Edit Image" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Edit Image</span>
         </div>
       </div>
 
@@ -214,11 +214,11 @@ const SidePannelFeatures = ({
             }
             router.push('/view/workflows');
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/workflows')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/workflows')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.wildmindskit} alt="Wildmind Skit" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Wild Magic</span>
+          <Image src={imageRoutes.icons.wildmindskit} alt="Wildmind Skit" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Wild Magic</span>
         </div>
       </div>
 
@@ -227,36 +227,36 @@ const SidePannelFeatures = ({
         <div
           ref={brandingRef}
           onClick={toggleBrandingDropdown}
-          className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isBrandingActive ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 z-0 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${isBrandingActive ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
+          <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
         </div>
 
         {showBrandingDropdown && (
           <div
             ref={dropdownRef}
-            className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
+            className='absolute left-full top-0 ml-4 bg-white/70 dark:bg-black/70 backdrop-blur-3xl border border-black/20 dark:border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px] transition-colors duration-300'
           >
-            <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
-              <span className='text-xs text-white/90 uppercase tracking-wider'>Branding Kit</span>
+            <div className='px-3 py-2 bg-black/10 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-xl shadow-md z-10'>
+              <span className='text-xs text-black/90 dark:text-white/90 uppercase tracking-wider'>Branding Kit</span>
             </div>
 
             <div
               onClick={() => router.push('/logo-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'logo' ? 'bg-white/15' : ''
+              className={`flex items-center gap-3 px-3 py-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/20 dark:hover:bg-white/20 rounded-xl ${currentGenerationType === 'logo' ? 'bg-black/15 dark:bg-white/15' : ''
                 }`}
             >
-              <span className='text-sm text-white'>Logo Generation</span>
+              <span className='text-sm text-black dark:text-white'>Logo Generation</span>
             </div>
 
             <div
               onClick={() => router.push('/sticker-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
+              className={`flex items-center gap-3 px-3 py-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/20 dark:hover:bg-white/20 rounded-xl ${currentGenerationType === 'sticker-generation' ? 'bg-black/15 dark:bg-white/15' : ''
                 }`}
             >
-              <span className='text-sm text-white'>Sticker Generation</span>
+              <span className='text-sm text-black dark:text-white'>Sticker Generation</span>
             </div>
 
             {/* <div
@@ -270,10 +270,10 @@ const SidePannelFeatures = ({
 
             <div
               onClick={() => router.push('/product-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
+              className={`flex items-center gap-3 px-3 py-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/20 dark:hover:bg-white/20 rounded-xl ${currentGenerationType === 'product-generation' ? 'bg-black/15 dark:bg-white/15' : ''
                 }`}
             >
-              <span className='text-sm text-white'>Product Generation</span>
+              <span className='text-sm text-black dark:text-white'>Product Generation</span>
             </div>
           </div>)}
 
@@ -283,11 +283,11 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => router.push('/view/ArtStation')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
+          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
         </div>
       </div>
 
@@ -301,22 +301,22 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => router.push(NAV_ROUTES.PRICING)}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Pricing</span>
+          <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Pricing</span>
         </div>
       </div>
 
       <div>
         <div
           onClick={() => router.push(NAV_ROUTES.LIVE_CHAT)}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-black/10 dark:bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
+          <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
         </div>
       </div>
 
@@ -332,10 +332,10 @@ const SidePannelFeatures = ({
             }
             router.push('/history');
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : ''}`}
+          className={`flex items-center gap-4 p-2 transition-all duration-300 cursor-pointer text-black dark:text-white hover:bg-black/15 dark:hover:bg-white/15 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-black/10 dark:bg-white/10' : ''}`}
         >
-          <Image src ={imageRoutes.icons.history} alt="History" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
+          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="brightness-50 dark:brightness-100 transition-all duration-300" />
+          <span className='text-black dark:text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-300 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
         </div>
       </div>
 

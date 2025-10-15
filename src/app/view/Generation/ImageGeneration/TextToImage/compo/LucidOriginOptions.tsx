@@ -110,14 +110,14 @@ const LucidOriginOptions = () => {
       <div className="relative dropdown-container">
         <button
           onClick={handleDropdownClick}
-          className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+          className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5"
         >
           <span>Other Options</span>
           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'lucidOriginOptions' ? 'rotate-180' : ''}`} />
         </button>
 
       {activeDropdown === 'lucidOriginOptions' && (
-        <div className="absolute bottom-full mb-2 left-0 w-64 bg-black/70 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full mb-2 left-0 w-64 bg-white/90 dark:bg-black/90 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden ring-1 ring-black/30 dark:ring-white/30 pb-2 pt-2 z-50">
           {/* Style Selection */}
           <div className="px-4 py-2">
             {/* <div className="text-xs text-white/70 mb-2">Style</div>
@@ -143,7 +143,7 @@ const LucidOriginOptions = () => {
 
           {/* Contrast Selection */}
           <div className="px-4 py-2">
-            <div className="text-xs text-white/70 mb-2">Contrast</div>
+            <div className="text-xs text-black/70 dark:text-white/70 mb-2">Contrast</div>
             <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {contrastOptions.map((contrast) => (
                 <button
@@ -153,12 +153,12 @@ const LucidOriginOptions = () => {
                     handleContrastSelect(contrast.value);
                   }}
                   className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between ${lucidContrast === contrast.value
-                      ? 'bg-white text-black'
-                      : 'text-white/90 hover:bg-white/10'
+                      ? 'bg-black dark:bg-white text-white dark:text-black'
+                      : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                     }`}
                 >
                   <span>{contrast.label}</span>
-                  {lucidContrast === contrast.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                  {lucidContrast === contrast.value && <div className="w-2 h-2 bg-white dark:bg-black rounded-full" />}
                 </button>
               ))}
             </div>
@@ -166,7 +166,7 @@ const LucidOriginOptions = () => {
 
           {/* Mode Selection */}
           <div className="px-4 py-2">
-            <div className="text-xs text-white/70 mb-2">Mode</div>
+            <div className="text-xs text-black/70 dark:text-white/70 mb-2">Mode</div>
             <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {modeOptions.map((mode) => (
                 <button
@@ -176,12 +176,12 @@ const LucidOriginOptions = () => {
                     handleModeSelect(mode.value);
                   }}
                   className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between ${lucidMode === mode.value
-                      ? 'bg-white text-black'
-                      : 'text-white/90 hover:bg-white/10'
+                      ? 'bg-black dark:bg-white text-white dark:text-black'
+                      : 'text-black/90 dark:text-white/90 hover:bg-black/10 dark:hover:bg-white/10'
                     }`}
                 >
                   <span>{mode.label}</span>
-                  {lucidMode === mode.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                  {lucidMode === mode.value && <div className="w-2 h-2 bg-white dark:bg-black rounded-full" />}
                 </button>
               ))}
             </div>
@@ -198,7 +198,7 @@ const LucidOriginOptions = () => {
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                   lucidPromptEnhance
                     ? 'bg-blue-500 border-blue-500'
-                    : 'border-white/40 hover:border-white/60'
+                    : 'border-black/40 dark:border-white/40 hover:border-black/60 dark:hover:border-white/60'
                 }`}
               >
                 {lucidPromptEnhance && (
@@ -216,7 +216,7 @@ const LucidOriginOptions = () => {
                   </svg>
                 )}
               </button>
-              <span className="text-white/90 text-[13px]">Prompt Enhance</span>
+              <span className="text-black/90 dark:text-white/90 text-[13px]">Prompt Enhance</span>
             </div>
           </div>
         </div>

@@ -129,7 +129,7 @@ const TemplateGrid: React.FC<TemplateGridProps> = ({ activeCategory }) => {
             <article
               key={item.id}
               onClick={() => handleCardClick(item)}
-              className="rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 cursor-pointer"
+              className="rounded-2xl bg-black/5 dark:bg-white/5 ring-1 ring-black/10 dark:ring-white/10 hover:ring-black/20 dark:hover:ring-white/20 transition-all duration-200 p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 cursor-pointer"
             >
               <div className="relative h-[250px] sm:h-[300px] md:h-[320px] lg:h-[350px] rounded-xl overflow-hidden">
                 <Image
@@ -140,7 +140,7 @@ const TemplateGrid: React.FC<TemplateGridProps> = ({ activeCategory }) => {
                 />
               </div>
               {/* Title only */}
-              <div className="text-white text-xs sm:text-sm truncate">
+              <div className="text-black dark:text-white text-xs sm:text-sm truncate">
                 {item.title}
               </div>
             </article>

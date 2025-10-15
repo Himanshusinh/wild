@@ -1,4 +1,4 @@
-  'use client';
+'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -38,7 +38,7 @@ const EditImageInterface: React.FC = () => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
   const [showImageMenu, setShowImageMenu] = useState(false);
-  
+ 
   // Zoom and pan state
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -46,12 +46,12 @@ const EditImageInterface: React.FC = () => {
   const [lastPoint, setLastPoint] = useState({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [fitScale, setFitScale] = useState(1);
-  
+ 
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  
+ 
   // Form states
   const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
@@ -82,7 +82,7 @@ const EditImageInterface: React.FC = () => {
   const historyEntries = useAppSelector((s:any)=> (s.history?.entries || []).filter((e:any)=> e.generationType === 'text-to-image'));
   const historyLoading = useAppSelector((s:any)=> s.history?.loading || false);
   const historyHasMore = useAppSelector((s:any)=> s.history?.hasMore || false);
-  
+ 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize from query params: feature and image
@@ -155,12 +155,12 @@ const EditImageInterface: React.FC = () => {
 
   const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageContainerRef.current) return;
-    
+   
     const container = imageContainerRef.current;
     const rect = container.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    
+   
     if (Math.abs(scale - fitScale) < 1e-3) {
       // Zoom to 1.5x at click point (more reasonable)
       zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 1.5));
@@ -178,16 +178,16 @@ const EditImageInterface: React.FC = () => {
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
-    
+   
     e.preventDefault();
     const deltaX = e.clientX - lastPoint.x;
     const deltaY = e.clientY - lastPoint.y;
-    
+   
     const newOffset = {
       x: offset.x + deltaX,
       y: offset.y + deltaY
     };
-    
+   
     const clampedOffset = clampOffset(newOffset, scale);
     setOffset(clampedOffset);
     setLastPoint({ x: e.clientX, y: e.clientY });
@@ -273,7 +273,7 @@ const EditImageInterface: React.FC = () => {
 
     // Add passive: false to allow preventDefault
     document.addEventListener('wheel', handleGlobalWheel, { passive: false });
-    
+   
     return () => {
       document.removeEventListener('wheel', handleGlobalWheel);
     };
@@ -458,7 +458,7 @@ const EditImageInterface: React.FC = () => {
           };
           const res = await axiosInstance.post('/api/runway/generate', runwayPayload);
           const taskId = res?.data?.data?.taskId || res?.data?.taskId;
-          
+         
           if (taskId) {
             // Poll for completion like the image generation flow
             let imageUrl: string | undefined;
@@ -466,7 +466,7 @@ const EditImageInterface: React.FC = () => {
               try {
                 const statusRes = await axiosInstance.get(`/api/runway/status/${taskId}`);
                 const status = statusRes?.data?.data || statusRes?.data;
-                
+               
                 if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
                   imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                   break;
@@ -480,7 +480,7 @@ const EditImageInterface: React.FC = () => {
               }
               await new Promise(res => setTimeout(res, 1000));
             }
-            
+           
             if (imageUrl) {
               // no-op after removing using-prompt feature
             } else {
@@ -505,7 +505,7 @@ const EditImageInterface: React.FC = () => {
               max_images: 1,
               isPublic,
             };
-            
+           
             // Use Replicate generate endpoint (same as image generation flow)
             const res = await axiosInstance.post('/api/replicate/generate', payload);
             const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
@@ -557,10 +557,10 @@ const EditImageInterface: React.FC = () => {
         let payload: any = { image: currentInput, model };
         // if (model === 'philz1337x/clarity-upscaler') {
         //   payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
-        // } else 
+        // } else
         if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
-        } 
+        }
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
          else if (model === 'mv-lab/swin2sr') {
@@ -602,11 +602,11 @@ const EditImageInterface: React.FC = () => {
     }
   };
 
-  
+ 
 
-  
+ 
 
-  
+ 
 
   // Helper functions from ImagePreviewModal.tsx
   const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
@@ -631,7 +631,7 @@ const EditImageInterface: React.FC = () => {
         alert('No image available to download')
         return
       }
-      
+     
       // Use the same logic as ImagePreviewModal
       const downloadUrl = toProxyDownloadUrl(url);
       if (!downloadUrl) {
@@ -674,7 +674,7 @@ const EditImageInterface: React.FC = () => {
         alert('No image available to share')
         return
       }
-      
+     
       // Use the same logic as ImagePreviewModal
       if (!navigator.share) {
         // Fallback: Copy image URL to clipboard
@@ -694,25 +694,25 @@ const EditImageInterface: React.FC = () => {
         alert('Image URL copied to clipboard!');
         return;
       }
-      
+     
       const response = await fetch(downloadUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+     
       const blob = await response.blob();
       const fileName = (toProxyPath(shareUrl) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-      
+     
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
-      
+     
       // Use Web Share API
       await navigator.share({
         title: 'Wild Mind AI Generated Image',
         text: `Check out this AI-generated image!`,
         files: [file]
       });
-      
+     
       console.log('Image shared successfully');
     } catch (error: any) {
       // Handle user cancellation gracefully
@@ -720,7 +720,7 @@ const EditImageInterface: React.FC = () => {
         console.log('Share cancelled by user');
         return;
       }
-      
+     
       // Fallback to copying URL
       console.error('Share failed:', error);
       try {
@@ -769,8 +769,8 @@ const EditImageInterface: React.FC = () => {
               {features.map((feature) => (
             <div
                   key={feature.id}
-                  onClick={() => { 
-                    setSelectedFeature(feature.id); 
+                  onClick={() => {
+                    setSelectedFeature(feature.id);
                     // Ensure sensible default model per feature when switching tabs
                     if (feature.id === 'remove-bg') {
                       setModel('851-labs/background-remover');
@@ -1129,7 +1129,7 @@ const EditImageInterface: React.FC = () => {
               <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
                 <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
               </div>
-              
+             
 
               {/* Themed three dots menu - only show when there's an output */}
               {outputs[selectedFeature] && (
@@ -1148,7 +1148,7 @@ const EditImageInterface: React.FC = () => {
                       <circle cx="19" cy="12" r="2"/>
                     </svg>
                   </button>
-                  
+                 
                   {/* Themed dropdown menu */}
                   {showImageMenu && (
                     <div ref={menuRef} className="absolute bottom-12 left-0 bg-black/80 border border-white/30 rounded-xl shadow-2xl min-w-[160px] overflow-hidden md:min-w-[200px]">
@@ -1215,8 +1215,8 @@ const EditImageInterface: React.FC = () => {
                           <button
                             onClick={() => setUpscaleViewMode('comparison')}
                             className={`px-2 py-1 text-xs rounded transition-colors ${
-                              upscaleViewMode === 'comparison' 
-                                ? 'bg-white text-black' 
+                              upscaleViewMode === 'comparison'
+                                ? 'bg-white text-black'
                                 : 'text-white hover:bg-white/20'
                             }`}
                           >
@@ -1225,8 +1225,8 @@ const EditImageInterface: React.FC = () => {
                           <button
                             onClick={() => setUpscaleViewMode('zoom')}
                             className={`px-2 py-1 text-xs rounded transition-colors ${
-                              upscaleViewMode === 'zoom' 
-                                ? 'bg-white text-black' 
+                              upscaleViewMode === 'zoom'
+                                ? 'bg-white text-black'
                                 : 'text-white hover:bg-white/20'
                             }`}
                           >
@@ -1246,7 +1246,7 @@ const EditImageInterface: React.FC = () => {
                               className="object-contain object-center"
                             />
                           </div>
-                          <div 
+                          <div
                             className="absolute inset-0"
                             style={{
                               clipPath: `inset(0 0 0 ${sliderPosition}%)`
@@ -1269,7 +1269,7 @@ const EditImageInterface: React.FC = () => {
                               onChange={(e) => setSliderPosition(Number(e.target.value))}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
                             />
-                            <div 
+                            <div
                               className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
                               style={{ left: `${sliderPosition}%` }}
                             />
@@ -1309,7 +1309,7 @@ const EditImageInterface: React.FC = () => {
                             }}
                             onClick={handleImageClick}
                           />
-                          
+                         
                           {/* Zoom Controls */}
                           <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
                           <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
@@ -1380,7 +1380,7 @@ const EditImageInterface: React.FC = () => {
                         }}
                         onClick={handleImageClick}
                       />
-                      
+                     
                       {/* Zoom Controls */}
                       <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
                         <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
