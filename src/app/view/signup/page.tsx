@@ -213,41 +213,41 @@ export default function SignUp() {
     }
   };
 
-  // Simple RANDOM fetcher: one random pick per tick (no batching/queues)
+  // Simple RANDOM fetcher over the whole feed using random cursor hops
   const fetchOneRandomImage = async () => {
     if (isFetchingRef.current) return
     isFetchingRef.current = true
     try {
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-      const url = new URL(`${baseUrl}/api/feed`)
-      url.searchParams.set('limit', '50')
-      const controller = new AbortController()
-      const timeoutId = window.setTimeout(() => controller.abort(), 5000)
-      const res = await fetch(url.toString(), { credentials: 'include', signal: controller.signal }).finally(() => window.clearTimeout(timeoutId))
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const payload = data?.data || data
-      const items: PublicItem[] = payload?.items || []
-      const mapped: ArtStationImage[] = (items || [])
-        .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
-        .map(it => ({ url: String(it.images![0]!.url), username: it.createdBy?.username || it.createdBy?.displayName || 'Unknown Creator', displayName: it.createdBy?.displayName, timestamp: Date.now() }))
-      const lastSeen = lastSeenRef.current
-      const pool = mapped.filter(m => !lastSeen.has(m.url))
-      const pickFrom = pool.length > 0 ? pool : mapped
-      const chosen = pickFrom[Math.floor(Math.random() * pickFrom.length)]
+      let cursor: string | undefined = undefined
+      // Random number of cursor hops (1-4) to sample anywhere in the feed
+      const hops = 1 + Math.floor(Math.random() * 4)
+      let chosen: ArtStationImage | null = null
+      for (let i = 0; i < hops; i++) {
+        const url = new URL(`${baseUrl}/api/feed`)
+        url.searchParams.set('limit', '50')
+        if (cursor) url.searchParams.set('cursor', cursor)
+        url.searchParams.set('_t', `${Date.now()}-${i}`)
+        const controller = new AbortController()
+        const timeoutId = window.setTimeout(() => controller.abort(), 6000)
+        const res = await fetch(url.toString(), { credentials: 'include', signal: controller.signal }).finally(() => window.clearTimeout(timeoutId))
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        const payload = data?.data || data
+        const items: PublicItem[] = payload?.items || []
+        cursor = payload?.meta?.nextCursor || payload?.nextCursor
+        const mapped: ArtStationImage[] = (items || [])
+          .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
+          .map(it => ({ url: String(it.images![0]!.url), username: it.createdBy?.username || it.createdBy?.displayName || 'Unknown Creator', displayName: it.createdBy?.displayName, timestamp: Date.now() }))
+        if (mapped.length > 0) {
+          chosen = mapped[Math.floor(Math.random() * mapped.length)]
+        }
+        // If no more pages, stop early
+        if (!cursor) break
+      }
       if (chosen) {
         setCurrentImage(chosen)
-        if (typeof chosen.url === 'string') {
-          lastSeen.add(chosen.url)
-        }
-        if (lastSeen.size > 30) {
-          const iter = lastSeen.values().next()
-          const it = iter && !iter.done ? iter.value : undefined
-          if (typeof it === 'string') {
-            lastSeen.delete(it)
-          }
-        }
-        try { console.log('[SignupCarousel] Random pick url:', String(chosen.url), 'pool:', pickFrom.length, 'lastSeen:', lastSeen.size) } catch {}
+        try { console.log('[SignupCarousel] Random pick (cursor-walk) hops:', hops, 'url:', String(chosen.url)) } catch {}
       }
       setIsLoading(false)
     } catch (e) {
