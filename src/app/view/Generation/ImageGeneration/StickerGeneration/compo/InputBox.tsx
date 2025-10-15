@@ -31,6 +31,7 @@ const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 import ModelsDropdown from './ModelsDropdown';
 import StickerCountDropdown from './StickerCountDropdown';
 import StickerImagePreview from './StickerImagePreview';
+import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -443,8 +444,13 @@ const InputBox = () => {
           {(initialLoading || (loading && stickerHistoryEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-white text-lg">Loading generations...</div>
+                  <WildMindLogoGenerating 
+                    running={true}
+                    size="lg"
+                    speedMs={1600}
+                    className="mx-auto"
+                  />
+                  <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
             )}
@@ -465,10 +471,15 @@ const InputBox = () => {
                     {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                       <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                         {localGeneratingEntries[0].status === 'generating' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                          <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                              <div className="text-xs text-white/60">Generating...</div>
+                              <WildMindLogoGenerating 
+                                running={localGeneratingEntries[0].status === 'generating'}
+                                size="md"
+                                speedMs={1600}
+                                className="mx-auto"
+                              />
+                              <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
                           </div>
                         ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -482,26 +493,15 @@ const InputBox = () => {
                           <div className="relative w-full h-full group">
                             <Image src={image.url || image.originalUrl || '/placeholder-sticker.png'} alt={localGeneratingEntries[0].prompt} fill loading="lazy" className="object-cover" sizes="192px" />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
-                                title={getCleanPrompt(localGeneratingEntries[0].prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 3 as any,
-                                  WebkitBoxOrient: 'vertical' as any,
-                                  overflow: 'hidden'
-                                }}
-                              >
-                                {getCleanPrompt(localGeneratingEntries[0].prompt)}
-                              </span>
+                            {/* Hover copy button overlay */}
+                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-3xl"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
@@ -545,10 +545,15 @@ const InputBox = () => {
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                           <div key={`local-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                              <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                  <div className="text-xs text-white/60">Generating...</div>
+                                  <WildMindLogoGenerating 
+                                    running={localGeneratingEntries[0].status === 'generating'}
+                                    size="md"
+                                    speedMs={1600}
+                                    className="mx-auto"
+                                  />
+                                  <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
                             ) : localGeneratingEntries[0].status === 'failed' ? (
@@ -592,10 +597,15 @@ const InputBox = () => {
                         >
                           {entry.status === 'generating' ? (
                             // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-white/60">
+                                <WildMindLogoGenerating 
+                                  running={entry.status === 'generating'}
+                                  size="md"
+                                  speedMs={1600}
+                                  className="mx-auto"
+                                />
+                                <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>
                               </div>
@@ -635,26 +645,15 @@ const InputBox = () => {
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                                <span
-                                  title={getCleanPrompt(entry.prompt)}
-                                  className="text-xs text-white flex-1 leading-snug"
-                                  style={{
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 3 as any,
-                                    WebkitBoxOrient: 'vertical' as any,
-                                    overflow: 'hidden'
-                                  }}
-                                >
-                                  {getCleanPrompt(entry.prompt)}
-                                </span>
+                              {/* Hover copy button overlay */}
+                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                               </div>
                             </div>
@@ -680,7 +679,12 @@ const InputBox = () => {
           {hasMore && loading && stickerHistoryEntries.length > 0 && (
             <div className="flex items-center justify-center py-10">
               <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                <WildMindLogoGenerating 
+                  running={loading}
+                  size="md"
+                  speedMs={1600}
+                  className="mx-auto"
+                />
                 <div className="text-sm text-white/60">Loading more stickers...</div>
               </div>
             </div>
@@ -698,6 +702,11 @@ const InputBox = () => {
                 placeholder="Type your sticker prompt..."
                 value={prompt}
                 onChange={(e) => dispatch(setPrompt(e.target.value))}
+                spellCheck={true}
+                lang="en"
+                autoComplete="off"
+                autoCorrect="on"
+                autoCapitalize="on"
                 className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
               />
             </div>

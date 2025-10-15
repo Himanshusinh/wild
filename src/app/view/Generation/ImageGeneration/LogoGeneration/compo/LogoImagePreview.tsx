@@ -33,6 +33,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
+  const wheelNavCooldown = React.useRef(false);
 
   // Lock background scroll while modal is open
   React.useEffect(() => {
@@ -137,16 +138,80 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     return () => { document.body.style.overflow = prev; };
   }, [isFsOpen]);
 
+  // Navigate only across generated outputs (exclude user uploads)
+  const goPrev = React.useCallback(() => {
+    setSelectedImageIndex((idx) => {
+      const outputs = (outputImages as any[]) || [];
+      const inputsLen = (inputImages as any[]).length;
+      const outputsLen = outputs.length;
+      if (outputsLen <= 1) return idx;
+      // If currently on an input, jump to first output
+      const currentOutputIdx = idx < inputsLen ? 0 : (idx - inputsLen);
+      const prevOutputIdx = (currentOutputIdx - 1 + outputsLen) % outputsLen;
+      return inputsLen + prevOutputIdx;
+    });
+  }, [inputImages, outputImages]);
+
+  const goNext = React.useCallback(() => {
+    setSelectedImageIndex((idx) => {
+      const outputs = (outputImages as any[]) || [];
+      const inputsLen = (inputImages as any[]).length;
+      const outputsLen = outputs.length;
+      if (outputsLen <= 1) return idx;
+      const currentOutputIdx = idx < inputsLen ? 0 : (idx - inputsLen);
+      const nextOutputIdx = (currentOutputIdx + 1) % outputsLen;
+      return inputsLen + nextOutputIdx;
+    });
+  }, [inputImages, outputImages]);
+
   const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault(); e.stopPropagation();
     if (!fsContainerRef.current) return;
+    // Navigate when not zoomed
+    if (fsScale <= fsFitScale + 0.001) {
+      if (wheelNavCooldown.current) return;
+      const dy = e.deltaY || 0; const dx = e.deltaX || 0; const delta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+      if (delta > 20) goNext(); else if (delta < -20) goPrev();
+      wheelNavCooldown.current = true; setTimeout(() => { wheelNavCooldown.current = false; }, 250);
+      return;
+    }
     const rect = fsContainerRef.current.getBoundingClientRect();
     const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const next = Math.max(0.5, Math.min(6, fsScale + delta));
+    const deltaZoom = e.deltaY > 0 ? -0.1 : 0.1;
+    const next = Math.max(0.5, Math.min(6, fsScale + deltaZoom));
     if (next !== fsScale) fsZoomToPoint({ x: mx, y: my }, next);
-  }, [fsScale, fsZoomToPoint]);
-  const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => { e.preventDefault(); setFsIsPanning(true); setFsLastPoint({ x: e.clientX, y: e.clientY }); }, []);
+  }, [fsScale, fsFitScale, fsZoomToPoint, goNext, goPrev]);
+  const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (fsContainerRef.current) {
+      const rect = fsContainerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const atFit = fsScale <= fsFitScale + 0.001;
+
+      if (e.button === 0) {
+        if (atFit) {
+          const next = Math.min(6, fsScale * 1.2);
+          if (next !== fsScale) { fsZoomToPoint({ x: mx, y: my }, next); return; }
+        } else {
+          setFsIsPanning(true);
+          setFsLastPoint({ x: e.clientX, y: e.clientY });
+          return;
+        }
+      }
+      if (e.button === 1) {
+        setFsIsPanning(true);
+        setFsLastPoint({ x: e.clientX, y: e.clientY });
+        return;
+      }
+      if (e.button === 2) {
+        const next = Math.max(0.5, fsScale / 1.2);
+        if (next !== fsScale) { fsZoomToPoint({ x: mx, y: my }, next); return; }
+      }
+    }
+    setFsIsPanning(true);
+    setFsLastPoint({ x: e.clientX, y: e.clientY });
+  }, [fsScale, fsFitScale, fsZoomToPoint]);
   const fsOnMouseMove = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!fsIsPanning) return; e.preventDefault();
     const dx = e.clientX - fsLastPoint.x; const dy = e.clientY - fsLastPoint.y;
@@ -154,6 +219,17 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     setFsOffset(clamped); setFsLastPoint({ x: e.clientX, y: e.clientY });
   }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
   const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
+
+  React.useEffect(() => {
+    if (!isFsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeFullscreen(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFsOpen, goPrev, goNext, closeFullscreen]);
 
   React.useEffect(() => {
     let revokeUrl: string | null = null;
@@ -468,6 +544,16 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             <div className="absolute top-3 right-4 z-[90]">
               <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
             </div>
+            {(outputImages.length > 1) && (
+              <>
+                <button aria-label="Previous image" onClick={(e)=>{e.stopPropagation(); goPrev();}} onMouseDown={(e)=>e.stopPropagation()} type="button" className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button aria-label="Next image" onClick={(e)=>{e.stopPropagation(); goNext();}} onMouseDown={(e)=>e.stopPropagation()} type="button" className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+                </button>
+              </>
+            )}
             <div
               ref={fsContainerRef}
               className="relative w-full h-full cursor-zoom-in"
@@ -476,6 +562,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
               onMouseMove={fsOnMouseMove}
               onMouseUp={fsOnMouseUp}
               onMouseLeave={fsOnMouseUp}
+              onContextMenu={(e)=>{e.preventDefault();}}
               style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
             >
               <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
@@ -490,6 +577,9 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                   draggable={false}
                 />
               </div>
+            </div>
+            <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
+              Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
             </div>
           </div>
         )}

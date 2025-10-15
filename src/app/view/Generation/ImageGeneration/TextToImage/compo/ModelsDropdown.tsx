@@ -30,7 +30,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Runway Gen4 Image Turbo', value: 'gen4_image_turbo' },
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
-    { name: 'Seedream v4', value: 'seedream-v4' },
+    { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Ideogram v3', value: 'ideogram-ai/ideogram-v3' },
     { name: 'Ideogram v3 Quality', value: 'ideogram-ai/ideogram-v3-quality' },
     { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },

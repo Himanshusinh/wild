@@ -14,6 +14,7 @@ const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MusicInputBox from './MusicInputBox';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
+import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -395,10 +396,15 @@ const InputBox = () => {
 
           {/* Main Loader */}
           {storeLoading && historyEntries.length === 0 && (
-              <div className="flex items-center justify-center ">
+              <div className="flex items-center justify-center h-screen">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  <div className="text-white text-lg">Loading your generation history...</div>
+                  <WildMindLogoGenerating 
+                    running={true}
+                    size="lg"
+                    speedMs={1600}
+                    className="mx-auto"
+                  />
+                  <div className="text-white text-lg text-center">Loading your generation history...</div>
                 </div>
               </div>
             )}
@@ -492,11 +498,16 @@ const InputBox = () => {
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                            <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                                <div className="text-xs text-white/60">
-                                  Generating...
+                                <WildMindLogoGenerating 
+                                  running={entry.status === 'generating'}
+                                  size="md"
+                                  speedMs={1600}
+                                  className="mx-auto"
+                                />
+                                <div className="text-xs text-white/60 text-center">
+                                  Composing...
                                 </div>
                               </div>
                             </div>
@@ -551,7 +562,12 @@ const InputBox = () => {
               {storeHasMore && storeLoading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                    <WildMindLogoGenerating 
+                      running={storeLoading}
+                      size="md"
+                      speedMs={1600}
+                      className="mx-auto"
+                    />
                     <div className="text-sm text-white/60">Loading more generations...</div>
                   </div>
                 </div>
@@ -616,10 +632,15 @@ export default InputBox;
 const MusicTileFromPreview = ({ preview }: { preview: any }) => (
   <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 flex-shrink-0">
     {preview.status === 'generating' ? (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+      <div className="w-full h-full flex items-center justify-center bg-black/90">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-          <div className="text-xs text-white/60">Composing...</div>
+          <WildMindLogoGenerating 
+            running={preview.status === 'generating'}
+            size="md"
+            speedMs={1600}
+            className="mx-auto"
+          />
+          <div className="text-xs text-white/60 text-center">Composing...</div>
         </div>
       </div>
     ) : preview.status === 'failed' ? (
