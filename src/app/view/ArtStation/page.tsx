@@ -67,6 +67,8 @@ export default function ArtStationPage() {
   const [showRemoveBg, setShowRemoveBg] = useState(false)
   // Control concurrent fetches with sequencing (no manual aborts to avoid canceled requests)
   const requestSeqRef = useRef(0)
+  const inFlightRef = useRef<Promise<void> | null>(null)
+  const queuedNextRef = useRef<{ reset: boolean } | null>(null)
   const navigateForType = (type?: string) => {
     const t = (type || '').toLowerCase()
     if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
@@ -161,6 +163,11 @@ export default function ArtStationPage() {
   const fetchFeed = async (reset = false) => {
     try {
       // prevent overlapping fetches (including reset)
+      if (inFlightRef.current) {
+        // queue latest intent; we coalesce to the most recent requested reset flag
+        queuedNextRef.current = { reset }
+        return
+      }
       if (loading) return
       setLoading(true)
       const seq = ++requestSeqRef.current
@@ -181,9 +188,13 @@ export default function ArtStationPage() {
       
       console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
       
-      const res = await fetch(url.toString(), { 
-        credentials: 'include'
-      })
+      const doFetch = async () => {
+        const res = await fetch(url.toString(), { credentials: 'include' })
+        return res
+      }
+      const p = doFetch()
+      inFlightRef.current = p.then(() => undefined, () => undefined)
+      const res = await p
       
       if (!res.ok) {
         const errorText = await res.text()
@@ -260,6 +271,14 @@ export default function ArtStationPage() {
       }
     } finally {
       setLoading(false)
+      inFlightRef.current = null
+      // If another fetch was queued while we were in flight, run it now (coalesced)
+      const next = queuedNextRef.current
+      queuedNextRef.current = null
+      if (next) {
+        // avoid tight loop: yield microtask
+        Promise.resolve().then(() => fetchFeed(next.reset))
+      }
     }
   }
 

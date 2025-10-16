@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
+import { getMeCached } from '../../../../lib/me'
 import { useCredits } from '../../../../hooks/useCredits'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import toast from 'react-hot-toast'
@@ -48,10 +49,7 @@ const Nav = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const api = getApiClient()
-        const response = await api.get('/api/auth/me')
-        const payload = response.data
-        const user = payload?.data?.user || payload?.user || payload
+        const user = await getMeCached()
         try { console.log('[PublicGen][me] plan:', user?.plan, 'canTogglePublicGenerations:', (user as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (user as any)?.forcePublicGenerations) } catch {}
         setUserData(user || null)
         try {

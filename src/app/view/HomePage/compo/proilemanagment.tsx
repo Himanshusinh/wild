@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getApiClient } from '@/lib/axiosInstance';
+import { getMeCached } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
 import { ArrowLeft } from 'lucide-react';
 
@@ -80,11 +81,8 @@ const ProfileManagement = () => {
           // Token is already a string
         }
 
-        const api = getApiClient();
-        const response = await api.get('/api/auth/me');
-        const responseData = response.data;
-        
-        const userData = responseData.data?.user || responseData.user || responseData;
+  const api = getApiClient();
+  const userData = await getMeCached();
         try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch {}
         setUserData(userData);
         // setEditedUsername(userData.username || ''); // DISABLED
