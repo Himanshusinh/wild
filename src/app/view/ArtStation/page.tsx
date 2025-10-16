@@ -7,6 +7,7 @@ import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
+import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
 
 type PublicItem = {
   id: string;
@@ -605,9 +606,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
                         return kind === 'video' ? (
                           (() => {
-                            const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                            const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
-                            const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                            const proxied = toMediaProxy(media.url)
                             return (
                               <video
                                 src={proxied}
@@ -630,7 +629,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           })()
                         ) : (
                           <Image
-                            src={media.url}
+                            src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
                             alt={item.prompt || ''}
                             fill
                             sizes={sizes}
@@ -776,12 +775,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         return (
                           <div className="relative w-full h-full">
-                            {(() => {
-                              const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                              const path = vid.url?.startsWith(ZATA_PREFIX) ? vid.url.substring(ZATA_PREFIX.length) : vid.url;
-                              const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                              return <video src={proxied} className="w-full h-full" controls autoPlay />
-                            })()}
+                            <video src={toMediaProxy(vid.url)} className="w-full h-full" controls autoPlay />
                           </div>
                         )
                       }

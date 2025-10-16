@@ -1369,7 +1369,7 @@ const History = () => {
                           <div className="w-full h-full relative">
                             {mediaUrl ? (
                               <Image
-                                src={mediaUrl}
+                                src={(() => { try { const { toThumbUrl } = require('@/lib/thumb'); return toThumbUrl(mediaUrl, { w: 640, q: 60 }) } catch { return mediaUrl } })()}
                                 alt={entry.prompt}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200"
