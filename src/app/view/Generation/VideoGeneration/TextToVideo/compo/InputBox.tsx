@@ -63,6 +63,13 @@ const InputBox = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<'image' | 'reference' | 'video'>('image');
 
+  // Local image library state for UploadModal (avoids interfering with global Redux history)
+  const [libraryImageEntries, setLibraryImageEntries] = useState<any[]>([]);
+  const [libraryImageHasMore, setLibraryImageHasMore] = useState<boolean>(true);
+  const [libraryImageLoading, setLibraryImageLoading] = useState<boolean>(false);
+  const libraryImageNextCursorRef = useRef<string | undefined>(undefined);
+  const libraryImageInitRef = useRef<boolean>(false);
+
   // MiniMax specific state
   const [selectedResolution, setSelectedResolution] = useState("1080P");
   const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] = useState(6);
@@ -490,6 +497,54 @@ const InputBox = () => {
 
     return filteredEntries;
   }, shallowEqual);
+
+  // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
+  const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
+    try {
+      if (libraryImageLoading) return;
+      if (!initial && (!libraryImageHasMore || !isUploadModalOpen)) return;
+      setLibraryImageLoading(true);
+      const api = getApiClient();
+      const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
+      if (!initial && libraryImageNextCursorRef.current) {
+        params.cursor = libraryImageNextCursorRef.current;
+      }
+      const res = await api.get('/api/generations', { params });
+      const payload = res.data?.data || res.data || {};
+      const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+      const nextCursor: string | undefined = payload.nextCursor;
+
+      // Merge uniquely by id
+      const existingById: Record<string, any> = {};
+      libraryImageEntries.forEach((e: any) => { existingById[e.id] = e; });
+      items.forEach((e: any) => { existingById[e.id] = e; });
+      const merged = Object.values(existingById);
+
+      setLibraryImageEntries(merged);
+      libraryImageNextCursorRef.current = nextCursor;
+      setLibraryImageHasMore(Boolean(nextCursor));
+    } catch (e) {
+      console.error('[VideoPage] Failed to fetch library images:', e);
+    } finally {
+      setLibraryImageLoading(false);
+    }
+  }, [libraryImageEntries, libraryImageHasMore, libraryImageLoading, isUploadModalOpen]);
+
+  // When opening the UploadModal for images/references in image_to_video mode, ensure initial image library is loaded
+  useEffect(() => {
+    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference') && generationMode === 'image_to_video';
+    if (needsLibrary) {
+      if (!libraryImageInitRef.current) {
+        libraryImageInitRef.current = true;
+        fetchLibraryImages(true);
+      }
+    } else {
+      // Reset guard when modal closes or mode/type changes
+      libraryImageInitRef.current = false;
+    }
+    // Deliberately not depending on fetchLibraryImages or entries length to avoid re-running
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUploadModalOpen, uploadModalType, generationMode]);
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -2058,7 +2113,7 @@ const InputBox = () => {
                         }}
                       >
                         <div className=" relative ">
-                          <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
+                          <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload first frame image</div>
                         </div>
                       </button>
@@ -2076,7 +2131,7 @@ const InputBox = () => {
                       }}
                     >
                       <div className="relative">
-                        <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
+                        <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload first frame image</div>
                       </div>
                     </button>
@@ -2106,7 +2161,7 @@ const InputBox = () => {
                       className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                     >
                       <div className="relative">
-                        <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
+                        <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload last frame image (optional)</div>
                       </div>
                       <input
@@ -2157,7 +2212,7 @@ const InputBox = () => {
                       <div className="relative">
                         <FilePlay
                           size={30}
-                          className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
+                          className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
                         />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload video</div>
                       </div>
@@ -2714,24 +2769,14 @@ const InputBox = () => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
-          historyEntries={imageHistoryEntries}
+          historyEntries={libraryImageEntries.length > 0 ? libraryImageEntries : imageHistoryEntries}
           remainingSlots={uploadModalType === 'image' ?
             (selectedModel === "S2V-01" ? 0 : 1) : // S2V-01 doesn't use uploadedImages
             (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
           }
-          onLoadMore={async () => {
-            try {
-              if (!hasMore || loading) return;
-              await (dispatch as any)(loadMoreHistory({
-                filters: { generationType: 'text-to-image' },
-                paginationParams: { limit: 10 }
-              })).unwrap();
-            } catch (e) {
-              console.error('[VideoPage] Load more image history error:', e);
-            }
-          }}
-          hasMore={hasMore}
-          loading={loading}
+          onLoadMore={async () => { await fetchLibraryImages(false); }}
+          hasMore={libraryImageEntries.length > 0 ? libraryImageHasMore : hasMore}
+          loading={libraryImageEntries.length > 0 ? libraryImageLoading : loading}
         />
       )}
 

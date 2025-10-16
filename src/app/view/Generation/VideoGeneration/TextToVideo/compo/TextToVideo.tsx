@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import InputBox from './InputBox';
+import dynamic from 'next/dynamic';
+
+// Hydration-safe: render InputBox only on client to avoid SSR/CSR markup drift in complex interactive UI
+const InputBox = dynamic(() => import('./InputBox'), { ssr: false });
 
 const TextToVideo = () => {
   return (
