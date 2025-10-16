@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
-import { removeHistoryEntry } from '@/store/slices/historySlice';
+import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
@@ -38,7 +38,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
   const [objectUrl, setObjectUrl] = React.useState<string>('');
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
-  const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(!!((preview?.entry as any)?.isPublic));
+  const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -281,8 +281,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // Keep visibility toggle in sync when user switches images in same run
   React.useEffect(() => {
     try {
-      const entry: any = (sameDateGallery as any[])[selectedIndex]?.entry || preview?.entry;
-      setIsPublicFlag(!!(entry?.isPublic));
+      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+      const selectedImage = selectedPair.image || preview?.image;
+      const isPublic = ((selectedImage as any)?.isPublic !== false);
+      setIsPublicFlag(isPublic);
     } catch {}
   }, [selectedIndex, sameDateGallery, preview]);
 
@@ -413,7 +415,18 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       setIsPublicFlag(next);
       try {
         if (selectedEntry?.id) {
-          await axiosInstance.patch(`/api/generations/${selectedEntry.id}`, { isPublic: next });
+          const target = selectedImage;
+          const payload: any = target?.url || target?.id || target?.storagePath ? { image: { id: (target as any)?.id, url: (target as any)?.url, storagePath: (target as any)?.storagePath, isPublic: next } } : { isPublic: next };
+          await axiosInstance.patch(`/api/generations/${selectedEntry.id}`, payload);
+          try {
+            const images = Array.isArray((selectedEntry as any).images) ? (selectedEntry as any).images.map((im: any) => {
+              if ((target?.id && im.id === target.id) || (target?.url && im.url === target.url) || (target as any)?.storagePath && im.storagePath === (target as any).storagePath) {
+                return { ...im, isPublic: next };
+              }
+              return im;
+            }) : (selectedEntry as any).images;
+            dispatch(updateHistoryEntry({ id: selectedEntry.id, updates: { images } as any }));
+          } catch {}
         }
       } catch {}
     } catch {}

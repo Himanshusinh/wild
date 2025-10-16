@@ -5,7 +5,7 @@ import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 import { useAppDispatch } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
-import { removeHistoryEntry } from '@/store/slices/historySlice';
+import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 
 interface VideoPreviewModalProps {
   preview: { entry: HistoryEntry; video: any } | null;
@@ -175,7 +175,18 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       setIsPublicFlag(next);
       try {
         if (preview.entry?.id) {
-          await axiosInstance.patch(`/api/generations/${preview.entry.id}`, { isPublic: next });
+          const target = preview.video as any;
+          const payload: any = target ? { video: { id: target?.id, url: target?.url || target?.firebaseUrl, storagePath: target?.storagePath, isPublic: next } } : { isPublic: next };
+          await axiosInstance.patch(`/api/generations/${preview.entry.id}`, payload);
+          try {
+            const videos = Array.isArray((preview.entry as any).videos) ? (preview.entry as any).videos.map((vd: any) => {
+              if ((target?.id && vd.id === target.id) || (target?.url && vd.url === target.url) || (target?.storagePath && vd.storagePath === target.storagePath)) {
+                return { ...vd, isPublic: next };
+              }
+              return vd;
+            }) : (preview.entry as any).videos;
+            dispatch(updateHistoryEntry({ id: preview.entry.id, updates: { videos } as any }));
+          } catch {}
         }
       } catch {}
     } catch {}
@@ -210,8 +221,14 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const cleanPrompt = getCleanPrompt(preview.entry.prompt);
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
-  const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(!!((preview.entry as any)?.isPublic));
+  const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const isLongPrompt = cleanPrompt.length > 280;
+  
+  // Update isPublicFlag based on selected video
+  React.useEffect(() => {
+    const isPublic = ((preview.video as any)?.isPublic !== false);
+    setIsPublicFlag(isPublic);
+  }, [preview.video]);
 
   // ---- Fullscreen helpers (unconditional hooks) ----
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {

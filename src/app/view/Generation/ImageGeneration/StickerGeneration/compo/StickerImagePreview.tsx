@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, MessageCircle, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch } from '@/store/hooks';
+import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
 
@@ -32,7 +33,30 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
   const dispatch = useAppDispatch();
-  const [isPublicFlag, setIsPublicFlag] = useState<boolean>(!!((entry as any)?.isPublic));
+  const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
+
+  const toggleVisibility = async () => {
+    try {
+      const next = !isPublicFlag;
+      setIsPublicFlag(next);
+      try {
+        if (entry?.id) {
+          const target = selectedImage;
+          const payload: any = target?.url || target?.id || (target as any)?.storagePath ? { image: { id: (target as any)?.id, url: (target as any)?.url, storagePath: (target as any)?.storagePath, isPublic: next } } : { isPublic: next };
+          await axiosInstance.patch(`/api/generations/${entry.id}`, payload);
+          try {
+            const images = Array.isArray((entry as any).images) ? (entry as any).images.map((im: any) => {
+              if ((target?.id && im.id === target.id) || (target?.url && im.url === target.url) || (target as any)?.storagePath && im.storagePath === (target as any).storagePath) {
+                return { ...im, isPublic: next };
+              }
+              return im;
+            }) : (entry as any).images;
+            dispatch(updateHistoryEntry({ id: entry.id, updates: { images } as any }));
+          } catch {}
+        }
+      } catch {}
+    } catch {}
+  };
 
   // Lock background scroll while modal is open
   React.useEffect(() => {
@@ -79,6 +103,12 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const outputImages = (entry.images || []) as any[];
   const galleryImages = [...inputImages, ...outputImages];
   const selectedImage = galleryImages[selectedImageIndex];
+  
+  // Update isPublicFlag based on selected image
+  React.useEffect(() => {
+    const isPublic = ((selectedImage as any)?.isPublic !== false);
+    setIsPublicFlag(isPublic);
+  }, [selectedImage]);
   const isUserUploadSelected = selectedImageIndex < inputImages.length;
   const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
   const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
@@ -378,7 +408,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
               </div>
 
               <div className="relative group flex-1">
-                <button onClick={() => setIsPublicFlag(p=>!p)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
+                <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
                   {isPublicFlag ? (
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
                   ) : (
