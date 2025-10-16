@@ -467,6 +467,30 @@ const InputBox = () => {
     return sortedMergedEntries;
   }, shallowEqual);
 
+  // Get image history entries for image upload modal
+  const imageHistoryEntries = useAppSelector((state: any) => {
+    const allEntries = state.history?.entries || [];
+    
+    // Filter for text-to-image entries (same as image generation component)
+    const filteredEntries = allEntries.filter((entry: any) =>
+      entry.generationType === 'text-to-image'
+    );
+    
+    // Debug: Log image entries for troubleshooting
+    console.log('[VideoPage] Image history entries:', {
+      total: filteredEntries.length,
+      allEntries: allEntries.length,
+      entries: filteredEntries.slice(0, 3).map((entry: any) => ({
+        id: entry.id,
+        generationType: entry.generationType,
+        images: entry.images?.length || 0,
+        timestamp: entry.timestamp
+      }))
+    });
+
+    return filteredEntries;
+  }, shallowEqual);
+
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
     const date = new Date(entry.timestamp).toDateString();
@@ -1512,7 +1536,7 @@ const InputBox = () => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-white/10 rounded-2xl ">
+            <div className="fixed top-0  left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
               <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
@@ -2690,12 +2714,22 @@ const InputBox = () => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
-          historyEntries={historyEntries}
+          historyEntries={imageHistoryEntries}
           remainingSlots={uploadModalType === 'image' ?
             (selectedModel === "S2V-01" ? 0 : 1) : // S2V-01 doesn't use uploadedImages
             (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
           }
-          onLoadMore={loadMoreHistory}
+          onLoadMore={async () => {
+            try {
+              if (!hasMore || loading) return;
+              await (dispatch as any)(loadMoreHistory({
+                filters: { generationType: 'text-to-image' },
+                paginationParams: { limit: 10 }
+              })).unwrap();
+            } catch (e) {
+              console.error('[VideoPage] Load more image history error:', e);
+            }
+          }}
           hasMore={hasMore}
           loading={loading}
         />

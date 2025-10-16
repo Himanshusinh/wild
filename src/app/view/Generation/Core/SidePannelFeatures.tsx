@@ -43,7 +43,7 @@ const SidePannelFeatures = ({
     } catch (error) {
       // Silent fail
     }
-    
+
     // Always proceed with navigation - middleware will handle auth with Bearer token if session cookie is missing
     switch (type) {
       case 'text-to-image':
@@ -107,20 +107,20 @@ const SidePannelFeatures = ({
 
   return (
     <div
-      className='fixed top-[4px] bottom-1 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200 bg-white/10 backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40 border border-white/10 shadow-2xl'
+      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200  backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40  shadow-2xl'
       style={{
-        borderTopLeftRadius: '16px',
-        borderBottomLeftRadius: '16px',
-        borderTopRightRadius: '16px',
-        borderBottomRightRadius: '16px'
+        // borderTopLeftRadius: '16px',
+        // borderBottomLeftRadius: '16px',
+        // borderTopRightRadius: '16px',
+        // borderBottomRightRadius: '16px'
       }}
     >
       {/* Logo at the top */}
       <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0  -ml-1">
         <div
           onClick={() => {
-            try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch {}
-            try { dispatch(setCurrentView('landing')); } catch {}
+            try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
+            try { dispatch(setCurrentView('landing')); } catch { }
             // Force hard navigation to avoid race conditions
             try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
           }}
@@ -134,7 +134,7 @@ const SidePannelFeatures = ({
           />
         </div>
         <span
-          onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch {}; try { dispatch(setCurrentView('landing')); } catch {}; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
+          onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
           className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
           WildMind Ai
         </span>
@@ -142,7 +142,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={async () => { 
+          onClick={async () => {
             try {
               await ensureSessionReady(600)
             } catch (error) {
@@ -334,7 +334,7 @@ const SidePannelFeatures = ({
           }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : ''}`}
         >
-          <Image src ={imageRoutes.icons.history} alt="History" width={30} height={30} />
+          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
         </div>
       </div>
