@@ -555,10 +555,11 @@ const History = () => {
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    return urlOrPath;
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), do not proxy
+    return '';
   };
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
@@ -1276,8 +1277,9 @@ const History = () => {
                             {mediaUrl ? (
                               (() => {
                                 const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                const vsrc = proxied || mediaUrl;
                                 return (
-                                  <video src={proxied || mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                                  <video src={vsrc} className="w-full h-full object-cover" muted playsInline autoPlay loop preload="metadata" />
                                 );
                               })()
                             ) : (

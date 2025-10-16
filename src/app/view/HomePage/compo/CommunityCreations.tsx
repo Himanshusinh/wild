@@ -130,8 +130,9 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
           ) : isVideo ? (
             (() => {
               const proxied = toMediaProxy(src)
+              const videoSrc = proxied || src
               return (
-                <video src={proxied} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
+                <video src={videoSrc} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
               );
             })()
           ) : (

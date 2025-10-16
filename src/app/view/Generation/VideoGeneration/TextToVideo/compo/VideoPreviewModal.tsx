@@ -32,23 +32,22 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     if (!urlOrPath) return '';
     if (typeof urlOrPath !== 'string') return '';
     const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // If it's already a storagePath-like value, return as-is
     if (/^users\//.test(urlOrPath)) return urlOrPath;
-    return urlOrPath;
+    // Otherwise, external URL – do not proxy
+    return '';
   };
 
   const toProxyResourceUrl = (urlOrPath: any) => {
     const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS
+    // Use frontend-origin proxy route to avoid CORS (Zata only)
     return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
   };
 
   const toProxyDownloadUrl = (urlOrPath: any) => {
     const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS
+    // Use frontend-origin proxy route to avoid CORS (Zata only)
     return path ? `/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
@@ -188,7 +187,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const inputVideos = ((preview.entry as any)?.inputVideos || []) as any[];
   const inputImages = ((preview.entry as any)?.inputImages || []) as any[];
   const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-  const videoUrl = toProxyResourceUrl(videoPath);
+  const proxied = toProxyResourceUrl(videoPath);
+  const videoUrl = proxied || rawVideoUrl;
 
   // Stream directly from same-origin proxy for faster start and range support
 

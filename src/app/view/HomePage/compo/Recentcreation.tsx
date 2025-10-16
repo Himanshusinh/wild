@@ -643,10 +643,11 @@ const Recentcreation: React.FC = () => {
                   item.src && item.src.trim() !== '' ? (
                     (() => {
                       const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
-                      const src = item.src.startsWith(Z) ? toMediaProxy(item.src) : item.src
+                      const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
+                      const vsrc = proxied || item.src
                       return (
                         <video
-                          src={src}
+                          src={vsrc}
                           className="w-full h-full object-cover"
                           muted
                           loop
