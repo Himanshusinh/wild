@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch } from '@/store/hooks';
+import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
 
@@ -21,6 +22,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 }) => {
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -36,6 +38,12 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   if (!isOpen) return null;
 
   const selectedImage = entry.images[selectedImageIndex];
+  
+  // Update isPublicFlag based on selected image
+  React.useEffect(() => {
+    const isPublic = ((selectedImage as any)?.isPublic !== false);
+    setIsPublicFlag(isPublic);
+  }, [selectedImage]);
 
   const handleDownload = async () => {
     try {
@@ -199,33 +207,49 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
     }
   };
 
+  const toggleVisibility = async () => {
+    try {
+      const next = !isPublicFlag;
+      setIsPublicFlag(next);
+      try {
+        if (entry?.id) {
+          const target = selectedImage;
+          const payload: any = target?.url || target?.id || (target as any)?.storagePath ? { image: { id: (target as any)?.id, url: (target as any)?.url, storagePath: (target as any)?.storagePath, isPublic: next } } : { isPublic: next };
+          await axiosInstance.patch(`/api/generations/${entry.id}`, payload);
+          try {
+            const images = Array.isArray((entry as any).images) ? (entry as any).images.map((im: any) => {
+              if ((target?.id && im.id === target.id) || (target?.url && im.url === target.url) || (target as any)?.storagePath && im.storagePath === (target as any).storagePath) {
+                return { ...im, isPublic: next };
+              }
+              return im;
+            }) : (entry as any).images;
+            dispatch(updateHistoryEntry({ id: entry.id, updates: { images } as any }));
+          } catch {}
+        }
+      } catch {}
+    } catch {}
+  };
+
   const userPrompt = getUserPrompt(entry.prompt);
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const isLongPrompt = (userPrompt || '').length > 280;
 
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
-      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
+      <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <div className="text-white/70 text-sm">{entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
+          <div className="text-white/70 text-sm"></div>
           <div className="flex items-center gap-2">
-            <button 
-              className="p-2 rounded-full  text-white transition-colors" 
-              onClick={handleDelete}
-              aria-label="Delete image"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
             <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+        <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image 
                 src={selectedImage.url} 
@@ -237,7 +261,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -250,33 +274,60 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar mt-10">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </button>
+              <div className="relative group flex-1">
+                <button
+                  onClick={handleDownload}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                  aria-label="Download"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+              </div>
 
-              <button
-                onClick={() => {
-                  if (navigator.share && selectedImage?.url) {
-                    navigator.share({
-                      title: 'Check out this image',
-                      url: selectedImage.url,
-                    });
-                  } else if (selectedImage?.url) {
-                    window.prompt('Copy and share this image URL:', selectedImage.url);
-                  }
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
-              >
-                <Share className="h-4 w-4" />
-                Share
-              </button>
+              <div className="relative group flex-1">
+                <button
+                  onClick={() => {
+                    if (navigator.share && selectedImage?.url) {
+                      navigator.share({ title: 'Check out this image', url: selectedImage.url });
+                    } else if (selectedImage?.url) {
+                      window.prompt('Copy and share this image URL:', selectedImage.url);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                  aria-label="Share"
+                >
+                  <Share className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button
+                  onClick={toggleVisibility}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                  aria-pressed={isPublicFlag}
+                  aria-label="Toggle visibility"
+                  title={isPublicFlag ? 'Public' : 'Private'}
+                >
+                  {isPublicFlag ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
+                  )}
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+              </div>
             </div>
 
             {/* Prompt */}
@@ -346,16 +397,12 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             {entry.images.length > 1 && (
               <div className="mb-4">
                 <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Products ({entry.images.length})</div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {entry.images.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${
-                        selectedImageIndex === index 
-                          ? 'border-white ring-2 ring-white/30' 
-                          : 'border-white/20 hover:border-white/40'
-                      }`}
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       <Image
                         src={image.url}

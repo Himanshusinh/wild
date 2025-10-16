@@ -87,14 +87,11 @@ const ProfileManagement = () => {
         setUserData(userData);
         // setEditedUsername(userData.username || ''); // DISABLED
         
-        // Set public generations preference with plan gating
+        // Initialize public flag (same logic as Nav.tsx)
         try {
           const stored = localStorage.getItem('isPublicGenerations');
           const server = userData && (userData as any).isPublic;
-          const planRaw = String(userData?.plan || '').toUpperCase();
-          const canToggle = (userData as any)?.canTogglePublicGenerations === true || /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D';
-          const next = canToggle ? ((stored != null) ? (stored === 'true') : Boolean(server)) : true;
-          if (!canToggle) { try { localStorage.setItem('isPublicGenerations', 'true') } catch {} }
+          const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false);
           setIsPublic(next);
         } catch {}
 
@@ -242,17 +239,14 @@ const ProfileManagement = () => {
   //   }
   // };
 
-  // Handle public generations toggle
+  // Handle public generations toggle (same as Nav.tsx)
   const handleTogglePublic = async () => {
-    const planRaw = String(userData?.plan || '').toUpperCase();
-    const canToggle = /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D';
-    if (!canToggle) {
-      setIsPublic(true);
-      try { localStorage.setItem('isPublicGenerations', 'true'); } catch {}
-      return;
-    }
     const next = !isPublic;
     setIsPublic(next);
+    try {
+      const api = getApiClient();
+      await api.patch('/api/auth/me', { isPublic: next });
+    } catch {}
     try { localStorage.setItem('isPublicGenerations', String(next)); } catch {}
   };
 
@@ -263,195 +257,114 @@ const ProfileManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07070B] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-white dark:bg-[#07070B] flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-transparent border-t-[#1C303D] dark:border-t-white/80 animate-spin drop-shadow-sm" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#07070B] text-white p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="relative min-h-screen bg-[#FFFFFF] dark:bg-[#07070B] text-gray-900 dark:text-white p-3 md:p-5 transition-colors duration-300">
+      <div className="relative z-10 max-w-3xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-6 mb-12">
+        <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
           <button
             onClick={handleBack}
-            className="flex items-center justify-center w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-4xl font-semibold">Account Settings</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">Account Settings</h1>
         </div>
 
-        {/* Profile Picture Section - READ ONLY */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Profile Picture</h2>
-          
-          <div className="flex items-center gap-8">
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden border-4 border-white/20">
+        {/* Rounded main wrapper */}
+        <div className="rounded-3xl">
+          {/* Header card */}
+          <div className="rounded-3xl border border-black/10 dark:border-white/10 bg-gradient-to-br from-[#0E1A22] via-[#101722] to-[#0B0F14] p-5 md:p-6 mb-5 shadow-xl">
+            <div className="flex items-center gap-4 md:gap-5">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden border border-white/20">
                 {(userData?.photoURL && !avatarFailed) ? (
-                  <img
-                    src={userData.photoURL}
-                    alt="Profile"
-                    referrerPolicy="no-referrer"
-                    onError={() => setAvatarFailed(true)}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={userData.photoURL} alt="Profile" referrerPolicy="no-referrer" onError={() => setAvatarFailed(true)} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-white font-semibold text-3xl">
-                    {(userData?.username || 'U').charAt(0).toUpperCase()}
-                  </span>
+                  <span className="text-white font-semibold text-xl md:text-2xl">{(userData?.username || 'U').charAt(0).toUpperCase()}</span>
                 )}
               </div>
-            </div>
-
-            <div className="flex-1">
-              <p className="text-gray-300 text-base mb-2">
-                Profile picture cannot be changed
-              </p>
-              <p className="text-gray-400 text-sm">
-                Contact support if you need to update your profile picture
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Information */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Profile Information</h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Username - READ ONLY */}
-            <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Username
-              </label>
-              <div className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-base">
-                {userData?.username || 'No username'}
-              </div>
-              <p className="text-gray-400 text-sm mt-2">
-                Username cannot be changed
-              </p>
-            </div>
-
-            {/* Email (read-only) */}
-            <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Email Address
-              </label>
-              <div className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-base">
-                {userData?.email || 'No email'}
-              </div>
-            </div>
-
-            {/* Account Status */}
-            <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Account Status
-              </label>
-              <div className="flex items-center gap-3">
-                <span className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-base">
-                  {userData?.metadata?.accountStatus || 'Active'}
-                </span>
-                <span className="w-3 h-3 bg-green-400 rounded-full"></span>
-              </div>
-            </div>
-
-            {/* Member Since */}
-            <div>
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Member Since
-              </label>
-              <div className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-base">
-                {userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'Unknown'}
+              <div className="flex-1 min-w-0">
+                <div className="text-white font-semibold text-lg md:text-xl truncate">{userData?.username || 'User'}</div>
+                <div className="text-white/70 text-xs md:text-sm truncate">{userData?.email || 'user@example.com'}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10">Plan: {userData?.plan || 'Free'}</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1">
+                    <Image src="/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
+                    {creditBalance ?? userData?.credits ?? 0}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Account Details */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Account Details</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Credits */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Credits Balance
-              </label>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-white">
-                  {creditBalance ?? userData?.credits ?? 0}
-                </span>
-                <Image src="/icons/coinswhite.svg" alt="credits" width={24} height={24} />
+          {/* Info grid */}
+          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0F1419] p-4 md:p-5 mb-5">
+            <h2 className="text-gray-900 dark:text-white text-base md:text-lg font-semibold mb-3">Profile Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Username</label>
+                <div className="px-3 py-2 bg-gray-100 dark:bg-[#11161C] border border-gray-300 dark:border-white/20 rounded-2xl text-gray-900 dark:text-white text-sm">{userData?.username || 'No username'}</div>
               </div>
-            </div>
-
-            {/* Active Plan */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Active Plan
-              </label>
-              <div className="text-xl font-semibold text-white">
-                {userData?.plan || 'Free'}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Email Address</label>
+                <div className="px-3 py-2 bg-gray-50 dark:bg-[#11161C] border border-gray-200 dark:border-white/10 rounded-2xl text-gray-600 dark:text-gray-300 text-sm truncate">{userData?.email || 'No email'}</div>
               </div>
-            </div>
-
-            {/* Login Count - REMOVED */}
-            {/* <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <label className="block text-base font-medium text-gray-300 mb-3">
-                Total Logins
-              </label>
-              <div className="text-xl font-semibold text-white">
-                {userData?.loginCount || 0}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Account Status</label>
+                <div className="flex items-center gap-2.5">
+                  <span className="px-3 py-2 bg-gray-50 dark:bg-[#11161C] border border-gray-200 dark:border-white/10 rounded-2xl text-gray-600 dark:text-gray-300 text-xs">{userData?.metadata?.accountStatus || 'Active'}</span>
+                  <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                </div>
               </div>
-            </div> */}
-          </div>
-        </div>
-
-        {/* Privacy Settings */}
-        <div className="bg-white/5 rounded-3xl p-8 mb-8 border border-white/10">
-          <h2 className="text-2xl font-semibold mb-6">Privacy Settings</h2>
-          
-          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-            {/* Public Generations */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="text-white font-semibold text-lg mb-2">Make Generations Public</h3>
-                <p className="text-gray-400 text-base">
-                  Allow others to see your generated content on the public feed
-                </p>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Member Since</label>
+                <div className="px-3 py-2 bg-gray-50 dark:bg-[#11161C] border border-gray-200 dark:border-white/10 rounded-2xl text-gray-600 dark:text-gray-300 text-sm">{userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'Unknown'}</div>
               </div>
-              <button
-                type="button"
-                aria-pressed={isPublic}
-                onClick={handleTogglePublic}
-                className={`w-16 h-8 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
-              >
-                <span className={`block w-7 h-7 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-8' : 'translate-x-0.5'} relative top-0.5`} />
-              </button>
             </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-6 mt-8">
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-3 px-8 py-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors font-medium text-lg"
-          >
-            <ArrowLeft size={20} />
-            Back
-          </button>
-          
-          <button
-            onClick={() => router.push('/view/pricing')}
-            className="flex items-center gap-3 px-8 py-4 bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors font-medium text-lg"
-          >
-            <Image src="/icons/coinswhite.svg" alt="credits" width={20} height={20} />
-            Upgrade Plan
-          </button>
+          {/* Preferences */}
+          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0F1419] p-4 md:p-5 mb-5">
+            <h2 className="text-gray-900 dark:text-white text-base md:text-lg font-semibold mb-3">Preferences</h2>
+            <div className="bg-gray-50 dark:bg-[#11161C] rounded-2xl p-4 border border-gray-200 dark:border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-1">Make Generations Public</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-xs">Allow others to see your generated content on the public feed</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isPublic}
+                  aria-label="Make Generations Public"
+                  onClick={handleTogglePublic}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTogglePublic(); } }}
+                  tabIndex={0}
+                  className={`relative z-10 w-12 h-6 rounded-full transition-colors cursor-pointer outline-none ${isPublic ? 'bg-blue-500 dark:bg-blue-600' : 'bg-gray-300 dark:bg-white/20'}`}
+                >
+                  <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
+                </button>
+              </div>
+            </div>
+          </div>
+         
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-5">
+            
+            <button
+              onClick={() => router.push('/view/pricing')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#1C303D] hover:bg-blue-700 rounded-full transition-colors font-medium text-sm text-white"
+            >
+              <Image src="/icons/coinswhite.svg" alt="credits" width={18} height={18} />
+              Upgrade Plan
+            </button>
+          </div>
         </div>
       </div>
     </div>
