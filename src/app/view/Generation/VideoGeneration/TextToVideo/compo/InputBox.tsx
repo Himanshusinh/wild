@@ -23,6 +23,7 @@ import { getApiClient } from "@/lib/axiosInstance";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
 import VideoUploadModal from "./VideoUploadModal";
+import { getHistoryEntries as getHistoryEntriesService } from "@/lib/historyService";
 
 // Extend window interface for temporary video data storage
 declare global {
@@ -367,6 +368,11 @@ const InputBox = () => {
   const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
 
+  // Get all history entries (both images and videos) for the main display
+  const allHistoryEntries = useAppSelector((state: any) => {
+    return state.history?.entries || [];
+  }, shallowEqual);
+
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
@@ -468,7 +474,7 @@ const InputBox = () => {
   }, shallowEqual);
 
   // Group entries by date
-  const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+  const groupedByDate = allHistoryEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
     const date = new Date(entry.timestamp).toDateString();
     if (!groups[date]) {
       groups[date] = [];
@@ -854,14 +860,81 @@ const InputBox = () => {
   // Handle image/video upload from UploadModal
   const handleImageUploadFromModal = (urls: string[]) => {
     if (uploadModalType === 'image') {
-      setUploadedImages(prev => [...prev, ...urls]);
+      // Check if this is for last frame image (when lastFrameImage state exists and we're in MiniMax mode)
+      if (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P")) {
+        setLastFrameImage(urls[0] || "");
+      } else {
+        // For first frame image uploads, just set uploadedImages
+        setUploadedImages(prev => [...prev, ...urls]);
+        // Don't set lastFrameImage for regular first frame uploads
+      }
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
     } else if (uploadModalType === 'video') {
       setUploadedVideo(urls[0] || "");
     }
     setIsUploadModalOpen(false);
+    // Restore video history when upload completes
+    if (isImageUploadMode) {
+      console.log('🖼️ Restoring video history after upload...');
+      setIsImageUploadMode(false);
+      dispatch(clearFilters());
+      dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
+    }
   };
+
+  // State to manage image upload mode
+  const [isImageUploadMode, setIsImageUploadMode] = useState(false);
+
+  // Get image history entries - EXACTLY like image generation component
+  const imageHistoryEntries = useAppSelector((state: any) => {
+    if (!isImageUploadMode) return [];
+    const allEntries = state.history?.entries || [];
+    console.log('🖼️ Video Generation - All entries:', allEntries.length);
+    
+    // Filter for text-to-image entries - EXACTLY like image generation
+    const filteredEntries = allEntries.filter((entry: any) =>
+      entry.generationType === 'text-to-image'
+    );
+    
+    console.log('🖼️ Video Generation - Filtered image entries:', filteredEntries.length);
+    return filteredEntries;
+  }, shallowEqual);
+
+  // Load image history when opening image upload modal - EXACTLY like image generation
+  const handleOpenImageUploadModal = async (type: 'image' | 'reference' | 'video') => {
+    setUploadModalType(type);
+    setIsUploadModalOpen(true);
+    
+    // Load image history - EXACTLY like image generation component
+    if (type === 'image' || type === 'reference') {
+      console.log('🖼️ Opening image upload modal - loading image history...');
+      setIsImageUploadMode(true);
+      
+      // Load image history using Redux - EXACTLY like image generation
+      dispatch(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } }));
+      console.log('🖼️ Dispatched image history load');
+    }
+  };
+
+  // Handle modal close and restore video history
+  const handleCloseUploadModal = () => {
+    setIsUploadModalOpen(false);
+    // Restore video history when modal closes
+    if (isImageUploadMode) {
+      console.log('🖼️ Restoring video history...');
+      setIsImageUploadMode(false);
+      dispatch(clearFilters());
+      dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
+    }
+  };
+
+  // Clear lastFrameImage when model or resolution changes
+  useEffect(() => {
+    if (!(selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P"))) {
+      setLastFrameImage("");
+    }
+  }, [selectedModel, selectedResolution]);
 
   // Handle image upload (legacy - keeping for compatibility)
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1508,7 +1581,7 @@ const InputBox = () => {
 
   return (
     <>
-      {(historyEntries.length > 0 || localVideoPreview) && (
+      {(allHistoryEntries.length > 0 || localVideoPreview) && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
@@ -1519,7 +1592,7 @@ const InputBox = () => {
             <div className="h-0"></div>
 
             {/* Main Loader */}
-            {loading && historyEntries.length === 0 && (
+            {loading && allHistoryEntries.length === 0 && (
               <div className="flex items-center justify-center h-screen">
                 <div className="flex flex-col items-center gap-4">
                   <WildMindLogoGenerating
@@ -1956,10 +2029,7 @@ const InputBox = () => {
                           ? 'opacity-50 cursor-not-allowed'
                           : ''
                         }`}
-                      onClick={() => {
-                        setUploadModalType('reference');
-                        setIsUploadModalOpen(true);
-                      }}
+                      onClick={() => handleOpenImageUploadModal('reference')}
                       disabled={(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                         (generationMode === "video_to_video" && references.length >= 4)}
                     >
@@ -2028,10 +2098,7 @@ const InputBox = () => {
                     <div className="relative">
                       <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                        onClick={() => {
-                          setUploadModalType('image');
-                          setIsUploadModalOpen(true);
-                        }}
+                        onClick={() => handleOpenImageUploadModal('image')}
                       >
                         <div className=" relative ">
                           <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
@@ -2046,10 +2113,7 @@ const InputBox = () => {
                   <div className="relative">
                     <button
                       className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                      onClick={() => {
-                        setUploadModalType('image');
-                        setIsUploadModalOpen(true);
-                      }}
+                      onClick={() => handleOpenImageUploadModal('image')}
                     >
                       <div className="relative">
                         <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
@@ -2078,20 +2142,15 @@ const InputBox = () => {
                 {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) - Image-to-Video only */}
                 {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
                   <div className="relative">
-                    <label
+                    <button
                       className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                      onClick={() => handleOpenImageUploadModal('image')}
                     >
                       <div className="relative">
                         <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload last frame image (optional)</div>
                       </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleLastFrameImageUpload}
-                      />
-                    </label>
+                    </button>
 
                     {/* Last Frame Image Preview */}
                     {lastFrameImage && (
@@ -2125,10 +2184,7 @@ const InputBox = () => {
                   <div className="relative">
                     <button
                       className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                      onClick={() => {
-                        setUploadModalType('video');
-                        setIsUploadModalOpen(true);
-                      }}
+                      onClick={() => handleOpenImageUploadModal('video')}
                     >
                       <div className="relative">
                         <FilePlay
@@ -2688,14 +2744,22 @@ const InputBox = () => {
       {uploadModalType !== 'video' && (
         <UploadModal
           isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
+          onClose={handleCloseUploadModal}
           onAdd={handleImageUploadFromModal}
-          historyEntries={historyEntries}
+          historyEntries={imageHistoryEntries}
           remainingSlots={uploadModalType === 'image' ?
             (selectedModel === "S2V-01" ? 0 : 1) : // S2V-01 doesn't use uploadedImages
             (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
           }
-          onLoadMore={loadMoreHistory}
+          onLoadMore={async () => {
+            try {
+              if (!hasMore || loading) return;
+              await (dispatch as any)(loadMoreHistory({
+                filters: { generationType: 'text-to-image' },
+                paginationParams: { limit: 10 }
+              })).unwrap();
+            } catch {}
+          }}
           hasMore={hasMore}
           loading={loading}
         />
