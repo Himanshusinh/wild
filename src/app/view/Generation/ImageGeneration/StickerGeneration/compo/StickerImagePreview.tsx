@@ -32,6 +32,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
   const dispatch = useAppDispatch();
+  const [isPublicFlag, setIsPublicFlag] = useState<boolean>(!!((entry as any)?.isPublic));
 
   // Lock background scroll while modal is open
   React.useEffect(() => {
@@ -246,7 +247,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
       if (navigator.share) {
         await navigator.share({
           title: 'WildMind Art Station',
-          text: getUserPrompt(entry.prompt),
+          text: cleanPrompt,
           url: shareUrl
         });
         return;
@@ -294,38 +295,42 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     window.open(selectedImageProxyUrl, '_blank');
   };
 
-  const userPrompt = getUserPrompt(entry.prompt);
+  const getCleanPrompt = (promptText: string): string => {
+    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
+  };
+
+  const cleanPrompt = getCleanPrompt(entry.prompt || '');
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
-  const isLongPrompt = (userPrompt || '').length > 280;
+  const isLongPrompt = cleanPrompt.length > 280;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
-      <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
+      <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <div className="text-white/70 text-sm">{entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
+          <div className="text-white/70 text-sm"></div>
           <div className="flex items-center gap-2">
-            <button 
+            {/* <button 
               className="p-2 rounded-full  text-white transition-colors" 
               onClick={handleDelete}
               aria-label="Delete image"
             >
               <Trash2 className="w-5 h-5" />
-            </button>
+            </button> */}
             <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+        <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
-              <Image 
-                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl} 
-                alt={entry.prompt} 
-                fill 
-                className="object-contain" 
+              <Image
+                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
+                alt={entry.prompt}
+                fill
+                className="object-contain"
                 unoptimized
               />
             )}
@@ -335,7 +340,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -348,44 +353,52 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-[78vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-10 mb-10">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </button>
+              <div className="relative group flex-1">
+                <button onClick={handleDownload} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+              </div>
 
-              <button
-                onClick={() => shareImage()}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
-              >
-                <Share className="h-4 w-4" />
-                Share
-              </button>
-              <button
-                onClick={() => exportForWhatsApp(false)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-400/40 bg-emerald-600/20 hover:bg-emerald-600/30 text-sm"
-                title="Export for WhatsApp"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp
-              </button>
+              <div className="relative group flex-1">
+                <button onClick={() => shareImage()} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                  <Share className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button onClick={() => setIsPublicFlag(p=>!p)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
+                  {isPublicFlag ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
+                  )}
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+              </div>
             </div>
 
             {/* Prompt */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+            <div className="mb-2">
+              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
                 <span>Prompt</span>
                 <button 
-                  onClick={() => copyPrompt(getUserPrompt(entry.prompt), `preview-${entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                  onClick={() => copyPrompt(cleanPrompt, `preview-${entry.id}`)}
+                  className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-sm rounded-lg transition-colors ${
                     copiedButtonId === `preview-${entry.id}` 
                       ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-white/10 hover:bg-white/20'
+                      : 'bg-white/5 hover:bg-white/20'
                   }`}
                 >
                   {copiedButtonId === `preview-${entry.id}` ? (
@@ -406,7 +419,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                 </button>
               </div>
               <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {getUserPrompt(entry.prompt)}
+                {cleanPrompt}
               </div>
               {isLongPrompt && (
                 <button
@@ -417,24 +430,24 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                 </button>
               )}
             </div>
-            
+
             {/* Date */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+              <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
+              <div className="text-white/80 text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
             </div>
 
             {/* Details */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white text-sm">{entry.model}</span>
+                  <span className="text-white/80 text-sm">{entry.model}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Format:</span>
-                  <span className="text-white text-sm">Sticker</span>
+                  <span className="text-white/80 text-sm">Sticker</span>
                 </div>
               </div>
             </div>
@@ -442,17 +455,13 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             {/* Gallery */}
             {galleryImages.length > 1 && (
               <div className="mb-4">
-                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Stickers ({galleryImages.length})</div>
+                <div className="text-white/60 text-sm uppercase tracking-wider mb-1">Stickers ({galleryImages.length})</div>
                 <div className="grid grid-cols-2 gap-2">
                   {galleryImages.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${
-                        selectedImageIndex === index 
-                          ? 'border-white ring-2 ring-white/30' 
-                          : 'border-white/20 hover:border-white/40'
-                      }`}
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       <Image
                         src={(image as any)?.url}
@@ -472,7 +481,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
             {/* Action Button */}
             <div className="mt-6">
-              <button 
+              <button
                 onClick={onClose}
                 className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
               >
