@@ -48,6 +48,8 @@ export default function SignUp() {
   const [hasMore, setHasMore] = useState(true)
   const recentUrlsRef = useRef<string[]>([])
   const lastSeenRef = useRef<Set<string>>(new Set())
+  const allImagesRef = useRef<ArtStationImage[]>([])
+  const isInitializedRef = useRef(false)
   const [currentImage, setCurrentImage] = useState<ArtStationImage | null>(null)
   // Utility: shuffle array (Fisher–Yates). Optionally avoid a specific first url.
   const shuffleImages = (list: ArtStationImage[], avoidFirstUrl?: string): ArtStationImage[] => {
@@ -213,70 +215,106 @@ export default function SignUp() {
     }
   };
 
-  // Simple RANDOM fetcher over the whole feed using random cursor hops
-  const fetchOneRandomImage = async () => {
+  // ONE-TIME AGGREGATION: fetch all images once and cache them
+  const initializeAllImages = async () => {
+    if (isInitializedRef.current || allImagesRef.current.length > 0) return
     if (isFetchingRef.current) return
     isFetchingRef.current = true
+    
     try {
+      console.log('[SignupCarousel] Initializing: fetching ALL images...')
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-      let cursor: string | undefined = undefined
-      // Random number of cursor hops (1-4) to sample anywhere in the feed
-      const hops = 1 + Math.floor(Math.random() * 4)
-      let chosen: ArtStationImage | null = null
-      for (let i = 0; i < hops; i++) {
-        const url = new URL(`${baseUrl}/api/feed`)
-        url.searchParams.set('limit', '50')
-        if (cursor) url.searchParams.set('cursor', cursor)
-        url.searchParams.set('_t', `${Date.now()}-${i}`)
-        const controller = new AbortController()
-        const timeoutId = window.setTimeout(() => controller.abort(), 6000)
-        const res = await fetch(url.toString(), { credentials: 'include', signal: controller.signal }).finally(() => window.clearTimeout(timeoutId))
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        const payload = data?.data || data
-        const items: PublicItem[] = payload?.items || []
-        cursor = payload?.meta?.nextCursor || payload?.nextCursor
-        const mapped: ArtStationImage[] = (items || [])
-          .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
-          .map(it => ({ url: String(it.images![0]!.url), username: it.createdBy?.username || it.createdBy?.displayName || 'Unknown Creator', displayName: it.createdBy?.displayName, timestamp: Date.now() }))
-        if (mapped.length > 0) {
-          chosen = mapped[Math.floor(Math.random() * mapped.length)]
-        }
-        // If no more pages, stop early
-        if (!cursor) break
-      }
-      if (chosen) {
-        setCurrentImage(chosen)
-        try { console.log('[SignupCarousel] Random pick (cursor-walk) hops:', hops, 'url:', String(chosen.url)) } catch {}
-      }
-      setIsLoading(false)
+      const url = new URL(`${baseUrl}/api/feed`)
+      // No limit = backend aggregates all pages
+      url.searchParams.set('_t', Date.now().toString())
+      
+      const res = await fetch(url.toString(), { credentials: 'include' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      
+      const data = await res.json()
+      const payload = data?.data || data
+      const items: PublicItem[] = payload?.items || []
+
+      // Map and dedupe by url
+      const allImages: ArtStationImage[] = (items || [])
+        .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
+        .map(it => ({ 
+          url: String(it.images![0]!.url), 
+          username: it.createdBy?.username || it.createdBy?.displayName || 'Unknown Creator', 
+          displayName: it.createdBy?.displayName, 
+          timestamp: Date.now() 
+        }))
+        .filter((img, idx, arr) => arr.findIndex(o => o.url === img.url) === idx)
+
+      allImagesRef.current = allImages
+      isInitializedRef.current = true
+      console.log('[SignupCarousel] CACHED all images:', allImages.length)
+      
     } catch (e) {
-      console.error('[SignupCarousel] Random fetch error', e)
-      setIsLoading(false)
+      console.error('[SignupCarousel] Initialization error', e)
     } finally {
       isFetchingRef.current = false
     }
   }
 
+  // FAST random selection from cached images
+  const getRandomImage = () => {
+    if (allImagesRef.current.length === 0) return null
+    
+    const lastSeen = lastSeenRef.current
+    const pool = allImagesRef.current.filter(img => !lastSeen.has(img.url))
+    const source = pool.length > 0 ? pool : allImagesRef.current
+    
+    if (source.length > 0) {
+      const chosenIdx = Math.floor(Math.random() * source.length)
+      const chosen = source[chosenIdx]
+      
+      if (chosen?.url) {
+        lastSeen.add(chosen.url)
+        // Keep last 200 URLs to avoid repeats
+        if (lastSeen.size > 200) {
+          const it = lastSeen.values().next()
+          if (!it.done) lastSeen.delete(it.value)
+        }
+      }
+      
+      console.log('[SignupCarousel] FAST SELECTION:', {
+        totalCached: allImagesRef.current.length,
+        avoidedRecent: allImagesRef.current.length - source.length,
+        selectedUrl: String(chosen.url),
+        recentWindow: lastSeen.size
+      })
+      
+      return chosen
+    }
+    return null
+  }
+
   // Initial load (random mode)
   useEffect(() => {
     if (randomMode) {
-      fetchOneRandomImage().then((first: any) => {
-        if (first) setCurrentImage(first as ArtStationImage)
+      // Initialize once
+      initializeAllImages().then(() => {
+        const first = getRandomImage()
+        if (first) setCurrentImage(first)
+        setIsLoading(false)
       })
+      
+      // Fast random selection every 10 seconds
       const id = window.setInterval(() => {
-        fetchOneRandomImage().then((img: any) => {
-          const theImg = img as ArtStationImage | null
-          if (!theImg) return
-          setNextImage(theImg)
-          setIsSliding(true)
-          setTimeout(() => {
-            setCurrentImage(theImg)
-            setNextImage(null)
-            setIsSliding(false)
-          }, 500)
-        })
-      }, 8000)
+        if (allImagesRef.current.length > 0) {
+          const next = getRandomImage()
+          if (next) {
+            setNextImage(next)
+            setIsSliding(true)
+            setTimeout(() => {
+              setCurrentImage(next)
+              setNextImage(null)
+              setIsSliding(false)
+            }, 700)
+          }
+        }
+      }, 10000) // 10 seconds interval
       return () => window.clearInterval(id)
     } else {
       try {
@@ -378,7 +416,7 @@ export default function SignUp() {
                     src={currentImage.url}
                     alt="Art Station Generation"
                     fill
-                    className={`object-cover object-[center_25%] scale-100 transition-transform duration-500 ${isSliding ? 'translate-x-full' : 'translate-x-0'}`}
+                    className={`object-cover object-[center_25%] scale-100 transition-all duration-700 ease-in-out ${isSliding ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
                     priority
                     onError={() => setImageError(true)}
                   />
@@ -389,7 +427,7 @@ export default function SignUp() {
                     src={nextImage.url}
                     alt="Art Station Generation Next"
                     fill
-                    className={`object-cover object-[center_25%] scale-100 transition-transform duration-500 ${isSliding ? 'translate-x-0' : '-translate-x-full'}`}
+                    className={`object-cover object-[center_25%] scale-100 transition-all duration-700 ease-in-out ${isSliding ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}
                     priority
                     onError={() => setImageError(true)}
                   />
@@ -416,22 +454,23 @@ export default function SignUp() {
               priority 
             />
           ) : (
-            // Skeleton loader with shimmer effect
-            <div className="w-full h-full bg-gradient-to-br from-gray-800 via-gray-850 to-gray-900 relative overflow-hidden">
-              {/* Shimmer effect */}
-              <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-              
-              {/* Skeleton content blocks */}
-              <div className="absolute inset-0 flex flex-col justify-end p-8 space-y-4">
-                {/* Large skeleton block for visual interest */}
-                <div className="w-3/4 h-32 bg-gray-700/30 rounded-lg"></div>
-                <div className="w-1/2 h-24 bg-gray-700/30 rounded-lg"></div>
-                
-                {/* Attribution skeleton at bottom */}
-                <div className="absolute bottom-6 right-6 space-y-2">
-                  <div className="w-24 h-3 bg-gray-700/40 rounded ml-auto"></div>
-                  <div className="w-32 h-4 bg-gray-700/40 rounded"></div>
-                </div>
+            // Minimal loading state: blurred previous image with spinner
+            <div className="w-full h-full relative">
+              {/* Blur previous current image if exists */}
+              {currentImage?.url ? (
+                <Image
+                  src={currentImage.url}
+                  alt="Loading previous"
+                  fill
+                  className="object-cover object-[center_25%] scale-100 blur-md opacity-70"
+                  priority
+                />
+              ) : (
+                <div className="absolute inset-0 bg-[#0B0B0F]" />
+              )}
+              {/* Center spinner */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-10 w-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               </div>
             </div>
           )}
