@@ -1129,7 +1129,8 @@ const InputBox = () => {
             isPublic,
           };
           generationType = "text-to-video";
-          apiEndpoint = '/api/replicate/wan-2-5-t2v/submit';
+          // Use fast alias route when selected fast model
+          apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
         } else {
           // Runway models don't support text-to-video (they require an image)
           setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/WAN model.");
@@ -1230,7 +1231,8 @@ const InputBox = () => {
             isPublic,
           };
           generationType = "image-to-video";
-          apiEndpoint = '/api/replicate/wan-2-5-i2v/submit';
+          // Use fast alias route when selected fast model
+          apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
         } else {
           // Runway image to video
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
@@ -1479,8 +1481,9 @@ const InputBox = () => {
             const status = statusRes.data?.data || statusRes.data;
             
             console.log(`🎬 WAN 2.5 status check result:`, status);
-
-            if (status?.status === 'COMPLETED' || status?.status === 'completed' || status?.status === 'SUCCESS' || status?.status === 'success') {
+            // Normalize status for robust comparisons
+            const statusValue = String(status?.status || '').toLowerCase();
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ WAN 2.5 generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
@@ -1490,15 +1493,15 @@ const InputBox = () => {
               console.log('✅ WAN 2.5 result fetched:', videoResult);
               break;
             }
-            if (status?.status === 'FAILED' || status?.status === 'failed' || status?.status === 'ERROR' || status?.status === 'error') {
+            if (statusValue === 'failed' || statusValue === 'error') {
               console.error('❌ WAN 2.5 generation failed with status:', status);
               throw new Error('WAN 2.5 video generation failed');
             }
             
             // Handle other possible statuses
-            if (status?.status === 'PROCESSING' || status?.status === 'processing' || status?.status === 'PENDING' || status?.status === 'pending') {
+            if (statusValue === 'processing' || statusValue === 'pending') {
               console.log(`🎬 WAN 2.5 status: ${status.status} - continuing to poll...`);
-            } else if (status?.status) {
+            } else if (statusValue) {
               console.log(`🎬 WAN 2.5 unknown status: ${status.status} - continuing to poll...`);
             } else {
               console.log('🎬 WAN 2.5 no status returned - continuing to poll...');
@@ -1545,6 +1548,14 @@ const InputBox = () => {
           // Fallback: check for single video object
           videoUrl = videoResult.video.url;
           console.log('✅ WAN 2.5 video completed with URL (fallback):', videoUrl);
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          // Replicate-like payload where 'output' is a direct URL
+          videoUrl = videoResult.output;
+          console.log('✅ WAN 2.5 video completed with URL (output string):', videoUrl);
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          // Replicate-like payload where 'output' is an array of URLs
+          videoUrl = videoResult.output[0];
+          console.log('✅ WAN 2.5 video completed with URL (output array):', videoUrl);
         } else {
           console.error('❌ WAN 2.5 video generation did not complete properly');
           console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
