@@ -84,6 +84,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       return [
         { value: "veo3-t2v-8s", label: "Veo3", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
+        { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video, 5s/10s, 16:9/9:16/1:1 (standard/pro)", provider: "replicate" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 T2V", description: "Text→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 T2V Fast", description: "Faster text→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
@@ -93,6 +95,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       return [
         { value: "veo3-i2v-8s", label: "Veo3 ", description: "Google's image-to-video model, 8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-i2v-8s", label: "Veo3 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
+        { value: "kling-v2.5-turbo-pro-i2v", label: "Kling 2.5 Turbo Pro", description: "Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "kling-v2.1-i2v", label: "Kling 2.1", description: "Image→Video, 5s/10s, 16:9/9:16/1:1 (standard/pro)", provider: "replicate" },
         { value: "wan-2.5-i2v", label: "WAN 2.5 I2V", description: "Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-i2v-fast", label: "WAN 2.5 I2V Fast", description: "Faster image→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
@@ -110,7 +114,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   };
 
   const availableModels = getAvailableModels();
-  const selectedModelInfo = availableModels.find(model => model.value === selectedModel);
+  const selectedModelInfo = availableModels.find(model => model.value === selectedModel) || availableModels.find(m => selectedModel.startsWith('kling-') && m.value.startsWith('kling-')) || availableModels[0];
 
   // Add credits information to models
   const modelsWithCredits = availableModels.map(model => {
@@ -141,13 +145,12 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   return (
     <div ref={dropdownRef} className="relative dropdown-container">
       <button
-        onClick={() => {
-          // Close other dropdowns if they exist
-          if (onCloseOtherDropdowns) {
-            onCloseOtherDropdowns();
-          }
-          setIsOpen(!isOpen);
-        }}
+      onClick={() => {
+        try {
+          if (onCloseOtherDropdowns) onCloseOtherDropdowns();
+        } catch {}
+        setIsOpen(!isOpen);
+      }}
         className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax') || selectedModel.includes('veo3') || selectedModel.includes('wan-2.5')
             ? 'bg-white text-black' 
@@ -170,7 +173,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
             <button
               key={model.value}
               onClick={() => {
-                onModelChange(model.value);
+                try { onModelChange(model.value); } catch {}
                 setIsOpen(false);
               }}
               className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${

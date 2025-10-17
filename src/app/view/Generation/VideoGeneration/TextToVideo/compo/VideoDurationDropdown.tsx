@@ -91,6 +91,13 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 8, label: "8 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel?.startsWith('kling-')) {
+      // Kling supports 5s and 10s
+      return [
+        { value: 5, label: "5 seconds", description: "Short video" },
+        { value: 10, label: "10 seconds", description: "Standard length" }
+      ];
+    }
     if (selectedModel?.includes("wan-2.5")) {
       // WAN 2.5 models support 5s and 10s
       return [

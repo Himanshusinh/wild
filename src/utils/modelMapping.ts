@@ -265,6 +265,36 @@ export const MODEL_MAPPING: ModelMapping[] = [
     }
   },
   
+  // Kling Models (Replicate)
+  {
+    frontendValue: 'kling-v2.5-turbo-pro-t2v',
+    creditModelName: 'Kling 2.5 Turbo Pro T2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.5-turbo-pro-i2v',
+    creditModelName: 'Kling 2.5 Turbo Pro I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.1-t2v',
+    creditModelName: 'Kling 2.1 T2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.1-i2v',
+    creditModelName: 'Kling 2.1 I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  
   // WAN 2.5 Fast Models
   {
     frontendValue: 'wan-2.5-t2v-fast',
@@ -350,6 +380,21 @@ export const buildCreditModelName = (
     const modelType = isI2V ? 'I2V' : 'T2V';
     const speedPrefix = isFast ? 'Fast ' : '';
     modelName = `Wan 2.5 ${speedPrefix}${modelType} ${options.duration}s ${options.resolution}`;
+  }
+  // Handle Kling models
+  else if (mapping.frontendValue.startsWith('kling') && options?.duration) {
+    const d = options.duration;
+    if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('t2v')) {
+      modelName = `Kling 2.5 Turbo Pro T2V ${d}s`;
+    } else if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('i2v')) {
+      modelName = `Kling 2.5 Turbo Pro I2V ${d}s`;
+    } else if (mapping.frontendValue.includes('v2.1') && mapping.frontendValue.includes('t2v')) {
+      const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+      modelName = `Kling 2.1 T2V ${d}s ${res}`;
+    } else if (mapping.frontendValue.includes('v2.1') && mapping.frontendValue.includes('i2v')) {
+      const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+      modelName = `Kling 2.1 I2V ${d}s ${res}`;
+    }
   }
 
   return modelName;

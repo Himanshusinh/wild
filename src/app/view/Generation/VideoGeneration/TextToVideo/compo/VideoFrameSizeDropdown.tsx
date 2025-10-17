@@ -104,6 +104,13 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         { value: "1920*1080", label: "1080p", description: "1920×1080 landscape", icon: "landscape" },
         { value: "1080*1920", label: "1080p", description: "1080×1920 portrait", icon: "portrait" }
       ];
+    } else if (selectedModel?.startsWith('kling-')) {
+      // Kling models use aspect ratios
+      return [
+        { value: "16:9", label: "16:9", description: "Landscape", icon: "landscape" },
+        { value: "9:16", label: "9:16", description: "Portrait", icon: "portrait" },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+      ];
     } else if (selectedModel === "gen3a_turbo") {
       return [
         { value: "16:10", label: "16:10", description: "1280×768 landscape", icon: "landscape" },

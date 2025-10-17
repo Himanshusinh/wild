@@ -96,6 +96,24 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'wan-2.5-fast-i2v-5s-1080p': 1140,
   'wan-2.5-fast-i2v-10s-720p': 1480,
   'wan-2.5-fast-i2v-10s-1080p': 2160,
+  
+  // Kling credit SKUs (map to distribution names)
+  'kling-v2.5-turbo-pro-t2v-5s': 960,
+  'kling-v2.5-turbo-pro-t2v-10s': 1800,
+  'kling-v2.5-turbo-pro-i2v-5s': 960,
+  'kling-v2.5-turbo-pro-i2v-10s': 1800,
+  'kling-v2.1-master-t2v-5s': 2920,
+  'kling-v2.1-master-t2v-10s': 5720,
+  'kling-v2.1-master-i2v-5s': 2920,
+  'kling-v2.1-master-i2v-10s': 5720,
+  'kling-v2.1-t2v-5s-720p': 620,
+  'kling-v2.1-t2v-5s-1080p': 1020,
+  'kling-v2.1-t2v-10s-720p': 1120,
+  'kling-v2.1-t2v-10s-1080p': 1920,
+  'kling-v2.1-i2v-5s-720p': 620,
+  'kling-v2.1-i2v-5s-1080p': 1020,
+  'kling-v2.1-i2v-10s-720p': 1120,
+  'kling-v2.1-i2v-10s-1080p': 1920,
 };
 
 // Function to get credit cost for a model
@@ -150,6 +168,30 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const durationNum = duration ? parseInt(duration.replace('s', '')) : 5;
     
     const key = `wan-2.5-${speedPrefix}${modelType}-${durationNum}s-${resolutionKey}`;
+    return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
+  // Handle Kling models
+  if (modelValue.startsWith('kling')) {
+    // v2.5 Turbo Pro: only duration matters
+    if (modelValue.includes('v2.5')) {
+      const isI2V = modelValue.includes('i2v');
+      const kind = isI2V ? 'i2v' : 't2v';
+      const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const key = `kling-v2.5-turbo-pro-${kind}-${d}s`;
+      return MODEL_CREDITS_MAPPING[key] || null;
+    }
+    // v2.1: duration and resolution
+    const isI2V = modelValue.includes('i2v');
+    const kind = isI2V ? 'i2v' : 't2v';
+    const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const res = (resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+    const master = modelValue.includes('master');
+    if (master) {
+      const key = `kling-v2.1-master-${kind}-${d}s`;
+      return MODEL_CREDITS_MAPPING[key] || null;
+    }
+    const key = `kling-v2.1-${kind}-${d}s-${res}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
 
