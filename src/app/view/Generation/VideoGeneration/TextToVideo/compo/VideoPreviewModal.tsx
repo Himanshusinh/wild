@@ -13,6 +13,9 @@ interface VideoPreviewModalProps {
 }
 
 const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose }) => {
+  // Early return BEFORE any hooks to keep hook order stable across renders
+  if (!preview) return null;
+
   const dispatch = useAppDispatch();
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
@@ -23,8 +26,6 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
-  
-  if (!preview) return null;
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
 
