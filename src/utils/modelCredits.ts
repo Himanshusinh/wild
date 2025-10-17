@@ -68,6 +68,34 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'veo3-fast-t2v-8s': 2520,
   'veo3-fast-i2v-8s': 2520,
   'RW-veo3-8s': 6520,
+  
+  // WAN 2.5 Standard T2V
+  'wan-2.5-t2v-5s-480p': 620,
+  'wan-2.5-t2v-5s-720p': 1120,
+  'wan-2.5-t2v-5s-1080p': 1620,
+  'wan-2.5-t2v-10s-480p': 1120,
+  'wan-2.5-t2v-10s-720p': 2120,
+  'wan-2.5-t2v-10s-1080p': 3120,
+  
+  // WAN 2.5 Standard I2V
+  'wan-2.5-i2v-5s-480p': 620,
+  'wan-2.5-i2v-5s-720p': 1120,
+  'wan-2.5-i2v-5s-1080p': 1620,
+  'wan-2.5-i2v-10s-480p': 1120,
+  'wan-2.5-i2v-10s-720p': 2120,
+  'wan-2.5-i2v-10s-1080p': 3120,
+  
+  // WAN 2.5 Fast T2V
+  'wan-2.5-fast-t2v-5s-720p': 800,
+  'wan-2.5-fast-t2v-5s-1080p': 1140,
+  'wan-2.5-fast-t2v-10s-720p': 1480,
+  'wan-2.5-fast-t2v-10s-1080p': 2160,
+  
+  // WAN 2.5 Fast I2V
+  'wan-2.5-fast-i2v-5s-720p': 800,
+  'wan-2.5-fast-i2v-5s-1080p': 1140,
+  'wan-2.5-fast-i2v-10s-720p': 1480,
+  'wan-2.5-fast-i2v-10s-1080p': 2160,
 };
 
 // Function to get credit cost for a model
@@ -103,6 +131,26 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       else if (duration === '6s') return MODEL_CREDITS_MAPPING['veo3-t2v-6s'];
       else if (duration === '8s') return MODEL_CREDITS_MAPPING[modelValue.includes('i2v') ? 'veo3-i2v-8s' : 'veo3-t2v-8s'];
     }
+  }
+
+  // Handle WAN 2.5 models
+  if (modelValue.includes('wan-2.5')) {
+    const isFast = modelValue.includes('fast');
+    const isI2V = modelValue.includes('i2v');
+    const modelType = isI2V ? 'i2v' : 't2v';
+    const speedPrefix = isFast ? 'fast-' : '';
+    
+    // Map resolution to our format
+    let resolutionKey = '';
+    if (resolution?.includes('480')) resolutionKey = '480p';
+    else if (resolution?.includes('720')) resolutionKey = '720p';
+    else if (resolution?.includes('1080')) resolutionKey = '1080p';
+    
+    // Map duration to our format
+    const durationNum = duration ? parseInt(duration.replace('s', '')) : 5;
+    
+    const key = `wan-2.5-${speedPrefix}${modelType}-${durationNum}s-${resolutionKey}`;
+    return MODEL_CREDITS_MAPPING[key] || null;
   }
 
   // Default lookup
