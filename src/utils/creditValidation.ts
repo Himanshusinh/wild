@@ -95,7 +95,7 @@ export const getImageGenerationCreditCost = (
  * Calculate total credit cost for video generation
  */
 export const getVideoGenerationCreditCost = (
-  provider: 'minimax' | 'runway' | 'fal',
+  provider: 'minimax' | 'runway' | 'fal' | 'replicate',
   frontendModel: string,
   resolution?: string,
   duration?: number
