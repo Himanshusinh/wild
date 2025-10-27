@@ -3,9 +3,10 @@
 import React from 'react';
 import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
+import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 
 interface VideoPreviewModalProps {
   preview: { entry: HistoryEntry; video: any } | null;
@@ -17,6 +18,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   if (!preview) return null;
 
   const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.auth?.user);
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -67,6 +69,15 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
   };
 
+  const formatDuration = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
   const copyPrompt = async (prompt: string, buttonId: string) => {
     try {
       await navigator.clipboard.writeText(prompt);
@@ -98,20 +109,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
     
     try {
-      const path = toProxyPath((preview.video as any)?.storagePath || url);
-      const downloadUrl = toProxyDownloadUrl(path || url);
-      if (!downloadUrl) return;
-      const res = await fetch(downloadUrl, { credentials: 'include' });
-      const blob = await res.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      const baseName = (path || 'video').split('/').pop() || `video-${Date.now()}.mp4`;
-      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `video-${Date.now()}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(objectUrl);
+      await downloadFileWithNaming(url, null, 'video');
     } catch (e) {
       console.error('Download failed:', e);
     }
@@ -223,6 +221,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
+  const [videoDuration, setVideoDuration] = React.useState<number | null>(null);
   const isLongPrompt = cleanPrompt.length > 280;
   
   // Update isPublicFlag based on selected video
@@ -230,6 +229,11 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     const isPublic = ((preview.video as any)?.isPublic !== false);
     setIsPublicFlag(isPublic);
   }, [preview.video]);
+
+  // Reset video duration when preview changes
+  React.useEffect(() => {
+    setVideoDuration(null);
+  }, [preview]);
 
   // ---- Fullscreen helpers (unconditional hooks) ----
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -367,6 +371,13 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   onError={(e) => console.error('Video error:', e)}
                   onLoadStart={() => console.log('Video loading started')}
                   onLoadedData={() => console.log('Video loaded successfully')}
+                  onLoadedMetadata={(e) => {
+                    const video = e.currentTarget;
+                    if (video.duration && !isNaN(video.duration)) {
+                      setVideoDuration(video.duration);
+                      console.log('Video duration captured:', video.duration);
+                    }
+                  }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-white/5 rounded-lg">
@@ -529,7 +540,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Duration:</span>
-                  <span className="text-white/80 text-sm">{(preview.entry as any).duration || '—'}s</span>
+                  <span className="text-white/80 text-sm">
+                    {videoDuration !== null ? formatDuration(videoDuration) : ((preview.entry as any).duration ? `${(preview.entry as any).duration}s` : '—')}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Format:</span>
@@ -579,6 +592,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget as HTMLVideoElement;
                   setFsNaturalSize({ width: v.videoWidth || 1280, height: v.videoHeight || 720 });
+                  if (v.duration && !isNaN(v.duration)) {
+                    setVideoDuration(v.duration);
+                    console.log('Fullscreen video duration captured:', v.duration);
+                  }
                 }}
               />
             </div>

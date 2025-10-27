@@ -18,6 +18,7 @@ import {
   setUploadedImages,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
+import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
@@ -53,6 +54,7 @@ import WildMindLogoGenerating from "@/app/components/WildMindLogoGenerating";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.auth?.user);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -236,24 +238,9 @@ const InputBox = () => {
   };
   const downloadImage = async (url: string) => {
     try {
-      const response = await fetch(url, { mode: "cors" });
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = "generated-image.jpg";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      await downloadFileWithNaming(url, null, 'image');
     } catch (e) {
-      // Fallback to direct download
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "generated-image.jpg";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      console.error('Download failed:', e);
     }
   };
 

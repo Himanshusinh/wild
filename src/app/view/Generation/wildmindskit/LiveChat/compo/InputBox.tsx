@@ -7,9 +7,11 @@ import { addNotification } from "@/store/slices/uiSlice";
 import { addAndSaveHistoryEntry } from "@/store/slices/historySlice";
 import { HistoryEntry, GeneratedImage, LiveChatMessage } from "@/types/history";
 import { saveLiveChatSession } from '@/lib/historyService';
+import { ensureSessionReady } from '@/lib/axiosInstance';
 import Image from "next/image";
 import { Trash2 } from 'lucide-react';
 import LiveChatModelsDropdown from "./LiveChatModelsDropdown";
+import WildMindLogoGenerating from "@/app/components/WildMindLogoGenerating";
 import { useEffect } from 'react';
 // Live chat persistence will be handled by backend history endpoints
 
@@ -31,6 +33,13 @@ const LiveChatInputBox: React.FC = () => {
   const stripRef = React.useRef<HTMLDivElement>(null);
   const [liveChatDocId, setLiveChatDocId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<LiveChatMessage[]>([]);
+  
+  // State for current generation preview
+  const [currentGeneration, setCurrentGeneration] = React.useState<{
+    prompt: string;
+    status: 'generating' | 'completed' | 'failed';
+    images: GeneratedImage[];
+  } | null>(null);
 
   // Note: We prefer using direct URLs for reference images to keep requests small and fast
 
@@ -63,9 +72,19 @@ const LiveChatInputBox: React.FC = () => {
     }
   }, [sessionImages.length]);
 
+  // Clear current generation after completion with delay
+  useEffect(() => {
+    if (currentGeneration?.status === 'completed') {
+      const timer = setTimeout(() => {
+        setCurrentGeneration(null);
+      }, 2000); // Clear after 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [currentGeneration?.status]);
+
   return (
     <>
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[120]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-70">
       <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
         {/* Top row: prompt + actions */}
         <div className="flex items-center gap-3 p-3">
@@ -153,11 +172,26 @@ const LiveChatInputBox: React.FC = () => {
                   return;
                 }
                 try {
+                  // Ensure session is ready before making API calls
+                  const sessionReady = await ensureSessionReady();
+                  if (!sessionReady) {
+                    dispatch(addNotification({ type: 'error', message: 'Please wait for authentication to complete and try again.' }));
+                    return;
+                  }
+
                   // Ensure session and open process overlay
                   const sessionId = currentSessionId ?? `session-${Date.now()}`;
                   if (!currentSessionId) setCurrentSessionId(sessionId);
                   if (!overlayOpen) setOverlayOpen(true);
                   setIsProcessing(true);
+                  
+                  // Set current generation state for preview
+                  setCurrentGeneration({
+                    prompt: prompt,
+                    status: 'generating',
+                    images: []
+                  });
+                  
                   // As soon as processing starts, make sure the viewport shows the first tile (spinner)
                   setTimeout(() => {
                     if (stripRef.current) stripRef.current.scrollLeft = 0;
@@ -194,6 +228,32 @@ const LiveChatInputBox: React.FC = () => {
                     // Record this prompt -> images as one live chat message in overlay state
                     const msg: LiveChatMessage = { prompt, images: result.images, timestamp: new Date().toISOString() };
                     setMessages(prev => [msg, ...prev]);
+                    
+                    // Save each generation to history immediately with the same sessionId
+                    const now = new Date().toISOString();
+                    const historyEntry: HistoryEntry = {
+                      id: `livechat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                      prompt: prompt,
+                      model: selectedModel,
+                      generationType: 'live-chat',
+                      images: result.images,
+                      timestamp: now,
+                      createdAt: now,
+                      imageCount: result.images.length,
+                      status: 'completed',
+                      frameSize,
+                      style,
+                      sessionId: sessionId, // Use the same sessionId for all generations in this session
+                    };
+                    dispatch(addAndSaveHistoryEntry(historyEntry));
+                    
+                    // Update current generation state to completed
+                    setCurrentGeneration({
+                      prompt: prompt,
+                      status: 'completed',
+                      images: result.images
+                    });
+                    
                     setIsProcessing(false);
                     dispatch(addNotification({ type: 'success', message: 'Image generated. Continuing Live Chat with latest image.' }));
                   }
@@ -202,6 +262,13 @@ const LiveChatInputBox: React.FC = () => {
                     if (stripRef.current) stripRef.current.scrollLeft = 0;
                   }, 0);
                 } catch (e) {
+                  // Update current generation state to failed
+                  setCurrentGeneration({
+                    prompt: prompt,
+                    status: 'failed',
+                    images: []
+                  });
+                  
                   setIsProcessing(false);
                   dispatch(addNotification({ type: 'error', message: e instanceof Error ? e.message : 'Generation failed' }));
                 }
@@ -222,7 +289,7 @@ const LiveChatInputBox: React.FC = () => {
     </div>
     {/* Live chat process overlay (keeps input visible above) */}
     {overlayOpen && (
-      <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xl">
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl">
         <div className="absolute inset-0 flex items-start justify-center p-6 pt-16 pb-[140px]">
           <div className="relative bg-transparent max-w-[95vw] w-full px-2 py-2">
             <div className="flex items-center justify-between mb-3">
@@ -231,7 +298,7 @@ const LiveChatInputBox: React.FC = () => {
                 {isProcessing && (
                   <span className="inline-flex items-center gap-2 text-white/70">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
-                    <span className="text-xs">Generating…</span>
+                    {/* <span className="text-xs">Generating…</span> */}
                   </span>
                 )}
               </div>
@@ -287,15 +354,62 @@ const LiveChatInputBox: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div ref={stripRef} className="w-full overflow-x-auto">
-              <div className="flex flex-row items-center gap-3 pb-2 justify-start">
-                {isProcessing && (
-                  <div className="relative  rounded-xl overflow-hidden bg-black/70 flex-shrink-0 flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+             <div ref={stripRef} className="w-full overflow-x-auto custom-scrollbar">
+               <div className="flex flex-row items-center gap-3 pb-2 justify-start">
+                {/* Current generation preview */}
+                {currentGeneration && (
+                  <div className="relative w-[60vw] h-[60vw] md:w-[40vh] md:h-[40vh] lg:w-[40vh] lg:h-[40vh] rounded-xl overflow-hidden bg-black/30 flex-shrink-0">
+                    {currentGeneration.status === 'generating' ? (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                        <div className="flex flex-col items-center gap-2 p-4">
+                          <WildMindLogoGenerating 
+                            running={true}
+                            size="md"
+                            speedMs={1600}
+                            className="mx-auto"
+                          />
+                          <div className="text-xs text-white/60 text-center">Generating...</div>
+                          {/* <div className="text-xs text-white/40 text-center max-w-full truncate px-2">
+                            "{currentGeneration.prompt}"
+                          </div> */}
+                        </div>
+                      </div>
+                    ) : currentGeneration.status === 'failed' ? (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                          </svg>
+                          <div className="text-xs text-red-400">Failed</div>
+                        </div>
+                      </div>
+                    ) : currentGeneration.images.length > 0 ? (
+                      <div className="relative w-full h-full group">
+                        <Image 
+                          src={currentGeneration.images[0].url} 
+                          alt="Generated image" 
+                          fill 
+                          className="object-cover transition-opacity duration-300" 
+                          sizes="40vh"
+                          onLoad={() => {
+                            // Smooth fade-in effect
+                            const img = document.querySelector(`[alt="Generated image"]`) as HTMLElement;
+                            if (img) {
+                              img.style.opacity = '1';
+                            }
+                          }}
+                          style={{ opacity: 0 }}
+                        />
+                        {/* Shimmer loading effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
+                      </div>
+                    ) : null}
                   </div>
                 )}
+                
+                {/* Session images */}
                 {sessionImages.map((img, idx) => (
-                  <div key={`${img.id || 'img'}-${idx}-${img.url}`} className="relative w-[60vw] h-[60vw] md:w-[22vh] md:h-[22vh] lg:w-[22vh] lg:h-[22vh] rounded-xl overflow-hidden bg-black/70 flex-shrink-0">
+                  <div key={`${img.id || 'img'}-${idx}-${img.url}`} className="relative w-[60vw] h-[60vw] md:w-[40vh] md:h-[40vh] lg:w-[40vh] lg:h-[40vh] rounded-xl overflow-hidden bg-black/70 flex-shrink-0">
                     <Image src={img.url} alt="generated" fill className="object-contain" />
                   </div>
                 ))}

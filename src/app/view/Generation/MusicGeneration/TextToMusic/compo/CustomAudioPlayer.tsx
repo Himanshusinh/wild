@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Music4, Copy, Check, Download } from 'lucide-react';
+import { useAppSelector } from '@/store/hooks';
+import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 
 interface CustomAudioPlayerProps {
   audioUrl: string;
@@ -12,6 +14,7 @@ interface CustomAudioPlayerProps {
 }
 
 const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt, model, lyrics, autoPlay = false }) => {
+  const user = useAppSelector((state: any) => state.auth?.user);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -152,78 +155,9 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
     }
     
     try {
-      const ext = getExtensionFromUrl(audioUrl) || 'mp3';
-      const filename = `${model || 'audio'}-${Date.now()}.${ext}`;
-
-      // Proxy helpers (match History.tsx behavior)
-      const toProxyPath = (urlOrPath: string | undefined) => {
-        if (!urlOrPath) return '';
-        const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-        if (urlOrPath.startsWith(ZATA_PREFIX)) {
-          return urlOrPath.substring(ZATA_PREFIX.length);
-        }
-        return urlOrPath;
-      };
-      const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
-        const path = toProxyPath(urlOrPath);
-        return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
-      };
-
-      const proxyUrl = toProxyDownloadUrl(audioUrl);
-      const downloadUrl = proxyUrl || audioUrl;
-
-      const response = await fetch(downloadUrl, { credentials: 'include' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(objectUrl);
+      await downloadFileWithNaming(audioUrl, null, 'audio');
     } catch (e) {
-      // Fallback 1: attempt direct link to proxy with download attribute
-      try {
-        const toProxyPath = (urlOrPath: string | undefined) => {
-          if (!urlOrPath) return '';
-          const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-          if (urlOrPath.startsWith(ZATA_PREFIX)) {
-            return urlOrPath.substring(ZATA_PREFIX.length);
-          }
-          return urlOrPath;
-        };
-        const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-          const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
-          const path = toProxyPath(urlOrPath);
-          return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
-        };
-        const proxyUrl = toProxyDownloadUrl(audioUrl);
-        if (proxyUrl) {
-          const a = document.createElement('a');
-          a.href = proxyUrl;
-          a.download = `${model || 'audio'}-${Date.now()}.${getExtensionFromUrl(audioUrl) || 'mp3'}`;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          return;
-        }
-        throw new Error('No proxy URL');
-      } catch {
-        // Fallback 2: open original URL (last resort)
-        const a = document.createElement('a');
-        a.href = audioUrl;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+      console.error('Download failed:', e);
     }
   };
 

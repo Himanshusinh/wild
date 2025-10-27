@@ -11,10 +11,12 @@ import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/com
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize';
 
 const EditImageInterface: React.FC = () => {
+  const user = useAppSelector((state: any) => state.auth?.user);
   const searchParams = useSearchParams();
   const [selectedFeature, setSelectedFeature] = useState<EditFeature>('upscale');
   const [inputs, setInputs] = useState<Record<EditFeature, string | null>>({
@@ -630,35 +632,7 @@ const EditImageInterface: React.FC = () => {
         return
       }
       
-      // Use the same logic as ImagePreviewModal
-      const downloadUrl = toProxyDownloadUrl(url);
-      if (!downloadUrl) {
-        // Fallback to direct download
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `edited-image-${Date.now()}.jpg`;
-        a.target = '_blank';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        return;
-      }
-
-      const response = await fetch(downloadUrl, {
-        credentials: 'include',
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      });
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      const baseName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : 'generated-image.jpg';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      await downloadFileWithNaming(url, null, 'image', 'edited');
     } catch (e) {
       console.error('[EditImage] download.error', e)
       alert('Failed to download image. Please try again.')

@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
+import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 
 interface ProductImagePreviewProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   onClose,
   entry
 }) => {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.auth?.user);
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
@@ -33,7 +36,6 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
-  const dispatch = useAppDispatch();
   
   if (!isOpen) return null;
 
@@ -47,16 +49,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(selectedImage.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `product-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await downloadFileWithNaming(selectedImage.url, null, 'image', 'product');
     } catch (error) {
       console.error('Download failed:', error);
     }

@@ -17,6 +17,7 @@ import { setCurrentView } from '@/store/slices/uiSlice';
 import { Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 
 const History = () => {
   const dispatch = useAppDispatch();
@@ -25,6 +26,7 @@ const History = () => {
   const error = useAppSelector((state: any) => state.history?.error);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
+  const user = useAppSelector((state: any) => state.auth?.user);
   const [viewMode, setViewMode] = useState<'global' | 'feature'>('global');
   const [hasMore, setHasMore] = useState(true);
   const [pillLoading, setPillLoading] = useState(false);
@@ -645,14 +647,11 @@ const History = () => {
             if (url) {
               downloadCount++;
               const fileType = getFileType(media, url);
-              const originalExt = getExtensionFromUrl(url);
-              const extension = originalExt || (fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'png');
-              const filename = `${entry.model}-${entry.id}-${index}.${extension}`;
               
-              console.log(`Attempting download for ${key}:`, { url, filename, fileType });
+              console.log(`Attempting download for ${key}:`, { url, fileType });
               
               downloadPromises.push(
-                downloadSingleFile(url, filename)
+                downloadFileWithNaming(url, null, fileType)
                   .then(success => {
                     if (!success) {
                       console.error(`Download failed for ${key}:`, url);

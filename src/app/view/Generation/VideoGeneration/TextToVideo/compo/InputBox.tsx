@@ -8,6 +8,7 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
 import { addHistoryEntry, loadMoreHistory, loadHistory, updateHistoryEntry, clearFilters } from "@/store/slices/historySlice";
 import { addNotification } from "@/store/slices/uiSlice";
+import { useSearchParams } from "next/navigation";
 // historyService removed; backend owns history persistence
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -41,6 +42,7 @@ import VideoPreviewModal from "./VideoPreviewModal";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     video: any;
@@ -54,10 +56,41 @@ const InputBox = () => {
   const [duration, setDuration] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  
+  // Debug uploadedImages changes
+  useEffect(() => {
+    console.log('Video generation - uploadedImages changed:', uploadedImages);
+  }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
   const [references, setReferences] = useState<string[]>([]);
   const [generationMode, setGenerationMode] = useState<"text_to_video" | "image_to_video" | "video_to_video">("text_to_video");
   const [error, setError] = useState("");
+
+  // Handle image parameter from URL for image-to-video mode
+  useEffect(() => {
+    console.log('Video generation - useEffect triggered, searchParams changed');
+    const imageUrl = searchParams.get('image');
+    console.log('Video generation - checking for image parameter:', imageUrl);
+    console.log('Video generation - all search params:', Object.fromEntries(searchParams.entries()));
+    console.log('Video generation - current uploadedImages:', uploadedImages);
+    console.log('Video generation - current generationMode:', generationMode);
+    
+    if (imageUrl) {
+      // Decode the URL-encoded image parameter
+      const decodedImageUrl = decodeURIComponent(imageUrl);
+      console.log('Loading image from URL parameter for video generation:', decodedImageUrl);
+      
+      // Set generation mode to image-to-video
+      setGenerationMode("image_to_video");
+      
+      // Set the image in uploaded images
+      setUploadedImages([decodedImageUrl]);
+      
+      console.log('Video generation - set mode to image_to_video and loaded image');
+    } else {
+      console.log('Video generation - no image parameter found');
+    }
+  }, [searchParams]);
 
   // UploadModal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -964,6 +997,8 @@ const InputBox = () => {
     const files = event.target.files;
     if (!files) return;
 
+    let firstImageUrl: string | null = null;
+
     Array.from(files).forEach((file) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
@@ -971,11 +1006,17 @@ const InputBox = () => {
           const result = e.target?.result as string;
           if (result) {
             setUploadedImages(prev => [...prev, result]);
+            
+            // Store the first image URL for aspect ratio detection
+            if (!firstImageUrl) {
+              firstImageUrl = result;
+            }
           }
         };
         reader.readAsDataURL(file);
       }
     });
+
 
     // Reset input
     event.target.value = '';
@@ -2524,6 +2565,8 @@ const InputBox = () => {
                           src={image}
                           alt={`Uploaded ${index + 1}`}
                           className="w-full h-full object-cover"
+                          onLoad={() => console.log('Video generation - image loaded successfully:', image)}
+                          onError={(e) => console.error('Video generation - image failed to load:', image, e)}
                         />
                       </div>
                       <button

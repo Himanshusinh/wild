@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, MessageCircle, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
+import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 
 interface StickerImagePreviewProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   onClose,
   entry
 }) => {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.auth?.user);
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   // Fullscreen overlay state
@@ -32,7 +35,6 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
-  const dispatch = useAppDispatch();
   const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
 
   const toggleVisibility = async () => {
@@ -224,19 +226,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const handleDownload = async () => {
     try {
-      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
-      if (!downloadUrl) return;
-      const res = await fetch(downloadUrl, { credentials: 'include' });
-      const blob = await res.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      const baseName = (selectedImagePath || 'sticker').split('/').pop() || `sticker-${Date.now()}.png`;
-      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `sticker-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(objectUrl);
+      await downloadFileWithNaming(selectedImagePath, null, 'image', 'sticker');
     } catch (error) {
       console.error('Download failed:', error);
     }

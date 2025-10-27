@@ -2,13 +2,14 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Share, Trash2 } from 'lucide-react';
+import { Share, Trash2, Palette, Video } from 'lucide-react';
 // Redirect to Edit Image page rather than opening inline popups
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
+import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
@@ -17,6 +18,7 @@ interface ImagePreviewModalProps {
 
 const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose }) => {
   const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
   const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
@@ -388,22 +390,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const downloadImage = async (url: string) => {
     try {
-      const downloadUrl = toProxyDownloadUrl(url);
-      if (!downloadUrl) return;
-      const response = await fetch(downloadUrl, {
-        credentials: 'include',
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      });
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      const baseName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-      a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : 'generated-image.jpg';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      await downloadFileWithNaming(url, null, 'image');
     } catch (e) {
       console.error('Download failed:', e);
     }
@@ -543,6 +530,58 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       router.push(`/edit-image?${qs.toString()}`);
       onClose();
     } catch {}
+  };
+
+  const handleEditInLiveCanvas = () => {
+    try {
+      // Navigate to Live Canvas with the current image
+      const storagePath = (selectedImage as any)?.storagePath || (() => {
+        const original = selectedImage?.url || '';
+        const pathCandidate = toProxyPath(original);
+        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+      })();
+      const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+      const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+      const qs = new URLSearchParams();
+      if (imgUrl) qs.set('image', imgUrl);
+      if (storagePath) qs.set('sp', storagePath);
+      router.push(`/view/Generation/wildmindskit/LiveChat?${qs.toString()}`);
+      onClose();
+    } catch (error) {
+      console.error('Error navigating to Live Canvas:', error);
+    }
+  };
+
+  const handleCreateVideo = () => {
+    try {
+      // Navigate to Video Generation with the current image as input
+      const storagePath = (selectedImage as any)?.storagePath || (() => {
+        const original = selectedImage?.url || '';
+        const pathCandidate = toProxyPath(original);
+        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+      })();
+      const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+      const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+      
+      console.log('Create Video - ImagePreviewModal debug:', {
+        selectedImage: selectedImage,
+        storagePath: storagePath,
+        fallbackHttp: fallbackHttp,
+        imgUrl: imgUrl
+      });
+      
+      const qs = new URLSearchParams();
+      if (imgUrl) qs.set('image', imgUrl);
+      if (storagePath) qs.set('sp', storagePath);
+      
+      const finalUrl = `/text-to-video?${qs.toString()}`;
+      console.log('Create Video - Final URL:', finalUrl);
+      
+      router.push(finalUrl);
+      onClose();
+    } catch (error) {
+      console.error('Error navigating to Video Generation:', error);
+    }
   };
 
 
@@ -813,6 +852,24 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               >
                 Remix 
               </button>
+              </div>
+
+              {/* New buttons row */}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={handleEditInLiveCanvas}
+                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                >
+                  {/* <Palette className="h-4 w-4" /> */}
+                  Edit in Live Canvas
+                </button>
+                <button
+                  onClick={handleCreateVideo}
+                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                >
+                  {/* <Video className="h-4 w-4" /> */}
+                  Create Video
+                </button>
               </div>
               
             </div>
