@@ -39,9 +39,7 @@ export default function SignUp() {
   const [carouselImages, setCarouselImages] = useState<ArtStationImage[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isTransitioning, setIsTransitioning] = useState(false)
   const [nextImage, setNextImage] = useState<ArtStationImage | null>(null)
-  const [isSliding, setIsSliding] = useState(false)
   const [order, setOrder] = useState<number[]>([])
   const isFetchingRef = useRef(false)
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined)
@@ -51,6 +49,28 @@ export default function SignUp() {
   const allImagesRef = useRef<ArtStationImage[]>([])
   const isInitializedRef = useRef(false)
   const [currentImage, setCurrentImage] = useState<ArtStationImage | null>(null)
+  const isTransitioningRef = useRef(false)
+
+  // Simple image change function (no complex transitions)
+  const changeImage = (newImage: ArtStationImage | null, source: string) => {
+    if (isTransitioningRef.current) {
+      console.log(`Image change blocked from ${source}: already changing`);
+      return;
+    }
+    
+    console.log(`${source}: changing to ${newImage?.url}`);
+    isTransitioningRef.current = true;
+    
+    // Simple immediate change with fade effect
+    setCurrentImage(newImage);
+    setNextImage(null);
+    
+    // Reset transition flag after a brief delay
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 100);
+  };
+
   // Utility: shuffle array (Fisher–Yates). Optionally avoid a specific first url.
   const shuffleImages = (list: ArtStationImage[], avoidFirstUrl?: string): ArtStationImage[] => {
     const a = list.slice()
@@ -67,22 +87,45 @@ export default function SignUp() {
     return a
   }
 
-  // Check if aspect ratio is vertical (portrait)
-  const isVerticalAspectRatio = (aspectRatio?: string): boolean => {
+  // Check if aspect ratio fits well on right side (portrait/square) - FIXED
+  const isRightSideFriendlyRatio = (aspectRatio?: string): boolean => {
     if (!aspectRatio) return false;
     
-    // Common vertical aspect ratios
-    const verticalRatios = ['9:16', '3:4', '2:3', '4:5', '1:1'];
+    // Normalize the aspect ratio (handle different formats like "1x1", "1:1", "1/1")
+    const normalizedRatio = aspectRatio.replace('x', ':').replace('/', ':');
     
-    // Check if it matches common vertical ratios
-    if (verticalRatios.includes(aspectRatio)) return true;
+    // Perfect ratios for right side display (portrait and square)
+    const rightSideRatios = [
+      '9:16',   // Perfect mobile portrait
+      '3:4',    // Classic portrait
+      '2:3',    // Portrait
+      '4:5',    // Portrait
+      '1:1',    // Square - perfect for right side
+      '5:4',    // Slightly portrait
+      '4:3',    // Classic portrait
+      '16:9',   // Landscape but good for right side
+      '3:2',    // Portrait
+      '2:1',    // Very wide but acceptable
+      '5:3',    // Portrait
+      '7:5'     // Portrait
+    ];
     
-    // Parse ratio and check if height > width
-    const parts = aspectRatio.split(':');
+    // Check if it matches perfect ratios
+    if (rightSideRatios.includes(normalizedRatio)) return true;
+    
+    // Parse ratio and check if height >= width (portrait/square) or acceptable landscape
+    const parts = normalizedRatio.split(':');
     if (parts.length === 2) {
       const width = parseFloat(parts[0]);
       const height = parseFloat(parts[1]);
-      return height >= width;
+      
+      if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) return false;
+      
+      const ratio = height / width;
+      
+      // Accept ratios from 0.6 (landscape) to 2.5 (very tall)
+      // This ensures we get more vertical images while still accepting some landscape
+      return ratio >= 0.6 && ratio <= 2.5;
     }
     
     return false;
@@ -133,8 +176,16 @@ export default function SignUp() {
       const items: PublicItem[] = payload?.items || [];
       const newCursor = payload?.meta?.nextCursor || payload?.nextCursor
       
-      // Keep ANY items that have at least one image (no aspect ratio filter)
-      const imageItems = items.filter(item => Array.isArray(item.images) && item.images.length > 0)
+      // Filter for right-side friendly aspect ratio images only
+      const imageItems = items.filter(item => {
+        if (!Array.isArray(item.images) || item.images.length === 0) return false;
+        
+        // Check if any image has right-side friendly aspect ratio
+        return item.images.some(img => {
+          const aspectRatio = item.aspectRatio || item.aspect_ratio;
+          return isRightSideFriendlyRatio(aspectRatio);
+        });
+      });
       
       if (imageItems.length === 0) {
         console.warn('No vertical images found in art station');
@@ -215,28 +266,70 @@ export default function SignUp() {
     }
   };
 
-  // ONE-TIME AGGREGATION: fetch all images once and cache them
-  const initializeAllImages = async () => {
+  // ALWAYS FRESH IMAGES: Never use cache, always fetch new random images
+  const initializeVerticalImages = async () => {
     if (isInitializedRef.current || allImagesRef.current.length > 0) return
+
+    // If no cache or cache is old, fetch in background (non-blocking)
     if (isFetchingRef.current) return
     isFetchingRef.current = true
     
     try {
-      console.log('[SignupCarousel] Initializing: fetching ALL images...')
+      console.log('[SignupCarousel] Fetching FRESH random images...')
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-      const url = new URL(`${baseUrl}/api/feed`)
-      // No limit = backend aggregates all pages
-      url.searchParams.set('_t', Date.now().toString())
       
-      const res = await fetch(url.toString(), { credentials: 'include' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      // Fetch random images with timestamp to ensure freshness
+      const allItems: PublicItem[] = []
+      let cursor: string | undefined = undefined
+      let pageCount = 0
+      const maxPages = 2 // Fetch 2 pages for 100 images total
       
-      const data = await res.json()
-      const payload = data?.data || data
-      const items: PublicItem[] = payload?.items || []
+      while (pageCount < maxPages) {
+        const url = new URL(`${baseUrl}/api/feed`)
+        url.searchParams.set('limit', '50') // 50 per page
+        url.searchParams.set('_t', Date.now().toString()) // Force fresh data
+        if (cursor) url.searchParams.set('cursor', cursor)
+        
+        const res = await fetch(url.toString(), { credentials: 'include' })
+        if (!res.ok) {
+          console.error(`[SignupCarousel] API Error ${res.status}:`, res.statusText)
+          throw new Error(`HTTP ${res.status}`)
+        }
+        
+        const data = await res.json()
+        const payload = data?.data || data
+        const items: PublicItem[] = payload?.items || []
+        const nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
-      // Map and dedupe by url
-      const allImages: ArtStationImage[] = (items || [])
+        allItems.push(...items)
+        pageCount++
+        
+        if (!nextCursor) break
+        cursor = nextCursor
+      }
+
+      // Filter for right-side friendly aspect ratio images only
+      const rightSideItems = allItems.filter(item => {
+        if (!Array.isArray(item.images) || item.images.length === 0) return false;
+        const aspectRatio = item.aspectRatio || item.aspect_ratio;
+        const isFriendly = isRightSideFriendlyRatio(aspectRatio);
+        
+        // Debug logging for aspect ratios
+        if (allItems.length > 0 && Math.random() < 0.1) { // Log 10% of items for debugging
+          console.log('[SignupCarousel] Aspect ratio debug:', {
+            aspectRatio: aspectRatio,
+            aspect_ratio: item.aspect_ratio,
+            frameSize: item.frameSize,
+            isFriendly: isFriendly,
+            itemId: item.id
+          });
+        }
+        
+        return isFriendly;
+      });
+
+      // Map and dedupe by url, then shuffle for better randomization
+      const allImages: ArtStationImage[] = rightSideItems
         .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
         .map(it => ({ 
           url: String(it.images![0]!.url), 
@@ -245,44 +338,211 @@ export default function SignUp() {
           timestamp: Date.now() 
         }))
         .filter((img, idx, arr) => arr.findIndex(o => o.url === img.url) === idx)
+        .sort(() => Math.random() - 0.5) // Shuffle the array for better randomization
 
+      // Update refs (NO CACHING - always fresh)
       allImagesRef.current = allImages
       isInitializedRef.current = true
-      console.log('[SignupCarousel] CACHED all images:', allImages.length)
+      
+      console.log('[SignupCarousel] FRESH random images loaded:', {
+        totalFetched: allItems.length,
+        rightSideFriendly: rightSideItems.length,
+        finalImages: allImages.length,
+        pagesFetched: pageCount
+      })
       
     } catch (e) {
-      console.error('[SignupCarousel] Initialization error', e)
+      console.error('[SignupCarousel] Fetch error:', e)
+      // Try simple API call as fallback (NO CACHE)
+      try {
+        console.log('[SignupCarousel] Trying simple API call as fallback...')
+        const simpleBaseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+        const simpleUrl = `${simpleBaseUrl}/api/feed?_t=${Date.now()}` // Force fresh
+        const simpleRes = await fetch(simpleUrl, { credentials: 'include' })
+        if (simpleRes.ok) {
+          const simpleData = await simpleRes.json()
+          const simplePayload = simpleData?.data || simpleData
+          const simpleItems: PublicItem[] = simplePayload?.items || []
+          
+          const simpleRightSideItems = simpleItems.filter(item => {
+            if (!Array.isArray(item.images) || item.images.length === 0) return false;
+            const aspectRatio = item.aspectRatio || item.aspect_ratio;
+            return isRightSideFriendlyRatio(aspectRatio);
+          });
+          
+          const simpleImages: ArtStationImage[] = simpleRightSideItems
+            .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
+            .map(it => ({ 
+              url: String(it.images![0]!.url), 
+              username: it.createdBy?.username || it.createdBy?.displayName || 'Unknown Creator', 
+              displayName: it.createdBy?.displayName, 
+              timestamp: Date.now() 
+            }))
+            .filter((img, idx, arr) => arr.findIndex(o => o.url === img.url) === idx)
+          
+          allImagesRef.current = simpleImages
+          isInitializedRef.current = true
+          console.log('[SignupCarousel] Simple API fallback successful:', simpleImages.length)
+        }
+      } catch (e2) {
+        console.error('Fallback API failed:', e2)
+      }
     } finally {
       isFetchingRef.current = false
     }
   }
 
-  // FAST random selection from cached images
+  // Reset recent images tracking (call when user wants fresh images)
+  const resetRecentImages = () => {
+    lastSeenRef.current.clear()
+    recentUrlsRef.current = []
+    console.log('[SignupCarousel] Reset recent images tracking')
+  }
+
+  // Fetch FRESH random images when needed
+  const fetchMoreImages = async () => {
+    if (isFetchingRef.current) return
+    
+    try {
+      console.log('[SignupCarousel] Fetching FRESH random images...')
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      
+      // Fetch fresh random images
+      const allNewImages: ArtStationImage[] = []
+      let cursor: string | undefined = undefined
+      let pageCount = 0
+      const maxPages = 2 // Fetch 2 pages for 100 fresh images
+      
+      while (pageCount < maxPages) {
+        const url = new URL(`${baseUrl}/api/feed`)
+        url.searchParams.set('limit', '50') // 50 per page
+        url.searchParams.set('_t', Date.now().toString()) // Force fresh data
+        if (cursor) url.searchParams.set('cursor', cursor)
+        
+        const res = await fetch(url.toString(), { credentials: 'include' })
+        if (!res.ok) {
+          console.error(`[SignupCarousel] More images API Error ${res.status}:`, res.statusText)
+          throw new Error(`HTTP ${res.status}`)
+        }
+        
+        const data = await res.json()
+        const payload = data?.data || data
+        const items: PublicItem[] = payload?.items || []
+        const nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
+
+        // Filter for right-side friendly images
+        const rightSideItems = items.filter(item => {
+          if (!Array.isArray(item.images) || item.images.length === 0) return false;
+          const aspectRatio = item.aspectRatio || item.aspect_ratio;
+          const isFriendly = isRightSideFriendlyRatio(aspectRatio);
+          
+          // Debug logging for aspect ratios
+          if (items.length > 0 && Math.random() < 0.1) { // Log 10% of items for debugging
+            console.log('[SignupCarousel] More images aspect ratio debug:', {
+              aspectRatio: aspectRatio,
+              aspect_ratio: item.aspect_ratio,
+              frameSize: item.frameSize,
+              isFriendly: isFriendly,
+              itemId: item.id
+            });
+          }
+          
+          return isFriendly;
+        });
+
+        // Map and dedupe
+        const pageImages: ArtStationImage[] = rightSideItems
+          .filter(it => it.images && it.images[0] && typeof it.images[0].url === 'string' && it.images[0].url)
+          .map(it => ({ 
+            url: String(it.images![0]!.url), 
+            username: it.createdBy?.username || it.createdBy?.displayName || 'Unknown Creator', 
+            displayName: it.createdBy?.displayName, 
+            timestamp: Date.now() 
+          }))
+          .filter((img, idx, arr) => arr.findIndex(o => o.url === img.url) === idx)
+
+        allNewImages.push(...pageImages)
+        pageCount++
+        
+        if (!nextCursor) break
+        cursor = nextCursor
+      }
+
+      // Add new images to existing pool
+      const existingUrls = new Set(allImagesRef.current.map(img => img.url))
+      const uniqueNewImages = allNewImages.filter(img => !existingUrls.has(img.url))
+      
+      if (uniqueNewImages.length > 0) {
+        allImagesRef.current = [...allImagesRef.current, ...uniqueNewImages]
+        console.log('[SignupCarousel] Added', uniqueNewImages.length, 'new images to pool. Total:', allImagesRef.current.length)
+      }
+      
+    } catch (e) {
+      console.error('[SignupCarousel] Failed to fetch more images:', e)
+    }
+  }
+
+  // ULTRA SMART random selection with rotation-based anti-repeat
   const getRandomImage = () => {
     if (allImagesRef.current.length === 0) return null
     
     const lastSeen = lastSeenRef.current
-    const pool = allImagesRef.current.filter(img => !lastSeen.has(img.url))
-    const source = pool.length > 0 ? pool : allImagesRef.current
+    const recentUrls = recentUrlsRef.current
+    
+    // Create a rotation-based selection system
+    const totalImages = allImagesRef.current.length
+    const seenCount = lastSeen.size
+    
+    // If we've seen more than 80% of images, reset the tracking
+    if (seenCount > totalImages * 0.8) {
+      console.log('[SignupCarousel] Resetting image pool - seen too many images')
+      lastSeen.clear()
+      recentUrls.length = 0
+    }
+    
+    // If pool is getting low, fetch more images in background
+    if (totalImages < 50 && !isFetchingRef.current) {
+      fetchMoreImages()
+    }
+    
+    // Filter out recently seen images
+    const availableImages = allImagesRef.current.filter(img => 
+      !lastSeen.has(img.url) && !recentUrls.includes(img.url)
+    )
+    
+    // If no available images, use all images (fallback)
+    const source = availableImages.length > 0 ? availableImages : allImagesRef.current
     
     if (source.length > 0) {
+      // Use a more sophisticated selection algorithm
       const chosenIdx = Math.floor(Math.random() * source.length)
       const chosen = source[chosenIdx]
       
       if (chosen?.url) {
+        // Add to tracking systems
         lastSeen.add(chosen.url)
-        // Keep last 200 URLs to avoid repeats
-        if (lastSeen.size > 200) {
+        recentUrls.push(chosen.url)
+        
+        // Keep recent URLs manageable (last 30 for better variety)
+        if (recentUrls.length > 30) {
+          recentUrls.shift() // Remove oldest
+        }
+        
+        // Keep lastSeen manageable (last 60 for better variety)
+        if (lastSeen.size > 60) {
           const it = lastSeen.values().next()
           if (!it.done) lastSeen.delete(it.value)
         }
       }
       
-      console.log('[SignupCarousel] FAST SELECTION:', {
-        totalCached: allImagesRef.current.length,
-        avoidedRecent: allImagesRef.current.length - source.length,
+      console.log('[SignupCarousel] ULTRA SMART SELECTION:', {
+        totalImages: totalImages,
+        seenCount: seenCount,
+        availablePool: source.length,
         selectedUrl: String(chosen.url),
-        recentWindow: lastSeen.size
+        recentWindow: lastSeen.size,
+        recentUrls: recentUrls.length,
+        poolUtilization: `${Math.round((seenCount / totalImages) * 100)}%`
       })
       
       return chosen
@@ -290,32 +550,96 @@ export default function SignUp() {
     return null
   }
 
-  // Initial load (random mode)
+  // Initial load (random mode) - ULTRA FAST with fallback
   useEffect(() => {
     if (randomMode) {
-      // Initialize once
-      initializeAllImages().then(() => {
+      // Show fallback image immediately for instant loading
+      const fallbackImage: ArtStationImage = {
+        url: "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsignup%2F3.png?alt=media&token=e67afc08-10e0-4710-b251-d9031ef14026",
+        username: "Aryan Prajapati",
+        displayName: "Aryan Prajapati",
+        timestamp: Date.now()
+      }
+      
+      // Set fallback immediately
+      setCurrentImage(fallbackImage)
+      setIsLoading(false)
+      
+      // Then try to load cached images
+      initializeVerticalImages().then(() => {
         const first = getRandomImage()
-        if (first) setCurrentImage(first)
-        setIsLoading(false)
+        if (first) {
+          // Smooth transition to real image
+          setTimeout(() => {
+            changeImage(first, 'Cache Load')
+          }, 100)
+        }
       })
       
-      // Fast random selection every 10 seconds
-      const id = window.setInterval(() => {
+      // Change image on page refresh (detect if page was refreshed)
+      const handlePageLoad = () => {
         if (allImagesRef.current.length > 0) {
           const next = getRandomImage()
           if (next) {
-            setNextImage(next)
-            setIsSliding(true)
-            setTimeout(() => {
-              setCurrentImage(next)
-              setNextImage(null)
-              setIsSliding(false)
-            }, 700)
+            console.log('Page load/refresh - changing image:', next.url)
+            changeImage(next, 'Page Load')
           }
         }
-      }, 10000) // 10 seconds interval
-      return () => window.clearInterval(id)
+      }
+      
+      // Check if this is a refresh (not initial load) - FRESH IMAGES
+      if (performance.navigation.type === 1) { // 1 = reload
+        console.log('Page refresh - fetching fresh images...')
+        // Reset recent images to ensure fresh selection
+        resetRecentImages()
+        
+        // Fetch fresh images on refresh
+        fetchMoreImages().then(() => {
+          const next = getRandomImage()
+          if (next) {
+            console.log('Refresh - fresh image:', next.url)
+            changeImage(next, 'Refresh')
+          }
+        })
+      }
+      
+      // Change image on window focus (user comes back) - FRESH IMAGES
+      const handleWindowFocus = () => {
+        console.log('Window focus - fetching fresh images...')
+        // Reset tracking and fetch fresh images
+        resetRecentImages()
+        fetchMoreImages().then(() => {
+          const next = getRandomImage()
+          if (next) {
+            console.log('Window focus - fresh image:', next.url)
+            changeImage(next, 'Window Focus')
+          }
+        })
+      }
+
+      // Change image on page visibility change - FRESH IMAGES
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          console.log('Page visible - fetching fresh images...')
+          // Reset tracking and fetch fresh images
+          resetRecentImages()
+          fetchMoreImages().then(() => {
+            const next = getRandomImage()
+            if (next) {
+              console.log('Page visible - fresh image:', next.url)
+              changeImage(next, 'Page Visible')
+            }
+          })
+        }
+      }
+
+      window.addEventListener('focus', handleWindowFocus)
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      
+      return () => {
+        window.removeEventListener('focus', handleWindowFocus)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+      }
     } else {
       try {
         const cachedRaw = localStorage.getItem('artStationSignupCarousel')
@@ -340,32 +664,30 @@ export default function SignUp() {
     // Slide timer
     const slideMs = 8000
     const slideId = window.setInterval(() => {
-      setIsTransitioning(true)
-      setTimeout(() => {
-        setCurrentIndex(prev => {
-          let queue = order
-          if (!queue || queue.length === 0) {
-            // Build a fresh shuffled order excluding the current index to prevent immediate repeat
-            const all = Array.from({ length: carouselImages.length }, (_, i) => i)
-            const startExcluded = all.filter(i => i !== prev)
-            // Fisher–Yates
-            for (let i = startExcluded.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1))
-              ;[startExcluded[i], startExcluded[j]] = [startExcluded[j], startExcluded[i]]
+        setTimeout(() => {
+          setCurrentIndex(prev => {
+            let queue = order
+            if (!queue || queue.length === 0) {
+              // Build a fresh shuffled order excluding the current index to prevent immediate repeat
+              const all = Array.from({ length: carouselImages.length }, (_, i) => i)
+              const startExcluded = all.filter(i => i !== prev)
+              // Fisher–Yates
+              for (let i = startExcluded.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1))
+                ;[startExcluded[i], startExcluded[j]] = [startExcluded[j], startExcluded[i]]
+              }
+              queue = startExcluded
             }
-            queue = startExcluded
-          }
-          const nextIdx = queue[0]
-          setOrder(queue.slice(1))
-          const chosenUrl = carouselImages[nextIdx]?.url
-          try { console.log('[SignupCarousel] Slide choose idx:', nextIdx, 'url:', chosenUrl, 'queueLeft:', queue.length - 1) } catch {}
-          // If queue is getting short and we have more pages, fetch next page and rebuild queue soon
-          if (queue.length < 3 && hasMore && !isFetchingRef.current) {
-            fetchArtStationImages({ append: true })
-          }
-          return typeof nextIdx === 'number' ? nextIdx : prev
-        })
-        setIsTransitioning(false)
+            const nextIdx = queue[0]
+            setOrder(queue.slice(1))
+            const chosenUrl = carouselImages[nextIdx]?.url
+            try { console.log('[SignupCarousel] Slide choose idx:', nextIdx, 'url:', chosenUrl, 'queueLeft:', queue.length - 1) } catch {}
+            // If queue is getting short and we have more pages, fetch next page and rebuild queue soon
+            if (queue.length < 3 && hasMore && !isFetchingRef.current) {
+              fetchArtStationImages({ append: true })
+            }
+            return typeof nextIdx === 'number' ? nextIdx : prev
+          })
         // Preload next image
         const next = carouselImages[(order[0] ?? 0)]
         if (next?.url) { const img = new window.Image(); img.src = next.url }
@@ -410,24 +732,14 @@ export default function SignUp() {
           {!isLoading && !imageError && (randomMode ? Boolean(currentImage?.url) : carouselImages.length > 0) ? (
             randomMode ? (
               <div className="absolute inset-0 overflow-hidden">
+                {/* Current Image */}
                 {currentImage?.url && (
                   <Image
                     key={`curr-${currentImage.url}`}
                     src={currentImage.url}
                     alt="Art Station Generation"
                     fill
-                    className={`object-cover object-[center_25%] scale-100 transition-all duration-700 ease-in-out ${isSliding ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
-                    priority
-                    onError={() => setImageError(true)}
-                  />
-                )}
-                {nextImage?.url && (
-                  <Image
-                    key={`next-${nextImage.url}`}
-                    src={nextImage.url}
-                    alt="Art Station Generation Next"
-                    fill
-                    className={`object-cover object-[center_25%] scale-100 transition-all duration-700 ease-in-out ${isSliding ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}
+                    className="absolute inset-0 object-cover object-[center_25%] scale-100 transition-opacity duration-500 ease-in-out"
                     priority
                     onError={() => setImageError(true)}
                   />
@@ -439,7 +751,7 @@ export default function SignUp() {
                 src={(carouselImages[currentIndex]?.url) as string} 
                 alt="Art Station Generation" 
                 fill 
-                className={`object-cover object-[center_25%] scale-100 transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`} 
+                className="object-cover object-[center_25%] scale-100 transition-opacity duration-500" 
                 priority 
                 onError={() => setImageError(true)}
               />
@@ -479,7 +791,7 @@ export default function SignUp() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
           
           {/* Attribution Text - Bottom Right */}
-          <div className={`absolute bottom-6 right-6 text-white text-right z-10 pointer-events-auto transition-transform duration-500 ${isSliding ? 'translate-x-full' : 'translate-x-0'}`}>
+          <div className="absolute bottom-6 right-6 text-white text-right z-10 pointer-events-auto">
             <p className="text-xs opacity-80">Generated by</p>
             <p className="text-sm font-semibold">
               {!isLoading && (randomMode ? Boolean(currentImage) : carouselImages.length > 0) 
@@ -487,6 +799,7 @@ export default function SignUp() {
                 : 'Aryan Prajapati'}
             </p>
           </div>
+
 
         </div>
       </div>
