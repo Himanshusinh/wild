@@ -63,6 +63,13 @@ const InputBox = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<'image' | 'reference' | 'video'>('image');
 
+  // Local image library state for UploadModal (avoids interfering with global Redux history)
+  const [libraryImageEntries, setLibraryImageEntries] = useState<any[]>([]);
+  const [libraryImageHasMore, setLibraryImageHasMore] = useState<boolean>(true);
+  const [libraryImageLoading, setLibraryImageLoading] = useState<boolean>(false);
+  const libraryImageNextCursorRef = useRef<string | undefined>(undefined);
+  const libraryImageInitRef = useRef<boolean>(false);
+
   // MiniMax specific state
   const [selectedResolution, setSelectedResolution] = useState("1080P");
   const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] = useState(6);
@@ -72,6 +79,8 @@ const InputBox = () => {
   const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
   const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
   const [selectedQuality, setSelectedQuality] = useState("720p"); // For Veo3 quality
+  // Kling specific state (v2.1 mode determines resolution): 'standard'->720p, 'pro'->1080p
+  const [klingMode, setKlingMode] = useState<'standard' | 'pro'>('standard');
 
   // Timeout refs for auto-close dropdowns
   const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -111,20 +120,22 @@ const InputBox = () => {
     creditBalance,
     clearCreditsError,
   } = useGenerationCredits('video', selectedModel, {
-    resolution: selectedModel.includes("MiniMax") ? selectedResolution : undefined,
+    resolution: selectedModel.includes("MiniMax") ? selectedResolution : 
+                selectedModel.includes("wan-2.5") ? (frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p") :
+                (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') : undefined),
     duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
   });
 
   // Auto-select model based onf generation mode (but preserve user's choice when possible)
   useEffect(() => {
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax and Veo3 models support this
-      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3"))) {
+      // Text→Video: MiniMax, Veo3, and WAN models support this
+      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-'))) {
         setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for text→video
       }
     } else if (generationMode === "image_to_video") {
-      // Image→Video: MiniMax, Runway, and Veo3 models support this
-      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3"))) {
+      // Image→Video: MiniMax, Runway, Veo3, and WAN models support this
+      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-'))) {
         setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for image→video
       }
     } else if (generationMode === "video_to_video") {
@@ -288,8 +299,8 @@ const InputBox = () => {
 
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax and Veo3 models support this
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3")) {
+      // Text→Video: MiniMax, Veo3, and WAN models support this
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -308,6 +319,13 @@ const InputBox = () => {
           setDuration(8); // Default 8s for Veo3
           setFrameSize("16:9"); // Default aspect ratio
           setSelectedQuality("720p"); // Default quality
+        } else if (newModel.includes("wan-2.5")) {
+          // WAN 2.5 models: Set default duration and frame size
+          setDuration(5); // Default 5s for WAN
+          setFrameSize("1280*720"); // Default 720p for WAN
+        } else if (newModel.startsWith('kling-')) {
+          // Kling models: duration default 5s; aspect via frame dropdown not used (we use separate aspect for kling)
+          setDuration(5);
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -317,8 +335,8 @@ const InputBox = () => {
         return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
-      // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01, Veo3
-      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3")) {
+      // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01, Veo3, WAN
+      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "I2V-01-Director" || newModel === "S2V-01") {
@@ -342,6 +360,12 @@ const InputBox = () => {
             setFrameSize("16:9"); // Default aspect ratio for Veo3 T2V
           }
           setSelectedQuality("720p"); // Default quality
+        } else if (newModel.includes("wan-2.5")) {
+          // WAN 2.5 models: Set default duration and frame size
+          setDuration(5); // Default 5s for WAN
+          setFrameSize("1280*720"); // Default 720p for WAN
+        } else if (newModel.startsWith('kling-')) {
+          setDuration(5);
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -466,6 +490,78 @@ const InputBox = () => {
 
     return sortedMergedEntries;
   }, shallowEqual);
+
+  // Get image history entries for image upload modal
+  const imageHistoryEntries = useAppSelector((state: any) => {
+    const allEntries = state.history?.entries || [];
+    
+    // Filter for text-to-image entries (same as image generation component)
+    const filteredEntries = allEntries.filter((entry: any) =>
+      entry.generationType === 'text-to-image'
+    );
+    
+    // Debug: Log image entries for troubleshooting
+    console.log('[VideoPage] Image history entries:', {
+      total: filteredEntries.length,
+      allEntries: allEntries.length,
+      entries: filteredEntries.slice(0, 3).map((entry: any) => ({
+        id: entry.id,
+        generationType: entry.generationType,
+        images: entry.images?.length || 0,
+        timestamp: entry.timestamp
+      }))
+    });
+
+    return filteredEntries;
+  }, shallowEqual);
+
+  // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
+  const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
+    try {
+      if (libraryImageLoading) return;
+      if (!initial && (!libraryImageHasMore || !isUploadModalOpen)) return;
+      setLibraryImageLoading(true);
+      const api = getApiClient();
+      const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
+      if (!initial && libraryImageNextCursorRef.current) {
+        params.cursor = libraryImageNextCursorRef.current;
+      }
+      const res = await api.get('/api/generations', { params });
+      const payload = res.data?.data || res.data || {};
+      const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+      const nextCursor: string | undefined = payload.nextCursor;
+
+      // Merge uniquely by id
+      const existingById: Record<string, any> = {};
+      libraryImageEntries.forEach((e: any) => { existingById[e.id] = e; });
+      items.forEach((e: any) => { existingById[e.id] = e; });
+      const merged = Object.values(existingById);
+
+      setLibraryImageEntries(merged);
+      libraryImageNextCursorRef.current = nextCursor;
+      setLibraryImageHasMore(Boolean(nextCursor));
+    } catch (e) {
+      console.error('[VideoPage] Failed to fetch library images:', e);
+    } finally {
+      setLibraryImageLoading(false);
+    }
+  }, [libraryImageEntries, libraryImageHasMore, libraryImageLoading, isUploadModalOpen]);
+
+  // When opening the UploadModal for images/references in image_to_video mode, ensure initial image library is loaded
+  useEffect(() => {
+    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference') && generationMode === 'image_to_video';
+    if (needsLibrary) {
+      if (!libraryImageInitRef.current) {
+        libraryImageInitRef.current = true;
+        fetchLibraryImages(true);
+      }
+    } else {
+      // Reset guard when modal closes or mode/type changes
+      libraryImageInitRef.current = false;
+    }
+    // Deliberately not depending on fetchLibraryImages or entries length to avoid re-running
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUploadModalOpen, uploadModalType, generationMode]);
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -960,8 +1056,8 @@ const InputBox = () => {
     console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
 
     // Validate model compatibility with generation mode
-    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3"))) {
-      setError("Text→Video mode only supports MiniMax and Veo3 models. Please select a compatible model or switch to Image→Video mode.");
+    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-'))) {
+      setError("Text→Video mode only supports MiniMax, Veo3, WAN, and Kling models. Please select a compatible model or switch to Image→Video mode.");
       return;
     }
 
@@ -973,7 +1069,8 @@ const InputBox = () => {
     let transactionId: string;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
-        selectedModel.includes("veo3") ? 'fal' : 'runway';
+        selectedModel.includes("veo3") ? 'fal' : 
+        (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-')) ? 'replicate' : 'runway';
       const creditResult = await validateAndReserveCredits(provider);
       transactionId = creditResult.transactionId;
       console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
@@ -995,7 +1092,7 @@ const InputBox = () => {
       let apiEndpoint: string;
 
       if (generationMode === "text_to_video") {
-        // Text to video generation (MiniMax and Veo3 models)
+        // Text to video generation (MiniMax, Veo3, and WAN models)
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
           // Text-to-video: No image requirements (pure text generation)
 
@@ -1028,14 +1125,38 @@ const InputBox = () => {
           };
           generationType = "text-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3/text-to-video/fast/submit' : '/api/fal/veo3/text-to-video/submit';
+        } else if (selectedModel.includes("wan-2.5")) {
+          // WAN 2.5 text-to-video generation
+          const isFast = selectedModel.includes("fast");
+          requestBody = {
+            model: isFast ? "wan-video/wan-2.5-t2v-fast" : "wan-video/wan-2.5-t2v",
+            prompt: prompt,
+            duration: duration, // 5 or 10 seconds
+            size: frameSize, // WAN uses specific size format like "1280*720"
+            generationType: "text-to-video",
+            isPublic,
+          };
+          generationType = "text-to-video";
+          // Use fast alias route when selected fast model
+          apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
+        } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
+          // Kling T2V
+          const isV25 = selectedModel.includes('v2.5');
+          if (isV25) {
+            requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'text-to-video', isPublic };
+          } else {
+            requestBody = { model: 'kwaivgi/kling-v2.1-master', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), mode: klingMode, generationType: 'text-to-video', isPublic };
+          }
+          generationType = 'text-to-video';
+          apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else {
           // Runway models don't support text-to-video (they require an image)
-          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3 model.");
+          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/WAN model.");
           return;
         }
       } else if (generationMode === "image_to_video") {
-        // Check if we need uploaded images (exclude S2V-01 and Veo3 which only need references/images)
-        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && uploadedImages.length === 0) {
+        // Check if we need uploaded images (exclude S2V-01, Veo3, and WAN which only need references/images)
+        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && !selectedModel.includes("wan-2.5") && uploadedImages.length === 0) {
           setError("Please upload at least one image");
           return;
         }
@@ -1111,6 +1232,39 @@ const InputBox = () => {
           };
           generationType = "image-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3/image-to-video/fast/submit' : '/api/fal/veo3/image-to-video/submit';
+        } else if (selectedModel.includes("wan-2.5")) {
+          // WAN 2.5 image-to-video generation
+          if (uploadedImages.length === 0) {
+            setError("WAN 2.5 image-to-video requires an input image");
+            return;
+          }
+          const isFast = selectedModel.includes("fast");
+          requestBody = {
+            model: isFast ? "wan-video/wan-2.5-i2v-fast" : "wan-video/wan-2.5-i2v",
+            prompt: prompt,
+            image: uploadedImages[0], // WAN expects image URL
+            duration: duration, // 5 or 10 seconds
+            resolution: frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p",
+            generationType: "image-to-video",
+            isPublic,
+          };
+          generationType = "image-to-video";
+          // Use fast alias route when selected fast model
+          apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
+        } else if (selectedModel.startsWith('kling-') && selectedModel.includes('i2v')) {
+          // Kling I2V
+          if (uploadedImages.length === 0) {
+            setError("Kling image-to-video requires an input image");
+            return;
+          }
+          const isV25 = selectedModel.includes('v2.5');
+          if (isV25) {
+            requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, image: uploadedImages[0], duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'image-to-video', isPublic };
+          } else {
+            requestBody = { model: 'kwaivgi/kling-v2.1', prompt, start_image: uploadedImages[0], duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), mode: klingMode, generationType: 'image-to-video', isPublic };
+          }
+          generationType = 'image-to-video';
+          apiEndpoint = '/api/replicate/kling-i2v/submit';
         } else {
           // Runway image to video
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
@@ -1137,9 +1291,9 @@ const InputBox = () => {
           return;
         }
 
-        if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-          // MiniMax models don't support video to video
-          setError("MiniMax models don't support video to video generation");
+        if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("wan-2.5")) {
+          // MiniMax and WAN models don't support video to video
+          setError("MiniMax and WAN models don't support video to video generation");
           return;
         } else {
           // Runway video to video
@@ -1250,6 +1404,12 @@ const InputBox = () => {
         throw new Error('MiniMax API response missing taskId');
       }
 
+      // Validate that we have a requestId for WAN models
+      if (selectedModel.includes("wan-2.5") && !result.requestId) {
+        console.error('❌ WAN API response missing requestId:', result);
+        throw new Error('WAN API response missing requestId');
+      }
+
       let videoUrl: string;
 
       if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
@@ -1330,6 +1490,157 @@ const InputBox = () => {
         } else {
           console.error('❌ Veo3 video generation did not complete properly');
           throw new Error('Veo3 video generation did not complete in time');
+        }
+      } else if (selectedModel.includes("wan-2.5")) {
+        // WAN 2.5 flow - queue-based polling
+        console.log('🎬 WAN 2.5 video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        // Poll for completion using Replicate queue status
+        let videoResult: any;
+        const maxAttempts = 900; // 15 minutes max for WAN models (they can take longer)
+        console.log(`🎬 Starting WAN 2.5 polling with ${maxAttempts} attempts (15 minutes max)`);
+        
+        for (let attempts = 0; attempts < maxAttempts; attempts++) {
+          try {
+            console.log(`🎬 WAN 2.5 polling attempt ${attempts + 1}/${maxAttempts}`);
+            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
+            const statusRes = await api.get('/api/replicate/queue/status', {
+              params: { requestId: result.requestId }
+            });
+            console.log(`🎬 Raw status response:`, statusRes.data);
+            const status = statusRes.data?.data || statusRes.data;
+            
+            console.log(`🎬 WAN 2.5 status check result:`, status);
+            // Normalize status for robust comparisons
+            const statusValue = String(status?.status || '').toLowerCase();
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
+              console.log('✅ WAN 2.5 generation completed, fetching result...');
+              // Get the result
+              const resultRes = await api.get('/api/replicate/queue/result', {
+                params: { requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              console.log('✅ WAN 2.5 result fetched:', videoResult);
+              break;
+            }
+            if (statusValue === 'failed' || statusValue === 'error') {
+              console.error('❌ WAN 2.5 generation failed with status:', status);
+              throw new Error('WAN 2.5 video generation failed');
+            }
+            
+            // Handle other possible statuses
+            if (statusValue === 'processing' || statusValue === 'pending') {
+              console.log(`🎬 WAN 2.5 status: ${status.status} - continuing to poll...`);
+            } else if (statusValue) {
+              console.log(`🎬 WAN 2.5 unknown status: ${status.status} - continuing to poll...`);
+            } else {
+              console.log('🎬 WAN 2.5 no status returned - continuing to poll...');
+            }
+            
+            // Log progress every 30 seconds
+            if (attempts % 30 === 0 && attempts > 0) {
+              console.log(`🎬 WAN 2.5 still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+              
+              // Fallback: Check if video is available in history after 2 minutes
+              if (attempts >= 120 && result.historyId) {
+                try {
+                  console.log(`🎬 Fallback: Checking history entry for completed video...`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyData = historyRes.data?.data || historyRes.data;
+                  
+                  if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
+                    const completedVideo = historyData.videos.find((v: any) => v.status === 'completed' || v.url);
+                    if (completedVideo?.url) {
+                      console.log('✅ WAN 2.5 video found in history:', completedVideo);
+                      videoResult = { videos: [completedVideo] };
+                      break;
+                    }
+                  }
+                } catch (historyError) {
+                  console.log('🎬 Fallback history check failed:', historyError);
+                }
+              }
+            }
+          } catch (statusError) {
+            console.error('❌ WAN 2.5 status check failed:', statusError);
+            if (attempts === maxAttempts - 1) {
+              console.error('❌ WAN 2.5 polling exhausted all attempts');
+              throw statusError;
+            }
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ WAN 2.5 video completed with URL:', videoUrl);
+        } else if (videoResult?.video && videoResult.video?.url) {
+          // Fallback: check for single video object
+          videoUrl = videoResult.video.url;
+          console.log('✅ WAN 2.5 video completed with URL (fallback):', videoUrl);
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          // Replicate-like payload where 'output' is a direct URL
+          videoUrl = videoResult.output;
+          console.log('✅ WAN 2.5 video completed with URL (output string):', videoUrl);
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          // Replicate-like payload where 'output' is an array of URLs
+          videoUrl = videoResult.output[0];
+          console.log('✅ WAN 2.5 video completed with URL (output array):', videoUrl);
+        } else {
+          console.error('❌ WAN 2.5 video generation did not complete properly');
+          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
+          console.error('❌ Expected videos array or video object with URL');
+          throw new Error('WAN 2.5 video generation did not complete in time');
+        }
+      } else if (selectedModel.startsWith('kling-')) {
+        // Kling flow - queue-based polling via replicate queue endpoints
+        console.log('🎬 Kling video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        let videoResult: any;
+        const maxAttemptsK = 900; // up to 15 minutes
+        for (let attempts = 0; attempts < maxAttemptsK; attempts++) {
+          try {
+            const statusRes = await api.get('/api/replicate/queue/status', {
+              params: { requestId: result.requestId }
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            const statusValue = String(status?.status || '').toLowerCase();
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
+              const resultRes = await api.get('/api/replicate/queue/result', {
+                params: { requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              break;
+            }
+            if (statusValue === 'failed' || statusValue === 'error') {
+              throw new Error('Kling video generation failed');
+            }
+          } catch (e) {
+            if (attempts === maxAttemptsK - 1) throw e;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ Kling video completed with URL:', videoUrl);
+        } else if (videoResult?.video && videoResult.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log('✅ Kling video completed with URL (fallback):', videoUrl);
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          videoUrl = videoResult.output;
+          console.log('✅ Kling video completed with URL (output string):', videoUrl);
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          videoUrl = videoResult.output[0];
+          console.log('✅ Kling video completed with URL (output array):', videoUrl);
+        } else {
+          console.error('❌ Kling video generation did not complete properly');
+          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
+          throw new Error('Kling video generation did not complete in time');
         }
       } else {
         // Runway video completion
@@ -1512,7 +1823,7 @@ const InputBox = () => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/10 backdrop-blur-lg shadow-xl pl-6 border border-white/10 rounded-2xl ">
+            <div className="fixed top-0  left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
               <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
@@ -2022,7 +2333,7 @@ const InputBox = () => {
                   </div>
                 )}
 
-                {/* Image Upload for Runway Models (image-to-video only) */}
+                {/* Image Upload for Runway and WAN Models (image-to-video only) */}
                 {generationMode === "image_to_video" &&
                   !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && (
                     <div className="relative">
@@ -2034,7 +2345,7 @@ const InputBox = () => {
                         }}
                       >
                         <div className=" relative ">
-                          <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
+                          <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload first frame image</div>
                         </div>
                       </button>
@@ -2052,7 +2363,7 @@ const InputBox = () => {
                       }}
                     >
                       <div className="relative">
-                        <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
+                        <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload first frame image</div>
                       </div>
                     </button>
@@ -2082,7 +2393,7 @@ const InputBox = () => {
                       className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                     >
                       <div className="relative">
-                        <FilePlus2 size={30} className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
+                        <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload last frame image (optional)</div>
                       </div>
                       <input
@@ -2133,7 +2444,7 @@ const InputBox = () => {
                       <div className="relative">
                         <FilePlay
                           size={30}
-                          className="bg-white/5 rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
+                          className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
                         />
                         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload video</div>
                       </div>
@@ -2153,12 +2464,13 @@ const InputBox = () => {
                 disabled={(() => {
                   const disabled = isGenerating || !prompt.trim() ||
                     // Mode-specific validations
-                    (generationMode === "image_to_video" && selectedModel !== "S2V-01" && uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && uploadedImages.length === 0) ||
                     (generationMode === "video_to_video" && !uploadedVideo) ||
                     // Model-specific validations (only for image-to-video)
                     (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
                     (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
-                    (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0);
+                    (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel.includes("wan-2.5") && uploadedImages.length === 0);
 
                   // Debug logging for S2V-01
                   if (selectedModel === "S2V-01") {
@@ -2290,6 +2602,8 @@ const InputBox = () => {
                 </span>
                 <span className="px-2 py-1 bg-white/10 rounded-md">
                   Model: {selectedModel === "gen4_turbo" ? "Gen-4 Turbo" :
+                    selectedModel.includes("wan-2.5-t2v") ? "WAN 2.5 T2V" :
+                    selectedModel.includes("wan-2.5-i2v") ? "WAN 2.5 I2V" :
                           selectedModel === "gen3a_turbo" ? "Gen-3a Turbo" :
                           selectedModel === "gen4_aleph" ? "Gen-4 Aleph" : selectedModel}
                 </span>
@@ -2409,8 +2723,48 @@ const InputBox = () => {
                     );
                   }
 
+                  // WAN 2.5 Models: Full customization
+                  if (selectedModel.includes("wan-2.5")) {
+                    return (
+                      <>
+                        {/* Aspect Ratio - Always shown for WAN models */}
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        />
+                        {/* Duration - Always shown for WAN models */}
+                        <VideoDurationDropdown
+                          selectedDuration={duration}
+                          onDurationChange={setDuration}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        />
+                      </>
+                    );
+                  }
+
                   // Runway Models: Full customization
-                  if (!(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3"))) {
+                  if (!(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5"))) {
                     return (
                       <>
                         {/* Aspect Ratio - Always shown for Runway models */}
@@ -2690,14 +3044,14 @@ const InputBox = () => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
-          historyEntries={historyEntries}
+          historyEntries={libraryImageEntries.length > 0 ? libraryImageEntries : imageHistoryEntries}
           remainingSlots={uploadModalType === 'image' ?
             (selectedModel === "S2V-01" ? 0 : 1) : // S2V-01 doesn't use uploadedImages
             (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
           }
-          onLoadMore={loadMoreHistory}
-          hasMore={hasMore}
-          loading={loading}
+          onLoadMore={async () => { await fetchLibraryImages(false); }}
+          hasMore={libraryImageEntries.length > 0 ? libraryImageHasMore : hasMore}
+          loading={libraryImageEntries.length > 0 ? libraryImageLoading : loading}
         />
       )}
 

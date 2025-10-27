@@ -1709,8 +1709,8 @@ const InputBox = () => {
         <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-2 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 mt-1 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 bg-black/10 dark:bg-white/10 backdrop-blur-lg shadow-xl md:pl-6 pl-4 border border-black/10 dark:border-white/10 rounded-2xl transition-colors duration-300">
-              <h2 className="md:text-xl text-md font-semibold text-black dark:text-white pl-0 ">Image Generation </h2>
+            <div className="fixed top-0  left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1  backdrop-blur-lg shadow-xl md:pl-6 pl-4  ">
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>

@@ -184,6 +184,8 @@ const HomePage: React.FC = () => {
         while (page < maxPages && out.length < 48) {
           const url = new URL(`${baseUrl}/api/feed`)
           url.searchParams.set('limit', '24')
+          // Home page: prefer images for aesthetic layout
+          url.searchParams.set('mode', 'image')
           if (nextCursor) url.searchParams.set('cursor', nextCursor)
           const res = await fetch(url.toString(), { credentials: 'include' })
           if (!res.ok) break

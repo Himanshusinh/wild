@@ -555,10 +555,11 @@ const History = () => {
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    return urlOrPath;
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), do not proxy
+    return '';
   };
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
@@ -867,8 +868,8 @@ const History = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-[#07070B] text-gray-900 dark:text-white p-2 select-none transition-colors duration-300">
       {/* Fixed Header to match TextToImage style */}
-      <div className="fixed top-0 mt-1 left-0 right-0 z-30 py-5 ml-18 mr-1 bg-white/90 dark:bg-white/10 backdrop-blur-xl shadow-xl pl-6 border border-gray-200 dark:border-white/10 rounded-2xl">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{headerTitle}</h2>
+      <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-xl shadow-xl pl-6 ">
+        <h2 className="text-xl font-semibold text-white">{headerTitle}</h2>
       </div>
       {/* Spacer below fixed header */}
       <div className="h-0"></div>
@@ -1276,8 +1277,9 @@ const History = () => {
                             {mediaUrl ? (
                               (() => {
                                 const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                const vsrc = proxied || mediaUrl;
                                 return (
-                                  <video src={proxied || mediaUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                                  <video src={vsrc} className="w-full h-full object-cover" muted playsInline autoPlay loop preload="metadata" />
                                 );
                               })()
                             ) : (
@@ -1369,7 +1371,7 @@ const History = () => {
                           <div className="w-full h-full relative">
                             {mediaUrl ? (
                               <Image
-                                src={mediaUrl}
+                                src={(() => { try { const { toThumbUrl } = require('@/lib/thumb'); return toThumbUrl(mediaUrl, { w: 640, q: 60 }) } catch { return mediaUrl } })()}
                                 alt={entry.prompt}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200"

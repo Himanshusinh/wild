@@ -11,6 +11,7 @@ import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic
 import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview'
 import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGeneration/compo/LogoImagePreview'
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
+import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
 
 // Types for items and categories
 type CreationItem = {
@@ -641,12 +642,12 @@ const Recentcreation: React.FC = () => {
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
                     (() => {
-                      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-                      const path = item.src.startsWith(ZATA_PREFIX) ? item.src.substring(ZATA_PREFIX.length) : item.src;
-                      const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
+                      const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
+                      const vsrc = proxied || item.src
                       return (
                         <video
-                          src={proxied}
+                          src={vsrc}
                           className="w-full h-full object-cover"
                           muted
                           loop
@@ -700,12 +701,15 @@ const Recentcreation: React.FC = () => {
                     </div>
                   </div>
                 ) : item.src && item.src.trim() !== '' ? (
-                  <Image
-                    src={item.src}
+                  // Use compressed thumbnail for grid; full-res shown in existing preview modals
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return item.src.startsWith(Z) ? (toThumbUrl(item.src, { w: 640, q: 60 }) || item.src) : item.src } catch { return item.src } })()}
                     alt={item.title}
-                    fill
-                    className="object-cover"
-                    onLoadingComplete={(img) => {
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onLoad={(e) => {
+                      const img = e.currentTarget as HTMLImageElement
                       const w = img.naturalWidth || 1
                       const h = img.naturalHeight || 1
                       const g = gcd(w, h)

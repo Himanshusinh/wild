@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
+import { getMeCached } from '../../../../lib/me'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import Image from 'next/image'
@@ -78,10 +79,8 @@ const Nav = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const api = getApiClient()
-        const response = await api.get('/api/auth/me')
-        const payload = response.data
-        const user = payload?.data?.user || payload?.user || payload
+  const api = getApiClient()
+  const user = await getMeCached()
         setUserData(user || null)
         
         try {

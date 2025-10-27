@@ -1,11 +1,11 @@
-'use client';
+ 'use client';
 
 import React from 'react';
 import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 import { useAppDispatch } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
-import { removeHistoryEntry } from '@/store/slices/historySlice';
+import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 
 interface VideoPreviewModalProps {
   preview: { entry: HistoryEntry; video: any } | null;
@@ -13,6 +13,9 @@ interface VideoPreviewModalProps {
 }
 
 const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose }) => {
+  // Early return BEFORE any hooks to keep hook order stable across renders
+  if (!preview) return null;
+
   const dispatch = useAppDispatch();
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
@@ -23,8 +26,6 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
-  
-  if (!preview) return null;
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
 
@@ -32,23 +33,22 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     if (!urlOrPath) return '';
     if (typeof urlOrPath !== 'string') return '';
     const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // If it's already a storagePath-like value, return as-is
     if (/^users\//.test(urlOrPath)) return urlOrPath;
-    return urlOrPath;
+    // Otherwise, external URL – do not proxy
+    return '';
   };
 
   const toProxyResourceUrl = (urlOrPath: any) => {
     const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS
+    // Use frontend-origin proxy route to avoid CORS (Zata only)
     return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
   };
 
   const toProxyDownloadUrl = (urlOrPath: any) => {
     const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS
+    // Use frontend-origin proxy route to avoid CORS (Zata only)
     return path ? `/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
@@ -169,6 +169,29 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
   };
 
+  const toggleVisibility = async () => {
+    try {
+      const next = !isPublicFlag;
+      setIsPublicFlag(next);
+      try {
+        if (preview.entry?.id) {
+          const target = preview.video as any;
+          const payload: any = target ? { video: { id: target?.id, url: target?.url || target?.firebaseUrl, storagePath: target?.storagePath, isPublic: next } } : { isPublic: next };
+          await axiosInstance.patch(`/api/generations/${preview.entry.id}`, payload);
+          try {
+            const videos = Array.isArray((preview.entry as any).videos) ? (preview.entry as any).videos.map((vd: any) => {
+              if ((target?.id && vd.id === target.id) || (target?.url && vd.url === target.url) || (target?.storagePath && vd.storagePath === target.storagePath)) {
+                return { ...vd, isPublic: next };
+              }
+              return vd;
+            }) : (preview.entry as any).videos;
+            dispatch(updateHistoryEntry({ id: preview.entry.id, updates: { videos } as any }));
+          } catch {}
+        }
+      } catch {}
+    } catch {}
+  };
+
   const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
   const displayedAspect = preview.entry.frameSize || '16:9';
 
@@ -188,7 +211,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const inputVideos = ((preview.entry as any)?.inputVideos || []) as any[];
   const inputImages = ((preview.entry as any)?.inputImages || []) as any[];
   const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-  const videoUrl = toProxyResourceUrl(videoPath);
+  const proxied = toProxyResourceUrl(videoPath);
+  const videoUrl = proxied || rawVideoUrl;
 
   // Stream directly from same-origin proxy for faster start and range support
 
@@ -198,7 +222,14 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const cleanPrompt = getCleanPrompt(preview.entry.prompt);
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
+  const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const isLongPrompt = cleanPrompt.length > 280;
+  
+  // Update isPublicFlag based on selected video
+  React.useEffect(() => {
+    const isPublic = ((preview.video as any)?.isPublic !== false);
+    setIsPublicFlag(isPublic);
+  }, [preview.video]);
 
   // ---- Fullscreen helpers (unconditional hooks) ----
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -304,27 +335,20 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
 
   return (
-    <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative w-full max-w-6xl bg-white/95 dark:bg-black/40 ring-1 ring-gray-200 dark:ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
+      <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gray-100/80 dark:bg-black/40 backdrop-blur-sm border-b border-gray-200 dark:border-white/10">
-          <div className="text-gray-600 dark:text-white/70 text-sm">{preview.entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
+          <div className="text-white/70 text-sm"></div>
           <div className="flex items-center gap-2">
-            <button 
-              className="p-2 rounded-full text-gray-700 dark:text-white transition-colors" 
-              onClick={handleDelete}
-              aria-label="Delete video"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-            <button aria-label="Close" className="text-gray-700 dark:text-white/80 hover:text-gray-900 dark:hover:text-white text-lg" onClick={onClose}>✕</button>
+            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+        <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-gray-50 dark:bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {videoUrl && videoUrl.length > 0 ? (
               videoUrl.startsWith('data:image/') ? (
                 <img 
@@ -372,7 +396,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-700 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -385,28 +409,58 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-gray-900 dark:text-white border-t md:border-t-0 md:border-l border-gray-200 dark:border-white/10 bg-white/90 dark:bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-[78vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-10 mb-10">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
-              <button
-                onClick={() => downloadVideo(videoUrl)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/25 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-sm"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                  <path d="M12 3v12" />
-                  <path d="M7 10l5 5 5-5" />
-                  <path d="M5 19h14" />
-                </svg>
-                {videoUrl && videoUrl.startsWith('data:image/') ? 'Download Image' : 'Download Video'}
-              </button>
-              
-              <button
-                onClick={() => shareVideo(videoUrl)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/25 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-sm"
-              >
-                <Share className="h-4 w-4" />
-                Share
-              </button>
+              <div className="relative group flex-1">
+                <button
+                  onClick={() => downloadVideo(videoUrl)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20"
+                  aria-label="Download"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white">
+                    <path d="M12 3v12" />
+                    <path d="M7 10l5 5 5-5" />
+                    <path d="M5 19h14" />
+                  </svg>
+                </button>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button
+                  onClick={() => shareVideo(videoUrl)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20"
+                  aria-label="Share"
+                >
+                  <Share className="h-4 w-4 text-white" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20" aria-label="Delete video">
+                  <Trash2 className="h-4 w-4 text-white" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button
+                  onClick={toggleVisibility}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20"
+                  aria-pressed={isPublicFlag}
+                  aria-label="Toggle visibility"
+                  title={isPublicFlag ? 'Public' : 'Private'}
+                >
+                  {isPublicFlag ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
+                  )}
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+              </div>
             </div>
 
             {/* Prompt */}
@@ -459,27 +513,27 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             
             {/* Details */}
             <div className="mb-4">
-              <div className="text-gray-600 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-white/60 text-sm">Model:</span>
-                  <span className="text-gray-900 dark:text-white text-sm">{preview.entry.model}</span>
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white/80 text-sm">{preview.entry.model}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-white/60 text-sm">Style:</span>
-                  <span className="text-gray-900 dark:text-white text-sm">{displayedStyle}</span>
+                  <span className="text-white/60 text-sm">Style:</span>
+                  <span className="text-white/80 text-sm">{displayedStyle}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-white/60 text-sm">Aspect ratio:</span>
-                  <span className="text-gray-900 dark:text-white text-sm">{displayedAspect}</span>
+                  <span className="text-white/60 text-sm">Aspect ratio:</span>
+                  <span className="text-white/80 text-sm">{displayedAspect}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-white/60 text-sm">Duration:</span>
-                  <span className="text-gray-900 dark:text-white text-sm">{(preview.entry as any).duration || '—'}s</span>
+                  <span className="text-white/60 text-sm">Duration:</span>
+                  <span className="text-white/80 text-sm">{(preview.entry as any).duration || '—'}s</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-white/60 text-sm">Format:</span>
-                  <span className="text-gray-900 dark:text-white text-sm">Video</span>
+                  <span className="text-white/60 text-sm">Format:</span>
+                  <span className="text-white/80 text-sm">Video</span>
                 </div>
               </div>
             </div>

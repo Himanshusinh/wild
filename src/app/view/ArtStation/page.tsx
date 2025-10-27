@@ -7,6 +7,7 @@ import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
+import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
 
 type PublicItem = {
   id: string;
@@ -65,6 +66,10 @@ export default function ArtStationPage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
+  // Control concurrent fetches with sequencing (no manual aborts to avoid canceled requests)
+  const requestSeqRef = useRef(0)
+  const inFlightRef = useRef<Promise<void> | null>(null)
+  const queuedNextRef = useRef<{ reset: boolean } | null>(null)
   const navigateForType = (type?: string) => {
     const t = (type || '').toLowerCase()
     if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
@@ -134,21 +139,63 @@ export default function ArtStationPage() {
   }
 
 
+  // Map UI categories to backend query params
+  const mapCategoryToQuery = (category: Category): { mode?: 'video'|'image'|'music'|'all'; generationType?: string } => {
+    switch (category) {
+      case 'Videos':
+        // use mode=video; backend maps to multiple generationTypes
+        return { mode: 'video' };
+      case 'Images':
+        return { mode: 'image' };
+      case 'Music':
+        return { mode: 'music' };
+      case 'Logos':
+        return { generationType: 'logo' };
+      case 'Stickers':
+        return { generationType: 'sticker-generation' };
+      case 'Products':
+        return { generationType: 'product-generation' };
+      case 'All':
+      default:
+        return { mode: 'all' };
+    }
+  };
+
   const fetchFeed = async (reset = false) => {
     try {
+      // prevent overlapping fetches (including reset)
+      if (inFlightRef.current) {
+        // queue latest intent; we coalesce to the most recent requested reset flag
+        queuedNextRef.current = { reset }
+        return
+      }
+      if (loading) return
       setLoading(true)
+      const seq = ++requestSeqRef.current
+      const categoryAtStart = activeCategory
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
       const url = new URL(`${baseUrl}/api/feed`)
       url.searchParams.set('limit', '20')
+      // Always request latest-first
+      url.searchParams.set('sortBy', 'createdAt')
+      url.searchParams.set('sortOrder', 'desc')
+    // Apply server-side filtering based on active tab
+      const q = mapCategoryToQuery(activeCategory)
+    if (q.mode) url.searchParams.set('mode', q.mode)
+    if (q.generationType) url.searchParams.set('generationType', q.generationType)
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
       
       console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
       
-      const res = await fetch(url.toString(), { 
-        credentials: 'include'
-      })
+      const doFetch = async () => {
+        const res = await fetch(url.toString(), { credentials: 'include' })
+        return res
+      }
+      const p = doFetch()
+      inFlightRef.current = p.then(() => undefined, () => undefined)
+      const res = await p
       
       if (!res.ok) {
         const errorText = await res.text()
@@ -156,9 +203,20 @@ export default function ArtStationPage() {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`)
       }
       
-      const data = await res.json()
+  const data = await res.json()
       console.log('[ArtStation] Raw response:', data)
       
+      // Ignore stale responses if a newer request started after this one
+      if (seq !== requestSeqRef.current) {
+        console.log('[ArtStation] Stale response ignored for seq', seq)
+        return
+      }
+      // Also ignore if the category changed mid-flight
+      if (categoryAtStart !== activeCategory) {
+        console.log('[ArtStation] Category changed from', categoryAtStart, 'to', activeCategory, '— ignoring response')
+        return
+      }
+
       const payload = data?.data || data
       const meta = payload?.meta || {}
       const normalizeDate = (d: any) => typeof d === 'string' ? d : (d && typeof d === 'object' && typeof d._seconds === 'number' ? new Date(d._seconds * 1000).toISOString() : undefined)
@@ -200,32 +258,28 @@ export default function ArtStationPage() {
       setHasMore(inferredHasMore)
       setError(null)
 
-      // Open deep-linked generation once when it appears
-      if (deepLinkId) {
-        const pool = reset ? newItems : [...items, ...newItems]
-        const found = pool.find(i => i.id === deepLinkId)
-        if (found) {
-          const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
-          const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
-          if (media?.url) {
-            setSelectedImageIndex(0)
-            setSelectedVideoIndex(0)
-            setSelectedAudioIndex(0)
-            setPreview({ kind, url: media.url, item: found })
-            setDeepLinkId(null)
-          } else if (inferredHasMore) {
-            // keep fetching until we get the media
-            await fetchFeed(false)
-          }
-        } else if (inferredHasMore) {
-          await fetchFeed(false)
-        }
-      }
+      // Deep link will be handled by a separate effect without recursive fetches
     } catch (e: any) {
-      console.error('[ArtStation] Feed fetch error:', e)
-      setError(e?.message || 'Failed to load feed')
+      // Ignore benign cancellation-like errors
+      const msg = String(e?.message || '')
+      if (/abort|cancell?ed|signal/i.test(msg)) {
+        console.log('[ArtStation] Ignored canceled fetch')
+      } else {
+        console.error('[ArtStation] Feed fetch error:', e)
+        setError(e?.message || 'Failed to load feed')
+        // Prevent infinite retry storms by marking no more items on error for this cycle
+        setHasMore(false)
+      }
     } finally {
       setLoading(false)
+      inFlightRef.current = null
+      // If another fetch was queued while we were in flight, run it now (coalesced)
+      const next = queuedNextRef.current
+      queuedNextRef.current = null
+      if (next) {
+        // avoid tight loop: yield microtask
+        Promise.resolve().then(() => fetchFeed(next.reset))
+      }
     }
   }
 
@@ -245,27 +299,39 @@ export default function ArtStationPage() {
       const gen = params.get('gen')
       if (gen) setDeepLinkId(gen)
     } catch {}
-    fetchFeed(true)
+    // initial fetch happens via activeCategory effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Refetch when active tab changes; cancel in-flight, reset guards
+  const didFetchForCategoryRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (didFetchForCategoryRef.current === activeCategory) {
+      return
+    }
+    didFetchForCategoryRef.current = activeCategory
+    // reset concurrency guards
+    loadingMoreRef.current = false
+    setItems([])
+    setCursor(undefined)
+    setHasMore(true)
+    fetchFeed(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory])
 
   // Infinite scroll observer
   useEffect(() => {
     if (!sentinelRef.current) return
     const el = sentinelRef.current
-    
-    const observer = new IntersectionObserver(async (entries) => {
+    // Disconnect any prior observer before creating a new one for this tab/state
+    let observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0]
       if (!entry.isIntersecting) return
-      
-      // Don't load if already loading, no more items, or already loading more
+      // Serialize loads
       if (loading || loadingMoreRef.current || !hasMore) {
-        console.log('[ArtStation] Skipping load:', { loading, loadingMore: loadingMoreRef.current, hasMore })
         return
       }
-      
-      console.log('[ArtStation] Intersection observer triggered - Loading more items...')
       loadingMoreRef.current = true
-      
       try {
         await fetchFeed(false)
       } catch (err) {
@@ -275,28 +341,18 @@ export default function ArtStationPage() {
       }
     }, { 
       root: null, 
-      rootMargin: '500px', // Trigger earlier
-      threshold: 0.1 
+      rootMargin: '600px',
+      threshold: 0.01 
     })
-    
     observer.observe(el)
-    return () => observer.disconnect()
-  }, [hasMore, loading, cursor])
-
-  // Auto-fill viewport on initial loads so the page has enough content to scroll
-  useEffect(() => {
-    const needMore = () => (document.documentElement.scrollHeight - window.innerHeight) < 800
-    const run = async () => {
-      let guard = 0
-      while (!loading && hasMore && needMore() && guard < 5) {
-        await fetchFeed(false)
-        guard += 1
-      }
+    return () => {
+      try { observer.disconnect() } catch {}
     }
-    run()
-  }, [items, hasMore, loading])
+  }, [hasMore, loading, cursor, activeCategory])
 
-  // Resolve deep link after data loads; fetch more until found or no more
+  // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
+
+  // Resolve deep link after data loads; do not recursively fetch
   useEffect(() => {
     if (!deepLinkId) return
     // try to find in current items
@@ -311,19 +367,19 @@ export default function ArtStationPage() {
         setPreview({ kind, url: media.url, item: found })
         setDeepLinkId(null)
       }
-      return
-    }
-    // Not found; load more if available and not currently loading
-    if (hasMore && !loading) {
-      fetchFeed(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, deepLinkId, hasMore, loading])
+  }, [items, deepLinkId])
 
   // Reset prompt expansion when preview item changes
   useEffect(() => {
     setIsPromptExpanded(false)
   }, [preview?.item?.id])
+
+  // Debug: track items state changes
+  useEffect(() => {
+    console.log('[ArtStation] items state updated:', items.length)
+  }, [items])
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
     if (!prompt) return ''
@@ -353,16 +409,16 @@ export default function ArtStationPage() {
 
   const filteredItems = useMemo(() => {
     if (activeCategory === 'All') return items;
-    
+    const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
     return items.filter(item => {
       const type = item.generationType?.toLowerCase();
       switch (activeCategory) {
         case 'Images':
-          return type === 'text-to-image';
+          return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
         case 'Videos':
-          return type === 'text-to-video';
+          return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
         case 'Music':
-          return type === 'text-to-music';
+          return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
         case 'Logos':
           return type === 'logo';
         case 'Stickers':
@@ -374,6 +430,11 @@ export default function ArtStationPage() {
       }
     });
   }, [items, activeCategory]);
+
+  const resolveMediaUrl = (m: any): string | undefined => {
+    if (!m) return undefined
+    return m.url || m.originalUrl || (m.firebaseUrl as string | undefined)
+  }
 
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
@@ -392,8 +453,9 @@ export default function ArtStationPage() {
       // Prefer videos, then images, then audios for the tile
       const candidate = (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
       const kind: 'image'|'video'|'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
-      
-      if (!candidate?.url) {
+      const candidateUrl = resolveMediaUrl(candidate)
+
+      if (!candidateUrl) {
         console.log('[ArtStation] Item has no media URL:', { 
           id: it.id, 
           hasVideos: !!it.videos?.length, 
@@ -404,7 +466,7 @@ export default function ArtStationPage() {
         continue
       }
       
-      const key = candidate.storagePath || candidate.url
+  const key = (candidate && candidate.storagePath) || candidateUrl
       if (seenMedia.has(key)) {
         console.log('[ArtStation] Skipping duplicate media:', key)
         continue
@@ -412,7 +474,7 @@ export default function ArtStationPage() {
       
       seenMedia.add(key)
       seenItem.add(it.id)
-      out.push({ item: it, media: candidate, kind })
+      out.push({ item: it, media: { ...candidate, url: candidateUrl }, kind })
     }
     
     console.log('[ArtStation] Final cards count:', out.length)
@@ -533,7 +595,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                    <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
                     <div
                       style={{ aspectRatio: tileRatio, minHeight: 200 }}
-                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] ${loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'}`}
+                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
                     >
                       {!loadedTiles.has(cardId) && (
                         <div className="absolute inset-0 bg-white/10" />
@@ -544,19 +606,22 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
                         return kind === 'video' ? (
                           (() => {
-                            const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                            const path = media.url?.startsWith(ZATA_PREFIX) ? media.url.substring(ZATA_PREFIX.length) : media.url;
-                            const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+                            const proxied = toMediaProxy(media.url)
                             return (
                               <video
                                 src={proxied}
                                 className="w-full h-full object-cover"
                                 controls
                                 muted
+                                playsInline
                                 preload="metadata"
-                                onLoadedData={(e) => {
+                                onLoadedMetadata={(e) => {
                                   const v = e.currentTarget as HTMLVideoElement
                                   try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch {}
+                                  markTileLoaded(cardId)
+                                }}
+                                onError={() => {
+                                  // ensure tile becomes visible even if metadata fails
                                   markTileLoaded(cardId)
                                 }}
                               />
@@ -564,7 +629,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           })()
                         ) : (
                           <Image
-                            src={media.url}
+                            src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
                             alt={item.prompt || ''}
                             fill
                             sizes={sizes}
@@ -648,8 +713,8 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
             </div>
           )}
 
-          {/* No items message */}
-          {!loading && items.length === 0 && !error && (
+          {/* No items message (based on filtered cards) */}
+          {!loading && cards.length === 0 && !error && (
             <div className="text-center py-16">
               <p className="text-white/60 text-lg">No public generations available yet.</p>
               <p className="text-white/40 text-sm mt-2">Be the first to share your creations!</p>
@@ -710,12 +775,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         return (
                           <div className="relative w-full h-full">
-                            {(() => {
-                              const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                              const path = vid.url?.startsWith(ZATA_PREFIX) ? vid.url.substring(ZATA_PREFIX.length) : vid.url;
-                              const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                              return <video src={proxied} className="w-full h-full" controls autoPlay />
-                            })()}
+                            <video src={toMediaProxy(vid.url)} className="w-full h-full" controls autoPlay />
                           </div>
                         )
                       }
@@ -854,7 +914,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-white/10' : 'border-white/20 hover:border-white/30'}`}
                             >
                               <div className="flex items-center gap-2 text-sm text-white/90">
-                                <span className="inline-block w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">{idx+1}</span>
+                                <span className="flex w-6 h-6 rounded-full bg-white/10 items-center justify-center">{idx+1}</span>
                                 <span>Track {idx + 1}</span>
                               </div>
                             </button>

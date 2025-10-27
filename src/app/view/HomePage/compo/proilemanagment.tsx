@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getApiClient } from '@/lib/axiosInstance';
+import { getMeCached } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
 import { ArrowLeft } from 'lucide-react';
 
@@ -80,11 +81,8 @@ const ProfileManagement = () => {
           // Token is already a string
         }
 
-        const api = getApiClient();
-        const response = await api.get('/api/auth/me');
-        const responseData = response.data;
-        
-        const userData = responseData.data?.user || responseData.user || responseData;
+  const api = getApiClient();
+  const userData = await getMeCached();
         try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch {}
         setUserData(userData);
         // setEditedUsername(userData.username || ''); // DISABLED
@@ -350,7 +348,7 @@ const ProfileManagement = () => {
                   tabIndex={0}
                   className={`relative z-10 w-12 h-6 rounded-full transition-colors cursor-pointer outline-none ${isPublic ? 'bg-blue-500 dark:bg-blue-600' : 'bg-gray-300 dark:bg-white/20'}`}
                 >
-                  <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0.5`} />
+                  <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
                 </button>
               </div>
             </div>

@@ -94,6 +94,23 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
         ];
       }
+    } else if (selectedModel?.includes("wan-2.5")) {
+      // WAN 2.5 models support specific size formats
+      return [
+        { value: "832*480", label: "480p", description: "832×480 landscape", icon: "landscape" },
+        { value: "480*832", label: "480p", description: "480×832 portrait", icon: "portrait" },
+        { value: "1280*720", label: "720p", description: "1280×720 landscape", icon: "landscape" },
+        { value: "720*1280", label: "720p", description: "720×1280 portrait", icon: "portrait" },
+        { value: "1920*1080", label: "1080p", description: "1920×1080 landscape", icon: "landscape" },
+        { value: "1080*1920", label: "1080p", description: "1080×1920 portrait", icon: "portrait" }
+      ];
+    } else if (selectedModel?.startsWith('kling-')) {
+      // Kling models use aspect ratios
+      return [
+        { value: "16:9", label: "16:9", description: "Landscape", icon: "landscape" },
+        { value: "9:16", label: "9:16", description: "Portrait", icon: "portrait" },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+      ];
     } else if (selectedModel === "gen3a_turbo") {
       return [
         { value: "16:10", label: "16:10", description: "1280×768 landscape", icon: "landscape" },
@@ -133,7 +150,12 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           }
           setIsOpen(!isOpen);
         }}
-        className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-black/20 dark:ring-white/20 hover:ring-black/30 dark:hover:ring-white/30 bg-transparent text-black/90 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center gap-1"
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          (selectedFrameSize !== '16:9' && !selectedModel?.includes("wan-2.5")) || 
+          (selectedModel?.includes("wan-2.5") && selectedFrameSize !== '1280*720')
+            ? 'bg-white text-black' 
+            : 'bg-transparent text-white/90 hover:bg-white/5'
+        }`}
       >
         <Crop className="w-4 h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}

@@ -53,7 +53,7 @@ const EditImageInterface: React.FC = () => {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
  
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'  | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -563,9 +563,7 @@ const EditImageInterface: React.FC = () => {
         }
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
-         else if (model === 'mv-lab/swin2sr') {
-          payload = { ...payload, task: swinTask };
-        }
+         
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
         console.log('[EditImage] upscale.res', res?.data);
         const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
@@ -894,7 +892,7 @@ const EditImageInterface: React.FC = () => {
                             ]
                           : [
                               { label: 'NightmareAI Real-ESRGAN', value: 'nightmareai/real-esrgan' },
-                              { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
+                              // { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
                             ]
                         ).map((opt) => (
                           <button
@@ -1058,7 +1056,7 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  {model === 'mv-lab/swin2sr' && (
+                  {/* {model === 'mv-lab/swin2sr' && (
                     <div>
                       <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Task</label>
                       <div className="relative edit-dropdown">
@@ -1084,7 +1082,7 @@ const EditImageInterface: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </>
               )}
             </div>

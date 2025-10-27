@@ -242,6 +242,80 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'video',
     provider: 'runway'
   },
+  
+  // WAN 2.5 Standard Models
+  {
+    frontendValue: 'wan-2.5-t2v',
+    creditModelName: 'Wan 2.5 T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [5, 10]
+    }
+  },
+  {
+    frontendValue: 'wan-2.5-i2v',
+    creditModelName: 'Wan 2.5 I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [5, 10]
+    }
+  },
+  
+  // Kling Models (Replicate)
+  {
+    frontendValue: 'kling-v2.5-turbo-pro-t2v',
+    creditModelName: 'Kling 2.5 Turbo Pro T2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.5-turbo-pro-i2v',
+    creditModelName: 'Kling 2.5 Turbo Pro I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.1-t2v',
+    creditModelName: 'Kling 2.1 T2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.1-i2v',
+    creditModelName: 'Kling 2.1 I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  
+  // WAN 2.5 Fast Models
+  {
+    frontendValue: 'wan-2.5-t2v-fast',
+    creditModelName: 'Wan 2.5 Fast T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['720p', '1080p'],
+      duration: [5, 10]
+    }
+  },
+  {
+    frontendValue: 'wan-2.5-i2v-fast',
+    creditModelName: 'Wan 2.5 Fast I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['720p', '1080p'],
+      duration: [5, 10]
+    }
+  },
 
   // MUSIC GENERATION MODELS
   {
@@ -298,6 +372,29 @@ export const buildCreditModelName = (
   // Handle Runway turbo models with duration
   else if ((mapping.frontendValue === 'gen4_turbo' || mapping.frontendValue === 'gen3a_turbo') && options?.duration) {
     modelName = `${mapping.creditModelName} ${options.duration}s`;
+  }
+  // Handle WAN 2.5 models with duration and resolution
+  else if (mapping.frontendValue.includes('wan-2.5') && options?.duration && options?.resolution) {
+    const isFast = mapping.frontendValue.includes('fast');
+    const isI2V = mapping.frontendValue.includes('i2v');
+    const modelType = isI2V ? 'I2V' : 'T2V';
+    const speedPrefix = isFast ? 'Fast ' : '';
+    modelName = `Wan 2.5 ${speedPrefix}${modelType} ${options.duration}s ${options.resolution}`;
+  }
+  // Handle Kling models
+  else if (mapping.frontendValue.startsWith('kling') && options?.duration) {
+    const d = options.duration;
+    if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('t2v')) {
+      modelName = `Kling 2.5 Turbo Pro T2V ${d}s`;
+    } else if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('i2v')) {
+      modelName = `Kling 2.5 Turbo Pro I2V ${d}s`;
+    } else if (mapping.frontendValue.includes('v2.1') && mapping.frontendValue.includes('t2v')) {
+      const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+      modelName = `Kling 2.1 T2V ${d}s ${res}`;
+    } else if (mapping.frontendValue.includes('v2.1') && mapping.frontendValue.includes('i2v')) {
+      const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+      modelName = `Kling 2.1 I2V ${d}s ${res}`;
+    }
   }
 
   return modelName;

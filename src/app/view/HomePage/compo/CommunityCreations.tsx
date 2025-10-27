@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
+import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
 
 /* ---------- Types ---------- */
 type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
@@ -107,15 +108,15 @@ function Chip({
 }
 
 /* ---------- Card (unchanged) ---------- */
-function Card({ item, isVisible, setRef }: { item: Creation; isVisible: boolean; setRef: (el: HTMLDivElement | null) => void }) {
+function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible: boolean; setRef: (el: HTMLDivElement | null) => void; onClick?: () => void }) {
   const ratio = item.width && item.height ? item.height / item.width : 4 / 5;
   const src = item.src || ''
   const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
   const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
 
   return (
-    <div className="break-inside-avoid mb-5">
-      <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-black/10 dark:ring-white/10 bg-black/5 dark:bg-white/5 group transition-colors duration-300">
+    <div ref={setRef} className={`break-inside-avoid mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
+      <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group cursor-pointer" onClick={onClick}>
         <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
           {isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
@@ -128,20 +129,20 @@ function Card({ item, isVisible, setRef }: { item: Creation; isVisible: boolean;
             </div>
           ) : isVideo ? (
             (() => {
-              const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-              const path = src.startsWith(ZATA_PREFIX) ? src.substring(ZATA_PREFIX.length) : src;
-              const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
+              const proxied = toMediaProxy(src)
+              const videoSrc = proxied || src
               return (
-                <video src={proxied} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
+                <video src={videoSrc} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
               );
             })()
           ) : (
-            <Image
-              src={src}
-              alt={item.prompt ?? "creation"}
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
+            // Use compressed thumbnail for fast grid load; full-res shown in modal on click
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 640, q: 60 }) || src) : src } catch { return src } })()}
+              alt={item.prompt ?? 'creation'}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
             />
           )}
         </div>
@@ -176,6 +177,7 @@ export default function CommunityCreations({
   const [active, setActive] = useState<Category>(initialFilter);
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
+  const [preview, setPreview] = useState<Creation | null>(null)
 
   const filtered = useMemo(() => {
     if (active === 'All') return items;
@@ -259,6 +261,7 @@ export default function CommunityCreations({
               item={item}
               isVisible={visibleTiles.has(item.id)}
               setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
+              onClick={() => setPreview(item)}
             />
           ))}
         </div>
@@ -287,6 +290,45 @@ export default function CommunityCreations({
               </div>
             </div>
           </>
+        )}
+        {preview && (
+          <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center" onClick={() => setPreview(null)}>
+            <div className="relative max-w-[92vw] max-h-[88vh] w-auto h-auto" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="absolute -top-10 right-0 text-white/80 hover:text-white"
+                onClick={() => setPreview(null)}
+                aria-label="Close preview"
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+              {(() => {
+                const src = preview.src || ''
+                const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
+                const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
+                if (isAudio) {
+                  return (
+                    <div className="bg-[#0a0f1a] p-6 rounded-2xl text-white/90">
+                      <div className="mb-3">Audio Preview</div>
+                      <audio src={toMediaProxy(src)} controls autoPlay className="w-[80vw] max-w-[720px]" />
+                    </div>
+                  )
+                }
+                if (isVideo) {
+                  return (
+                    <video src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} controls autoPlay className="max-w-[92vw] max-h-[88vh] rounded-2xl" />
+                  )
+                }
+                return (
+                  // Full resolution via media proxy for images
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt={preview.prompt || 'preview'} className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
+                )
+              })()}
+              {preview.prompt && (
+                <div className="mt-3 text-white/80 text-sm line-clamp-3">{preview.prompt}</div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </section>

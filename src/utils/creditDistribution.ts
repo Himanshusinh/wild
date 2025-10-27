@@ -909,6 +909,308 @@ export const creditDistributionData: ModelCreditInfo[] = [
       planD: 1098.666667,
       free: 22.88888889
     }
+  },
+  // Wan 2.5 Standard (T2V/I2V)
+  {
+    srNo: 48,
+    modelName: "Wan 2.5 T2V 5s 480p",
+    priceToPay: 0.25,
+    overCharge: 0.06,
+    userCost: 0.31,
+    creditsPerGeneration: 620,
+    plans: {
+      planA: 19.93548387,
+      planB: 39.87096774,
+      planC: 99.67741935,
+      planD: 318.9677419,
+      free: 6.64516129
+    }
+  },
+  {
+    srNo: 49,
+    modelName: "Wan 2.5 I2V 5s 480p",
+    priceToPay: 0.25,
+    overCharge: 0.06,
+    userCost: 0.31,
+    creditsPerGeneration: 620,
+    plans: {
+      planA: 19.93548387,
+      planB: 39.87096774,
+      planC: 99.67741935,
+      planD: 318.9677419,
+      free: 6.64516129
+    }
+  },
+  {
+    srNo: 50,
+    modelName: "Wan 2.5 T2V 5s 720p",
+    priceToPay: 0.5,
+    overCharge: 0.06,
+    userCost: 0.56,
+    creditsPerGeneration: 1120,
+    plans: {
+      planA: 11.03571429,
+      planB: 22.07142857,
+      planC: 55.17857143,
+      planD: 176.5714286,
+      free: 3.678571429
+    }
+  },
+  {
+    srNo: 51,
+    modelName: "Wan 2.5 I2V 5s 720p",
+    priceToPay: 0.5,
+    overCharge: 0.06,
+    userCost: 0.56,
+    creditsPerGeneration: 1120,
+    plans: {
+      planA: 11.03571429,
+      planB: 22.07142857,
+      planC: 55.17857143,
+      planD: 176.5714286,
+      free: 3.678571429
+    }
+  },
+  {
+    srNo: 52,
+    modelName: "Wan 2.5 T2V 5s 1080p",
+    priceToPay: 0.75,
+    overCharge: 0.06,
+    userCost: 0.81,
+    creditsPerGeneration: 1620,
+    plans: {
+      planA: 7.62962963,
+      planB: 15.25925926,
+      planC: 38.14814815,
+      planD: 122.0740741,
+      free: 2.543209877
+    }
+  },
+  {
+    srNo: 53,
+    modelName: "Wan 2.5 I2V 5s 1080p",
+    priceToPay: 0.75,
+    overCharge: 0.06,
+    userCost: 0.81,
+    creditsPerGeneration: 1620,
+    plans: {
+      planA: 7.62962963,
+      planB: 15.25925926,
+      planC: 38.14814815,
+      planD: 122.0740741,
+      free: 2.543209877
+    }
+  },
+  {
+    srNo: 54,
+    modelName: "Wan 2.5 T2V 10s 480p",
+    priceToPay: 0.5,
+    overCharge: 0.06,
+    userCost: 0.56,
+    creditsPerGeneration: 1120,
+    plans: {
+      planA: 11.03571429,
+      planB: 22.07142857,
+      planC: 55.17857143,
+      planD: 176.5714286,
+      free: 3.678571429
+    }
+  },
+  {
+    srNo: 55,
+    modelName: "Wan 2.5 I2V 10s 480p",
+    priceToPay: 0.5,
+    overCharge: 0.06,
+    userCost: 0.56,
+    creditsPerGeneration: 1120,
+    plans: {
+      planA: 11.03571429,
+      planB: 22.07142857,
+      planC: 55.17857143,
+      planD: 176.5714286,
+      free: 3.678571429
+    }
+  },
+  {
+    srNo: 56,
+    modelName: "Wan 2.5 T2V 10s 720p",
+    priceToPay: 1,
+    overCharge: 0.06,
+    userCost: 1.06,
+    creditsPerGeneration: 2120,
+    plans: {
+      planA: 5.830188679,
+      planB: 11.66037736,
+      planC: 29.1509434,
+      planD: 93.28301887,
+      free: 1.943396226
+    }
+  },
+  {
+    srNo: 57,
+    modelName: "Wan 2.5 I2V 10s 720p",
+    priceToPay: 1,
+    overCharge: 0.06,
+    userCost: 1.06,
+    creditsPerGeneration: 2120,
+    plans: {
+      planA: 5.830188679,
+      planB: 11.66037736,
+      planC: 29.1509434,
+      planD: 93.28301887,
+      free: 1.943396226
+    }
+  },
+  {
+    srNo: 58,
+    modelName: "Wan 2.5 T2V 10s 1080p",
+    priceToPay: 1.5,
+    overCharge: 0.06,
+    userCost: 1.56,
+    creditsPerGeneration: 3120,
+    plans: {
+      planA: 3.961538462,
+      planB: 7.923076923,
+      planC: 19.80769231,
+      planD: 63.38461538,
+      free: 1.320512821
+    }
+  },
+  {
+    srNo: 59,
+    modelName: "Wan 2.5 I2V 10s 1080p",
+    priceToPay: 1.5,
+    overCharge: 0.06,
+    userCost: 1.56,
+    creditsPerGeneration: 3120,
+    plans: {
+      planA: 3.961538462,
+      planB: 7.923076923,
+      planC: 19.80769231,
+      planD: 63.38461538,
+      free: 1.320512821
+    }
+  },
+  // Wan 2.5 Fast (T2V/I2V)
+  {
+    srNo: 60,
+    modelName: "Wan 2.5 Fast T2V 5s 720p",
+    priceToPay: 0.34,
+    overCharge: 0.06,
+    userCost: 0.4,
+    creditsPerGeneration: 800,
+    plans: {
+      planA: 15.45,
+      planB: 30.9,
+      planC: 77.25,
+      planD: 247.2,
+      free: 5.15
+    }
+  },
+  {
+    srNo: 61,
+    modelName: "Wan 2.5 Fast I2V 5s 720p",
+    priceToPay: 0.34,
+    overCharge: 0.06,
+    userCost: 0.4,
+    creditsPerGeneration: 800,
+    plans: {
+      planA: 15.45,
+      planB: 30.9,
+      planC: 77.25,
+      planD: 247.2,
+      free: 5.15
+    }
+  },
+  {
+    srNo: 62,
+    modelName: "Wan 2.5 Fast T2V 5s 1080p",
+    priceToPay: 0.51,
+    overCharge: 0.06,
+    userCost: 0.57,
+    creditsPerGeneration: 1140,
+    plans: {
+      planA: 10.84210526,
+      planB: 21.68421053,
+      planC: 54.21052632,
+      planD: 173.4736842,
+      free: 3.614035088
+    }
+  },
+  {
+    srNo: 63,
+    modelName: "Wan 2.5 Fast I2V 5s 1080p",
+    priceToPay: 0.51,
+    overCharge: 0.06,
+    userCost: 0.57,
+    creditsPerGeneration: 1140,
+    plans: {
+      planA: 10.84210526,
+      planB: 21.68421053,
+      planC: 54.21052632,
+      planD: 173.4736842,
+      free: 3.614035088
+    }
+  },
+  {
+    srNo: 64,
+    modelName: "Wan 2.5 Fast T2V 10s 720p",
+    priceToPay: 0.68,
+    overCharge: 0.06,
+    userCost: 0.74,
+    creditsPerGeneration: 1480,
+    plans: {
+      planA: 8.351351351,
+      planB: 16.7027027,
+      planC: 41.75675676,
+      planD: 133.6216216,
+      free: 2.783783784
+    }
+  },
+  {
+    srNo: 65,
+    modelName: "Wan 2.5 Fast I2V 10s 720p",
+    priceToPay: 0.68,
+    overCharge: 0.06,
+    userCost: 0.74,
+    creditsPerGeneration: 1480,
+    plans: {
+      planA: 8.351351351,
+      planB: 16.7027027,
+      planC: 41.75675676,
+      planD: 133.6216216,
+      free: 2.783783784
+    }
+  },
+  {
+    srNo: 66,
+    modelName: "Wan 2.5 Fast T2V 10s 1080p",
+    priceToPay: 1.02,
+    overCharge: 0.06,
+    userCost: 1.08,
+    creditsPerGeneration: 2160,
+    plans: {
+      planA: 5.722222222,
+      planB: 11.44444444,
+      planC: 28.61111111,
+      planD: 91.55555556,
+      free: 1.907407407
+    }
+  },
+  {
+    srNo: 67,
+    modelName: "Wan 2.5 Fast I2V 10s 1080p",
+    priceToPay: 1.02,
+    overCharge: 0.06,
+    userCost: 1.08,
+    creditsPerGeneration: 2160,
+    plans: {
+      planA: 5.722222222,
+      planB: 11.44444444,
+      planC: 28.61111111,
+      planD: 91.55555556,
+      free: 1.907407407
+    }
   }
 ];
 

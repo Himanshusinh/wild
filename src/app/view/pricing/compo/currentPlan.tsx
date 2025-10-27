@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { getApiClient } from '../../../../lib/axiosInstance';
+import { getMeCached } from '../../../../lib/me';
 
 function CurrentPlan() {
   const [credits, setCredits] = React.useState<number | null>(null);
@@ -23,8 +24,7 @@ function CurrentPlan() {
 
         // Fetch user to get plan
         try {
-          const userRes = await api.get('/api/auth/me');
-          const data = userRes.data?.data?.user || userRes.data?.user || userRes.data;
+          const data = await getMeCached();
           if (data?.plan) setPlan(String(data.plan));
 
           // Derive activation date from multiple possible fields

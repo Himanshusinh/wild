@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
+import { getMeCached } from '@/lib/me';
 
 // Types
 export interface UserCredits {
@@ -63,8 +64,7 @@ export const fetchUserCredits = createAsyncThunk(
       } catch (creditsError: any) {
         console.log('fetchUserCredits: Credits endpoint failed, trying auth/me:', creditsError?.response?.status);
         // Fallback to auth/me endpoint
-        const response = await api.get('/api/auth/me');
-        const userData = response.data?.data || response.data;
+  const userData = await getMeCached();
         console.log('fetchUserCredits: Auth endpoint response:', userData);
         
         return {

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance';
+import { getMeCached } from '@/lib/me';
 
 export interface AuthUser {
   uid: string;
@@ -26,9 +27,7 @@ const initialState: AuthState = {
 
 export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithValue }) => {
   try {
-    const api = getApiClient();
-    const res = await api.get('/api/auth/me');
-    const data = res.data?.data || res.data;
+    const data = await getMeCached();
     return (data?.user || data) as AuthUser;
   } catch (e: any) {
     const msg = e?.response?.data?.message || e?.message || 'Failed to load user';

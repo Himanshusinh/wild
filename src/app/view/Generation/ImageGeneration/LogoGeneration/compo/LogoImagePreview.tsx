@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch } from '@/store/hooks';
+import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
 
@@ -24,6 +25,30 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const dispatch = useAppDispatch();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
+
+  const toggleVisibility = async () => {
+    try {
+      const next = !isPublicFlag;
+      setIsPublicFlag(next);
+      try {
+        if (entry?.id) {
+          const target = selectedImage;
+          const payload: any = target?.url || target?.id || target?.storagePath ? { image: { id: (target as any)?.id, url: (target as any)?.url, storagePath: (target as any)?.storagePath, isPublic: next } } : { isPublic: next };
+          await axiosInstance.patch(`/api/generations/${entry.id}`, payload);
+          try {
+            const images = Array.isArray((entry as any).images) ? (entry as any).images.map((im: any) => {
+              if ((target?.id && im.id === target.id) || (target?.url && im.url === target.url) || (target as any)?.storagePath && im.storagePath === (target as any).storagePath) {
+                return { ...im, isPublic: next };
+              }
+              return im;
+            }) : (entry as any).images;
+            dispatch(updateHistoryEntry({ id: entry.id, updates: { images } as any }));
+          } catch {}
+        }
+      } catch {}
+    } catch {}
+  };
   // Fullscreen state for in-place zoom/pan viewer
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -82,6 +107,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const outputImages = (entry.images || []) as any[];
   const galleryImages = [...inputImages, ...outputImages];
   const selectedImage = galleryImages[selectedImageIndex];
+  
+  // Update isPublicFlag based on selected image
+  React.useEffect(() => {
+    const isPublic = ((selectedImage as any)?.isPublic !== false);
+    setIsPublicFlag(isPublic);
+  }, [selectedImage]);
   const isUserUploadSelected = selectedImageIndex < inputImages.length;
   const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
   const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
@@ -310,7 +341,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
       await navigator.share({
         title: 'Wild Mind AI Generated Logo',
-        text: `Check out this AI-generated logo!\n${getUserPrompt(entry.prompt).substring(0, 100)}...`,
+        text: `Check out this AI-generated logo!\n${cleanPrompt.substring(0, 100)}...`,
         files: [file]
       });
 
@@ -346,7 +377,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     return rawPrompt.replace(/^Logo:\s*/i, '').trim();
   };
 
-  const isLongPrompt = (getUserPrompt(entry.prompt) || '').length > 200;
+  const getCleanPrompt = (promptText: string): string => {
+    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
+  };
+
+  const cleanPrompt = getCleanPrompt(entry.prompt || '');
+  const isLongPrompt = cleanPrompt.length > 280;
 
   const copyPrompt = async (prompt: string, buttonId: string) => {
     try {
@@ -366,27 +402,27 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
 
   return (
-  <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-2" onClick={onClose}>
-      <div className="relative w-full max-w-6xl bg-white/95 dark:bg-black/40 ring-1 ring-black/10 dark:ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
+      <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/10 dark:bg-black/40 backdrop-blur-sm border-b border-black/10 dark:border-white/10">
-          <div className="text-black/70 dark:text-white/70 text-sm">{entry.model}</div>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
+          <div className="text-white/70 text-sm"></div>
           <div className="flex items-center gap-2">
-            <button 
-              className="p-2 rounded-full  text-black dark:text-white transition-colors" 
+            {/* <button 
+              className="p-2 rounded-full  text-white transition-colors" 
               onClick={handleDelete}
               aria-label="Delete image"
             >
               <Trash2 className="w-5 h-5" />
-            </button>
-            <button aria-label="Close" className="text-black/70 dark:text-white/80 hover:text-black dark:hover:text-white text-lg" onClick={onClose}>✕</button>
+            </button> */}
+            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="pt-20 h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+        <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-black/5 dark:bg-black/30 h-[40vh] md:h-full md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
                 src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
@@ -402,7 +438,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 p-2 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -415,36 +451,52 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="px-4 md:p-5 text-black dark:text-white border-t md:border-t-0 md:border-l border-black/10 dark:border-white/10 bg-white/90 dark:bg-black/30 h-[60vh] md:h-full md:w-[34%] overflow-y-none">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-[78vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-10 mb-10">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-black/20 dark:border-white/25 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-sm"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </button>
+              <div className="relative group flex-1">
+                <button onClick={handleDownload} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                </button>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+              </div>
 
-              <button
-                onClick={() => shareImage(selectedImage?.url)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-black/20 dark:border-white/25 bg-black/10 dark:bg:white/10 hover:bg-black/20 dark:hover:bg-white/20 text-sm"
-              >
-                <Share className="h-4 w-4" />
-                Share
-              </button>
+              <div className="relative group flex-1">
+                <button onClick={() => shareImage(selectedImage?.url)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                  <Share className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
+                  {isPublicFlag ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
+                  )}
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+              </div>
             </div>
 
             {/* Prompt */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-2">
+            <div className="mb-2">
+              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
                 <span>Prompt</span>
                 <button 
-                  onClick={() => copyPrompt(getUserPrompt(entry.prompt), `preview-${entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-black dark:text-white text-xs rounded-lg transition-colors ${
+                  onClick={() => copyPrompt(cleanPrompt, `preview-${entry.id}`)}
+                  className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-sm rounded-lg transition-colors ${
                     copiedButtonId === `preview-${entry.id}` 
                       ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20'
+                      : 'bg-white/5 hover:bg-white/20'
                   }`}
                 >
                   {copiedButtonId === `preview-${entry.id}` ? (
@@ -464,13 +516,13 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                   )}
                 </button>
               </div>
-              <div className="text-black dark:text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words borde">
-                {getUserPrompt(entry.prompt)}
+              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
+                {cleanPrompt}
               </div>
               {isLongPrompt && (
                 <button
                   onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-                  className="mt-2 text-xs text-white/70 hover:text-white underline"
+                  className="mt-2 text-sm text-white/70 hover:text-white underline"
                 >
                   Read {isPromptExpanded ? 'less' : 'more'}
                 </button>
@@ -479,21 +531,21 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
             {/* Date */}
             <div className="mb-4">
-              <div className="text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-black dark:text-white text-sm">{new Date(entry.timestamp).toLocaleString()}</div>
+              <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
+              <div className="text-white/80 text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
             </div>
 
             {/* Details */}
             <div className="mb-4">
-              <div className="text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+              <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-black/60 dark:text-white/60 text-sm">Model:</span>
-                  <span className="text-black dark:text-white text-sm">{entry.model}</span>
+                  <span className="text-white/60 text-sm">Model:</span>
+                  <span className="text-white/80 text-sm">{entry.model}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-black/60 dark:text-white/60 text-sm">Format:</span>
-                  <span className="text-black dark:text-white text-sm">Logo</span>
+                  <span className="text-white/60 text-sm">Format:</span>
+                  <span className="text-white/80 text-sm">Logo</span>
                 </div>
               </div>
             </div>
@@ -501,16 +553,13 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             {/* Gallery */}
             {galleryImages.length > 1 && (
               <div className="mb-4">
-                <div className="text-black/60 dark:text-white/60 text-xs uppercase tracking-wider mb-2">Logos ({galleryImages.length})</div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="text-white/60 text-sm uppercase tracking-wider mb-1">Logos ({galleryImages.length})</div>
+                <div className="grid grid-cols-4 gap-2">
                   {galleryImages.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-all ${selectedImageIndex === index
-                          ? 'border-black dark:border-white ring-2 ring-black/30 dark:ring-white/30'
-                          : 'border-black/20 dark:border-white/20 hover:border-black/40 dark:hover:border-white/40'
-                        }`}
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       <Image
                         src={(image as any)?.url}
