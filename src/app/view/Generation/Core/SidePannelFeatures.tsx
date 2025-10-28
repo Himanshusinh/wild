@@ -1,5 +1,5 @@
 "use client";
-import React from 'react'
+import React, { memo, useMemo, useCallback } from 'react'
 import Image from 'next/image'
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { ViewType, GenerationType } from '@/types/generation';
@@ -24,7 +24,6 @@ const SidePannelFeatures = ({
   onWildmindSkitClick = () => { }
 }: SidePannelFeaturesProps) => {
 
-
   const dispatch = useAppDispatch();
   const theme = useAppSelector((state: any) => state?.ui?.theme || 'dark');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
@@ -36,7 +35,7 @@ const SidePannelFeatures = ({
 
 
 
-  const navigateForType = async (type: GenerationType) => {
+  const navigateForType = useCallback(async (type: GenerationType) => {
     try {
       const sessionReady = await ensureSessionReady(600)
       // Always proceed with navigation - middleware will handle auth with Bearer token if session cookie is missing
@@ -61,9 +60,9 @@ const SidePannelFeatures = ({
       default:
         return;
     }
-  };
+  }, [router]);
 
-  const handleGenerationTypeChange = async (type: GenerationType) => {
+  const handleGenerationTypeChange = useCallback(async (type: GenerationType) => {
     try {
       if (onGenerationTypeChange && typeof onGenerationTypeChange === 'function') {
         onGenerationTypeChange(type);
@@ -73,15 +72,15 @@ const SidePannelFeatures = ({
     }
     setShowBrandingDropdown(false);
     await navigateForType(type);
-  };
+  }, [onGenerationTypeChange, navigateForType]);
 
-  const handleImageGenerationClick = () => {
+  const handleImageGenerationClick = useCallback(() => {
     handleGenerationTypeChange('text-to-image');
-  };
+  }, [handleGenerationTypeChange]);
 
-  const toggleBrandingDropdown = () => {
+  const toggleBrandingDropdown = useCallback(() => {
     setShowBrandingDropdown(!showBrandingDropdown);
-  };
+  }, [showBrandingDropdown]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -100,10 +99,11 @@ const SidePannelFeatures = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showBrandingDropdown]);
 
-  const isBrandingActive = pathname?.includes('/logo') ||
+  const isBrandingActive = useMemo(() => 
+    pathname?.includes('/logo') ||
     pathname?.includes('/sticker-generation') ||
     pathname?.includes('/mockup-generation') ||
-    pathname?.includes('/product-generation');
+    pathname?.includes('/product-generation'), [pathname]);
 
   return (
     <div
@@ -366,6 +366,6 @@ const SidePannelFeatures = ({
 
     </div>
   )
-}
+};
 
-export default SidePannelFeatures
+export default memo(SidePannelFeatures);

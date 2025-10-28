@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { clearGenerationState } from '@/store/slices/generationSlice';
-import Nav from './Nav';
+import Nav from '../../HomePage/compo/Nav';
 import SidePannelFeatures from './SidePannelFeatures';
 import PageRouter from './PageRouter';
 import NotificationToast from '@/components/ui/NotificationToast';
