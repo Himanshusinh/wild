@@ -109,7 +109,33 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
     
     try {
-      await downloadFileWithNaming(url, null, 'video');
+      // Try to detect video format from the video element or URL
+      let videoExtension = 'mp4'; // Default to mp4
+      
+      // Check if we can get more info from the video element
+      const videoElement = document.querySelector('video');
+      if (videoElement && videoElement.src) {
+        // Try to detect from video element's source
+        if (videoElement.src.includes('webm')) videoExtension = 'webm';
+        else if (videoElement.src.includes('mov')) videoExtension = 'mov';
+        else if (videoElement.src.includes('avi')) videoExtension = 'avi';
+        else if (videoElement.src.includes('mp4')) videoExtension = 'mp4';
+      }
+      
+      // Check URL patterns
+      if (url.includes('webm')) videoExtension = 'webm';
+      else if (url.includes('mov')) videoExtension = 'mov';
+      else if (url.includes('avi')) videoExtension = 'avi';
+      else if (url.includes('mp4')) videoExtension = 'mp4';
+      
+      console.log('[VideoPreviewModal] Detected video extension:', videoExtension);
+      
+      // Create a custom URL with the detected extension for better detection
+      const urlWithExtension = url.includes('.') ? url : `${url}.${videoExtension}`;
+      
+      // Get username from user state or fallback to 'user'
+      const username = user?.username || user?.displayName || null;
+      await downloadFileWithNaming(urlWithExtension, username, 'video');
     } catch (e) {
       console.error('Download failed:', e);
     }
@@ -366,8 +392,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   src={videoUrl} 
                   controls 
                   className="max-w-full max-h-full object-contain"
-                  autoPlay={false}
-                  muted
+                  autoPlay={true}
+                  muted={false}
                   onError={(e) => console.error('Video error:', e)}
                   onLoadStart={() => console.log('Video loading started')}
                   onLoadedData={() => console.log('Video loaded successfully')}
@@ -587,7 +613,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 key={videoUrl}
                 src={videoUrl}
                 controls
-                muted
+                autoPlay={true}
+                muted={false}
                 className="max-w-full max-h-full object-contain select-none"
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget as HTMLVideoElement;

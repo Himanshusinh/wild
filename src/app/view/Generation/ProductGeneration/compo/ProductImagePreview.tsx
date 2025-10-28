@@ -49,7 +49,9 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
   const handleDownload = async () => {
     try {
-      await downloadFileWithNaming(selectedImage.url, null, 'image', 'product');
+      // Get username from user state or fallback to 'user'
+      const username = user?.username || user?.displayName || null;
+      await downloadFileWithNaming(selectedImage.url, username, 'image', 'product');
     } catch (error) {
       console.error('Download failed:', error);
     }

@@ -4,18 +4,43 @@ import { auth } from './firebase'
 // Try to extract an ID token from localStorage in a tolerant way
 const getStoredIdToken = (): string | null => {
   try {
+    // First try direct token
     const directToken = localStorage.getItem('authToken')
-    if (directToken) return directToken
+    if (directToken && directToken.startsWith('eyJ')) {
+      return directToken
+    }
 
+    // Try user object
     const userString = localStorage.getItem('user')
     if (userString) {
       const userObj = JSON.parse(userString)
-      return userObj?.idToken || userObj?.token || null
+      const token = userObj?.idToken || userObj?.token || null
+      if (token && token.startsWith('eyJ')) {
+        return token
+      }
     }
+
+    // Try authToken as JSON object
+    if (directToken) {
+      try {
+        const authToken = JSON.parse(directToken)
+        const token = authToken?.accessToken || authToken?.idToken || authToken?.token || null
+        if (token && token.startsWith('eyJ')) {
+          return token
+        }
+      } catch (e) {
+        // If it's not JSON, it might be a direct token
+        if (directToken.startsWith('eyJ')) {
+          return directToken
+        }
+      }
+    }
+
+    return null
   } catch (err) {
-    // Access to localStorage may fail in some environments; ignore
+    console.log('[getStoredIdToken] Error extracting token:', err)
+    return null
   }
-  return null
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
@@ -170,68 +195,231 @@ export default axiosInstance
 
 
 // Utility: ensure session cookie is present before navigating protected UI
+// Helper function to clear all authentication data
+export function clearAuthData() {
+  try {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('user')
+    localStorage.removeItem('auth_hint')
+    console.log('[clearAuthData] Cleared all authentication data')
+  } catch (error) {
+    console.error('[clearAuthData] Error clearing auth data:', error)
+  }
+}
+
+// Simplified function that just checks if user is authenticated
+export function isUserAuthenticated(): boolean {
+  try {
+    if (typeof document === 'undefined') return false
+    
+    // Check if we have a session cookie
+    const hasSession = document.cookie.includes('app_session=')
+    if (hasSession) {
+      console.log('[isUserAuthenticated] Session cookie exists')
+      return true
+    }
+    
+    // Check if user is authenticated in Firebase
+    if (auth?.currentUser) {
+      console.log('[isUserAuthenticated] Firebase user authenticated')
+      // Set auth_hint cookie as fallback
+      try {
+        document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
+        console.log('[isUserAuthenticated] Set auth_hint cookie')
+      } catch (e) {
+        console.error('[isUserAuthenticated] Failed to set auth_hint cookie:', e)
+      }
+      return true
+    }
+    
+    console.log('[isUserAuthenticated] No authentication found')
+    return false
+  } catch (error) {
+    console.error('[isUserAuthenticated] Error checking authentication:', error)
+    return false
+  }
+}
+
 export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boolean> {
   try {
     // Check if we're in browser environment
     if (typeof document === 'undefined') return false
     
+    console.log('[ensureSessionReady] Starting session check...')
+    
     const hasSession = document.cookie.includes('app_session=')
     if (hasSession) {
+      console.log('[ensureSessionReady] Session already exists')
       return true
     }
     
-    // Try to get fresh ID token from Firebase
-    let idToken = getStoredIdToken()
-    if (!idToken && auth?.currentUser) {
+    // Check if user is authenticated
+    if (!auth?.currentUser) {
+      console.error('[ensureSessionReady] No authenticated user found')
+      return false
+    }
+    
+    // Verify user is actually authenticated
+    console.log('[ensureSessionReady] User authentication status:', {
+      uid: auth.currentUser.uid,
+      email: auth.currentUser.email,
+      emailVerified: auth.currentUser.emailVerified,
+      isAnonymous: auth.currentUser.isAnonymous
+    })
+    
+    // Quick fallback: if we have a user but session creation is problematic, 
+    // try to proceed anyway with just the auth_hint cookie
+    try {
+      document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
+      console.log('[ensureSessionReady] Set auth_hint cookie as quick fallback')
+    } catch (cookieError) {
+      console.error('[ensureSessionReady] Failed to set auth_hint cookie:', cookieError)
+    }
+    
+    // Always get a fresh token from Firebase to ensure validity
+    let idToken: string | null = null
+    try {
+      console.log('[ensureSessionReady] Getting fresh token from Firebase...')
+      idToken = await auth.currentUser.getIdToken(true) // Force refresh
+      console.log('[ensureSessionReady] Fresh token obtained:', !!idToken)
+      
+      // Validate token format (should be a JWT with 3 parts separated by dots)
+      if (idToken && !idToken.includes('.')) {
+        console.error('[ensureSessionReady] Invalid token format - not a JWT')
+        idToken = null
+      }
+      
+      // Additional validation - check if token has proper JWT structure
+      if (idToken && idToken.split('.').length !== 3) {
+        console.error('[ensureSessionReady] Invalid JWT structure')
+        idToken = null
+      }
+    } catch (error) {
+      console.error('[ensureSessionReady] Failed to get fresh token:', error)
+      
+      // If token refresh fails, try to clear stored tokens and retry
       try {
-        idToken = await auth.currentUser.getIdToken(true) // Force refresh
-      } catch (error) {
-        // Silent fail
+        console.log('[ensureSessionReady] Clearing stored tokens and retrying...')
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('user')
+        
+        // Try one more time with a clean slate
+        idToken = await auth.currentUser.getIdToken(true)
+        console.log('[ensureSessionReady] Retry token obtained:', !!idToken)
+      } catch (retryError) {
+        console.error('[ensureSessionReady] Retry also failed:', retryError)
+        return false
       }
     }
     
     if (!idToken) {
+      console.error('[ensureSessionReady] No valid ID token available')
       return false
     }
+    
+    // Log token info for debugging (without exposing the actual token)
+    console.log('[ensureSessionReady] Token info:', {
+      length: idToken.length,
+      startsWith: idToken.substring(0, 20) + '...',
+      parts: idToken.split('.').length
+    })
     
     // Create session directly with backend to avoid proxy issues
     try {
       const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+      console.log('[ensureSessionReady] Creating session with backend:', backendBase)
+      console.log('[ensureSessionReady] Token length:', idToken.length)
+      console.log('[ensureSessionReady] Token preview:', idToken.substring(0, 50) + '...')
+      
+      const requestBody = { idToken }
+      console.log('[ensureSessionReady] Request body prepared:', { idTokenLength: idToken.length })
+      
       const sessionResponse = await fetch(`${backendBase}/api/auth/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Important for cookie handling
-        body: JSON.stringify({ idToken })
+        body: JSON.stringify(requestBody)
       })
       
+      console.log('[ensureSessionReady] Session response status:', sessionResponse.status)
+      console.log('[ensureSessionReady] Session response headers:', Object.fromEntries(sessionResponse.headers.entries()))
+      
       if (!sessionResponse.ok) {
-        throw new Error(`Session creation failed with status ${sessionResponse.status}`)
-      }
-    } catch (error: any) {
-      // As a fallback, set auth_hint cookie to help middleware allow the request
-      try {
-        document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
-      } catch (cookieError) {
-        // Silent fail
+        const errorText = await sessionResponse.text()
+        console.error('[ensureSessionReady] Session creation failed:', {
+          status: sessionResponse.status,
+          statusText: sessionResponse.statusText,
+          error: errorText,
+          url: `${backendBase}/api/auth/session`,
+          method: 'POST'
+        })
+        throw new Error(`Session creation failed with status ${sessionResponse.status}: ${errorText}`)
       }
       
-      // If session creation fails, we should still return false to indicate no session
-      return false
+      const responseText = await sessionResponse.text()
+      console.log('[ensureSessionReady] Session response body:', responseText)
+      console.log('[ensureSessionReady] Session created successfully')
+    } catch (error: any) {
+      console.error('[ensureSessionReady] Direct fetch failed, trying axios fallback...')
+      
+      // Try axios as fallback
+      try {
+        const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+        console.log('[ensureSessionReady] Trying axios fallback to:', `${backendBase}/api/auth/session`)
+        
+        const axiosResponse = await axiosInstance.post('/api/auth/session', { idToken })
+        console.log('[ensureSessionReady] Axios fallback successful:', axiosResponse.status)
+        
+        // Set auth_hint cookie as additional fallback
+        try {
+          document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
+          console.log('[ensureSessionReady] Set auth_hint cookie as fallback')
+        } catch (cookieError) {
+          console.error('[ensureSessionReady] Failed to set auth_hint cookie:', cookieError)
+        }
+        
+      } catch (axiosError: any) {
+        console.error('[ensureSessionReady] Axios fallback also failed:', axiosError)
+        
+        // As a final fallback, set auth_hint cookie to help middleware allow the request
+        try {
+          document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
+          console.log('[ensureSessionReady] Set auth_hint cookie as final fallback')
+        } catch (cookieError) {
+          console.error('[ensureSessionReady] Failed to set auth_hint cookie:', cookieError)
+        }
+        
+        console.error('[ensureSessionReady] All session creation methods failed:', {
+          directFetchError: error.message,
+          axiosError: axiosError.message,
+          tokenLength: idToken.length
+        })
+        
+        // Even if session creation fails, if we have a valid user and token,
+        // we can try to proceed with just the auth_hint cookie
+        console.log('[ensureSessionReady] Attempting to proceed with auth_hint only...')
+        return true // Return true to allow the request to proceed
+      }
     }
     
     // Wait for cookie to be set
+    console.log('[ensureSessionReady] Waiting for session cookie...')
     const start = Date.now()
     while (Date.now() - start < maxWaitMs) {
       if (document.cookie.includes('app_session=')) {
+        console.log('[ensureSessionReady] Session cookie found!')
         return true
       }
       await new Promise(r => setTimeout(r, 50))
     }
     
-    return document.cookie.includes('app_session=')
+    const finalResult = document.cookie.includes('app_session=')
+    console.log('[ensureSessionReady] Final result:', finalResult)
+    return finalResult
   } catch (error) {
+    console.error('[ensureSessionReady] Error:', error)
     return false
   }
 }

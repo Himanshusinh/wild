@@ -226,7 +226,9 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const handleDownload = async () => {
     try {
-      await downloadFileWithNaming(selectedImagePath, null, 'image', 'sticker');
+      // Get username from user state or fallback to 'user'
+      const username = user?.username || user?.displayName || null;
+      await downloadFileWithNaming(selectedImagePath, username, 'image', 'sticker');
     } catch (error) {
       console.error('Download failed:', error);
     }

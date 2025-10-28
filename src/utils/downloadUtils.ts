@@ -8,10 +8,15 @@
  */
 export function getCurrentUsername(): string | null {
   try {
-    // Try to get from localStorage first (most reliable)
+    console.log('[DownloadUtils] Checking localStorage for user data...');
+    
+    // Try to get from localStorage first (most reliable) if user is logged in
     const storedUser = localStorage.getItem('user');
+    console.log('[DownloadUtils] Stored user data:', storedUser);
+    
     if (storedUser) {
       const userData = JSON.parse(storedUser);
+      console.log('[DownloadUtils] Parsed user data:', userData);
       const username = userData.username || userData.displayName || userData.email?.split('@')[0] || null;
       console.log('[DownloadUtils] Found username from localStorage:', username);
       return username;
@@ -19,9 +24,12 @@ export function getCurrentUsername(): string | null {
     
     // Try to get from authToken
     const authToken = localStorage.getItem('authToken');
+    console.log('[DownloadUtils] Auth token exists:', !!authToken);
+    
     if (authToken) {
       try {
         const tokenData = JSON.parse(authToken);
+        console.log('[DownloadUtils] Parsed token data:', tokenData);
         const userData = tokenData.user || tokenData;
         const username = userData.username || userData.displayName || userData.email?.split('@')[0] || null;
         console.log('[DownloadUtils] Found username from authToken:', username);
@@ -101,7 +109,25 @@ export function getExtensionFromUrl(url: string): string {
       'ogg': 'ogg'
     };
     
-    return extension && extensionMap[extension] ? extensionMap[extension] : 'file';
+    // If we found a valid extension, return it
+    if (extension && extensionMap[extension]) {
+      return extensionMap[extension];
+    }
+    
+    // If no extension found, try to detect from URL patterns
+    if (url.includes('video') || url.includes('mp4')) return 'mp4';
+    if (url.includes('webm')) return 'webm';
+    if (url.includes('mov')) return 'mov';
+    if (url.includes('avi')) return 'avi';
+    if (url.includes('image') || url.includes('jpg') || url.includes('jpeg')) return 'jpg';
+    if (url.includes('png')) return 'png';
+    if (url.includes('gif')) return 'gif';
+    if (url.includes('webp')) return 'webp';
+    if (url.includes('audio') || url.includes('mp3')) return 'mp3';
+    if (url.includes('wav')) return 'wav';
+    
+    // Return the original extension or 'file' as fallback
+    return extension || 'file';
   } catch {
     return 'file';
   }
@@ -154,7 +180,57 @@ export async function downloadFileWithNaming(
     const actualUsername = username || getCurrentUsername();
     console.log('[DownloadUtils] Using username:', actualUsername);
     
-    const extension = getExtensionFromUrl(url);
+    let extension = getExtensionFromUrl(url);
+    
+    // Enhanced video extension detection
+    if (fileType === 'video') {
+      // Check if URL contains video indicators
+      if (url.includes('video') || url.includes('mp4') || url.includes('webm') || url.includes('mov')) {
+        if (!extension || extension === 'file') {
+          // Try to detect from URL patterns
+          if (url.includes('mp4')) extension = 'mp4';
+          else if (url.includes('webm')) extension = 'webm';
+          else if (url.includes('mov')) extension = 'mov';
+          else if (url.includes('avi')) extension = 'avi';
+          else extension = 'mp4'; // Default to mp4 for videos
+        }
+      } else if (!extension || extension === 'file') {
+        // Try to detect from Content-Type header
+        try {
+          const response = await fetch(url, { method: 'HEAD' });
+          const contentType = response.headers.get('content-type');
+          console.log('[DownloadUtils] Content-Type:', contentType);
+          
+          if (contentType) {
+            if (contentType.includes('video/mp4')) extension = 'mp4';
+            else if (contentType.includes('video/webm')) extension = 'webm';
+            else if (contentType.includes('video/quicktime')) extension = 'mov';
+            else if (contentType.includes('video/x-msvideo')) extension = 'avi';
+            else extension = 'mp4'; // Default to mp4 for videos
+          } else {
+            extension = 'mp4'; // Default to mp4 for videos
+          }
+        } catch (e) {
+          console.log('[DownloadUtils] Could not fetch headers, using default mp4');
+          extension = 'mp4'; // Default to mp4 for videos
+        }
+      }
+    }
+    
+    console.log('[DownloadUtils] Detected extension:', extension, 'for fileType:', fileType);
+    console.log('[DownloadUtils] Original URL:', url);
+    
+    // For images, try to detect better extension if we got 'file'
+    if (fileType === 'image' && (extension === 'file' || !extension)) {
+      console.log('[DownloadUtils] Trying to detect image extension from URL patterns...');
+      if (url.includes('png')) extension = 'png';
+      else if (url.includes('jpg') || url.includes('jpeg')) extension = 'jpg';
+      else if (url.includes('webp')) extension = 'webp';
+      else if (url.includes('gif')) extension = 'gif';
+      else extension = 'png'; // Default to png for images
+      console.log('[DownloadUtils] Updated extension for image:', extension);
+    }
+    
     const filename = generateDownloadFilename(actualUsername, fileType, extension, customPrefix);
     console.log('[DownloadUtils] Generated filename:', filename);
     

@@ -8,6 +8,7 @@ import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/C
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
+import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 
 type PublicItem = {
   id: string;
@@ -732,33 +733,113 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
           {/* Preview Modals */}
           {preview && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-                <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20" onClick={() => setPreview(null)}>
+                <div className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
+ onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-                  <div className="flex items-center gap-2 text-white/70 text-sm">
-                    <span>{preview.item.model}</span>
-                  </div>
+                <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
+                  <div className="text-white/70 text-sm"></div>
                   <div className="flex items-center gap-2">
                     {/* Delete (owner only) */}
                     {currentUid && preview.item.createdBy?.uid === currentUid && (
-                      <button
-                        title="Delete"
-                        className="px-3 py-1.5 rounded-full  text-white text-sm"
-                        onClick={() => confirmDelete(preview.item)}
-                      >
-                                      <Trash2 className="w-5 h-5" />
-
-                      </button>
+                      <div className="relative group">
+                        <button
+                          title="Delete"
+                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          onClick={() => confirmDelete(preview.item)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Delete</div>
+                      </div>
                     )}
+
                     <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={() => setPreview(null)}>✕</button>
                   </div>
                 </div>
 
+                {/* Action buttons below close button */}
+                <div className="absolute top-12 right-8 z-20 flex items-center justify-between w-auto gap-2">
+                  <div className="relative group">
+                    <button
+                      onClick={async () => {
+                        const currentMedia = (() => {
+                          if (preview.kind === 'image') {
+                            const images = (preview.item.images || []) as any[]
+                            return images[selectedImageIndex] || images[0] || { url: preview.url }
+                          } else if (preview.kind === 'video') {
+                            const videos = (preview.item.videos || []) as any[]
+                            return videos[selectedVideoIndex] || videos[0] || { url: preview.url }
+                          } else {
+                            const audios = (preview.item as any).audios || []
+                            return audios[selectedAudioIndex] || audios[0] || { url: preview.url }
+                          }
+                        })()
+                        
+                        try {
+                          // Convert relative URLs to absolute URLs for download
+                          let downloadUrl = currentMedia.url;
+                          if (downloadUrl.startsWith('/api/proxy/resource/')) {
+                            const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+                            downloadUrl = `${API_BASE}${downloadUrl}`;
+                          }
+                          
+                          // Determine file type based on preview kind
+                          const fileType = preview.kind as 'image' | 'video' | 'audio';
+                          
+                          // Get the creator's username from the ArtStation item
+                          const creatorUsername = preview.item.createdBy?.username || 
+                                                preview.item.createdBy?.displayName || 
+                                                'user';
+                          
+                          // Use the same download utility as image and video generation
+                          await downloadFileWithNaming(downloadUrl, creatorUsername, fileType);
+                        } catch (e) {
+                          console.error('Download failed:', e);
+                        }
+                      }}
+                      className="w-[9vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M12 3v12" />
+                        <path d="M7 10l5 5 5-5" />
+                        <path d="M5 19h14" />
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2  bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 backdrop-blur-3xl shadow-2xl">Download</div>
+                  </div>
+
+                  <div className="relative group ">
+                    <button
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/view/ArtStation?gen=${preview.item.id}`
+                        if (navigator.share) {
+                          navigator.share({
+                            title: 'Check out this AI generation',
+                            text: preview.item.prompt || 'Amazing AI-generated content',
+                            url: shareUrl
+                          })
+                        } else {
+                          navigator.clipboard.writeText(shareUrl)
+                          alert('Link copied to clipboard!')
+                        }
+                      }}
+                      className="w-[9vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                        <polyline points="16,6 12,2 8,6" />
+                        <line x1="12" y1="2" x2="12" y2="15" />
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+                  </div>
+                </div>
+
                 {/* Content */}
-                <div className="pt-[52px] h-[calc(92vh-52px)] md:flex md:flex-row md:gap-0">
+                <div className="pt-0 h-full mr-4 w-auto md:flex md:flex-row md:gap-0">
                   {/* Media */}
-                  <div className="relative bg-black/30 h-[40vh] md:h-full md:flex-1">
+                  <div className="relative bg-black/20 h-full md:h-full md:flex-1">
                     {(() => {
                       const images = (preview.item.images || []) as any[]
                       const videos = (preview.item.videos || []) as any[]
@@ -789,10 +870,10 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                   </div>
 
                   {/* Sidebar */}
-                  <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/30 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
+                  <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/10 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
                     {/* Creator */}
                     <div className="mb-4">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Creator</div>
+                      <div className="text-white/60 text-xs uppercase tracking-wider mt-18 mb-2">Creator</div>
                       <div className="flex items-center gap-2">
                         {preview.item.createdBy?.photoURL ? (
                           <img src={`/api/proxy/external?url=${encodeURIComponent(preview.item.createdBy.photoURL)}`} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
@@ -804,46 +885,46 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                     </div>
                     
                     {/* Date */}
-                      <div className="mb-4">
-                        <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-                        <div className="text-white text-sm">{formatDate(preview.item.createdAt || preview.item.updatedAt || '')}</div>
-                      </div>
+                    <div className="mb-4">
+                      <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+                      <div className="text-white text-sm">{formatDate(preview.item.createdAt || preview.item.updatedAt || '')}</div>
+                    </div>
                     
                     {/* Prompt */}
-                    <div className="pb-4 ">
-                      <div className="flex items-center justify-between mb-4">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-0">Prompt</div>
-                      <button 
-                        onClick={() => copyPrompt(preview.item.prompt || '', `preview-${preview.item.id}`)}
-                        className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
-                          copiedButtonId === `preview-${preview.item.id}` 
-                            ? 'bg-green-500/20 text-green-400' 
-                            : 'bg-white/10 hover:bg-white/20'
-                        }`}
-                      >
-                        {copiedButtonId === `preview-${preview.item.id}` ? (
-                          <>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M20 6L9 17l-5-5"/>
-                            </svg>
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                          </>
-                        )}
-                      </button>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
+                        <span>Prompt</span>
+                        <button 
+                          onClick={() => copyPrompt(preview.item.prompt || '', `preview-${preview.item.id}`)}
+                          className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${
+                            copiedButtonId === `preview-${preview.item.id}` 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : 'bg-white/10 hover:bg-white/20'
+                          }`}
+                        >
+                          {copiedButtonId === `preview-${preview.item.id}` ? (
+                            <>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 6L9 17l-5-5"/>
+                              </svg>
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                            </>
+                          )}
+                        </button>
                       </div>
                       {(() => {
                         const cleaned = cleanPromptByType(preview.item.prompt, preview.item.generationType)
                         const isLong = (cleaned || '').length > 280
                         return (
                           <>
-                            <div className={`text-white/90 text-sm leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLong ? 'line-clamp-4' : ''}`}>
+                            <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLong ? 'line-clamp-4' : ''}`}>
                               {cleaned}
                             </div>
                             {isLong && (
@@ -857,8 +938,6 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           </>
                         )
                       })()}
-                      
-                      
                     </div>
                     
                     {/* Images Thumbnails */}
@@ -925,127 +1004,29 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
                     {/* Details */}
                     <div className="mb-4">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
+                      <div className="text-white/80 text-sm uppercase tracking-wider mb-1">Details</div>
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Type:</span>
-                          <span className="text-white text-sm">{preview.item.generationType}</span>
+                          <span className="text-white/80 text-sm">{preview.item.generationType}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Model:</span>
-                          <span className="text-white text-sm">{preview.item.model}</span>
+                          <span className="text-white/80 text-sm">{preview.item.model}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Aspect ratio:</span>
-                          <span className="text-white text-sm">{preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio || '—'}</span>
+                          <span className="text-white/80 text-sm">{preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio || '—'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Format:</span>
-                          <span className="text-white text-sm">{preview.kind}</span>
+                          <span className="text-white/80 text-sm">{preview.kind}</span>
                         </div>
-                        {/* Style field - commented out for now */}
-                        {/* {preview.item.style && (
-                          <div className="flex justify-between">
-                            <span className="text-white/60 text-sm">Style:</span>
-                            <span className="text-white text-sm">{preview.item.style}</span>
-                          </div>
-                        )} */}
                       </div>
                     </div>
                     
-                    {/* Action Buttons */}
-                    <div className="mb-2 flex gap-2">
-                      <button
-                        onClick={async () => {
-                          const currentMedia = (() => {
-                            if (preview.kind === 'image') {
-                              const images = (preview.item.images || []) as any[]
-                              return images[selectedImageIndex] || images[0] || { url: preview.url }
-                            } else if (preview.kind === 'video') {
-                              const videos = (preview.item.videos || []) as any[]
-                              return videos[selectedVideoIndex] || videos[0] || { url: preview.url }
-                            } else {
-                              const audios = (preview.item as any).audios || []
-                              return audios[selectedAudioIndex] || audios[0] || { url: preview.url }
-                            }
-                          })()
-                          
-                          try {
-                            // Use the same logic as ImagePreviewModal
-                            const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-                            const toProxyPath = (urlOrPath: string | undefined) => {
-                              if (!urlOrPath) return '';
-                              const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-                              if (urlOrPath.startsWith(ZATA_PREFIX)) {
-                                return urlOrPath.substring(ZATA_PREFIX.length);
-                              }
-                              return urlOrPath;
-                            };
-                            
-                            const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-                              const path = toProxyPath(urlOrPath);
-                              return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
-                            };
-                            
-                            const downloadUrl = toProxyDownloadUrl(currentMedia.url);
-                            if (!downloadUrl) return;
-                            
-                            const response = await fetch(downloadUrl, {
-                              credentials: 'include',
-                              headers: { 'ngrok-skip-browser-warning': 'true' }
-                            });
-                            
-                            const blob = await response.blob();
-                            const objectUrl = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = objectUrl;
-                            const baseName = (toProxyPath(currentMedia.url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-                            a.download = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : 'generated-image.jpg';
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(objectUrl);
-                          } catch (e) {
-                            console.error('Download failed:', e);
-                          }
-                        }}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                          <path d="M12 3v12" />
-                          <path d="M7 10l5 5 5-5" />
-                          <path d="M5 19h14" />
-                        </svg>
-                        Download
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          const shareUrl = `${window.location.origin}/view/ArtStation?gen=${preview.item.id}`
-                          if (navigator.share) {
-                            navigator.share({
-                              title: 'Check out this AI generation',
-                              text: preview.item.prompt || 'Amazing AI-generated content',
-                              url: shareUrl
-                            })
-                          } else {
-                            navigator.clipboard.writeText(shareUrl)
-                            alert('Link copied to clipboard!')
-                          }
-                        }}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                          <polyline points="16,6 12,2 8,6" />
-                          <line x1="12" y1="2" x2="12" y2="15" />
-                        </svg>
-                        Share
-                      </button>
-                    </div>
-                    
                     {/* Open in generator button */}
-                    <div className="mt-0">
+                    <div className="mt-6">
                       <button 
                         onClick={() => { 
                           setPreview(null); 

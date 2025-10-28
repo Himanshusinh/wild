@@ -302,7 +302,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const handleDownload = async () => {
     try {
-      await downloadFileWithNaming(selectedImagePath, null, 'image', 'logo');
+      // Get username from user state or fallback to 'user'
+      const username = user?.username || user?.displayName || null;
+      console.log('[LogoImagePreview] User state:', user);
+      console.log('[LogoImagePreview] Username:', username);
+      console.log('[LogoImagePreview] Selected image path:', selectedImagePath);
+      await downloadFileWithNaming(selectedImagePath, username, 'image', 'logo');
     } catch (error) {
       console.error('Download failed:', error);
     }

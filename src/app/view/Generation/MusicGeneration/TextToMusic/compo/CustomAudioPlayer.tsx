@@ -155,7 +155,9 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
     }
     
     try {
-      await downloadFileWithNaming(audioUrl, null, 'audio');
+      // Get username from user state or fallback to 'user'
+      const username = user?.username || user?.displayName || null;
+      await downloadFileWithNaming(audioUrl, username, 'audio');
     } catch (e) {
       console.error('Download failed:', e);
     }

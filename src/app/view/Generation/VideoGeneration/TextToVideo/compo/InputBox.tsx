@@ -2087,8 +2087,90 @@ const InputBox = () => {
                                     return (
                                       <video
                                         src={proxied}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-cover transition-opacity duration-200"
                                         muted
+                                        playsInline
+                                        loop
+                                        preload="metadata"
+                                        onMouseEnter={async (e) => {
+                                          const video = e.currentTarget;
+                                          const videoId = `${entry.id}-${video.id}`;
+                                          console.log('🎥 VIDEO HOVER ENTER (InputBox):', {
+                                            videoId,
+                                            videoSrc: video.src,
+                                            videoReadyState: video.readyState,
+                                            videoPaused: video.paused,
+                                            videoDuration: video.duration
+                                          });
+                                          
+                                          try {
+                                            // Force video to load if not ready
+                                            if (video.readyState < 2) {
+                                              console.log('⏳ Video not ready, loading...');
+                                              video.load();
+                                              await new Promise((resolve) => {
+                                                video.addEventListener('loadeddata', resolve, { once: true });
+                                                video.addEventListener('error', resolve, { once: true });
+                                              });
+                                            }
+                                            
+                                            console.log('🎥 Video ready, attempting to play...');
+                                            video.currentTime = 0; // Start from beginning
+                                            await video.play();
+                                            console.log('✅ Video started playing successfully on hover!');
+                                          } catch (error: any) {
+                                            console.error('❌ Video play failed on hover:', error);
+                                            console.log('Video error details:', {
+                                              code: error.code,
+                                              message: error.message,
+                                              name: error.name,
+                                              readyState: video.readyState,
+                                              networkState: video.networkState
+                                            });
+                                            
+                                            // Try alternative approach - muted autoplay
+                                            console.log('🔄 Trying alternative play method...');
+                                            video.muted = true; // Ensure muted for autoplay
+                                            try {
+                                              await video.play();
+                                              console.log('✅ Video started playing with muted autoplay!');
+                                            } catch (retryError) {
+                                              console.error('❌ Retry also failed:', retryError);
+                                            }
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          const video = e.currentTarget;
+                                          const videoId = `${entry.id}-${video.id}`;
+                                          console.log('🎥 VIDEO HOVER LEAVE (InputBox):', {
+                                            videoId,
+                                            videoPaused: video.paused,
+                                            videoCurrentTime: video.currentTime,
+                                            videoDuration: video.duration
+                                          });
+                                          video.pause();
+                                          video.currentTime = 0;
+                                        }}
+                                        onClick={async (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const video = e.currentTarget;
+                                          const videoId = `${entry.id}-${video.id}`;
+                                          console.log('🎥 VIDEO CLICKED (InputBox):', { videoId });
+                                          
+                                          if (video.paused) {
+                                            try {
+                                              await video.play();
+                                              console.log('✅ Video started playing on click!');
+                                            } catch (error) {
+                                              console.error('❌ Video play failed on click:', error);
+                                            }
+                                          } else {
+                                            video.pause();
+                                            video.currentTime = 0;
+                                            console.log('🎥 Video paused on click');
+                                          }
+                                        }}
                                         onLoadedData={(e) => {
                                           // Create thumbnail from video
                                           const videoElement = e.target as HTMLVideoElement;
@@ -2108,6 +2190,18 @@ const InputBox = () => {
                                               shimmer.style.opacity = '0';
                                             }
                                           }, 100);
+                                          
+                                          console.log('🎥 VIDEO DATA LOADED (InputBox):', {
+                                            videoId: `${entry.id}-${video.id}`,
+                                            videoDuration: videoElement.duration,
+                                            videoReadyState: videoElement.readyState
+                                          });
+                                        }}
+                                        onCanPlay={(e) => {
+                                          console.log('🎥 VIDEO CAN PLAY (InputBox):', {
+                                            videoId: `${entry.id}-${video.id}`,
+                                            videoReadyState: e.currentTarget.readyState
+                                          });
                                         }}
                                       />
                                     );
@@ -2387,7 +2481,7 @@ const InputBox = () => {
                       >
                         <div className=" relative ">
                           <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload first frame image</div>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload First Frame </div>
                         </div>
                       </button>
                     </div>
@@ -2405,7 +2499,7 @@ const InputBox = () => {
                     >
                       <div className="relative">
                         <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload first frame image</div>
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload First Frame </div>
                       </div>
                     </button>
 
@@ -2425,7 +2519,18 @@ const InputBox = () => {
                   </div>
                 )}
 
-
+                {/* Arrow icon between first and last frame uploads */}
+                {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                  <div className="flex items-center justify-center">
+                    <Image 
+                      src="/icons/arrow-right-left.svg" 
+                      alt="Arrow" 
+                      width={16} 
+                      height={16} 
+                      className="opacity-80 mr-1 -ml-1  "
+                    />
+                  </div>
+                )}
 
                 {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) - Image-to-Video only */}
                 {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
@@ -2435,7 +2540,7 @@ const InputBox = () => {
                     >
                       <div className="relative">
                         <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload last frame image (optional)</div>
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Last Frame (optional)</div>
                       </div>
                       <input
                         type="file"

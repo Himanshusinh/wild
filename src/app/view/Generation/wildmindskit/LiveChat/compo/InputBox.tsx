@@ -7,7 +7,9 @@ import { addNotification } from "@/store/slices/uiSlice";
 import { addAndSaveHistoryEntry } from "@/store/slices/historySlice";
 import { HistoryEntry, GeneratedImage, LiveChatMessage } from "@/types/history";
 import { saveLiveChatSession } from '@/lib/historyService';
-import { ensureSessionReady } from '@/lib/axiosInstance';
+import { ensureSessionReady, clearAuthData, isUserAuthenticated } from '@/lib/axiosInstance';
+import axiosInstance from '@/lib/axiosInstance';
+import { auth } from '@/lib/firebase';
 import Image from "next/image";
 import { Trash2 } from 'lucide-react';
 import LiveChatModelsDropdown from "./LiveChatModelsDropdown";
@@ -131,9 +133,10 @@ const LiveChatInputBox: React.FC = () => {
             )}
 
             {/* Upload button */}
-            <label className="p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer">
-              <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
-              <input
+            <div className="relative group">
+              <label className="p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer">
+                <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
+                <input
                 type="file"
                 accept="image/*"
                 multiple
@@ -160,7 +163,9 @@ const LiveChatInputBox: React.FC = () => {
                   if (inputEl) inputEl.value = "";
                 }}
               />
-            </label>
+              </label>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload image</div>
+            </div>
           </div>
 
           {/* Generate button - stub for now */}
@@ -173,10 +178,48 @@ const LiveChatInputBox: React.FC = () => {
                 }
                 try {
                   // Ensure session is ready before making API calls
-                  const sessionReady = await ensureSessionReady();
+                  console.log('[LiveChat] Checking session readiness...');
+                  
+                  // Add timeout to prevent hanging
+                  const sessionPromise = ensureSessionReady(2000); // 2 second timeout
+                  const timeoutPromise = new Promise<boolean>((_, reject) => 
+                    setTimeout(() => reject(new Error('Session creation timeout')), 3000)
+                  );
+                  
+                  let sessionReady = false;
+                  try {
+                    sessionReady = await Promise.race([sessionPromise, timeoutPromise]);
+                    console.log('[LiveChat] Session ready:', sessionReady);
+                  } catch (error) {
+                    console.error('[LiveChat] Session creation failed or timed out:', error);
+                    sessionReady = false;
+                  }
+                  
                   if (!sessionReady) {
-                    dispatch(addNotification({ type: 'error', message: 'Please wait for authentication to complete and try again.' }));
+                    console.error('[LiveChat] Session not ready, checking authentication...');
+                    
+                    // Use simplified authentication check as fallback
+                    const isAuthenticated = isUserAuthenticated();
+                    console.log('[LiveChat] Simplified auth check:', isAuthenticated);
+                    
+                    if (!isAuthenticated) {
+                      dispatch(addNotification({ type: 'error', message: 'Please log in to use Live Chat.' }));
+                      return;
+                    }
+                    
+                  // If user is authenticated but session creation failed, try to proceed anyway
+                  console.log('[LiveChat] Proceeding with simplified authentication...');
+                  
+                  // Test if we can make a basic API call
+                  try {
+                    console.log('[LiveChat] Testing API connectivity...');
+                    const testResponse = await axiosInstance.get('/api/health');
+                    console.log('[LiveChat] API test successful:', testResponse.status);
+                  } catch (apiError) {
+                    console.error('[LiveChat] API test failed:', apiError);
+                    dispatch(addNotification({ type: 'error', message: 'Unable to connect to server. Please check your connection and try again.' }));
                     return;
+                  }
                   }
 
                   // Ensure session and open process overlay

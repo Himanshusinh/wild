@@ -2066,15 +2066,18 @@ const InputBox = () => {
                   ))}
                 </div>
               )}
-              <button
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0"
-                onClick={() => setIsUploadOpen(true)}
-                type="button"
-                aria-label="Upload"
-              >
-                <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
-                <span className="text-white text-sm"> </span>
-              </button>
+              <div className="relative group">
+                <button
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0"
+                  onClick={() => setIsUploadOpen(true)}
+                  type="button"
+                  aria-label="Upload"
+                >
+                  <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
+                  <span className="text-white text-sm"> </span>
+                </button>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
+              </div>
             </div>
 
             {/* Small + button (between attach and Generate in the mock) */}

@@ -18,6 +18,7 @@ import { Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { getCreditsForModel } from '@/utils/modelCredits';
 
 const History = () => {
   const dispatch = useAppDispatch();
@@ -35,6 +36,7 @@ const History = () => {
   const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ entry: HistoryEntry; video: any } | null>(null);
   const [audioPreview, setAudioPreview] = useState<{ entry: HistoryEntry; audioUrl: string } | null>(null);
+  const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
   const [logoPreviewEntry, setLogoPreviewEntry] = useState<HistoryEntry | null>(null);
   const [stickerPreviewEntry, setStickerPreviewEntry] = useState<HistoryEntry | null>(null);
   const [productPreviewEntry, setProductPreviewEntry] = useState<HistoryEntry | null>(null);
@@ -501,6 +503,62 @@ const History = () => {
     if (u.startsWith('data:audio') || /(\.mp3|\.wav|\.m4a|\.ogg|\.aac|\.flac)(\?|$)/i.test(u)) return 'audio';
     if (/(\.png|\.jpg|\.jpeg|\.webp|\.gif)(\?|$)/i.test(u)) return 'image';
     return 'image';
+  };
+
+  // Calculate total credits for selected items
+  const calculateTotalCredits = () => {
+    let totalCredits = 0;
+    
+    historyEntries.forEach((entry: HistoryEntry) => {
+      const mediaItems = [
+        ...((entry.images || []) as any[]),
+        ...(((entry as any).videos || []) as any[]),
+        ...(((entry as any).audios || []) as any[]),
+      ];
+      
+      mediaItems.forEach((media: any, index: number) => {
+        const key = `${entry.id}-${media.id || index}`;
+        if (selectedImages.has(key)) {
+          // Get model information from entry - try multiple possible fields
+          const model = (entry as any).model || 
+                       (entry as any).videoModel || 
+                       (entry as any).audioModel ||
+                       (entry as any).imageModel ||
+                       (entry as any).musicModel ||
+                       (entry as any).generationModel;
+          
+          const duration = (entry as any).duration || (entry as any).videoDuration;
+          const resolution = (entry as any).resolution || (entry as any).videoResolution;
+          
+          console.log('[CreditCalculation] Entry:', entry.id, 'Model:', model, 'Duration:', duration, 'Resolution:', resolution);
+          
+          if (model) {
+            const credits = getCreditsForModel(model, duration, resolution);
+            console.log('[CreditCalculation] Credits for model', model, ':', credits);
+            if (credits !== null) {
+              totalCredits += credits;
+            }
+          } else {
+            // If no model found, try to estimate based on media type
+            const mediaType = getFileType(media, media.url || media.firebaseUrl || '');
+            if (mediaType === 'video') {
+              // Default video credits (5s duration)
+              totalCredits += 620; // Default gen4_turbo 5s
+            } else if (mediaType === 'audio') {
+              // Default audio credits
+              totalCredits += 90; // Default music-1.5
+            } else {
+              // Default image credits
+              totalCredits += 110; // Default flux-pro
+            }
+            console.log('[CreditCalculation] Using default credits for', mediaType, ':', mediaType === 'video' ? 620 : mediaType === 'audio' ? 90 : 110);
+          }
+        }
+      });
+    });
+    
+    console.log('[CreditCalculation] Total credits:', totalCredits);
+    return totalCredits;
   };
 
   // Derive original extension from a URL or data URI
@@ -1272,13 +1330,134 @@ const History = () => {
                             </div>
                           </div>
                         ) : video ? (
-                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative">
+                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                             {mediaUrl ? (
                               (() => {
                                 const proxied = toFrontendProxyMediaUrl(mediaUrl);
                                 const vsrc = proxied || mediaUrl;
                                 return (
-                                  <video src={vsrc} className="w-full h-full object-cover" muted playsInline autoPlay loop preload="metadata" />
+                                  <video 
+                                    src={vsrc} 
+                                    className="w-full h-full object-cover transition-opacity duration-200" 
+                                    muted 
+                                    playsInline 
+                                    loop 
+                                    preload="metadata"
+                                    onMouseEnter={async (e) => {
+                                      const video = e.currentTarget;
+                                      const videoId = `${entry.id}-${mediaIndex}`;
+                                      console.log('🎥 VIDEO HOVER ENTER:', {
+                                        videoId,
+                                        videoSrc: video.src,
+                                        videoReadyState: video.readyState,
+                                        videoPaused: video.paused,
+                                        videoDuration: video.duration,
+                                        entryId: entry.id,
+                                        mediaIndex
+                                      });
+                                      
+                                      try {
+                                        // Force video to load if not ready
+                                        if (video.readyState < 2) {
+                                          console.log('⏳ Video not ready, loading...');
+                                          video.load();
+                                          await new Promise((resolve) => {
+                                            video.addEventListener('loadeddata', resolve, { once: true });
+                                            video.addEventListener('error', resolve, { once: true });
+                                          });
+                                        }
+                                        
+                                        console.log('🎥 Video ready, attempting to play...');
+                                        video.currentTime = 0; // Start from beginning
+                                        await video.play();
+                                        console.log('✅ Video started playing successfully on hover!');
+                                        setPlayingVideos(prev => new Set(prev).add(videoId));
+                                      } catch (error: any) {
+                                        console.error('❌ Video play failed on hover:', error);
+                                        console.log('Video error details:', {
+                                          code: error.code,
+                                          message: error.message,
+                                          name: error.name,
+                                          readyState: video.readyState,
+                                          networkState: video.networkState
+                                        });
+                                        
+                                        // Try alternative approach - user interaction
+                                        console.log('🔄 Trying alternative play method...');
+                                        video.muted = true; // Ensure muted for autoplay
+                                        try {
+                                          await video.play();
+                                          console.log('✅ Video started playing with muted autoplay!');
+                                          setPlayingVideos(prev => new Set(prev).add(videoId));
+                                        } catch (retryError) {
+                                          console.error('❌ Retry also failed:', retryError);
+                                        }
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      const video = e.currentTarget;
+                                      const videoId = `${entry.id}-${mediaIndex}`;
+                                      console.log('🎥 VIDEO HOVER LEAVE:', {
+                                        videoId,
+                                        videoPaused: video.paused,
+                                        videoCurrentTime: video.currentTime,
+                                        videoDuration: video.duration
+                                      });
+                                      video.pause();
+                                      video.currentTime = 0;
+                                      setPlayingVideos(prev => {
+                                        const newSet = new Set(prev);
+                                        newSet.delete(videoId);
+                                        console.log('🎥 Video removed from playing set:', videoId);
+                                        return newSet;
+                                      });
+                                    }}
+                                    onClick={async (e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const video = e.currentTarget;
+                                      const videoId = `${entry.id}-${mediaIndex}`;
+                                      console.log('🎥 VIDEO CLICKED:', { videoId });
+                                      
+                                      if (video.paused) {
+                                        try {
+                                          await video.play();
+                                          console.log('✅ Video started playing on click!');
+                                          setPlayingVideos(prev => new Set(prev).add(videoId));
+                                        } catch (error) {
+                                          console.error('❌ Video play failed on click:', error);
+                                        }
+                                      } else {
+                                        video.pause();
+                                        video.currentTime = 0;
+                                        setPlayingVideos(prev => {
+                                          const newSet = new Set(prev);
+                                          newSet.delete(videoId);
+                                          return newSet;
+                                        });
+                                        console.log('🎥 Video paused on click');
+                                      }
+                                    }}
+                                    onLoadStart={() => {
+                                      console.log('🎥 VIDEO LOAD START:', {
+                                        videoId: `${entry.id}-${mediaIndex}`,
+                                        videoSrc: vsrc
+                                      });
+                                    }}
+                                    onLoadedData={(e) => {
+                                      console.log('🎥 VIDEO DATA LOADED:', {
+                                        videoId: `${entry.id}-${mediaIndex}`,
+                                        videoDuration: e.currentTarget.duration,
+                                        videoReadyState: e.currentTarget.readyState
+                                      });
+                                    }}
+                                    onCanPlay={(e) => {
+                                      console.log('🎥 VIDEO CAN PLAY:', {
+                                        videoId: `${entry.id}-${mediaIndex}`,
+                                        videoReadyState: e.currentTarget.readyState
+                                      });
+                                    }}
+                                  />
                                 );
                               })()
                             ) : (
@@ -1291,16 +1470,29 @@ const History = () => {
                                 User upload
                               </div>
                             )}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className={`absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity ${
+                              playingVideos.has(`${entry.id}-${mediaIndex}`) ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
+                            }`}>
                               <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                {playingVideos.has(`${entry.id}-${mediaIndex}`) ? (
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                  </svg>
+                                ) : (
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
                                   <path d="M8 5v14l11-7z" />
                                 </svg>
+                                )}
                               </div>
                             </div>
                             <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                               <span className="text-xs text-white">Video</span>
                             </div>
+                            {playingVideos.has(`${entry.id}-${mediaIndex}`) && (
+                              <div className="absolute top-2 right-2 bg-green-500/80 backdrop-blur-sm rounded px-2 py-1">
+                                <span className="text-xs text-white font-medium">▶ Playing</span>
+                              </div>
+                            )}
                             {/* Hover prompt overlay */}
                             <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
                               <span
@@ -1475,6 +1667,10 @@ const History = () => {
               <div>
                 <div className="text-white font-medium text-sm">
                   {selectedImages.size} item{selectedImages.size !== 1 ? 's' : ''} selected
+                  {(() => {
+                    const totalCredits = calculateTotalCredits();
+                    return totalCredits > 0 ? ` • ${totalCredits} credits` : '';
+                  })()}
                 </div>
                 <div className="text-white/60 text-xs">
                   Ready to download
