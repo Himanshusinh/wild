@@ -13,7 +13,7 @@ import {
   addNotification 
 } from '@/store/slices/uiSlice';
 import { useGenerationCredits } from '@/hooks/useCredits';
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+// Replaced custom loader with Logo.gif
 import { 
   loadMoreHistory,
   loadHistory,
@@ -560,12 +560,7 @@ GENERATOR HINTS:
           {(initialLoading || (loading && finalProductEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <WildMindLogoGenerating 
-                    running={true}
-                    size="lg"
-                    speedMs={1600}
-                    className="mx-auto"
-                  />
+                  <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
                   <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
@@ -589,12 +584,7 @@ GENERATOR HINTS:
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <WildMindLogoGenerating 
-                                running={localGeneratingEntries[0].status === 'generating'}
-                                size="md"
-                                speedMs={1600}
-                                className="mx-auto"
-                              />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
                           </div>
@@ -652,12 +642,7 @@ GENERATOR HINTS:
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <WildMindLogoGenerating 
-                                    running={localGeneratingEntries[0].status === 'generating'}
-                                    size="md"
-                                    speedMs={1600}
-                                    className="mx-auto"
-                                  />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                   <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
@@ -694,16 +679,11 @@ GENERATOR HINTS:
                           onClick={() => setPreviewEntry(entry)}
                           className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
-                          {entry.status === "generating" ? (
+                            {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <WildMindLogoGenerating 
-                                  running={entry.status === 'generating'}
-                                  size="md"
-                                  speedMs={1600}
-                                  className="mx-auto"
-                                />
+                                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>
@@ -768,12 +748,7 @@ GENERATOR HINTS:
           {hasMore && loading && finalProductEntries.length > 0 && (
             <div className="flex items-center justify-center py-10">
               <div className="flex flex-col items-center gap-3">
-                <WildMindLogoGenerating 
-                  running={loading}
-                  size="md"
-                  speedMs={1600}
-                  className="mx-auto"
-                />
+                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                 <div className="text-sm text-white/60">Loading more products...</div>
               </div>
             </div>
@@ -799,6 +774,33 @@ GENERATOR HINTS:
                 onChange={(e) => dispatch(setPrompt(e.target.value))}
                 className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
               />
+              {prompt.trim() && (
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      dispatch(setPrompt(''));
+                    }}
+                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    aria-label="Clear prompt"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-white/80"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2">
               {error && (

@@ -9,6 +9,7 @@ import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface ProductImagePreviewProps {
   isOpen: boolean;
@@ -379,7 +380,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white text-sm">{entry.model}</span>
+                  <span className="text-white text-sm">{getModelDisplayName(entry.model)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Format:</span>

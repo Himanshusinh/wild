@@ -9,6 +9,7 @@ import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/Remov
 import { Trash2 } from 'lucide-react'
 import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
+import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
 type PublicItem = {
   id: string;
@@ -1012,7 +1013,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Model:</span>
-                          <span className="text-white/80 text-sm">{preview.item.model}</span>
+                          <span className="text-white/80 text-sm">{getModelDisplayName(preview.item.model)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60 text-sm">Aspect ratio:</span>

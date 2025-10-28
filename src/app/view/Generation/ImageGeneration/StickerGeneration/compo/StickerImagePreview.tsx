@@ -9,6 +9,7 @@ import { updateHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface StickerImagePreviewProps {
   isOpen: boolean;
@@ -465,7 +466,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white/80 text-sm">{entry.model}</span>
+                  <span className="text-white/80 text-sm">{getModelDisplayName(entry.model)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Format:</span>

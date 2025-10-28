@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import Image from "next/image";
+import NextImage from "next/image";
 import { ChevronUp } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
 import { HistoryEntry } from "@/types/history";
@@ -50,7 +50,7 @@ import { getIsPublic } from '@/lib/publicFlag';
 import { Button } from "@/components/ui/Button";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import axiosInstance from "@/lib/axiosInstance";
-import WildMindLogoGenerating from "@/app/components/WildMindLogoGenerating";
+import Image from "next/image";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -1706,12 +1706,7 @@ const InputBox = () => {
             {loading && historyEntries.length === 0 && (
               <div className="flex items-center justify-center ">
                 <div className="flex flex-col items-center gap-4">
-                  <WildMindLogoGenerating 
-                    running={loading}
-                    size="md"
-                    speedMs={1600}
-                    className="mx-auto"
-                  />
+                  <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                   <div className="text-white text-lg">Loading your generation history...</div>
                 </div>
               </div>
@@ -1733,13 +1728,7 @@ const InputBox = () => {
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
-                            <WildMindLogoGenerating 
-                              running={localGeneratingEntries[0].status === 'generating'}
-                              progress={localGeneratingEntries[0].generationProgress?.current && localGeneratingEntries[0].generationProgress?.total ? localGeneratingEntries[0].generationProgress.current / localGeneratingEntries[0].generationProgress.total : 0}
-                              size="md"
-                              speedMs={1600}
-                              className="mx-auto"
-                            />
+                            <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                             <div className="text-xs text-white/60 text-center">Generating...</div>
                           </div>
                         </div>
@@ -1818,13 +1807,7 @@ const InputBox = () => {
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-xl border border-white/20">
                                 <div className="flex flex-col items-center gap-2">
-                                  <WildMindLogoGenerating 
-                                    running={localGeneratingEntries[0].status === 'generating'}
-                                    progress={localGeneratingEntries[0].generationProgress?.current && localGeneratingEntries[0].generationProgress?.total ? localGeneratingEntries[0].generationProgress.current / localGeneratingEntries[0].generationProgress.total : 0}
-                                    size="md"
-                                    speedMs={1600}
-                                    className="mx-auto"
-                                  />
+                                  <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                   <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
@@ -1887,13 +1870,7 @@ const InputBox = () => {
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <WildMindLogoGenerating 
-                                  running={entry.status === 'generating'}
-                                  progress={entry.generationProgress?.current && entry.generationProgress?.total ? entry.generationProgress.current / entry.generationProgress.total : 0}
-                                  size="md"
-                                  speedMs={1600}
-                                  className="mx-auto"
-                                />
+                                <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
 
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
@@ -1962,12 +1939,7 @@ const InputBox = () => {
               {hasMore && loading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <WildMindLogoGenerating 
-                      running={loading}
-                      size="md"
-                      speedMs={1600}
-                      className="mx-auto"
-                    />
+                    <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                     <div className="text-sm text-white/60">Loading more generations...</div>
                   </div>
                 </div>
@@ -2007,33 +1979,34 @@ const InputBox = () => {
               />
               {/* Clear prompt button - only show when there's text */}
               {prompt.trim() && (
-                <button
-                  onClick={() => {
-                    dispatch(setPrompt(''));
-                    if (inputEl.current) {
-                      inputEl.current.focus();
-                    }
-                  }}
-                  className="ml-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                  aria-label="Clear prompt"
-                  title="Clear prompt"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-white/80"
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      dispatch(setPrompt(''));
+                      if (inputEl.current) {
+                        inputEl.current.focus();
+                      }
+                    }}
+                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    aria-label="Clear prompt"
                   >
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                  Clear Prompt
-                </button>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-white/80"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                </div>
               )}
               {/* Previews just to the left of upload */}
               {uploadedImages.length > 0 && (

@@ -16,7 +16,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { setCurrentView } from '@/store/slices/uiSlice';
 import { Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+// Replaced custom loader with Logo.gif
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 import { getCreditsForModel } from '@/utils/modelCredits';
 
@@ -902,12 +902,7 @@ const History = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
-          <WildMindLogoGenerating 
-            running={true}
-            size="lg"
-            speedMs={1600}
-            className="mx-auto"
-          />
+          <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
           <div className="text-white text-lg text-center">Loading your generation history...</div>
         </div>
       </div>
@@ -1181,12 +1176,7 @@ const History = () => {
           {overlayLoading && (
             <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
-                <WildMindLogoGenerating 
-                  running={overlayLoading}
-                  size="lg"
-                  speedMs={1600}
-                  className="mx-auto"
-                />
+                <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
                 <div className="text-white text-lg">Loading generations...</div>
               </div>
             </div>
@@ -1311,12 +1301,7 @@ const History = () => {
                         {entry.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <WildMindLogoGenerating 
-                                running={entry.status === 'generating'}
-                                size="md"
-                                speedMs={1600}
-                                className="mx-auto"
-                              />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                               <div className="text-xs text-white/60">Generating...</div>
                             </div>
                           </div>
@@ -1623,12 +1608,7 @@ const History = () => {
           {hasMore && loading && (
             <div className="flex items-center justify-center py-8">
               <div className="flex flex-col items-center gap-3">
-                <WildMindLogoGenerating 
-                  running={loading}
-                  size="md"
-                  speedMs={1600}
-                  className="mx-auto"
-                />
+                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                 <div className="text-sm text-white/60">Loading more generations...</div>
               </div>
             </div>

@@ -10,6 +10,7 @@ import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
@@ -757,7 +758,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white/80 text-sm">{selectedEntry?.model}</span>
+                  <span className="text-white/80 text-sm">{getModelDisplayName(selectedEntry?.model)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Style:</span>

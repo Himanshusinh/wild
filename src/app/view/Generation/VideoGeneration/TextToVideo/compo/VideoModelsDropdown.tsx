@@ -86,6 +86,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
         { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video, 5s/10s, 16:9/9:16/1:1 (standard/pro)", provider: "replicate" },
+        { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Text→Video, 5s/10s, 16:9/9:16/1:1 (1080p fixed)", provider: "replicate" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 T2V", description: "Text→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 T2V Fast", description: "Faster text→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
@@ -97,6 +98,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3-fast-i2v-8s", label: "Veo3 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-i2v", label: "Kling 2.5 Turbo Pro", description: "Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
         { value: "kling-v2.1-i2v", label: "Kling 2.1", description: "Image→Video, 5s/10s, 16:9/9:16/1:1 (standard/pro)", provider: "replicate" },
+        { value: "kling-v2.1-master-i2v", label: "Kling 2.1 Master", description: "Image→Video, 5s/10s, 16:9/9:16/1:1 (1080p fixed)", provider: "replicate" },
         { value: "wan-2.5-i2v", label: "WAN 2.5 I2V", description: "Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-i2v-fast", label: "WAN 2.5 I2V Fast", description: "Faster image→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
@@ -151,11 +153,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         } catch {}
         setIsOpen(!isOpen);
       }}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax') || selectedModel.includes('veo3') || selectedModel.includes('wan-2.5')
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
       >
         <Cpu className="w-4 h-4 mr-1" />
         {selectedModelInfo?.label || selectedModel}
