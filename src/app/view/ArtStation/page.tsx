@@ -613,19 +613,18 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               <video
                                 src={proxied}
                                 className="w-full h-full object-cover"
-                                controls
                                 muted
                                 playsInline
                                 preload="metadata"
+                                // play on hover
+                                onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch {} }}
+                                onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch {} }}
                                 onLoadedMetadata={(e) => {
                                   const v = e.currentTarget as HTMLVideoElement
                                   try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch {}
                                   markTileLoaded(cardId)
                                 }}
-                                onError={() => {
-                                  // ensure tile becomes visible even if metadata fails
-                                  markTileLoaded(cardId)
-                                }}
+                                onError={() => { markTileLoaded(cardId) }}
                               />
                             )
                           })()
@@ -650,6 +649,13 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           />
                         )
                       })()}
+                      {kind === 'video' && (
+                        <div className={`absolute bottom-2 right-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
+                          <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
+                            <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-6 h-6 opacity-90" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Hover Overlay - Profile and Like Button */}
@@ -664,31 +670,39 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                           )}
                           <div className="text-white text-sm font-medium">{item.createdBy?.displayName || item.createdBy?.username || 'User'}</div>
                         </div>
-                        
-                        {/* Like Button and Delete (owner only) */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
-                          className="p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                          </svg>
-                        </button>
-                        {currentUid && item.createdBy?.uid === currentUid && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
-                            className="p-2 rounded-full bg-red-600/80 hover:bg-red-600 text-white transition-colors"
-                            title="Delete"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                              <path d="M10 11v6" />
-                              <path d="M14 11v6" />
-                              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                        )}
+
+                        {/* Like + Delete action group (tight spacing) */}
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
+                              className="peer p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                              </svg>
+                            </button>
+                            <div className="pointer-events-none absolute -top-5 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 peer-hover:opacity-100 whitespace-nowrap">Like</div>
+                          </div>
+                          {currentUid && item.createdBy?.uid === currentUid && (
+                            <div className="relative">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
+                                className="peer p-2 rounded-full bg-red-500/70 hover:bg-red-500 text-white transition-colors"
+                                // title="Delete"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                  <path d="M10 11v6" />
+                                  <path d="M14 11v6" />
+                                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                                </svg>
+                              </button>
+                              <div className="pointer-events-none absolute -top-5 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 peer-hover:opacity-100 whitespace-nowrap">Delete</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
