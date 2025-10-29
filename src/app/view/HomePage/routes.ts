@@ -83,6 +83,7 @@ export const imageRoutes: FolderImageRoutes = {
         home : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FHomewhite.svg?alt=media&token=4d1fbd0f-27ea-4cef-bbb0-56485e658e83',
         imageGeneration : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fimagegeneration.svg?alt=media&token=99ef06c2-e0ad-4d7f-87c9-9591aa7e05cc',
         videoGeneration : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FvideoGenerationiconwhite.svg?alt=media&token=98497b2a-df56-4149-a2b6-a5b202848eae',
+        videoEdit : '/icons/gear-video dark.svg',
         musicGeneration : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fmusicgenerationwhite.svg?alt=media&token=c7224305-5f55-4927-9c56-1f049eca3772',
         canvas : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Flivecanvas.svg?alt=media&token=d955c80f-772d-45db-be04-b49b86287fc1',
         brandingKit : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fbrandingkitwhite.svg?alt=media&token=878c5af2-d78c-4e16-bbbb-6f2f1cb2a6b4',

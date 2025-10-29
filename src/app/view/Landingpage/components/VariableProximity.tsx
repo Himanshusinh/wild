@@ -168,7 +168,7 @@ const VariableProximity = forwardRef<HTMLSpanElement, VariableProximityProps>((p
             ref={ref}
             onClick={onClick}
             style={{
-                display: "inline",
+                display: "inline-block",
                 ...style,
             }}
             className={className}

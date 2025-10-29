@@ -50,7 +50,7 @@ const FooterNew: React.FC = () => {
 
   return (
     <footer className="relative z-[10] bg-black w-full">
-      <div className="max-w-7xl mx-auto px-6 sm:px-10 md:px-4 lg:px-1 lg:max-w-7xl md:max-w-6xl">
+      <div className="max-w-[680px] md:max-w-6xl lg:max-w-7xl mx-3 md:mx-auto px-6 sm:px-10 md:px-4 lg:px-1">
         <div className="relative z-0 pb-2 max-w-7xl mx-auto text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-t-3xl border border-b-0 border-white/20 overflow-hidden ">
            {/* Background decorative grid */}
            <div className="absolute inset-0 opacity-10">
