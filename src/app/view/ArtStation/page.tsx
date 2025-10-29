@@ -143,7 +143,7 @@ export default function ArtStationPage() {
 
 
   // Map UI categories to backend query params
-  const mapCategoryToQuery = (category: Category): { mode?: 'video'|'image'|'music'|'all'; generationType?: string } => {
+  const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'music' | 'all'; generationType?: string } => {
     switch (category) {
       case 'Videos':
         // use mode=video; backend maps to multiple generationTypes
@@ -182,16 +182,16 @@ export default function ArtStationPage() {
       // Always request latest-first
       url.searchParams.set('sortBy', 'createdAt')
       url.searchParams.set('sortOrder', 'desc')
-    // Apply server-side filtering based on active tab
+      // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
-    if (q.mode) url.searchParams.set('mode', q.mode)
-    if (q.generationType) url.searchParams.set('generationType', q.generationType)
+      if (q.mode) url.searchParams.set('mode', q.mode)
+      if (q.generationType) url.searchParams.set('generationType', q.generationType)
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
-      
+
       console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
-      
+
       const doFetch = async () => {
         const res = await fetch(url.toString(), { credentials: 'include' })
         return res
@@ -199,16 +199,16 @@ export default function ArtStationPage() {
       const p = doFetch()
       inFlightRef.current = p.then(() => undefined, () => undefined)
       const res = await p
-      
+
       if (!res.ok) {
         const errorText = await res.text()
         console.error('[ArtStation] Fetch failed:', { status: res.status, statusText: res.statusText, errorText })
         throw new Error(`HTTP ${res.status}: ${res.statusText}`)
       }
-      
-  const data = await res.json()
+
+      const data = await res.json()
       console.log('[ArtStation] Raw response:', data)
-      
+
       // Ignore stale responses if a newer request started after this one
       if (seq !== requestSeqRef.current) {
         console.log('[ArtStation] Stale response ignored for seq', seq)
@@ -231,14 +231,14 @@ export default function ArtStationPage() {
         frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
       }))
       const newCursor = meta?.nextCursor || payload?.nextCursor
-      
-      console.log('[ArtStation] Parsed feed response:', { 
-        itemsCount: newItems.length, 
-        newCursor, 
+
+      console.log('[ArtStation] Parsed feed response:', {
+        itemsCount: newItems.length,
+        newCursor,
         hasMore: payload?.meta?.hasMore,
         totalItemsSoFar: reset ? newItems.length : items.length + newItems.length
       })
-      
+
       // Log sample items to verify data structure
       if (newItems.length > 0) {
         console.log('[ArtStation] Sample item:', newItems[0])
@@ -248,7 +248,7 @@ export default function ArtStationPage() {
           aspect_ratio: newItems[0].aspect_ratio
         })
       }
-      
+
       setItems(prev => {
         if (reset) return newItems
         const map = new Map<string, PublicItem>()
@@ -294,7 +294,7 @@ export default function ArtStationPage() {
         setCurrentUid(u?.uid || null)
         setCurrentUser({ uid: u?.uid, username: u?.username || u?.displayName, displayName: u?.displayName || u?.username, photoURL: u?.photoURL || u?.photoUrl })
       }
-    } catch {}
+    } catch { }
   }, [])
 
   useEffect(() => {
@@ -302,7 +302,7 @@ export default function ArtStationPage() {
       const params = new URLSearchParams(window.location.search)
       const gen = params.get('gen')
       if (gen) setDeepLinkId(gen)
-    } catch {}
+    } catch { }
     // initial fetch happens via activeCategory effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -343,14 +343,14 @@ export default function ArtStationPage() {
       } finally {
         loadingMoreRef.current = false
       }
-    }, { 
-      root: null, 
+    }, {
+      root: null,
       rootMargin: '600px',
-      threshold: 0.01 
+      threshold: 0.01
     })
     observer.observe(el)
     return () => {
-      try { observer.disconnect() } catch {}
+      try { observer.disconnect() } catch { }
     }
   }, [hasMore, loading, cursor, activeCategory])
 
@@ -372,7 +372,7 @@ export default function ArtStationPage() {
         setDeepLinkId(null)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, deepLinkId])
 
   // Reset prompt expansion when preview item changes
@@ -393,7 +393,7 @@ export default function ArtStationPage() {
     const g = (type || '').toLowerCase()
     if (g === 'logo') {
       const m = p.match(/Create\s+a\s+professional\s+modern\s+logo\s+for:\s*([^\n\.]+)(?:\.|\n|$)/i) ||
-                p.match(/Create\s+a\s+professional\s+\w*\s*logo\s+for:\s*([^\n\.]+)(?:\.|\n|$)/i)
+        p.match(/Create\s+a\s+professional\s+\w*\s*logo\s+for:\s*([^\n\.]+)(?:\.|\n|$)/i)
       if (m && m[1]) return m[1].trim()
       return p.replace(/^Logo:\s*/i, '').trim()
     }
@@ -444,43 +444,43 @@ export default function ArtStationPage() {
     // Show a single representative media per generation item to avoid multiple tiles
     const seenMedia = new Set<string>()
     const seenItem = new Set<string>()
-    const out: { item: PublicItem; media: any; kind: 'image'|'video'|'audio' }[] = []
-    
+    const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
+
     console.log('[ArtStation] Building cards from filteredItems:', filteredItems.length)
-    
+
     for (const it of filteredItems) {
       if (seenItem.has(it.id)) {
         console.log('[ArtStation] Skipping duplicate item:', it.id)
         continue
       }
-      
+
       // Prefer videos, then images, then audios for the tile
       const candidate = (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
-      const kind: 'image'|'video'|'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
+      const kind: 'image' | 'video' | 'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
       const candidateUrl = resolveMediaUrl(candidate)
 
       if (!candidateUrl) {
-        console.log('[ArtStation] Item has no media URL:', { 
-          id: it.id, 
-          hasVideos: !!it.videos?.length, 
-          hasImages: !!it.images?.length, 
+        console.log('[ArtStation] Item has no media URL:', {
+          id: it.id,
+          hasVideos: !!it.videos?.length,
+          hasImages: !!it.images?.length,
           hasAudios: !!it.audios?.length,
-          candidate 
+          candidate
         })
         continue
       }
-      
-  const key = (candidate && candidate.storagePath) || candidateUrl
+
+      const key = (candidate && candidate.storagePath) || candidateUrl
       if (seenMedia.has(key)) {
         console.log('[ArtStation] Skipping duplicate media:', key)
         continue
       }
-      
+
       seenMedia.add(key)
       seenItem.add(it.id)
       out.push({ item: it, media: { ...candidate, url: candidateUrl }, kind })
     }
-    
+
     console.log('[ArtStation] Final cards count:', out.length)
     return out
   }, [filteredItems])
@@ -494,15 +494,15 @@ export default function ArtStationPage() {
     })
   }
 
-const noteMeasuredRatio = (key: string, width: number, height: number) => {
-  if (!width || !height) return
-  setMeasuredRatios(prev => {
-    if (prev[key]) return prev
-    const w = Math.max(1, Math.round(width))
-    const h = Math.max(1, Math.round(height))
-    return { ...prev, [key]: `${w}/${h}` }
-  })
-}
+  const noteMeasuredRatio = (key: string, width: number, height: number) => {
+    if (!width || !height) return
+    setMeasuredRatios(prev => {
+      if (prev[key]) return prev
+      const w = Math.max(1, Math.round(width))
+      const h = Math.max(1, Math.round(height))
+      return { ...prev, [key]: `${w}/${h}` }
+    })
+  }
 
   // Observe tiles for smooth reveal (staggered)
   useEffect(() => {
@@ -529,15 +529,15 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
 
   // (columns masonry) no measurement needed
 
-// duplicate removed
+  // duplicate removed
 
   return (
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-10">
-        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => {}} onGenerationTypeChange={() => {}} onWildmindSkitClick={() => {}} /></div>
+        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
-          <div className="mb-6 sm:mb-8">
+          <div className=" mb-2 md:mb-3">
             <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
               Art Station
             </h3>
@@ -547,40 +547,39 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
           </div>
 
           {/* Category Filter Bar */}
-          <div className="mb-6">
+          <div className="mb-4">
             <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
               {(['All', 'Images', 'Videos', 'Music', 'Logos', 'Stickers', 'Products'] as Category[]).map((category) => (
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
-                    activeCategory === category
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${activeCategory === category
                       ? 'bg-white border-white/5 text-black shadow-sm'
                       : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
+                    }`}
                 >
                   {category}
                 </button>
               ))}
-              
+
             </div>
           </div>
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
-             {cards.map(({ item, media, kind }, idx) => {
+            {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
               const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
               const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3']
               const ratioKey = (media && (media.storagePath || media.url)) || `${item.id}-${idx}`
               const tileRatio = m ? `${m[1]}/${m[2]}` : (measuredRatios[ratioKey] || fallbackRatios[idx % fallbackRatios.length])
-              
+
               const cardId = `${item.id}-${media.id}-${idx}`
               const isHovered = hoveredCard === cardId
               const isLiked = likedCards.has(cardId)
-              
+
               return (
                 <div
                   key={cardId}
@@ -588,15 +587,15 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                   style={{ transitionDelay: `${(idx % 12) * 35}ms` }}
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
-                   onClick={() => {
-                     setSelectedImageIndex(0)
-                     setSelectedVideoIndex(0)
-                     setSelectedAudioIndex(0)
-                     setPreview({ kind, url: media.url, item })
-                   }}
+                  onClick={() => {
+                    setSelectedImageIndex(0)
+                    setSelectedVideoIndex(0)
+                    setSelectedAudioIndex(0)
+                    setPreview({ kind, url: media.url, item })
+                  }}
                   ref={(el) => { revealRefs.current[cardId] = el }}
                 >
-                   <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                  <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
                     <div
                       style={{ aspectRatio: tileRatio, minHeight: 200 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
@@ -619,11 +618,11 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                                 playsInline
                                 preload="metadata"
                                 // play on hover
-                                onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch {} }}
-                                onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch {} }}
+                                onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
+                                onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
                                 onLoadedMetadata={(e) => {
                                   const v = e.currentTarget as HTMLVideoElement
-                                  try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch {}
+                                  try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch { }
                                   markTileLoaded(cardId)
                                 }}
                                 onError={() => { markTileLoaded(cardId) }}
@@ -645,7 +644,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               try {
                                 const el = img as unknown as HTMLImageElement
                                 if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                              } catch {}
+                              } catch { }
                               markTileLoaded(cardId)
                             }}
                           />
@@ -659,7 +658,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Hover Overlay - Profile and Like Button */}
                     <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                       <div className="flex items-center justify-between">
@@ -686,7 +685,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               className="peer p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                               </svg>
                             </button>
                             <div className="pointer-events-none absolute -top-5 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 peer-hover:opacity-100 whitespace-nowrap">Like</div>
@@ -696,7 +695,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               <button
                                 onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
                                 className="peer p-2 rounded-full bg-red-500/70 hover:bg-red-500 text-white transition-colors"
-                                // title="Delete"
+                              // title="Delete"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="3 6 5 6 21 6" />
@@ -712,8 +711,8 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         </div>
                       </div>
                     </div>
-                    
-                     <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
+
+                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
                   </div>
                 </div>
               )
@@ -756,8 +755,8 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
           {/* Preview Modals */}
           {preview && (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20" onClick={() => setPreview(null)}>
-                <div className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
- onClick={(e) => e.stopPropagation()}>
+              <div className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
+                onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
                   <div className="text-white/70 text-sm"></div>
@@ -797,7 +796,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                             return audios[selectedAudioIndex] || audios[0] || { url: preview.url }
                           }
                         })()
-                        
+
                         try {
                           // Convert relative URLs to absolute URLs for download
                           let downloadUrl = currentMedia.url;
@@ -805,15 +804,15 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                             const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
                             downloadUrl = `${API_BASE}${downloadUrl}`;
                           }
-                          
+
                           // Determine file type based on preview kind
                           const fileType = preview.kind as 'image' | 'video' | 'audio';
-                          
+
                           // Get the creator's username from the ArtStation item
-                          const creatorUsername = preview.item.createdBy?.username || 
-                                                preview.item.createdBy?.displayName || 
-                                                'user';
-                          
+                          const creatorUsername = preview.item.createdBy?.username ||
+                            preview.item.createdBy?.displayName ||
+                            'user';
+
                           // Use the same download utility as image and video generation
                           await downloadFileWithNaming(downloadUrl, creatorUsername, fileType);
                         } catch (e) {
@@ -907,29 +906,28 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         <span className="text-white text-sm font-medium">{(preview.item.createdBy?.username) || (isNaN(0 as any) && preview.item.createdBy?.displayName) || (currentUser?.username) || 'User'}</span>
                       </div>
                     </div>
-                    
+
                     {/* Date */}
                     <div className="mb-4">
                       <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
                       <div className="text-white text-sm">{formatDate(preview.item.createdAt || preview.item.updatedAt || '')}</div>
                     </div>
-                    
+
                     {/* Prompt */}
                     <div className="mb-4">
                       <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
                         <span>Prompt</span>
-                        <button 
+                        <button
                           onClick={() => copyPrompt(preview.item.prompt || '', `preview-${preview.item.id}`)}
-                          className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${
-                            copiedButtonId === `preview-${preview.item.id}` 
-                              ? 'bg-green-500/20 text-green-400' 
+                          className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.item.id}`
+                              ? 'bg-green-500/20 text-green-400'
                               : 'bg-white/10 hover:bg-white/20'
-                          }`}
+                            }`}
                         >
                           {copiedButtonId === `preview-${preview.item.id}` ? (
                             <>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 6L9 17l-5-5"/>
+                                <path d="M20 6L9 17l-5-5" />
                               </svg>
                               Copied!
                             </>
@@ -963,7 +961,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         )
                       })()}
                     </div>
-                    
+
                     {/* Images Thumbnails */}
                     {preview.item.images && preview.item.images.length > 1 && (
                       <div className="mb-4">
@@ -975,7 +973,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               onClick={() => setSelectedImageIndex(idx)}
                               className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
-                              <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                              <img src={im.url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
                             </button>
                           ))}
                         </div>
@@ -1017,7 +1015,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               className={`w-full text-left px-3 py-2 rounded-md border ${selectedAudioIndex === idx ? 'border-blue-500 bg-white/10' : 'border-white/20 hover:border-white/30'}`}
                             >
                               <div className="flex items-center gap-2 text-sm text-white/90">
-                                <span className="flex w-6 h-6 rounded-full bg-white/10 items-center justify-center">{idx+1}</span>
+                                <span className="flex w-6 h-6 rounded-full bg-white/10 items-center justify-center">{idx + 1}</span>
                                 <span>Track {idx + 1}</span>
                               </div>
                             </button>
@@ -1048,12 +1046,12 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Open in generator button */}
                     <div className="mt-6">
-                      <button 
-                        onClick={() => { 
-                          setPreview(null); 
+                      <button
+                        onClick={() => {
+                          setPreview(null);
                           const img = ((preview.item.images || []) as any[])[selectedImageIndex] || (preview.item.images || [])[0] || { url: preview.url };
                           const url = img?.url || preview.url;
                           const dest = new URL(window.location.origin + '/text-to-image');
