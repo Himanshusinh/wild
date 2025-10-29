@@ -22,7 +22,7 @@ const ImageCountDropdown = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-transparent rounded-full border border-white/20 p-1">
+    <div className="flex items-center gap-2 bg-transparent rounded-lg border border-white/20 p-1">
       <button
         onClick={handleDecrease}
         disabled={imageCount <= 1}

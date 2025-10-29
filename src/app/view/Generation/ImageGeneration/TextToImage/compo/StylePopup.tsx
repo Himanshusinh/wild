@@ -123,7 +123,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       >
         <div
-          className="relative w-full max-w-2xl max-h-[70vh] rounded-2xl backdrop-blur-xl overflow-hidden shadow-2xl pointer-events-auto transform"
+          className="relative w-full max-w-2xl max-h-[70vh] rounded-lg backdrop-blur-xl overflow-hidden shadow-2xl pointer-events-auto transform"
           style={{
             backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)',
             border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,

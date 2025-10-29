@@ -1182,25 +1182,8 @@ const InputBox = () => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
         } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
-          // Kling T2V
-          const isV25 = selectedModel.includes('v2.5');
-          if (isV25) {
-            requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'text-to-video', isPublic };
-          } else {
-            // Kling v2.1 T2V is flaky on base; prefer master to avoid provider 502s
-            const forceMaster = true;
-            const isMaster = forceMaster || selectedModel.includes('master');
-            const modelName = isMaster ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.1';
-            requestBody = { 
-              model: modelName, 
-              prompt, 
-              duration, 
-              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), 
-              ...(isMaster ? {} : { mode: klingMode }),
-              generationType: 'text-to-video', 
-              isPublic 
-            };
-          }
+          // Kling T2V - only v2.5-turbo-pro supports text-to-video
+          requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'text-to-video', isPublic };
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else {
@@ -2280,12 +2263,12 @@ const InputBox = () => {
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Tabs row - non-overlapping, right aligned */}
-        <div className="mb-2 flex justify-end">
-          <div className="flex bg-transparent backdrop-blur-3xl rounded-3xl px-2 py-1.5 ring-1 ring-white/20 shadow-2xl">
+        <div className="mb-1 flex justify-end">
+          <div className="flex bg-transparent backdrop-blur-3xl rounded-lg px-2 pt-2 pb-2 ring-1 ring-white/20 shadow-2xl">
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("text_to_video")}
-                className={`px-2 py-2 rounded-3xl text-xs font-medium transition-all ${generationMode === "text_to_video"
+                className={`px-2 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "text_to_video"
                     ? 'bg-white text-black '
                     : 'text-white hover:bg-white/10'
                   }`}
@@ -2298,7 +2281,7 @@ const InputBox = () => {
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("image_to_video")}
-                className={`px-3 py-1.5 rounded-3xl text-xs font-medium transition-all ${generationMode === "image_to_video"
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "image_to_video"
                     ? 'bg-white text-black'
                     : 'text-white hover:bg-white/10'
                   }`}
@@ -2311,7 +2294,7 @@ const InputBox = () => {
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("video_to_video")}
-                className={`px-3 py-1.5 rounded-3xl text-xs font-medium transition-all ${generationMode === "video_to_video"
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "video_to_video"
                     ? 'bg-white text-black'
                     : 'text-white hover:bg-white/10'
                   }`}
@@ -2324,7 +2307,7 @@ const InputBox = () => {
           </div>
         </div>
         <div 
-          className={`rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+          className={`rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
           }`}
           onClick={(e) => {
             // Close all dropdowns when clicking on the input box container
@@ -2341,8 +2324,8 @@ const InputBox = () => {
           
 
           {/* Input Row: prompt + actions */}
-          <div className="flex items-center gap-3 p-3 pt-0">
-            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 pt-2.5">
+          <div className="flex items-start gap-3 p-3 pt-0">
+            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg px-4 pt-2.5">
               <textarea
                 ref={inputEl}
                 placeholder="Type your video prompt..."
@@ -2367,37 +2350,39 @@ const InputBox = () => {
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
                 }}
               />
-              {prompt.trim() && (
-                <div className="relative group">
-                  <button
-                    onClick={() => {
-                      setPrompt("");
-                      if (inputEl.current) {
-                        inputEl.current.focus();
-                      }
-                    }}
-                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                    aria-label="Clear prompt"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-white/80"
+              {/* Fixed position buttons container */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {prompt.trim() && (
+                  <div className="relative group">
+                    <button
+                      onClick={() => {
+                        setPrompt("");
+                        if (inputEl.current) {
+                          inputEl.current.focus();
+                        }
+                      }}
+                      className="px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      aria-label="Clear prompt"
                     >
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
-                </div>
-              )}
-              <div className="flex items-center gap-1 h-[40px]">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-white/80"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 h-[40px]">
                 {/* Camera Movements - unified button for supported models and modes */}
                 {(
                   (generationMode === "text_to_video" && selectedModel === "T2V-01-Director") ||
@@ -2729,7 +2714,7 @@ const InputBox = () => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
                 {isGenerating ? "Generating..." : "Generate Video"}
               </button>
@@ -2867,12 +2852,12 @@ const InputBox = () => {
                   return (
                     <div className="flex flex-row gap-2">
                       {/* Fixed Resolution Display */}
-                      <div className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                      <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
                         <TvMinimalPlay className="w-4 h-4 mr-1" />
                         720P (Fixed)
                       </div>
                       {/* Fixed Duration Display */}
-                      <div className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                      <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
                         <Clock className="w-4 h-4 mr-1" />
                         6s (Fixed)
                       </div>
