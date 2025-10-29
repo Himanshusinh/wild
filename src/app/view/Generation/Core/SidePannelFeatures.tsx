@@ -38,6 +38,7 @@ const SidePannelFeatures = ({
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
   const videoEditDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
 
 
@@ -155,18 +156,38 @@ const SidePannelFeatures = ({
   const isVideoEditActive = pathname?.includes('/video-edit');
 
   return (
-    <div
-      ref={sidebarRef}
-      onMouseEnter={() => setIsSidebarHovered(true)}
-      onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200  backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40  shadow-2xl'
-      style={{
-        // borderTopLeftRadius: '16px',
-        // borderBottomLeftRadius: '16px',
-        // borderTopRightRadius: '16px',
-        // borderBottomRightRadius: '16px'
-      }}
-    >
+    <>
+      {/* Mobile header: hamburger then logo */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3">
+        <button onClick={() => setIsMobileMenuOpen(true)} className="text-white p-1">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div
+          onClick={() => { try { console.log('[SidePanel Mobile] logo -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Image src={imageRoutes.core.logo} alt="Wild Mind Logo" width={26} height={26} />
+        </div>
+      </div>
+
+      {/* Overlay for mobile menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
+      )}
+
+      <div
+        ref={sidebarRef}
+        onMouseEnter={() => setIsSidebarHovered(true)}
+        onMouseLeave={() => setIsSidebarHovered(false)}
+        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 group transition-all text-white duration-200 backdrop-blur-lg z-50 shadow-2xl md:w-[68px] hover:w-60
+        ${isMobileMenuOpen ? 'w-[75%] bg-black/80 border-r border-white/20 rounded-r-3xl' : 'w-0 md:w-[68px]'}
+        ${isMobileMenuOpen ? 'flex' : 'hidden md:flex'}`}
+        style={{}}
+      >
       {/* Logo at the top */}
       <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0  -ml-1">
         <div
@@ -468,6 +489,7 @@ const SidePannelFeatures = ({
 
 
     </div>
+    </>
   )
 }
 
