@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+/* Global responsive breakpoints */
+@theme {
+  /* Mobile is the default (no prefix). Keep for completeness */
+  --breakpoint-mobile: 0px;
+  /* Tablet screens */
+  --breakpoint-tablet: 768px;
+  /* Desktop screens */
+  --breakpoint-desktop: 1024px;
+  /* Large desktop / wide screens */
+  --breakpoint-desktop-lg: 1440px;
+}
+
+/* Custom mobile breakpoint for 430×932px screens */
+@media (max-width: 430px) {
+  /* Mobile 430px width styles */
+}
+
+@media (max-height: 932px) and (max-width: 430px) {
+  /* Mobile 430×932px specific styles */
+}
+
+/* Mobile menu slide animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-in.slide-in-from-right {
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
 body {
   background-color: #000000;
   color: #ffffff;

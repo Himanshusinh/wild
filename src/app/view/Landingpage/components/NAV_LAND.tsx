@@ -83,6 +83,13 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
     onGetStarted()
   }
 
+  // Ensure desktop dropdown never shows while hamburger is open
+  useEffect(() => {
+    if (isMobileMenuOpen && activeDropdown) {
+      setActiveDropdown(null)
+    }
+  }, [isMobileMenuOpen])
+
   const handleLogout = async () => {
     try { await signOut(auth) } catch {}
     try {
@@ -210,16 +217,16 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
 
       </motion.header>
 
-      {/* Features Dropdown - Positioned outside navbar for independent glass effect */}
+      {/* Features Dropdown (desktop-only) - prevent showing when hamburger is open */}
       <AnimatePresence>
-        {activeDropdown === "features" && (
+        {activeDropdown === "features" && !isMobileMenuOpen && (
           <motion.div
             key="features-dropdown-desktop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed left-1/2 transform -translate-x-1/2 z-50 backdrop-blur-xl bg-black/10 shadow-lg border border-white/20 rounded-3xl px-10 py-8 md:px-6 md:py-6 transition-all duration-300"
+            className="hidden md:block fixed left-1/2 transform -translate-x-1/2 z-50 backdrop-blur-xl bg-black/10 shadow-lg border border-white/20 rounded-3xl px-10 py-8 md:px-6 md:py-6 transition-all duration-300"
             style={{
               width: visible ? "40%" : "45vw",
               minWidth: visible ? "40%" : "40vw",
@@ -252,26 +259,20 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
 
       {/* Mobile Navigation */}
       <motion.div 
-        className="hidden fixed top-0 left-0 w-full z-[1000] mb:block md:hidden"
-        animate={{
-          backdropFilter: visible ? "blur(10px)" : "blur(10px)",
-          boxShadow: visible
-            ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
-            : "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset",
-          width: visible ? "90%" : "100%",
-          y: visible ? 20 : 0,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 200,
-          damping: 50,
-        }}
+        className="fixed top-0 left-0 w-full z-[1000] md:hidden bg-transparent shadow-none"
       >
-        <div className="flex items-center justify-between px-4 py-2 bg-black/30 backdrop-blur-xl">
-          {/* Menu Button */}
-          <div className="flex">
+  <div className="flex items-center justify-between px-5 py-2 bg-transparent">
+          {/* Left: Logo */}
+          <div className="flex items-center cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] mobile brand clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage') }}>
+          {(() => {
+            const logoUrl = getImageUrl("core", "logo");
+            return logoUrl ? (
+              <Image src={logoUrl} width={32} height={20} alt="logo" />
+            ) : null;
+          })()}
+          </div>
 
-          
+          {/* Right: Hamburger */}
           <button onClick={() => setIsMobileMenuOpen(true)} className="text-white p-1">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -288,24 +289,6 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
               <line x1="3" y1="6" x2="21" y2="6"></line>
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
-          </button>
-
-          {/* Logo and Name */}
-          <div className="flex items-center cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] desktop brand clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage') }}>
-          {(() => {
-            const logoUrl = getImageUrl("core", "logo");
-            return logoUrl ? (
-              <Image src={logoUrl} width={32} height={20} alt="logo" />
-            ) : null;
-          })()}
-          <span className="text-white text-xl font-bold">WildMind</span>
-          </div>
-
-          </div>
-
-          {/* User Profile Button */}
-          <button onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)} className="hidden text-white p-1">
-            <User className="w-6 h-6" />
           </button>
         </div>
 
@@ -337,29 +320,20 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
         {isMobileMenuOpen && (
           <>
             {/* Overlay */}
-            <div className="hiddden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
 
             {/* Sidebar */}
             <div
               ref={menuRef}
-              className="fixed inset-y-0 left-0 w-80 bg-black z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-left"
+              className="fixed inset-y-0 right-0 w-[70%] bg-black/70 backdrop-blur-xl border-l border-white/20 z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-right h-full overflow-y-auto custom-scrollbar"
             >
-          <div className="flex justify-between items-center p-4 border-b border-gray-800">
-                <div className="flex items-center cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] mobile brand clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage'); setIsMobileMenuOpen(false) }}>
-                          {(() => {
-            const logoUrl = getImageUrl("core", "logo");
-            return logoUrl ? (
-              <Image src={logoUrl} width={32} height={20} alt="logo" />
-            ) : null;
-          })()}
-                <span className="text-white text-xl font-bold">WildMind</span>
-                </div>
+          <div className="flex justify-end items-center p-4 border-b border-white/10 bg-black/60 backdrop-blur-sm">
                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-white p-1">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="p-4 flex flex-col space-y-4">
+              <div className="p-4 flex flex-col space-y-4 bg-black/95 backdrop-blur-sm">
                 {/* Features Dropdown */}
                 <div className="border-b border-gray-800 pb-3">
                   <div
@@ -382,14 +356,15 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="pl-0 py-2 space-y-2 text-sm"
+                      className="mt-2 ml-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm px-2 py-2"
                     >
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-3">
-                          <h4 className="text-white font-semibold text-sm">Image Generation</h4>
-                          <div className="space-y-2 pl-4">
+                      {/* Scrollable container to fit on smaller screens */}
+                      <div className="grid grid-cols-1 gap-3 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
+                        <div className="space-y-2">
+                          <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Image Generation</h4>
+                          <div className="space-y-1 pl-2">
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(IMAGEGENERATION.TEXT_TO_IMAGE)
                                 setIsMobileMenuOpen(false)
@@ -398,7 +373,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Text to Image
                             </div>
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(IMAGEGENERATION.IMAGE_TO_IMAGE)
                                 setIsMobileMenuOpen(false)
@@ -407,7 +382,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Image to Image
                             </div>
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(IMAGEGENERATION.STICKER_GENERATION)
                                 setIsMobileMenuOpen(false)
@@ -415,20 +390,20 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                             >
                               AI Sticker Generation
                             </div>
-                            <div className="py-1 text-gray-500 cursor-not-allowed">
+                            <div className="py-1.5 text-[14px] text-gray-500 cursor-not-allowed">
                               Live Portrait (Soon)
                             </div>
-                            <div className="py-1 text-gray-500 cursor-not-allowed">
+                            <div className="py-1.5 text-[14px] text-gray-500 cursor-not-allowed">
                               Inpaint (Soon)
                             </div>
                           </div>
                         </div>
                         
-                        <div className="space-y-3">
-                          <h4 className="text-white font-semibold text-sm">Branding Kit</h4>
-                          <div className="space-y-2 pl-4">
+                        <div className="space-y-2">
+                          <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Branding Kit</h4>
+                          <div className="space-y-1 pl-2">
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(BRANDINGKIT.LOGO_GENERATION)
                                 setIsMobileMenuOpen(false)
@@ -437,7 +412,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Logo Generation
                             </div>
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(BRANDINGKIT.MOCKUP_GENERATION)
                                 setIsMobileMenuOpen(false)
@@ -446,7 +421,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Mockups Generation
                             </div>
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(BRANDINGKIT.PRODUCT_WITH_MODEL_POSE)
                                 setIsMobileMenuOpen(false)
@@ -455,7 +430,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Product with Model Poses
                             </div>
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(BRANDINGKIT.PRODUCT_GENERATION)
                                 setIsMobileMenuOpen(false)
@@ -463,20 +438,20 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                             >
                               Product Generation
                             </div>
-                            <div className="py-1 text-gray-500 cursor-not-allowed">
+                            <div className="py-1.5 text-[14px] text-gray-500 cursor-not-allowed">
                               Add Music in Image (Soon)
                             </div>
-                            <div className="py-1 text-gray-500 cursor-not-allowed">
+                            <div className="py-1.5 text-[14px] text-gray-500 cursor-not-allowed">
                               Add Music in Video (Soon)
                             </div>
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <h4 className="text-white font-semibold text-sm">Video Generation</h4>
-                          <div className="space-y-2 pl-4">
+                        <div className="space-y-2">
+                          <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Video Generation</h4>
+                          <div className="space-y-1 pl-2">
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(VIDEOGENERATION.TEXT_TO_VIDEO)
                                 setIsMobileMenuOpen(false)
@@ -485,7 +460,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Text to Video
                             </div>
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(VIDEOGENERATION.IMAGE_TO_VIDEO)
                                 setIsMobileMenuOpen(false)
@@ -496,11 +471,11 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <h4 className="text-white font-semibold text-sm">Audio Generation</h4>
-                          <div className="space-y-2 pl-4">
+                        <div className="space-y-2">
+                          <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Audio Generation</h4>
+                          <div className="space-y-1 pl-2">
                             <div
-                              className="py-1 text-gray-300 hover:text-white cursor-pointer"
+                              className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"
                               onClick={() => {
                                 router.push(MUSICGENERATION.TEXT_TO_MUSIC)
                                 setIsMobileMenuOpen(false)
@@ -576,6 +551,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                   Art Station
                 </div>
 
+                {/* Removed in favor of floating mobile button */}
                 
               </div>
             </div>
@@ -587,3 +563,4 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
 }
 
 export default NAV_LAND
+

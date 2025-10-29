@@ -57,7 +57,7 @@ export const HeroParallax = ({
   return (
     <div
       ref={ref}
-      className="h-[300vh] py-40 mb:py-24 overflow-hidden antialiased relative flex flex-col [perspective:1000px] [transform-style:preserve-3d] bg-[#0a1116]"
+      className="h-[300vh] lg:h-[245vh] py-40 mb:py-24 overflow-hidden antialiased relative flex flex-col [perspective:1000px] [transform-style:preserve-3d]"
     >
       <Header />
       <motion.div
@@ -94,11 +94,11 @@ export const HeroParallax = ({
 
 export const Header = () => {
   return (
-    <div className="max-w-8xl relative mx-auto py-20 md:py-40 px-2 w-full ml-32">
+    <div className="max-w-8xl relative mx-auto py-20 md:py-40 px-2 w-full ml-2 tablet:ml-16 desktop:ml-32">
       <h1 className="text-2xl md:text-7xl font-bold text-white">
-      Wild Mind <br /> <span className="ml-4">Your One Stop For AI Solutions</span>
+      Wild Mind <br /> <span className="ml-1 desktop:ml-4">Your One Stop For AI Solutions</span>
       </h1>
-      <p className="max-w-2xl text-base md:text-xl mt-8 text-neutral-200 ml-6">
+      <p className="max-w-2xl text-base md:text-xl mt-8 text-neutral-200 ml-2 desktop:ml-6">
       India’s First Unified Generative AI Ecosystem For Stunning Creations
       </p>
     </div>
@@ -121,7 +121,7 @@ export const ProductCard = ({
       style={{ x: translate }}
       whileHover={{ y: -20 }} // Keep only lift effect
       key={product.title}
-      className="h-96 w-[30rem] mb:h-64 mb:w-64 relative shrink-0"
+      className="h-[300px] w-[300px]  lg:h-96 lg:w-[30rem] mb:h-64 mb:w-64 relative shrink-0 bg-black"
     >
       {product.link ? (
         <a href={product.link}>
@@ -134,7 +134,7 @@ export const ProductCard = ({
               alt={product.title || "Product"}
             />
           ) : (
-            <div className="absolute h-full w-full inset-0 bg-gray-800 flex items-center justify-center">
+            <div className="absolute h-full w-full inset-0 bg-black flex items-center justify-center">
               <span className="text-gray-400">Image not available</span>
             </div>
           )}
@@ -150,7 +150,7 @@ export const ProductCard = ({
               alt={product.title || "Product"}
             />
           ) : (
-            <div className="absolute h-full w-full inset-0 bg-gray-800 flex items-center justify-center">
+            <div className="absolute h-full w-full inset-0 bg-black flex items-center justify-center">
               <span className="text-gray-400">Image not available</span>
             </div>
           )}

@@ -80,7 +80,7 @@ const FAQ: React.FC<FAQProps> = ({ faqs = defaultFaqs, maxVisible = 6, viewMoreD
     <div className="w-full max-w-8xl mx-auto">
       {/* Keep header as-is (centered) with VariableProximity effect */}
       <div className="text-center" ref={headerRef}>
-        <h2 className="text-white inline-block font-bold font-popins text-[2.5rem] md:text-[2rem] lg:text-[2.3rem] mb-8 md:mb-6 lg:mb-8">
+        <h2 className="text-white inline-block font-bold font-popins text-[2rem] md:text-[2rem] lg:text-[2.3rem] mb-8 md:mb-6 lg:mb-8">
           <VariableProximity
             label={'Frequently Asked Questions'}
             className={''}
@@ -241,7 +241,7 @@ const FaqRow: React.FC<FaqRowProps> = ({ question, isOpen, disableHover = false,
       {/* Hover overlay with repeating FAQ text */}
       <div
         ref={overlayRef}
-        className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none bg-white translate-y-[101%]"
+        className={`absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none bg-white translate-y-[101%] ${isOpen ? 'hidden' : ''}`}
       >
         <div ref={overlayInnerRef} className="h-full w-[200%] flex will-change-transform">
           {/* two identical strips so the loop is seamless at 50% shift */}

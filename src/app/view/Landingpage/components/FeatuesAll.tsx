@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import NavigationFeatuesall from './NavigationFeatuesall'
+import NavigationCompo from './NavigationFeatuesall'
 import FeaturesCompo from './FeatuesCompo'
 
 const FeatuesAll = () => {
@@ -12,9 +12,9 @@ const FeatuesAll = () => {
   }
 
   return ( 
-    <div className='text-white'>
-        <div className='flex justify-center items-center'>
-            <NavigationFeatuesall onCategoryChange={handleCategoryChange} />
+    <div className='text-white w-full'>
+        <div className='w-full overflow-x-auto pb-4 mb:px-4'>
+            <NavigationCompo onCategoryChange={handleCategoryChange} />
         </div>
         <div className='flex justify-center items-center'>
           <FeaturesCompo activeCategory={activeCategory} />

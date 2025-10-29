@@ -249,7 +249,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
+          <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Edit</span>
         </div>
 

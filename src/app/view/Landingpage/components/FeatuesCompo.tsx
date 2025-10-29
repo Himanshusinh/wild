@@ -96,7 +96,7 @@ export default function AiToolsGrid({ activeCategory = 'All' }: AiToolsGridProps
   const visibleCards = showAll ? filteredCards : filteredCards.slice(0, 9);
 
   return (
-    <div ref={containerRef} className="w-full max-w-[1300px] rounded-3xl p-10 overflow-hidden bg-gradient-to-br via-transparent to-transparent mx-auto mb:p-4">
+    <div ref={containerRef} className="w-full max-w-[1300px] rounded-3xl p-2 overflow-hidden bg-gradient-to-br via-transparent to-transparent mx-auto mb:p-4">
       <div className="w-full h-full">
         <LayoutGroup id="hover-cards">
           <motion.div
@@ -105,14 +105,14 @@ export default function AiToolsGrid({ activeCategory = 'All' }: AiToolsGridProps
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -30 }}
             transition={{ duration: 0.15, ease: 'easeInOut' }}
-            className="relative grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-4 py-10 mb:gap-3 mb:py-6"
+            className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4 py-2 md:py-6"
             ref={gridRef}
           >
             {visibleCards.map((card, idx) => (
               <a
                 href="#"
                 key={card.title + idx}
-                className="relative group block p-2 h-full w-full mb:p-1.5"
+                className="relative group block p-1.5 md:p-2 h-full w-full"
                 onMouseEnter={(e) => {
                   setHoveredIndex(idx);
                   const container = gridRef.current;
@@ -146,7 +146,7 @@ export default function AiToolsGrid({ activeCategory = 'All' }: AiToolsGridProps
                 }}
               >
                 <div className={cn('rounded-2xl h-full w-full overflow-hidden bg-black relative z-20')}>
-                  <div className="relative w-full h-72 md:h-72 mb:h-44">
+                  <div className="relative w-full h-44 md:h-72">
                     <Image
                       src={card.src}
                       alt={card.title}
@@ -159,10 +159,10 @@ export default function AiToolsGrid({ activeCategory = 'All' }: AiToolsGridProps
                   {/* Left-side gradient for readability */}
                   <div className="pointer-events-none absolute inset-y-0 top-0 left-0 w-[80%] bg-gradient-to-r from-black/70 via-black/30 to-transparent z-10" />
                   {/* Left-side text on top-left */}
-                  <div className="absolute top-0 left-0 w-[45%] md:w-[45%] z-20 flex items-start justify-start mb:w-[60%]">
-                    <div className="px-6 py-4 md:px-6 md:py-4 mb:px-3 mb:py-2">
-                      <p className="text-sm text-white/80 whitespace-nowrap overflow-hidden text-ellipsis md:text-sm mb:text-[10px]">{card.category}</p>
-                      <p className="mt-2 text-2xl font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis md:text-2xl mb:text-base mb:mt-0.5">
+                  <div className="absolute top-0 left-0 w-[60%] md:w-[45%] z-20 flex items-start justify-start">
+                    <div className="px-3 py-2 md:px-6 md:py-4">
+                      <p className="text-xs md:text-sm text-white/80 whitespace-nowrap overflow-hidden text-ellipsis">{card.category}</p>
+                      <p className="mt-1 md:mt-2 text-lg md:text-2xl font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                         {card.title}
                       </p>
                     </div>
@@ -194,7 +194,7 @@ export default function AiToolsGrid({ activeCategory = 'All' }: AiToolsGridProps
           <div className="flex justify-center py-6">
             <button
               onClick={() => setShowAll(true)}
-              className="bg-[#1C303D] text-white font-medium px-8 py-3 rounded-full transition"
+              className="bg-[#1C303D] text-white font-medium pl-3 pr-8 py-3 rounded-full transition"
             >
               View All
             </button>
