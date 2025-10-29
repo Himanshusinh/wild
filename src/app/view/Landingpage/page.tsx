@@ -308,7 +308,7 @@ const LandingPage: React.FC = () => {
   return (
 
     
-    <div className='relative w-full h-full bg-[#07070B] mb:w-full mb:h-full'>                    
+  <div className='relative w-full h-full bg-[#07070B] overflow-x-hidden md:overflow-visible mb:w-full mb:h-full'>                    
 
     <div className="fixed top-0 left-0 right-0 z-[100] flex justify-center px-6 md:px-4 lg:px-6">
         <NAV_LAND onGetStarted={onGetStarted} />
@@ -325,15 +325,15 @@ const LandingPage: React.FC = () => {
     </div>
     
     {/* Spacer to ensure proper separation (minimized) */}
-    <div className="h-0 bg-[#07070B] md:h-32 md:mt-48 md:mb-24"></div>
+    {/* <div className="h-0 bg-[#07070B] md:h-32 md:mt-48 md:mb-24"></div> */}
 
     {/* New sections after HeroParallax (not nested inside) */}
-    <div className={`relative z-[10] bg-[#07070B] px-8 md:px-8 md:mt-32 lg:px-8 pt-2 md:pt-1 lg:pt-2 pb-20 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
+    <div className={`relative z-[10] -mt-96 bg-[#07070B] px-8 md:px-8 md:mt-32 desktop:-mt-40 desktop-lg:-mt-56 lg:px-8 desktop:px-24 desktop-lg:px-32 pt-2 md:pt-1 lg:pt-2 pb-10 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
       <ScrollFloat
-        containerClassName="text-center md:mt-24"
+        containerClassName="text-center md:mt-24 desktop:mt-0 desktop-lg:mt-0"
         animationDuration={5}
         ease="back.inOut(5)"
-        textClassName="text-white font-semibold font-poppins text-[clamp(6rem,8vw,6rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        textClassName="text-white font-medium md:font-semibold -mb-20 font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 85%"
         scrollEnd="bottom 25%"
       >
@@ -341,8 +341,8 @@ const LandingPage: React.FC = () => {
       </ScrollFloat>
 
       <ScrollFloat
-        containerClassName="text-center -mt-8 md:-mt-6 lg:-mt-8 md:mb-16"
-        textClassName="text-white font-semibold font-poppins text-[clamp(6rem,8vw,6rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        containerClassName="text-center -mt-5  md:-mt-6 lg:-mt-8 md:mb-16"
+        textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 100%"
         scrollEnd="bottom 25%"
       >
@@ -350,8 +350,8 @@ const LandingPage: React.FC = () => {
       </ScrollFloat>
 
       <ScrollFloat
-        containerClassName="text-center mt-12 md:mt-8 lg:mt-12"
-        textClassName="text-white font-semibold font-poppins text-[clamp(6rem,8vw,6rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        containerClassName="text-center -mb-4  md:mt-8 lg:mt-3"
+        textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 85%"
         scrollEnd="bottom 25%"
       >
@@ -359,24 +359,24 @@ const LandingPage: React.FC = () => {
       </ScrollFloat>
 
       <ScrollFloat
-        containerClassName="text-center -mt-8 md:-mt-6 lg:-mt-8"
-        textClassName="text-white font-semibold font-poppins text-[clamp(6rem,8vw,6rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        containerClassName="text-center -mb-4  md:-mt-6 lg:-mt-8"
+        textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 85%"
         scrollEnd="bottom 25%"
       >
         To Final Scene Generation
       </ScrollFloat>
 
-      <div ref={afterScrollFloatRef} className="h-[32vh] md:h-[24vh] lg:h-[28vh]" />
+      <div ref={afterScrollFloatRef} className="h-[16vh] md:h-[24vh] lg:h-[28vh]" />
 
       {/* Invisible unlock sentinel placed after both ScrollFloat headings */}
       <div ref={unlockRef} className="h-1" />
 
-      {unlockBelow && showProximity && (
-        <div ref={proximityContainerRef} style={{ position: 'relative' }} className="mt-4 md:mt-6 lg:mt-4">
+        {unlockBelow && showProximity && (
+          <div ref={proximityContainerRef} style={{ position: 'relative' }} className="-mt-10 md:mt-6 lg:-mt-44 mx-auto max-w-[680px] md:max-w-3xl lg:max-w-[1440px]">
             <VariableProximity
-              label={'We have got you covered with Image Generation, Video Creation, Audio Production, Branding Requirements, Filming Tools, and 3D Objects!'}
-              className={'variable-proximity-demo text-white font-semibold text-[3rem] md:text-[2.5rem] lg:text-[2.8rem]'}
+              label={'We have got you covered with\nImage Generation, Video Creation,\nAudio Production, Branding Requirements,\nFilming Tools, and 3D Objects!'}
+              className={'variable-proximity-demo text-white font-semibold text-left text-[1.25rem] leading-[1.2] whitespace-pre-line px-4 md:px-0 md:text-[2.5rem] lg:text-[2.8rem] md:leading-normal'}
               fromFontVariationSettings="'wght' 400"
               toFontVariationSettings="'wght' 900"
               containerRef={proximityContainerRef}
@@ -390,7 +390,7 @@ const LandingPage: React.FC = () => {
     {/* Consolidated sections with same background */}
     <div className={`bg-[#07070B] ${unlockBelow ? '' : 'opacity-0 pointer-events-none'}`}>
       <div className="w-full h-full py-20 md:py-16 lg:py-20" ref={hKnowRef}>
-        <h2 className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
+        <h2 className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
           <VariableProximity
             label={'Feature Categories'}
             className={''}
@@ -416,7 +416,7 @@ const LandingPage: React.FC = () => {
         {/* <ArtGallery /> */}
         {/* <SocialMediaSuite /> */}
         <div ref={hFeaturesRef}>
-          <p id="features-heading" className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-10 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
+          <p id="features-heading" className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2rem] lg:text-[2.5rem] mb-10 md:mb-6 lg:mb-10 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
             <VariableProximity
               label={'Explore All Our Features'}
               className={''}
@@ -439,10 +439,10 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* Additional ScrollFloat under Features section - ensure visibility even with short content */}
-        <div className="relative z-[10] bg-[#0a1116] px-8 md:px-6 lg:px-8 pt-12 md:pt-8 lg:pt-12 flex flex-col items-center min-h-[30vh] md:min-h-[24vh] lg:min-h-[28vh] text-center">
+        <div className="relative z-[10] px-8 md:px-6 lg:px-8 py-4 md:py-2 lg:py-6 flex flex-col items-center text-center ">
           <ScrollFloat
             containerClassName="text-center"
-            textClassName="text-white font-semibold font-poppins text-[clamp(6rem,8vw,6rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+            textClassName="text-white font-semibold font-poppins text-[clamp(1.5rem,4vw,2rem)] md:text-[clamp(2.2rem,3vw,2.5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
             scrollStart="top 85%"
             scrollEnd="bottom 25%"
           >
@@ -452,7 +452,7 @@ const LandingPage: React.FC = () => {
 
         {/* Heading under the second ScrollFloat */}
         <div ref={hHighlightsRef}>
-          <p className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
+          <p className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[1.25rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 mt-10 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
             <VariableProximity
               label={'Check The Latest AI Models Added!'}
               className={''}
@@ -478,7 +478,7 @@ const LandingPage: React.FC = () => {
 
         {/* Workflows */}
         <div ref={hWorkflowsRef}>
-          <p className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 mt-12 md:mt-8 lg:mt-12 md:px-4 lg:px-6">
+          <p className="text-white  text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[1.25rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:mt-8 lg:mt-12 md:px-4 lg:px-6">
             <VariableProximity
               label={'Workflows Filtered Based On Your Requirements'}
               className={''}
@@ -593,7 +593,7 @@ const LandingPage: React.FC = () => {
 
         {/* Why choose wildmindAI Section */}
         <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28" ref={hWhyRef}>
-          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
+          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[1.5rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
             <VariableProximity
               label={'Why Choose Wild Mind?'}
               className={''}
@@ -643,7 +643,7 @@ const LandingPage: React.FC = () => {
 
         {/* WobbleCard Section */}
         <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28" ref={hPricingRef}>
-          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-10 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
+          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[1.5rem] md:text-[2.5rem] lg:text-[2.8rem] mb-10 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
             <VariableProximity
               label={'Unmatched Value, Unbeatable Pricing Plans.'}
               className={''}
@@ -718,21 +718,7 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* Get Started for Free Button */}
-        <div className="mt-32 md:mt-20 lg:mt-28 flex justify-center text-center">
-          <HoverBorderGradient
-            containerClassName="rounded-full border border-[#1C303D] dark:border-white/20"
-            as="button"
-            duration={1}
-            clockwise={false}
-            glowBlurPx={0.5}
-            innerFillClassName="bg-[#1C303D]"
-            className="text-white flex items-center space-x-2 px-8 py-4 md:px-6 md:py-3 lg:px-8 lg:py-4 md:text-sm lg:text-base rounded-full"
-            onClick={onGetStarted}
-          >
-            <span>Start Generating</span>
-          </HoverBorderGradient>
-        </div>
-
+       
         {/* FAQ */}
         <div ref={hFAQRef} className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28">
           {loadFAQ ? (
@@ -750,7 +736,7 @@ const LandingPage: React.FC = () => {
             {/* translucent overlay and big label covering both galleries */}
             <div className="pointer-events-none absolute inset-0 z-[35] flex items-center justify-center">
               <div className="absolute inset-0" />
-                <span className="relative block text-white font-bold text-9xl md:text-[10rem] lg:text-[10rem] xl:text-[9rem]">
+                <span className="relative block text-white font-bold text-4xl md:text-[10rem] lg:text-[10rem] xl:text-[9rem]">
                 <VariableProximity
                   label={'Explore Art Gallery'}
                   className={''}
@@ -832,6 +818,22 @@ const LandingPage: React.FC = () => {
           <FooterNew />
         </div>
       </div>
+    </div>
+
+    {/* Floating Get Started (mobile only) */}
+    <div className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[1100]">
+      <HoverBorderGradient
+        containerClassName="rounded-full border border-[#1C303D] dark:border-white/20"
+        as="button"
+        duration={1}
+        clockwise={false}
+        glowBlurPx={0.5}
+        innerFillClassName="bg-[#1C303D]"
+        className="text-white flex items-center space-x-2 px-6 py-3 text-sm rounded-full shadow-lg"
+        onClick={onGetStarted}
+      >
+        <span>Get Started</span>
+      </HoverBorderGradient>
     </div>
     </div>
   )

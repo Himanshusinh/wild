@@ -49,12 +49,12 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({ onSubmit }) => {
   }
 
   return (
-    <div className="relative z-0 mb-4 max-w-7xl lg:max-w-7xl md:max-w-6xl mx-auto text-white p-6 sm:p-10 mb:p-4 mb:pb-12 rounded-3xl border border-white/20 backdrop-blur-lg bg-gradient-to-br from-white/5 to-transparent shadow-2xl overflow-hidden">
+    <div className="relative z-0 mb-4 max-w-[680px] md:max-w-6xl lg:max-w-7xl mx-3 md:mx-auto text-white px-4 py-6 sm:px-6 sm:py-10 md:px-8 md:py-10 mb:px-3 mb:py-4 mb:pb-12 rounded-3xl border border-white/20 backdrop-blur-lg bg-gradient-to-br from-white/5 to-transparent shadow-2xl overflow-hidden">
       <div className="absolute inset-[1px] bg-[#0a1116] rounded-2xl pointer-events-none z-0" />
 
-      <div className="relative z-10 flex flex-col md:flex-row items-start justify-between gap-12 md:gap-20 mb:gap-6">
+      <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-12 md:gap-20 mb:gap-6">
         {/* Left: Form */}
-        <div className="flex-1 space-y-6 w-full mt-4 md:mt-6 mb:space-y-4">
+        <div className="flex-1 space-y-6 w-full max-w-md mx-auto mt-4 md:mt-6 mb:space-y-4">
           <div className="space-y-3">
             <span className="uppercase text-sm text-gray-300 tracking-widest mb:text-xs ml-2">Newsletter Signup</span>
             <h2 className="text-3xl md:text-3xl font-bold drop-shadow-md mb:text-2xl ml-2">
@@ -120,7 +120,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({ onSubmit }) => {
         </div>
 
         {/* Right: CardStack animation (fixed layout and height) */}
-        <div className="flex-1 flex items-center justify-center relative min-h-[480px] mb:min-h-[460px] mobile:min-h-[500px] mb:mt-6 mb:justify-end mb:pr-3">
+        <div className="flex-1 hidden md:flex items-center justify-center relative min-h-[480px] mb:min-h-[460px] mobile:min-h-[500px] mb:mt-6 mb:justify-end mb:pr-3">
           <div className="w-full flex justify-center mb:justify-end mb:pr-2 mb:transform mb:translate-x-1">
           <CardSwap
             cardDistance={isMobile ? 30 : 50}

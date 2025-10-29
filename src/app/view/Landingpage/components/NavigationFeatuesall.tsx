@@ -1,44 +1,7 @@
+// Final adjustments for category visibility
 'use client';
-
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-
-export function NavigationFeatuesall({
-  children,
-  containerClassName,
-  className,
-  as: Tag = "button",
-  ...props
-}: React.PropsWithChildren<
-  {
-    as?: React.ElementType;
-    containerClassName?: string;
-    className?: string;
-  } & React.HTMLAttributes<HTMLElement>
->) {
-  return (
-    React.createElement(
-      Tag as any,
-      {
-        className: cn(
-          "relative flex rounded-[50px] border border-white/20 text-white text-sm backdrop-blur-xl bg-black/10 transition duration-300 items-center justify-center overflow-visible p-0.5 decoration-clone w-fit mb:text-xs mb:rounded-[36px]",
-          containerClassName,
-        ),
-        ...(props as any),
-      },
-      React.createElement(
-        "div",
-        {
-          className: cn(
-            "w-auto text-white z-10 bg-transparent px-2 py-1 rounded-[inherit] mb:px-1.5 mb:py-0.5",
-            className,
-          ),
-        },
-        children,
-      ),
-    )
-  );
-}
 
 interface NavigationCompoProps {
   categories?: string[];
@@ -47,55 +10,71 @@ interface NavigationCompoProps {
 
 const NavigationCompo: React.FC<NavigationCompoProps> = ({
   categories = [
-    'All',
-    'Image Generation',
-    'Video Generation',
-    'Branding Kit',
-    'Audio Generation',
-    'Filming Tools',
-    '3D Generation',
+    "All",
+    "Image Generation",
+    "Video Generation",
+    "Branding Kit",
+    "Audio Generation",
+    "Filming Tools",
+    "3D Generation",
   ],
-  onCategoryChange
+  onCategoryChange,
 }) => {
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState("All");
 
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category);
-    onCategoryChange?.(category);
+    if (onCategoryChange) onCategoryChange(category);
   };
 
   return (
-    <div className="relative -mb-10 mb:-mb-6 mb:px-2">
-      <NavigationFeatuesall
-        as="div"
-        containerClassName="bg-black rounded-full p-1 mb:p-0.5"
-        className="bg-black rounded-full p-1 mb:p-0.5"
-      >
-        <div className="flex flex-wrap space-x-2 min-w-max px-2 py-0.5 overflow-x-auto scrollbar-hide relative z-10 mb:space-x-1.5 mb:space-y-1.5 mb:px-1.5 mb:justify-start">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => handleCategoryChange(category)}
-              className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-6 py-1.5 text-sm mb:px-3.5 mb:py-1 mb:text-xs mobile:px-4 ${
-                activeCategory === category
-                  ? 'bg-[#1C303D] text-white shadow-md transform scale-105 mb:py-1'
-                  : 'text-white'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+    <div className="relative -mb-4 py-1 px-2 w-full lg:px-24 xl:px-32">{/* pulled up slightly to reduce gap between categories and cards */}
+      <div className="w-full"> 
+        <div
+          className={cn(
+            "bg-black/60 backdrop-blur-xl rounded-[50px] p-3 lg:px-1 lg:py-3 xl:px-0 xl:py-3 w-full max-w-full overflow-hidden border border-gray-800 text-white/25 border-fixed lg:flex lg:justify-center lg:items-center mx-auto lg:max-w-[1200px] xl:max-w-[1400px]",
+            "relative z-30"
+          )}
+        >
+          {/* inner scrollable row: border wrapper is full width so rounded edge stays visible */}
+          <div className="flex items-center overflow-x-auto scrollbar-hide pr-2 scroll-row">
+            {/* leading spacer so the first button doesn't slide under the left rounded border */}
+            <div className="w-3 flex-shrink-0 sm:w-6 lg:w-4 xl:w-0" aria-hidden />
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategoryChange(category)}
+                className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-4 sm:px-6 py-2 text-sm leading-none ${
+                  activeCategory === category
+                    ? "bg-[#1C303D] text-white shadow-md transform scale-105"
+                    : "text-white"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+            {/* small spacer so the last button doesn't touch the rounded border */}
+            <div className="w-3 flex-shrink-0 sm:w-6 lg:w-4 xl:w-0" aria-hidden />
+          </div>
         </div>
-      </NavigationFeatuesall>
-      
-      {/* Add scrollbar hide styles */}
+      </div>
       <style jsx>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
-        .scrollbar-hide::-webkit-scrollbar { 
+        .scrollbar-hide::-webkit-scrollbar {
           display: none;
+        }
+        /* Prevent the bordered wrapper from responding to horizontal pan gestures
+           so the inner row handles horizontal scrolling only. */
+        .border-fixed {
+          touch-action: pan-y;
+        }
+        /* Allow smooth momentum scrolling on iOS and horizontal panning inside the row */
+        .scroll-row {
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x;
         }
       `}</style>
     </div>

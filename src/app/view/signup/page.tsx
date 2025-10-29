@@ -11,14 +11,14 @@ export default function SignUp() {
   return (
     <main className="flex min-h-screen bg-background w-[100%]">
       {/* Left Side - Form */}
-      <div className="w-[60%] min-h-screen relative z-20 bg-[#07070B] flex justify-center items-center">
+      <div className="w-full md:w-[60%] min-h-screen relative z-20 bg-[#07070B] flex justify-center items-center">
 
         <SignInForm />
 
       </div>
 
-      {/* Right Side - Image */}
-      <div className="flex-1 min-h-screen relative bg-gray-900 w-[40%] z-10">
+      {/* Right Side - Image - Hidden on mobile */}
+      <div className="hidden md:flex flex-1 min-h-screen relative bg-gray-900 w-[40%] z-10">
         <div className="absolute inset-0 rounded-tl-[50px] rounded-bl-[50px] overflow-hidden pointer-events-none">
           {!imageError ? (
             <Image 
