@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import SmartImage from '@/components/media/SmartImage';
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
@@ -42,6 +43,8 @@ const History = () => {
   const [productPreviewEntry, setProductPreviewEntry] = useState<HistoryEntry | null>(null);
   const didInitialLoadRef = useRef(false);
   const isFetchingMoreRef = useRef(false);
+  const loadLockRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -86,6 +89,8 @@ const History = () => {
   // Helper: load only the first page; more pages load on scroll
   const loadFirstPage = async (filtersObj: any) => {
     try {
+      if (loadLockRef.current) return; // prevent duplicate initial loads
+      loadLockRef.current = true;
       const initialLimit = computeDynamicLimit(0);
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
       setHasMore(Boolean(result && result.hasMore));
@@ -97,6 +102,8 @@ const History = () => {
       } else {
         console.error('Error in loadFirstPage:', error);
       }
+    } finally {
+      loadLockRef.current = false;
     }
   };
 
@@ -117,30 +124,7 @@ const History = () => {
     }
   };
 
-  const autoFillViewport = async (baseFilters: any) => {
-    try {
-      let attempts = 0;
-      while (
-        attempts < 10 &&
-        hasMore &&
-        !loading &&
-        (document.documentElement.scrollHeight - window.innerHeight) < 200
-      ) {
-        const pageLimit = computeDynamicLimit(getFilteredItemsCount());
-        const more: any = await (dispatch as any)(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: pageLimit } })).unwrap();
-        setHasMore(Boolean(more && more.hasMore));
-        attempts += 1;
-      }
-    } catch (error) {
-      // Handle condition aborts gracefully
-      if (error && typeof error === 'object' && 'message' in error && 
-          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
-        console.log('autoFillViewport aborted - another request in progress');
-      } else {
-        console.error('Error in autoFillViewport:', error);
-      }
-    }
-  };
+  // Removed autoFillViewport to avoid multiple rapid requests. We do a single initial request and then on-scroll loads.
 
   // Load initial history on mount and when view mode changes
   useEffect(() => {
@@ -153,13 +137,11 @@ const History = () => {
           if (sortOrder) base.sortOrder = sortOrder;
           dispatch(setFilters(base));
           await loadFirstPage(base);
-          await autoFillViewport(base);
         } else {
           const f: any = { generationType: currentGenerationType };
           if (sortOrder) f.sortOrder = sortOrder;
           dispatch(setFilters(f));
           await loadFirstPage(f);
-          await autoFillViewport(f);
         }
         setPage(1);
         didInitialLoadRef.current = true;
@@ -177,34 +159,11 @@ const History = () => {
   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
 
 
-  // Fallback: if nothing loaded (e.g., on hard refresh), trigger first page load
-  useEffect(() => {
-    if (historyEntries.length === 0 && !didInitialLoadRef.current) {
-      const base = viewMode === 'global' ? {} : { generationType: currentGenerationType };
-      if (sortOrder) (base as any).sortOrder = sortOrder;
-      if (dateRange.start && dateRange.end) (base as any).dateRange = { start: dateRange.start, end: dateRange.end };
-      (async () => {
-        try {
-          await loadFirstPage(base);
-          await autoFillViewport(base);
-          setPage(1);
-          didInitialLoadRef.current = true;
-        } catch (error) {
-          // Handle condition aborts gracefully
-          if (error && typeof error === 'object' && 'message' in error && 
-              typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
-            console.log('Fallback history load aborted - another request in progress');
-          } else {
-            console.error('Error in fallback history load:', error);
-          }
-        }
-      })();
-    }
-  }, [loading, historyEntries.length, viewMode, currentGenerationType]);
+  // Removed fallback loader to prevent duplicate initial requests.
 
-  // Handle sort order changes
+  // Handle sort order changes (skip on initial mount)
   useEffect(() => {
-    // Re-apply current filters with new sort order and force viewport fill to avoid partial top rows
+    if (!didInitialLoadRef.current) return;
     (async () => {
       const finalFilters = { ...filters } as any;
       if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
@@ -212,20 +171,26 @@ const History = () => {
       dispatch(setFilters(finalFilters));
       setOverlayLoading(true);
       try {
-        await (dispatch as any)(loadHistory({
+        const limit = computeDynamicLimit(0);
+        const res: any = await (dispatch as any)(loadHistory({
           filters: finalFilters,
-          paginationParams: { limit: sortOrder === 'asc' ? 30 : 10 }
+          paginationParams: { limit }
         })).unwrap();
-        await autoFillViewport(finalFilters);
+        setHasMore(Boolean(res && res.hasMore));
       } catch {}
       setPage(1);
       setOverlayLoading(false);
     })();
   }, [sortOrder, dispatch]);
 
-  // Handle scroll to load more
+  // Handle scroll to load more (only after user actually scrolls)
   useEffect(() => {
     const handleScroll = () => {
+      if (!hasUserScrolledRef.current && window.scrollY > 0) {
+        hasUserScrolledRef.current = true;
+      }
+      if (!hasUserScrolledRef.current) return;
+
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
         if (hasMore && !loading && !isFetchingMoreRef.current) {
           isFetchingMoreRef.current = true;
@@ -248,7 +213,7 @@ const History = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loading, page, dispatch]);
+  }, [hasMore, loading, page, dispatch, filters, sortOrder]);
 
   // Handle click outside to close filter popover
   useEffect(() => {
@@ -787,7 +752,7 @@ const History = () => {
 
     dispatch(setFilters(finalFilters));
     await loadFirstPage(finalFilters);
-    await autoFillViewport(finalFilters);
+    
     setPage(1);
   };
 
@@ -798,7 +763,7 @@ const History = () => {
     dispatch(clearFilters());
     const base = {};
     await loadFirstPage(base);
-    await autoFillViewport(base);
+    
     setPage(1);
   };
 
@@ -1006,7 +971,6 @@ const History = () => {
                 // Immediately clear current list so previous category tiles do not linger
                 dispatch(clearHistory());
                 await loadFirstPage(f);
-                await autoFillViewport(f);
                 setPage(1);
                 setPillLoading(false);
                 setOverlayLoading(false);
@@ -1065,7 +1029,7 @@ const History = () => {
                       setLocalFilters(f);
                       dispatch(setFilters(f));
                       await loadFirstPage(f);
-                      await autoFillViewport(f);
+                      
                       setPage(1);
                       setShowDatePicker(false);
                     }}
@@ -1081,7 +1045,7 @@ const History = () => {
                       setLocalFilters(f);
                       dispatch(setFilters(f));
                       await loadFirstPage(f);
-                      await autoFillViewport(f);
+                      
                       setPage(1);
                       setShowDatePicker(false);
                     }}
@@ -1546,17 +1510,21 @@ const History = () => {
                         ) : (
                           <div className="w-full h-full relative">
                             {mediaUrl ? (
-                              <Image
-                                src={(() => { try { const { toThumbUrl } = require('@/lib/thumb'); return toThumbUrl(mediaUrl, { w: 640, q: 60 }) } catch { return mediaUrl } })()}
+                              <SmartImage
+                                src={mediaUrl}
                                 alt={entry.prompt}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200"
                                 sizes="192px"
-                                onLoad={() => {
-                                  setTimeout(() => {
-                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${media.id || mediaIndex}"] .shimmer`) as HTMLElement;
-                                    if (shimmer) shimmer.style.opacity = '0';
-                                  }, 100);
+                                thumbWidth={480}
+                                thumbQuality={60}
+                                onLoadingComplete={() => {
+                                  try {
+                                    setTimeout(() => {
+                                      const shimmer = document.querySelector(`[data-image-id="${entry.id}-${media.id || mediaIndex}"] .shimmer`) as HTMLElement;
+                                      if (shimmer) shimmer.style.opacity = '0';
+                                    }, 100);
+                                  } catch {}
                                 }}
                               />
                             ) : (

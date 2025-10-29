@@ -11,7 +11,8 @@ import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic
 import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview'
 import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGeneration/compo/LogoImagePreview'
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
-import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
+import { toMediaProxy } from '@/lib/thumb'
+import SmartImage from '@/components/media/SmartImage'
 
 // Types for items and categories
 type CreationItem = {
@@ -701,23 +702,25 @@ const Recentcreation: React.FC = () => {
                     </div>
                   </div>
                 ) : item.src && item.src.trim() !== '' ? (
-                  // Use compressed thumbnail for grid; full-res shown in existing preview modals
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return item.src.startsWith(Z) ? (toThumbUrl(item.src, { w: 640, q: 60 }) || item.src) : item.src } catch { return item.src } })()}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onLoad={(e) => {
-                      const img = e.currentTarget as HTMLImageElement
-                      const w = img.naturalWidth || 1
-                      const h = img.naturalHeight || 1
-                      const g = gcd(w, h)
-                      const rw = Math.round(w / g)
-                      const rh = Math.round(h / g)
-                      setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
-                    }}
-                  />
+                  <div className="absolute inset-0">
+                    <SmartImage
+                      src={item.src}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                      sizes="250px"
+                      onLoadingComplete={(img) => {
+                        try {
+                          const w = img.naturalWidth || 1;
+                          const h = img.naturalHeight || 1;
+                          const g = gcd(w, h);
+                          const rw = Math.round(w / g);
+                          const rh = Math.round(h / g);
+                          setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
+                        } catch {}
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center">
                     <div className="text-center">
