@@ -85,26 +85,26 @@ export default function WorkflowCarousel({
           onPointerCancel={onPointerUp}
         >
           {items.map((item) => (
-            <section key={item.id} className="min-w-full pt-4 px-6 md:pl-0 md:pr-12 md:pt-6 md:pb-12 lg:pl-0 lg:pr-12 lg:pt-6 lg:pb-12">
-              <article className="relative rounded-3xl ring-white/10 bg-white/5 px-4 md:pl-8 py-12 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-8 items-stretch">
+            <section key={item.id} className="min-w-full pt-2 px-3 md:pl-0 md:pr-12 md:pt-6 md:pb-12 lg:pl-0 lg:pr-12 lg:pt-6 lg:pb-12">
+              <article className="relative rounded-2xl md:rounded-3xl ring-white/10 bg-white/5 px-3 md:pl-8 py-6 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-4 md:gap-8 items-stretch">
                 {/* Left: text */}
-                <div className="flex-1 md:max-w-[calc(100%-650px)] lg:max-w-[calc(100%-720px)] -mt-4 md:-mt-8 lg:-mt-16">
-                  <h3 className="text-white text-4xl md:text-[35px] font-medium mb-6 mt-4">
+                <div className="flex-1 md:max-w-[calc(100%-650px)] lg:max-w-[calc(100%-720px)] -mt-2 md:-mt-8 lg:-mt-16">
+                  <h3 className="text-white text-2xl md:text-[35px] font-medium mb-4 md:mb-6 mt-2 md:mt-4">
                     {item.title}
                   </h3>
                   {item.subtitle && (
-                    <div className={item.subtitleClassName ?? "text-white/70 text-5xl md:text-6xl"}>
+                    <div className={item.subtitleClassName ?? "text-white/70 text-2xl md:text-6xl"}>
                       {item.subtitle}
                     </div>
                   )}
-                  <p className="text-white leading-relaxed mb-4 max-w-full mt-4 text-lg text-justify">
+                  <p className="text-white leading-relaxed mb-3 md:mb-4 max-w-full mt-2 md:mt-4 text-sm md:text-lg text-justify">
                     {item.description}
                   </p>
                 </div>
 
                 {/* Right: image */}
-                <div className="relative md:absolute md:right-8 lg:right-8 md:top-0 md:bottom-0 md:w-[600px] lg:w-[700px] h-[220px] md:h-auto flex-shrink-0">
-                  <div className="absolute inset-x-0 top-2 bottom-2 md:top-4 md:bottom-4 lg:top-6 lg:bottom-6 rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black/20">
+                <div className="relative md:absolute md:right-8 lg:right-8 md:top-0 md:bottom-0 md:w-[600px] lg:w-[700px] h-[180px] md:h-auto flex-shrink-0">
+                  <div className="absolute inset-x-0 top-1 bottom-1 md:top-4 md:bottom-4 lg:top-6 lg:bottom-6 rounded-xl md:rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black/20">
                     <Image
                       src={item.image}
                       alt={item.title}
@@ -116,9 +116,9 @@ export default function WorkflowCarousel({
                   
                   {/* Button positioned at bottom right of image */}
                   {item.ctaText && (
-                    <button className="absolute bottom-10 right-4 inline-flex items-center gap-2 bg-[#1C303D] text-white font-semibold rounded-full px-5 py-2 shadow/50 hover:shadow transition z-10">
+                    <button className="absolute bottom-6 right-3 md:bottom-10 md:right-4 inline-flex items-center gap-1 md:gap-2 bg-[#1C303D] text-white font-semibold rounded-full px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm shadow/50 hover:shadow transition z-10">
                       {item.ctaText}
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
                       </svg>
                     </button>
@@ -133,33 +133,33 @@ export default function WorkflowCarousel({
         <div className="pointer-events-none absolute  top-0 right-0 bottom-0 w-2 md:w-3 bg-white/5" />
  
         {/* Arrows */}
-        <div className="absolute bottom-18 right-6 md:bottom-14 md:right-16 z-10 flex items-center justify-end gap-6">
+        <div className="absolute bottom-12 right-4 md:bottom-14 md:right-16 z-10 flex items-center justify-end gap-3 md:gap-6">
           <button
             onClick={prev}
             aria-label="Previous"
-            className="w-8 h-8 grid place-items-center rounded-full bg-white text-black"
+            className="w-7 h-7 md:w-8 md:h-8 grid place-items-center rounded-full bg-white/95 hover:bg-white text-black transition-all duration-200 hover:scale-110 shadow-lg"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
  
           <button
             onClick={next}
             aria-label="Next"
-            className="w-8 h-8 grid place-items-center rounded-full bg-white text-black"
+            className="w-7 h-7 md:w-8 md:h-8 grid place-items-center rounded-full bg-white/95 hover:bg-white text-black transition-all duration-200 hover:scale-110 shadow-lg"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>
 
         {/* Dots - mirrored on the left side with similar spacing */}
-        <div className="absolute bottom-16 left-3 md:bottom-20 md:left-8 z-10 flex items-center gap-2">
+        <div className="absolute bottom-14 left-3 md:bottom-20 md:left-8 z-10 flex items-center gap-2">
           {items.map((_, i) => (
             <button
               key={i}
               aria-label={`Go to slide ${i + 1}`}
               onClick={() => go(i)}
-              className={`w-1.5 h-1.5 rounded-full transition ${
-                i === index ? "bg-white" : "bg-white/30 hover:bg-white/60"
+              className={`w-2 h-2 md:w-1.5 md:h-1.5 rounded-full transition-all duration-200 ${
+                i === index ? "bg-white scale-125" : "bg-white/30 hover:bg-white/60 hover:scale-110"
               }`}
             />
           ))}

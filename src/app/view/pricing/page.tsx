@@ -7,7 +7,7 @@ import CurrentPlan from "@/app/view/pricing/compo/currentPlan";
 import FAQs from "@/app/view/pricing/compo/FAQs";
 import Plans from "@/app/view/pricing/compo/Plans";
 import SidePannelFeatures from "../Generation/Core/SidePannelFeatures";
-import Nav from "../Generation/Core/Nav";
+import Nav from "../HomePage/compo/Nav";
 import FooterNew from "../core/FooterNew";
 import { useState } from "react";
 import { useRouter } from 'next/navigation';

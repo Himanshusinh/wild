@@ -59,9 +59,35 @@ const Nav = () => {
   const router = useRouter()
 
   // Close dropdown when clicking outside
-  useOutsideClick(dropdownRef, () => {
-    setShowDropdown(false)
-  })
+  // useOutsideClick(dropdownRef, () => {
+  //   setShowDropdown(false)
+  // })
+
+  // Manual click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+
+    if (showDropdown) {
+      // Add a small delay to prevent immediate closure
+      const timer = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+      }, 100)
+
+      return () => {
+        clearTimeout(timer)
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showDropdown])
+
+  // Debug showDropdown state
+  useEffect(() => {
+    console.log('showDropdown state changed:', showDropdown)
+  }, [showDropdown])
 
   // Fetch user and credits from backend
   useEffect(() => {
@@ -148,6 +174,7 @@ const Nav = () => {
   }
 
   const toggleDropdown = () => {
+    console.log('Profile clicked, current state:', showDropdown)
     setShowDropdown(!showDropdown)
   }
 
@@ -172,18 +199,18 @@ const Nav = () => {
   
 
   return (
-    <div className='fixed top-4 right-4 z-50'>
-      <div className='flex items-center gap-3'>
+    <div className='fixed top-2 right-2 md:top-4 md:right-4 z-[70]'>
+      <div className='flex items-center gap-2 md:gap-3 relative'>
         {/* Group 1: search + credits inside shared background */}
-        <div className='flex items-center gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-2 py-1'>
+        <div className='flex items-center gap-2 md:gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-1.5 py-0.5 md:px-2 md:py-1'>
           {/* <svg className='cursor-pointer p-1' width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
             <path d='M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z' stroke='currentColor' strokeWidth='2' className='text-white/70'/>
             <path d='M21 21l-4.3-4.3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' className='text-white/70'/>
           </svg> */}
-          <button className='flex items-center rounded-full text-white text-lg px-6 py-2 gap-2'>
+          <button className='flex items-center rounded-full text-white text-sm md:text-lg px-3 py-1.5 md:px-6 md:py-2 gap-1.5 md:gap-2'>
             {loading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
 
-            <Image className='cursor-pointer' src={imageRoutes.icons.coins} alt='logo' width={25} height={25} />
+            <Image className='cursor-pointer md:w-[25px] md:h-[25px]' src={imageRoutes.icons.coins} alt='logo' width={18} height={18} />
 
             {/* <svg className='cursor-pointer' width='26' height='26' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <circle cx='12' cy='12' r='9' stroke='#F4D03F' strokeWidth='2' fill='url(#coinGrad)'/>
@@ -200,10 +227,13 @@ const Nav = () => {
 
         {/* Group 2: person icon with dropdown */}
         <div className='relative' ref={dropdownRef}>
-          <div className='rounded-full backdrop-blur-3xl bg-black/30 shadow-lg border border-white/10 '>
+          <div className='rounded-full backdrop-blur-3xl bg-black/30 shadow-lg border border-white/10 p-1'>
             <button 
-              onClick={toggleDropdown}
-              className='flex items-center justify-center rounded-full'
+              onClick={() => {
+                console.log('Profile button clicked, current state:', showDropdown);
+                setShowDropdown(!showDropdown);
+              }}
+              className='flex items-center justify-center rounded-full w-10 h-10 md:w-12 md:h-12 p-1 hover:bg-white/10 transition-colors'
             >
               {(!loading && userData?.photoURL && !avatarFailed) ? (
                 <img
@@ -211,10 +241,10 @@ const Nav = () => {
                   alt='profile'
                   referrerPolicy='no-referrer'
                   onError={() => setAvatarFailed(true)}
-                  className='w-11 h-11 rounded-full object-cover'
+                  className='w-8 h-8 md:w-10 md:h-10 rounded-full object-cover'
                 />
               ) : (
-                <svg width='28' height='28' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' className='text-white/80'>
+                <svg width='20' height='20' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' className='text-white/80 md:w-6 md:h-6'>
                   <circle cx='12' cy='8' r='4' stroke='currentColor' strokeWidth='2'/>
                   <path d='M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8' stroke='currentColor' strokeWidth='2'/>
                 </svg>
@@ -224,11 +254,11 @@ const Nav = () => {
 
           {/* Profile Dropdown */}
           {showDropdown && (
-            <div className='absolute right-0 top-full mt-2 w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden'>
-              <div className='p-4'>
+            <div className='absolute right-0 top-full mt-2 w-72 md:w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden z-[80] transform translate-x-0 translate-y-0'>
+              <div className='p-3 md:p-4'>
                 {/* User Info Header */}
-                <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
-                  <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
+                <div className='flex items-center gap-2 md:gap-3 mb-3 md:mb-4 pb-3 md:pb-4 border-b border-white/10'>
+                  <div className='w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
                     {(!loading && userData?.photoURL && !avatarFailed) ? (
                       <img
                         src={userData.photoURL}
@@ -238,16 +268,16 @@ const Nav = () => {
                         className='w-full h-full object-cover'
                       />
                     ) : (
-                      <span className='text-white font-semibold text-lg'>
+                      <span className='text-white font-semibold text-sm md:text-lg'>
                         {loading ? '...' : ((userData?.username || userData?.email || 'U').charAt(0).toUpperCase())}
                       </span>
                     )}
                   </div>
                   <div className='flex-1'>
-                    <div className='text-white font-semibold text-lg'>
+                    <div className='text-white font-semibold text-sm md:text-lg'>
                       {loading ? 'Loading...' : ( userData?.username || 'User')}
                     </div>
-                    <div className='text-gray-300 text-sm'>
+                    <div className='text-gray-300 text-xs md:text-sm'>
                       {loading ? 'Loading...' : (userData?.email || 'user@example.com')}
                     </div>
                     {/* {userData?.metadata?.accountStatus && (
@@ -259,12 +289,12 @@ const Nav = () => {
                 </div>
 
                 {/* Menu Items */}
-                <div className='space-y-2'>
+                <div className='space-y-1.5 md:space-y-2'>
                   {/* User Info */}
-                  <div className='space-y-1 px-3 py-2 rounded-lg bg-white/5'>
+                  <div className='space-y-1 px-2 md:px-3 py-1.5 md:py-2 rounded-lg bg-white/5'>
                     <div className='flex items-center justify-between'>
-                      <span className='text-white text-sm'>Status</span>
-                      <span className='text-green-400 text-sm'>{userData?.metadata?.accountStatus || 'Active'}</span>
+                      <span className='text-white text-xs md:text-sm'>Status</span>
+                      <span className='text-green-400 text-xs md:text-sm'>{userData?.metadata?.accountStatus || 'Active'}</span>
                     </div>
                     {/* <div className='flex items-center justify-between'>
                       <span className='text-white text-sm'>Login Count</span>
@@ -277,25 +307,25 @@ const Nav = () => {
                   </div>
 
                   {/* Active Plan */}
-                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
-                    <span className='text-white text-sm'>Active Plan</span>
-                    <span className='text-gray-300 text-sm'>{userData?.plan || 'Free'}</span>
+                  <div className='flex items-center justify-between py-1.5 md:py-2 px-2 md:px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                    <span className='text-white text-xs md:text-sm'>Active Plan</span>
+                    <span className='text-gray-300 text-xs md:text-sm'>{userData?.plan || 'Free'}</span>
                   </div>
 
                   {/* Upgrade Plan */}
                   <button 
                     onClick={handleUpgradePlan}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    className='w-full text-left py-1.5 md:py-2 px-2 md:px-3 rounded-lg hover:bg-white/5 transition-colors'
                   >
-                    <span className='text-white text-sm'>Upgrade Plan</span>
+                    <span className='text-white text-xs md:text-sm'>Upgrade Plan</span>
                   </button>
 
                   {/* Purchase Credits */}
                   <button 
                     onClick={handlePurchaseCredits}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    className='w-full text-left py-1.5 md:py-2 px-2 md:px-3 rounded-lg hover:bg-white/5 transition-colors'
                   >
-                    <span className='text-white text-sm'>Purchase Additional Credits</span>
+                    <span className='text-white text-xs md:text-sm'>Purchase Additional Credits</span>
                   </button>
 
                   {/* Theme Toggle */}
@@ -307,8 +337,8 @@ const Nav = () => {
                   </button> */}
 
                   {/* Make generations public toggle */}
-                  <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
-                    <span className='text-white text-sm'>Make generations public</span>
+                  <div className='flex items-center justify-between py-1.5 md:py-2 px-2 md:px-3 rounded-lg hover:bg-white/5 transition-colors'>
+                    <span className='text-white text-xs md:text-sm'>Make generations public</span>
                     <button
                       type='button'
                       aria-pressed={isPublic}
@@ -321,9 +351,9 @@ const Nav = () => {
                         } catch {}
                         try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
                       }}
-                      className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
+                      className={`w-8 h-4 md:w-10 md:h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
                     >
-                      <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0 left-0.5`} />
+                      <span className={`block w-3 h-3 md:w-4 md:h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-4 md:translate-x-5' : 'translate-x-0'} relative top-0 left-0.5`} />
                     </button>
                   </div>
 
@@ -333,20 +363,20 @@ const Nav = () => {
                       router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)
                       setShowDropdown(false)
                     }}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'
+                    className='w-full text-left py-1.5 md:py-2 px-2 md:px-3 rounded-lg hover:bg-white/5 transition-colors'
                   >
-                    <span className='text-white text-sm'>Account Settings</span>
+                    <span className='text-white text-xs md:text-sm'>Account Settings</span>
                   </button>
 
                   {/* Divider */}
-                  <div className='border-t border-white/10 my-2'></div>
+                  <div className='border-t border-white/10 my-1.5 md:my-2'></div>
 
                   {/* Logout */}
                   <button 
                     onClick={handleLogout}
-                    className='w-full text-left py-2 px-3 rounded-lg hover:bg-red-500/20 transition-colors'
+                    className='w-full text-left py-1.5 md:py-2 px-2 md:px-3 rounded-lg hover:bg-red-500/20 transition-colors'
                   >
-                    <span className='text-red-400 text-sm'>Log Out</span>
+                    <span className='text-red-400 text-xs md:text-sm'>Log Out</span>
                   </button>
                 </div>
               </div>

@@ -36,12 +36,12 @@ export default function HowToGuidesShared() {
 
   return (
     <MotionConfig transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-      <div className="w-full px-4 md:px-8 lg:px-12 py-8 mt-32">
-        <h2 className="text-white text-4xl md:text-4xl font-medium mb-6 ml-6">
+      <div className="w-full px-4 md:px-8 lg:px-12 py-6 md:py-8 mt-20 md:mt-32">
+        <h2 className="text-white text-2xl md:text-4xl font-medium mb-6 md:mb-6 ml-0 md:ml-6">
           How To Use & Guides
         </h2>
 
-        <div className="flex items-stretch gap-6">
+        <div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-6">
           {/* LEFT: HERO SLOT (the active slide grows into here) */}
           <div className="relative flex-1 min-w-0">
             {/* Hidden preloader for next video */}
@@ -51,11 +51,11 @@ export default function HowToGuidesShared() {
               muted 
               className="hidden"
             />
-            <div className="relative h-[320px] md:h-[420px] lg:h-[480px] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-black/30">
+            <div className="relative h-[280px] md:h-[420px] lg:h-[480px] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-black/30">
               <motion.div
                 key={main.id}
                 layoutId={`card-${main.id}`} // shared element id
-                className="absolute inset-0 rounded-3xl overflow-hidden"
+                className="absolute inset-0 rounded-2xl md:rounded-3xl overflow-hidden"
               >
                 {/* media */}
                 <div className="absolute inset-0">
@@ -72,56 +72,56 @@ export default function HowToGuidesShared() {
                   />
                   {isLoading && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="text-white text-lg">Loading...</div>
+                      <div className="text-white text-sm md:text-lg">Loading...</div>
                     </div>
                   )}
                 </div>
                 {/* gradient + text */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/30 to-black/80" />
-                <div className="absolute inset-x-0 bottom-0 p-6">
-                  <div className="text-white/70 text-[10px] md:text-xs tracking-[.1em] mb-2">
+                <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/40 to-black/85" />
+                <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
+                  <div className="text-white/80 text-[10px] md:text-xs tracking-[.1em] mb-2 font-medium">
                     {main.subtitle}
                   </div>
-                  <div className="text-white !text-5xl md:!text-5xl font-medium mb-4">
+                  <div className="text-white !text-2xl md:!text-5xl font-semibold mb-3 md:mb-4 leading-tight">
                     {main.title}
                   </div>
-                  <button className="bg-[#1C303D] hover:bg-[#1b6dff] text-white rounded-full px-5 py-3 text-sm font-semibold">
-                      Explore
+                  <button className="bg-[#1C303D] hover:bg-[#1b6dff] text-white rounded-full px-5 md:px-5 py-2.5 md:py-3 text-sm md:text-sm font-semibold transition-all duration-200 hover:scale-105">
+                    Explore
                   </button>
                 </div>
               </motion.div>
 
               {/* controls */}
-              <div className="absolute bottom-6 right-6 z-10 flex items-center gap-6">
+              <div className="absolute bottom-3 md:bottom-6 right-3 md:right-6 z-10 flex items-center gap-2 md:gap-6">
                 <button
                   onClick={prev}
-                  className="w-10 h-10 rounded-full bg-white text-black grid place-items-center transition"
+                  className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/95 hover:bg-white text-black grid place-items-center transition-all duration-200 hover:scale-110 shadow-lg"
                   aria-label="Previous"
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 </button>
-                <div className="text-white/80 text-lg tabular-nums">
-                  {active + 1} <span className="opacity-60">/ {total}</span>
+                <div className="text-white/90 text-sm md:text-lg tabular-nums font-medium bg-black/30 px-2 py-1 rounded-full">
+                  {active + 1} <span className="opacity-70">/ {total}</span>
                 </div>
                 <button
                   onClick={next}
-                  className="w-10 h-10 rounded-full bg-white text-black grid place-items-center transition"
+                  className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/95 hover:bg-white text-black grid place-items-center transition-all duration-200 hover:scale-110 shadow-lg"
                   aria-label="Next"
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: NEXT THUMB + 10% PEEK OF THIRD */}
-          <div className="flex w-full md:w-[360px] items-center justify-between gap-3">
-            {/* Large next thumbnail (centered vertically by parent alignment) */}
+          {/* RIGHT: NEXT THUMB + THIRD THUMB - EQUALLY DIVIDED */}
+          <div className="flex w-full md:w-[360px] items-stretch gap-3 md:gap-3">
+            {/* Second thumbnail - 50% width */}
             <motion.button
               key={nextSlide.id}
               layoutId={`card-${nextSlide.id}`}
               onClick={() => go(nextIndex)}
-              className="relative w-[200px] md:w-[300px] h-[140px] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-white/20 focus:outline-none"
+              className="relative flex-1 h-[110px] md:h-[140px] rounded-xl md:rounded-2xl overflow-hidden ring-1 ring-white/20 hover:ring-white/40 focus:outline-none transition-all duration-200 hover:scale-105"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.25 }}
               aria-label="Open next slide"
@@ -134,22 +134,22 @@ export default function HowToGuidesShared() {
                 preload="metadata"
                 key={nextSlide.id}
               />
-              <div className="absolute inset-0 bg-black/50" />
+              <div className="absolute inset-0 bg-black/60" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex items-center justify-center text-white text-center px-2">
-                  <span className="text-sm font-medium">{nextSlide.title}</span>
-                  <span className="text-xl font-medium ml-1 mt-0.5">&gt;</span>
+                  <span className="text-xs md:text-sm font-semibold">{nextSlide.title}</span>
+                  <span className="text-base md:text-xl font-bold ml-1 mt-0.5">&gt;</span>
                 </div>
               </div>
             </motion.button>
 
-            {/* 10% visible sliver for the third image */}
+            {/* Third thumbnail - 50% width */}
             <motion.button
               key={thirdSlide.id}
               layoutId={`card-${thirdSlide.id}`}
               onClick={() => go(thirdIndex)}
-              className="relative h-[140px] w-[10%] min-w-[22px] max-w-[36px] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-white/20 focus:outline-none"
-              aria-label="Peek third slide"
+              className="relative flex-1 h-[110px] md:h-[140px] rounded-xl md:rounded-2xl overflow-hidden ring-1 ring-white/20 hover:ring-white/40 focus:outline-none transition-all duration-200 hover:scale-105"
+              aria-label="Open third slide"
             >
               <video 
                 src={thirdSlide.src} 
@@ -159,7 +159,13 @@ export default function HowToGuidesShared() {
                 preload="metadata"
                 key={thirdSlide.id}
               />
-              <div className="absolute inset-0 bg-black/50" />
+              <div className="absolute inset-0 bg-black/60" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex items-center justify-center text-white text-center px-2">
+                  <span className="text-xs md:text-sm font-semibold">{thirdSlide.title}</span>
+                  <span className="text-base md:text-xl font-bold ml-1 mt-0.5">&gt;</span>
+                </div>
+              </div>
             </motion.button>
           </div>
         </div>
