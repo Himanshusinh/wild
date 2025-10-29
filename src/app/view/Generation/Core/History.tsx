@@ -1317,72 +1317,18 @@ const History = () => {
                                     playsInline 
                                     loop 
                                     preload="metadata"
-                                    onMouseEnter={async (e) => {
-                                      const video = e.currentTarget;
-                                      const videoId = `${entry.id}-${mediaIndex}`;
-                                      console.log('🎥 VIDEO HOVER ENTER:', {
-                                        videoId,
-                                        videoSrc: video.src,
-                                        videoReadyState: video.readyState,
-                                        videoPaused: video.paused,
-                                        videoDuration: video.duration,
-                                        entryId: entry.id,
-                                        mediaIndex
-                                      });
-                                      
-                                      try {
-                                        // Force video to load if not ready
-                                        if (video.readyState < 2) {
-                                          console.log('⏳ Video not ready, loading...');
-                                          video.load();
-                                          await new Promise((resolve) => {
-                                            video.addEventListener('loadeddata', resolve, { once: true });
-                                            video.addEventListener('error', resolve, { once: true });
-                                          });
-                                        }
-                                        
-                                        console.log('🎥 Video ready, attempting to play...');
-                                        video.currentTime = 0; // Start from beginning
-                                        await video.play();
-                                        console.log('✅ Video started playing successfully on hover!');
-                                        setPlayingVideos(prev => new Set(prev).add(videoId));
-                                      } catch (error: any) {
-                                        console.error('❌ Video play failed on hover:', error);
-                                        console.log('Video error details:', {
-                                          code: error.code,
-                                          message: error.message,
-                                          name: error.name,
-                                          readyState: video.readyState,
-                                          networkState: video.networkState
-                                        });
-                                        
-                                        // Try alternative approach - user interaction
-                                        console.log('🔄 Trying alternative play method...');
-                                        video.muted = true; // Ensure muted for autoplay
-                                        try {
-                                          await video.play();
-                                          console.log('✅ Video started playing with muted autoplay!');
-                                          setPlayingVideos(prev => new Set(prev).add(videoId));
-                                        } catch (retryError) {
-                                          console.error('❌ Retry also failed:', retryError);
-                                        }
-                                      }
+                                    onMouseEnter={async (e) => { 
+                                      try { 
+                                        await (e.currentTarget as HTMLVideoElement).play();
+                                        setPlayingVideos(prev => new Set(prev).add(`${entry.id}-${mediaIndex}`));
+                                      } catch { } 
                                     }}
-                                    onMouseLeave={(e) => {
-                                      const video = e.currentTarget;
-                                      const videoId = `${entry.id}-${mediaIndex}`;
-                                      console.log('🎥 VIDEO HOVER LEAVE:', {
-                                        videoId,
-                                        videoPaused: video.paused,
-                                        videoCurrentTime: video.currentTime,
-                                        videoDuration: video.duration
-                                      });
-                                      video.pause();
-                                      video.currentTime = 0;
+                                    onMouseLeave={(e) => { 
+                                      const v = e.currentTarget as HTMLVideoElement; 
+                                      try { v.pause(); v.currentTime = 0 } catch { }
                                       setPlayingVideos(prev => {
                                         const newSet = new Set(prev);
-                                        newSet.delete(videoId);
-                                        console.log('🎥 Video removed from playing set:', videoId);
+                                        newSet.delete(`${entry.id}-${mediaIndex}`);
                                         return newSet;
                                       });
                                     }}
@@ -1459,8 +1405,10 @@ const History = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                              <span className="text-xs text-white">Video</span>
+                            <div className={`absolute bottom-2 right-2 transition-opacity ${playingVideos.has(`${entry.id}-${mediaIndex}`) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'}`}> 
+                              <div className="bg-white/5 backdrop-blur-xl rounded px-2 py-1">
+                                <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
+                              </div>
                             </div>
                             {playingVideos.has(`${entry.id}-${mediaIndex}`) && (
                               <div className="absolute top-2 right-2 bg-green-500/80 backdrop-blur-sm rounded px-2 py-1">
@@ -1468,8 +1416,8 @@ const History = () => {
                               </div>
                             )}
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
+                            <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              {/* <span
                                 title={getCleanPrompt(entry.prompt)}
                                 className="text-xs text-white flex-1 leading-snug"
                                 style={{
@@ -1480,14 +1428,14 @@ const History = () => {
                                 }}
                               >
                                 {getCleanPrompt(entry.prompt)}
-                              </span>
+                              </span> */}
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
@@ -1509,8 +1457,8 @@ const History = () => {
                               <span className="text-xs text-white">Audio</span>
                             </div>
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
+                            <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              {/* <span
                                 title={getCleanPrompt(entry.prompt)}
                                 className="text-xs text-white flex-1 leading-snug"
                                 style={{
@@ -1521,14 +1469,14 @@ const History = () => {
                                 }}
                               >
                                 {getCleanPrompt(entry.prompt)}
-                              </span>
+                              </span> */}
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
@@ -1577,26 +1525,14 @@ const History = () => {
                             )}
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
-                                title={getCleanPrompt(entry.prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 3 as any,
-                                  WebkitBoxOrient: 'vertical' as any,
-                                  overflow: 'hidden'
-                                }}
-                              >
-                                {getCleanPrompt(entry.prompt)}
-                              </span>
+                            <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
