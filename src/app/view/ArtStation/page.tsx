@@ -56,6 +56,7 @@ export default function ArtStationPage() {
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const [currentUid, setCurrentUid] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ uid?: string; username?: string; displayName?: string; photoURL?: string } | null>(null)
   // layout fixed to masonry (no toggle)
   // Track which media tiles have finished loading so we can fade them in
   const [loadedTiles, setLoadedTiles] = useState<Set<string>>(new Set())
@@ -291,6 +292,7 @@ export default function ArtStationPage() {
       if (userStr) {
         const u = JSON.parse(userStr)
         setCurrentUid(u?.uid || null)
+        setCurrentUser({ uid: u?.uid, username: u?.username || u?.displayName, displayName: u?.displayName || u?.username, photoURL: u?.photoURL || u?.photoUrl })
       }
     } catch {}
   }, [])
@@ -663,12 +665,17 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                       <div className="flex items-center justify-between">
                         {/* Profile Section */}
                         <div className="flex items-center gap-2">
-                          {item.createdBy?.photoURL ? (
-                            <img src={`/api/proxy/external?url=${encodeURIComponent(item.createdBy.photoURL)}`} alt={item.createdBy.username || ''} className="w-8 h-8 rounded-full" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-white/20" />
-                          )}
-                          <div className="text-white text-sm font-medium">{item.createdBy?.displayName || item.createdBy?.username || 'User'}</div>
+                          {(() => {
+                            const isSelf = item.createdBy?.uid && currentUid && item.createdBy.uid === currentUid
+                            const photo = item.createdBy?.photoURL || (isSelf ? currentUser?.photoURL : '')
+                            if (photo) {
+                              return <img src={`/api/proxy/external?url=${encodeURIComponent(photo)}`} alt={item.createdBy?.username || currentUser?.username || ''} className="w-8 h-8 rounded-full" />
+                            }
+                            return <div className="w-8 h-8 rounded-full bg-white/20" />
+                          })()}
+                          <div className="text-white text-sm font-medium">
+                            {item.createdBy?.username || item.createdBy?.displayName || (item.createdBy?.uid === currentUid ? (currentUser?.username || currentUser?.displayName || 'User') : 'User')}
+                          </div>
                         </div>
 
                         {/* Like + Delete action group (tight spacing) */}
@@ -885,17 +892,19 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                   </div>
 
                   {/* Sidebar */}
-                  <div className="p-4 md:p-5 text-white border-t md:border-t-0 md:border-l border-white/10 bg-black/10 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
+                  <div className="p-4 md:p-5 text-white  bg-black/10 h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
                     {/* Creator */}
                     <div className="mb-4">
                       <div className="text-white/60 text-xs uppercase tracking-wider mt-18 mb-2">Creator</div>
                       <div className="flex items-center gap-2">
-                        {preview.item.createdBy?.photoURL ? (
-                          <img src={`/api/proxy/external?url=${encodeURIComponent(preview.item.createdBy.photoURL)}`} alt={preview.item.createdBy.username || ''} className="w-6 h-6 rounded-full" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-white/20" />
-                        )}
-                        <span className="text-white text-sm font-medium">{preview.item.createdBy?.displayName || preview.item.createdBy?.username || 'User'}</span>
+                        {(() => {
+                          const cb = preview.item.createdBy || {} as any;
+                          const isSelf = (cb?.uid && currentUid && cb.uid === currentUid) || (!cb?.uid && currentUser?.username && cb?.username === currentUser.username);
+                          const photo = cb?.photoURL || (isSelf ? currentUser?.photoURL : '');
+                          if (photo) return <img src={`/api/proxy/external?url=${encodeURIComponent(photo)}`} alt={cb?.username || currentUser?.username || ''} className="w-6 h-6 rounded-full" />;
+                          return <div className="w-6 h-6 rounded-full bg-white/20" />;
+                        })()}
+                        <span className="text-white text-sm font-medium">{(preview.item.createdBy?.username) || (isNaN(0 as any) && preview.item.createdBy?.displayName) || (currentUser?.username) || 'User'}</span>
                       </div>
                     </div>
                     
