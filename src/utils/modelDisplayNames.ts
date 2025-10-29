@@ -60,13 +60,47 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
 export function getModelDisplayName(modelId: string | undefined | null): string {
   if (!modelId) return 'Unknown Model';
   
+  // Normalize known provider prefixes often saved in history (e.g., "Fal Ai Veo3 Fast")
+  const normalized = modelId
+    .replace(/^\s*(fal\s*ai)\s*/i, '')
+    .replace(/^\s*(replicate)\s*/i, '')
+    .replace(/^\s*(runway)\s*/i, '')
+    .replace(/^\s*(minimax)\s*/i, '')
+    .replace(/^\s*(kwai|kwaivgi|kuaishou|kuaigv)\s*/i, '')
+    .replace(/\bkling\s*video\b/ig, 'kling')
+    .replace(/\bvideo\b/ig, '')
+    .replace(/\bi2v\b/ig, '')
+    .replace(/\bt2v\b/ig, '')
+    .trim();
+
+  // Heuristic remapping for Veo models if provider text snuck into the model string
+  const lower = normalized.toLowerCase();
+  if (lower.includes('veo3') && lower.includes('fast')) return 'Veo3 Fast';
+  if (lower.includes('veo3')) return 'Veo3';
+
+  // Heuristic remapping for WAN models (remove "Wan Video" etc.)
+  if (lower.includes('wan')) {
+    const isFast = /fast/i.test(normalized);
+    if (lower.includes('2.5')) return `WAN 2.5${isFast ? ' Fast' : ''}`;
+    if (lower.includes('2')) return `WAN 2${isFast ? ' Fast' : ''}`;
+    return `WAN${isFast ? ' Fast' : ''}`;
+  }
+
+  // Heuristic remapping for Kling models (remove vendor misspellings like Kwai/Kwaivgi)
+  if (lower.includes('kling')) {
+    const isMaster = /master/i.test(normalized);
+    if (lower.includes('2.5')) return `Kling 2.5${isMaster ? ' Master' : ''}`;
+    if (lower.includes('2.1')) return `Kling 2.1${isMaster ? ' Master' : ''}`;
+    return `Kling${isMaster ? ' Master' : ''}`;
+  }
+
   // Check if we have a direct mapping
-  if (MODEL_DISPLAY_NAMES[modelId]) {
-    return MODEL_DISPLAY_NAMES[modelId];
+  if (MODEL_DISPLAY_NAMES[normalized]) {
+    return MODEL_DISPLAY_NAMES[normalized];
   }
   
   // Fallback: try to format the model ID nicely
-  return modelId
+  return normalized
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (l: string) => l.toUpperCase())
     .replace(/\//g, ' ');
