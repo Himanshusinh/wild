@@ -709,6 +709,8 @@ const Recentcreation: React.FC = () => {
                       fill
                       className="object-cover"
                       sizes="250px"
+                      thumbWidth={480}
+                      thumbQuality={60}
                       onLoadingComplete={(img) => {
                         try {
                           const w = img.naturalWidth || 1;

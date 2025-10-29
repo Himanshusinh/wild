@@ -93,7 +93,16 @@ const History = () => {
       loadLockRef.current = true;
       const initialLimit = computeDynamicLimit(0);
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
-      setHasMore(Boolean(result && result.hasMore));
+      const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
+      let nextHasMore: boolean;
+      if (typeof (result && result.hasMore) !== 'undefined') {
+        nextHasMore = Boolean(result.hasMore);
+      } else {
+        // Fallback heuristic: if we received fewer than requested or zero, assume no more
+        nextHasMore = entries.length > 0 && entries.length >= initialLimit;
+      }
+      if (entries.length === 0) nextHasMore = false;
+      setHasMore(nextHasMore);
     } catch (error) {
       // Handle condition aborts gracefully
       if (error && typeof error === 'object' && 'message' in error && 
@@ -165,7 +174,7 @@ const History = () => {
   useEffect(() => {
     if (!didInitialLoadRef.current) return;
     (async () => {
-      const finalFilters = { ...filters } as any;
+  const finalFilters = { ...filters } as any;
       if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
       if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
       dispatch(setFilters(finalFilters));
@@ -176,7 +185,15 @@ const History = () => {
           filters: finalFilters,
           paginationParams: { limit }
         })).unwrap();
-        setHasMore(Boolean(res && res.hasMore));
+        const entries = (res && Array.isArray(res.entries)) ? res.entries : [];
+        let nextHasMore: boolean;
+        if (typeof (res && res.hasMore) !== 'undefined') {
+          nextHasMore = Boolean(res.hasMore);
+        } else {
+          nextHasMore = entries.length > 0 && entries.length >= limit;
+        }
+        if (entries.length === 0) nextHasMore = false;
+        setHasMore(nextHasMore);
       } catch {}
       setPage(1);
       setOverlayLoading(false);
@@ -198,11 +215,19 @@ const History = () => {
           setPage(nextPage);
           const baseFilters = { ...filters } as any;
           if (sortOrder) baseFilters.sortOrder = sortOrder;
-          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: sortOrder === 'asc' ? 30 : 10 } }))
+          const limit = sortOrder === 'asc' ? 30 : 10;
+          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }))
             .then((result: any) => {
-              if (result.payload && result.payload.entries) {
-                setHasMore(result.payload.hasMore);
+              const payload = result && result.payload ? result.payload : result;
+              const entries = (payload && Array.isArray(payload.entries)) ? payload.entries : [];
+              let nextHasMore: boolean;
+              if (payload && typeof payload.hasMore !== 'undefined') {
+                nextHasMore = Boolean(payload.hasMore);
+              } else {
+                nextHasMore = entries.length > 0 && entries.length >= limit;
               }
+              if (entries.length === 0) nextHasMore = false;
+              setHasMore(nextHasMore);
             })
             .finally(() => {
               isFetchingMoreRef.current = false;
@@ -1510,23 +1535,36 @@ const History = () => {
                         ) : (
                           <div className="w-full h-full relative">
                             {mediaUrl ? (
-                              <SmartImage
-                                src={mediaUrl}
-                                alt={entry.prompt}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200"
-                                sizes="192px"
-                                thumbWidth={480}
-                                thumbQuality={60}
-                                onLoadingComplete={() => {
-                                  try {
-                                    setTimeout(() => {
-                                      const shimmer = document.querySelector(`[data-image-id="${entry.id}-${media.id || mediaIndex}"] .shimmer`) as HTMLElement;
-                                      if (shimmer) shimmer.style.opacity = '0';
-                                    }, 100);
-                                  } catch {}
-                                }}
-                              />
+                              (() => {
+                                const isBlobOrData = /^data:|^blob:/i.test(mediaUrl || '');
+                                if (isBlobOrData) {
+                                  // Avoid rendering base64/blob heavy sources in grid; show lightweight placeholder
+                                  return (
+                                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                      <span className="text-gray-400 text-xs">Image pending</span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <SmartImage
+                                    src={mediaUrl}
+                                    alt={entry.prompt}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-200"
+                                    sizes="192px"
+                                    thumbWidth={480}
+                                    thumbQuality={60}
+                                    onLoadingComplete={() => {
+                                      try {
+                                        setTimeout(() => {
+                                          const shimmer = document.querySelector(`[data-image-id=\"${entry.id}-${media.id || mediaIndex}\"] .shimmer`) as HTMLElement;
+                                          if (shimmer) shimmer.style.opacity = '0';
+                                        }, 100);
+                                      } catch {}
+                                    }}
+                                  />
+                                );
+                              })()
                             ) : (
                               <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">Image not available</span>
