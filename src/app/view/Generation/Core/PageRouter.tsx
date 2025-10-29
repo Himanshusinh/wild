@@ -72,9 +72,19 @@ export default function PageRouter() {
       const isVideoMode = !!(filtersObj && (filtersObj.mode === 'video'));
       const isTextToImage = !!(filtersObj && filtersObj.generationType === 'text-to-image');
       const limit = isVideoMode ? 50 : (isTextToImage ? 50 : 50);
-      console.log('[PageRouter] fetchFirstPage', { filtersObj, limit });
-      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit } })).unwrap();
-      console.log('[PageRouter] fetchFirstPage.fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore });
+      const debugTag = `central:${Date.now()}`;
+      console.log('[PageRouter] fetchFirstPage', { filtersObj, limit, debugTag, currentGenerationType });
+      const expectedType = (filtersObj?.generationType 
+        || (isVideoMode ? 'text-to-video' 
+        : ((currentGenerationType === 'image-to-image') ? 'text-to-image' : currentGenerationType)));
+      const result: any = await (dispatch as any)(loadHistory({ 
+        filters: filtersObj, 
+        paginationParams: { limit },
+        requestOrigin: 'central',
+        expectedType,
+        debugTag
+      } as any)).unwrap();
+      console.log('[PageRouter] fetchFirstPage.fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore, debugTag });
     } catch (e: any) {
       if (e && e.name === 'ConditionError') {
         try { console.log('[PageRouter] fetchFirstPage.skip: condition aborted'); } catch {}
@@ -101,6 +111,22 @@ export default function PageRouter() {
         
         // Normalize type for history filters (history doesn't track 'image-to-image' separately)
         const historyGenerationType = (currentGenerationType === 'image-to-image') ? 'text-to-image' : currentGenerationType;
+
+        // Skip central fetch for self-managed pages that load their own history (to prevent duplicate requests)
+        const selfManagedTypes = new Set<GenerationType>([
+          'logo',
+          'sticker-generation',
+          'product-generation',
+          'ad-generation',
+          'mockup-generation',
+          'live-chat',
+          'edit-image',
+        ]);
+        if (selfManagedTypes.has(historyGenerationType)) {
+          // Keep refs in sync but do not dispatch loadHistory here
+          previousGenerationTypeRef.current = currentGenerationType;
+          return;
+        }
         
         // Check if generation type changed
         const generationTypeChanged = previousGenerationTypeRef.current !== currentGenerationType;

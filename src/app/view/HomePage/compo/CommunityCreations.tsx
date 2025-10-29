@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
 import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
+import SmartImage from '@/components/media/SmartImage'
 
 /* ---------- Types ---------- */
 type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
@@ -132,17 +133,32 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
               const proxied = toMediaProxy(src)
               const videoSrc = proxied || src
               return (
-                <video src={videoSrc} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay loop />
+                <video
+                  src={videoSrc}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onMouseEnter={async (e) => {
+                    try { await (e.currentTarget as HTMLVideoElement).play() } catch {}
+                  }}
+                  onMouseLeave={(e) => {
+                    const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch {}
+                  }}
+                />
               );
             })()
           ) : (
             // Use compressed thumbnail for fast grid load; full-res shown in modal on click
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SmartImage
               src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 640, q: 60 }) || src) : src } catch { return src } })()}
               alt={item.prompt ?? 'creation'}
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
+              className="absolute inset-0 object-cover"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              thumbWidth={640}
+              thumbQuality={60}
+              priority={false}
             />
           )}
         </div>

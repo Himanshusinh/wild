@@ -31,6 +31,9 @@ const InputBox = () => {
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const historyLoading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -44,18 +47,34 @@ const InputBox = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeDropdown, dispatch]);
 
-  // Initial history (central PageRouter triggers filtered load). Add pagination here.
+  // Mark user scroll to avoid auto-triggering IO on mount
   useEffect(() => {
-    const onScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 800) {
-        if (hasMoreHistory && !historyLoading) {
-          dispatch(loadMoreHistory({ filters: { generationType: 'mockup-generation' }, paginationParams: { limit: 10 } }));
-        }
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll as any);
+  }, []);
+
+  // IntersectionObserver-based pagination
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) return;
+      if (!hasMoreHistory || historyLoading || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      try {
+        await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'mockup-generation' }, paginationParams: { limit: 10 } })).unwrap();
+      } catch (e) {
+        // ignore
+      } finally {
+        loadingMoreRef.current = false;
       }
-    };
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [dispatch, hasMoreHistory, historyLoading]);
+    }, { root: null, threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMoreHistory, historyLoading, dispatch]);
 
   const mockupHistoryEntries = historyEntries
     .filter((e: HistoryEntry) => e.generationType === 'mockup-generation')
@@ -601,6 +620,8 @@ const InputBox = () => {
                 </div>
               </div>
             )}
+            {/* Sentinel for infinite scroll */}
+            <div ref={sentinelRef} style={{ height: 1 }} />
           </div>
         )}
       </div>

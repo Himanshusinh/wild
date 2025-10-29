@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import SmartImage from '@/components/media/SmartImage'
 import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
@@ -975,7 +976,15 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                               onClick={() => setSelectedImageIndex(idx)}
                               className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
-                              <img src={im.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                              <SmartImage
+                                src={toThumbUrl(im.url, { w: 320, q: 60 }) || im.url}
+                                alt={`Image ${idx+1}`}
+                                fill
+                                className="object-cover"
+                                sizes="96px"
+                                thumbWidth={320}
+                                thumbQuality={60}
+                              />
                             </button>
                           ))}
                         </div>
@@ -997,7 +1006,7 @@ const noteMeasuredRatio = (key: string, width: number, height: number) => {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
                                 const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
                                 const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                return <video src={proxied} className="w-full h-full object-cover" muted />
+                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" />
                               })()}
                             </button>
                           ))}
