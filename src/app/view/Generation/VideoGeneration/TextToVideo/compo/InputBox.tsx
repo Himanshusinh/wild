@@ -2320,8 +2320,8 @@ const InputBox = () => {
           }}
         >
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start gap-3 p-3 pt-0">
-            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg px-4 pt-2.5">
+          <div className="flex items-start gap-3 p-3 pt-3 pt-0">
+            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4">
               <textarea
                 ref={inputEl}
                 placeholder="Type your video prompt..."
@@ -2821,7 +2821,7 @@ const InputBox = () => {
 
           {/* Bottom row: pill options */}
           <div className="flex justify-between items-center gap-2 px-3 pb-3">
-            <div className="flex flex-row gap-2 flex-wrap">
+            <div className="flex flex-row gap-3 flex-wrap">
               {/* Model selector */}
               <VideoModelsDropdown
                 selectedModel={selectedModel}
