@@ -67,7 +67,7 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           selectedModel !== 'gemini-25-flash-image'
             ? 'bg-white text-black'
             : 'bg-transparent text-white/90 hover:bg-white/5'
@@ -80,7 +80,7 @@ const ModelsDropdown = () => {
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'product-models' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'product-models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
           {modelsWithCredits.map((model) => (
             <button
               key={model.value}
@@ -106,7 +106,7 @@ const ModelsDropdown = () => {
                 )}
               </div>
               {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-black rounded-lg flex-shrink-0"></div>
               )}
             </button>
           ))}

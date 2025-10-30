@@ -22,11 +22,11 @@ const LogoCountDropdown = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-transparent rounded-full border border-white/20 p-1">
+      <div className="flex items-center gap-2 bg-transparent rounded-lg border border-white/20 p-1">
       <button
         onClick={handleDecrease}
         disabled={imageCount <= 1}
-        className={`w-4 h-4 rounded-full flex items-center justify-center transition ml-2 ${
+        className={`w-4 h-4 rounded-lg flex items-center justify-center transition ml-2 ${
           imageCount <= 1 
             ? 'text-white cursor-not-allowed' 
             : ' text-white hover:bg-white/20'
@@ -42,7 +42,7 @@ const LogoCountDropdown = () => {
       <button
         onClick={handleIncrease}
         disabled={imageCount >= 4}
-        className={`w-4 h-4 rounded-full flex items-center justify-center transition mr-2 ${
+        className={`w-4 h-4 rounded-lg flex items-center justify-center transition mr-2 ${
           imageCount >= 4 
             ? ' text-white cursor-not-allowed' 
             : ' text-white hover:bg-white/20'

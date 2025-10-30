@@ -31,13 +31,13 @@
           {faqData.map((faq) => (
             <div 
               key={faq.id}
-              className="relative text-white rounded-[2rem]
+              className="relative text-white rounded-lg
               p-4 py-6 w-full min-h-[160px] isolate border border-white/10 ring-1 ring-white/10
                bg-white/10 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
             >
               {/* Subtle glass highlight for consistency */}
-              <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-              <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
               <h3 className="text-lg font-semibold text-white mb-2 relative z-10 mx-1">{faq.question}</h3>
               <p className="text-white/70 leading-snug text-sm relative z-10 mx-1">{faq.answer}</p>
             </div>
