@@ -321,8 +321,8 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
         {/* Mobile Menu Sidebar */}
         {isMobileMenuOpen && (
           <>
-            {/* Overlay */}
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
+            {/* Overlay - transparent on mobile, unchanged on md+ */}
+            <div className="fixed inset-0 bg-transparent md:bg-black/30 backdrop-blur-[2px] z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
 
             {/* Sidebar */}
             <div
@@ -335,7 +335,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                 </button>
               </div>
 
-              <div className="mt-1 mx-3 p-4 flex flex-col space-y-3 bg-black/90 rounded-2xl border border-white/15 overflow-y-auto custom-scrollbar max-h-[calc(90vh-4rem)] pb-6">
+              <div className="mt-0 md:mt-1 mx-2 md:mx-3 p-3 md:p-4 flex flex-col space-y-3 bg-transparent md:bg-black/90 rounded-2xl border border-white/15 overflow-y-auto custom-scrollbar max-h-[calc(90vh-4rem)] pb-4 md:pb-6">
                 {/* Features Dropdown */}
                 <div className="pb-2">
                   <div

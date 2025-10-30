@@ -140,7 +140,7 @@ const Nav = () => {
 
           {/* Profile trigger + dropdown (same behavior as homepage) */}
           <div className='relative' ref={dropdownRef}>
-            <button onClick={() => setShowDropdown(v => !v)} className='flex items-center gap-2 border border-white/15 rounded-full  cursor-pointer'>
+            <button onClick={() => setShowDropdown(v => !v)} className='flex items-center gap-2 rounded-full cursor-pointer border-0 md:border md:border-white/15'>
               {(!loading && userData?.photoURL && !avatarFailed) ? (
                 <img
                   src={userData.photoURL}
