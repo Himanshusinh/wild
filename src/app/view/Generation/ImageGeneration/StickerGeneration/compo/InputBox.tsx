@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
@@ -47,9 +48,16 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const pathname = usePathname();
   // Local mount loading to avoid empty flash and ensure first render
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  // Safety: avoid overlay lock-ups if a request is aborted/blocked
+  useEffect(() => {
+    if (!initialLoading) return;
+    const t = setTimeout(() => setInitialLoading(false), 10000);
+    return () => clearTimeout(t);
+  }, [initialLoading]);
   
   // Credits management
   const {
@@ -74,6 +82,7 @@ const InputBox = () => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
+  const loadLockRef = useRef(false);
 
   // Helpers: clean prompt and copy
   const getCleanPrompt = (text: string): string => {
@@ -102,32 +111,35 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to sticker-generation)
+  // Load history on mount (scoped to sticker-generation) — single initial request, no auto-fill loop
   useEffect(() => {
     console.log('[Sticker] useEffect: mount -> loading sticker history');
     (async () => {
       try {
+        // Skip if route already changed during navigation
+        if (typeof pathname === 'string' && !pathname.includes('/sticker-generation')) {
+          console.log('[Sticker] initial load skipped: pathname not sticker-generation', { pathname });
+          return;
+        }
+        if (loadLockRef.current) {
+          console.log('[Sticker] initial load skipped (lock)');
+          return;
+        }
+        loadLockRef.current = true;
         setInitialLoading(true);
         const baseFilters: any = { generationType: 'sticker-generation' };
+        const debugTag = `page:sticker:${Date.now()}`;
         // Set filters early so other observers (PageRouter) show correct type immediately
         dispatch(setFilters(baseFilters));
         dispatch(clearHistory());
+        console.log('[Sticker] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
         await (dispatch as any)(loadHistory({ 
           filters: baseFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'sticker-generation',
+          debugTag
         })).unwrap();
-        let attempts = 0;
-        while (
-          attempts < 6 &&
-          (document.documentElement.scrollHeight - window.innerHeight) < 240
-        ) {
-          const more: any = await (dispatch as any)(loadMoreHistory({
-            filters: baseFilters,
-            paginationParams: { limit: 10 }
-          })).unwrap();
-          if (!more?.hasMore) break;
-          attempts += 1;
-        }
         console.log('[Sticker] initial loadHistory fulfilled');
       } catch (e: any) {
         if (e && e.name === 'ConditionError') {
@@ -140,7 +152,7 @@ const InputBox = () => {
         setHasInitiallyLoaded(true);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, pathname]);
 
   // Mark user scroll
   useEffect(() => {
@@ -337,10 +349,17 @@ const InputBox = () => {
       }
 
       // Refresh history to show the new sticker
-      dispatch(loadHistory({ 
-        filters: { generationType: 'sticker-generation' }, 
-        paginationParams: { limit: 10 } 
-      }));
+      {
+        const debugTag = `page:sticker:refresh:${Date.now()}`;
+        console.log('[Sticker] refresh loadHistory after generation', { debugTag });
+        dispatch(loadHistory({ 
+          filters: { generationType: 'sticker-generation' }, 
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'sticker-generation',
+          debugTag,
+        }));
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);
@@ -567,7 +586,7 @@ const InputBox = () => {
 
                     {/* Regular history entries */}
                     {groupedByDate[date].map((entry: HistoryEntry) => 
-                      entry.images.map((image, imageIndex) => (
+                      (entry.images || []).map((image, imageIndex) => (
                         <div
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}

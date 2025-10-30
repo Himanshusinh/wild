@@ -13,6 +13,7 @@ import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGenerati
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
 import { toMediaProxy } from '@/lib/thumb'
 import SmartImage from '@/components/media/SmartImage'
+import { isUserAuthenticated } from '@/lib/axiosInstance'
 
 // Types for items and categories
 type CreationItem = {
@@ -56,40 +57,15 @@ const Recentcreation: React.FC = () => {
   // Get history entries from Redux store
   const historyEntries = useAppSelector((state: any) => state.history?.entries || [])
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false)
+  const hasRetriedRef = React.useRef(false)
+  const fetchInFlightRef = React.useRef(false)
+
+  // Reset retry guard on category change
+  useEffect(() => { hasRetriedRef.current = false }, [active])
   
   // Check if there are existing generations for the current category
-  const checkForExistingGenerations = (category: string, entries: HistoryEntry[]): boolean => {
-    if (category === 'All') {
-      return entries.length > 0
-    }
-    
-    const getGenerationTypeForCategory = (cat: string): string | undefined => {
-      switch (cat) {
-        case 'Images':
-          return 'text-to-image'
-        case 'Videos':
-          return 'text-to-video'
-        case 'Music':
-          return 'text-to-music'
-        case 'Logo':
-          return 'logo'
-        case 'Stickers':
-          return 'sticker-generation'
-        case 'Products':
-          return 'product-generation'
-        default:
-          return undefined
-      }
-    }
-    
-    const generationType = getGenerationTypeForCategory(category)
-    
-    if (generationType) {
-      return entries.some(entry => entry.generationType === generationType)
-    }
-    
-    return false
-  }
+  // We no longer reuse existing results on tab switch; always fetch fresh for each category
+  const checkForExistingGenerations = () => false
 
   // Fetch recent creations for the active category
   useEffect(() => {
@@ -99,86 +75,55 @@ const Recentcreation: React.FC = () => {
       activeCategory: active 
     })
     
-    // Skip if history is already loading
-    if (isHistoryLoading) {
-      console.log('Skipping fetch - already loading')
+    // Local guard to prevent duplicate calls (StrictMode double-mount or quick re-renders)
+    if (fetchInFlightRef.current) {
+      console.log('Skipping fetch - in flight')
       return
     }
 
-    // Map category to generation type
-    const getGenerationTypeForCategory = (category: string): string | undefined => {
+    // Map category to request filters
+    const computeFiltersForCategory = (category: string): { generationType?: string; mode?: string } => {
       switch (category) {
         case 'Images':
-          return 'text-to-image' // Fetch text-to-image for Images category
+          return { generationType: 'text-to-image' }
         case 'Videos':
-          return 'text-to-video'
-        case 'Music':
-          return 'text-to-music'
+          return { mode: 'video' } // groups t2v, i2v, v2v on backend
         case 'Logo':
-          return 'logo'
+          return { generationType: 'logo' }
         case 'Stickers':
-          return 'sticker-generation'
+          return { generationType: 'sticker-generation' }
         case 'Products':
-          return 'product-generation'
+          return { generationType: 'product-generation' }
         default:
-          return undefined // Fetch all for 'All' category
+          return {}
       }
     }
-
-    const generationType = getGenerationTypeForCategory(active)
-    console.log('Fetching for category:', active, 'generationType:', generationType)
+    const baseFilters = computeFiltersForCategory(active)
+    console.log('Fetching for category:', active, 'filters:', baseFilters)
 
     const fetchRecentCreations = async () => {
       console.log('Starting to fetch recent creations for category:', active)
+      fetchInFlightRef.current = true
       
-      // Check if we have existing generations for this category
-      const hasExistingGenerations = checkForExistingGenerations(active, historyEntries)
-      console.log('Has existing generations for', active, ':', hasExistingGenerations)
-      
-      // For "All" category, use existing generations if available (like other categories)
-      // For other categories, use existing generations if available
-      if (active === 'All' && hasExistingGenerations && historyEntries.length > 0) {
-        console.log('Using existing generations for All category')
-        setHasCheckedForGenerations(true)
-        setIsInitialLoad(false)
-        return
-      } else if (hasExistingGenerations && historyEntries.length > 0) {
-        console.log('Using existing generations for', active)
-        setHasCheckedForGenerations(true)
-        setIsInitialLoad(false)
-        return
-      } else {
-        // Only show loading if we don't have existing generations
-        setLoading(true)
-        setIsInitialLoad(false)
-        setHasCheckedForGenerations(false)
-      }
+      // Always fetch on category change
+      setLoading(true)
+      setIsInitialLoad(false)
+      setHasCheckedForGenerations(false)
       
       // Set a minimum loading time to prevent flash of "No generations found"
       const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500)) // 500ms minimum
       
       try {
-        const filters: any = { sortOrder: 'desc' }
-        
-        // Handle special cases for categories
-        if (active === 'All') {
-          // For "All" category, fetch only 5 recent generations across all types
-          filters.generationType = undefined // Fetch all types but limit to 5
-         } else if (active === 'Images') {
-          // For Images category, we need to fetch multiple types
-          // We'll fetch all and filter on frontend since backend might not support multiple types
-          filters.generationType = undefined // Fetch all
-        } else if (generationType) {
-          filters.generationType = generationType
-        }
+        const filters: any = { sortOrder: 'desc', status: 'completed', ...baseFilters }
         
         // Wait for both the API call and minimum loading time
         const [result] = await Promise.all([
           dispatch(loadHistory({ 
             filters, 
             paginationParams: { 
-              limit: active === 'All' ? 5 : 12 // Only fetch 5 for "All" category to reduce load
-            }
+              limit: active === 'All' ? 5 : 12
+            },
+            debugTag: `recent:${active}:${Date.now()}`
           })),
           minLoadingTime
         ])
@@ -188,6 +133,23 @@ const Recentcreation: React.FC = () => {
         // Check if the action was aborted
         if (loadHistory.fulfilled.match(result)) {
           console.log('History fetch successful for', active, ':', result.payload)
+          // If we got zero items (likely due to auth race) and we haven't retried, retry once
+          const items = (result as any)?.payload?.entries || []
+          if (!hasRetriedRef.current && Array.isArray(items) && items.length === 0) {
+            try {
+              const authed = isUserAuthenticated()
+              if (authed) {
+                hasRetriedRef.current = true
+                setTimeout(async () => {
+                  dispatch(loadHistory({ 
+                    filters, 
+                    paginationParams: { limit: active === 'All' ? 5 : 12 },
+                    debugTag: `recent:${active}:retry:${Date.now()}`
+                  }))
+                }, 800)
+              }
+            } catch {}
+          }
         } else if (loadHistory.rejected.match(result)) {
           // Handle rejection (including condition aborts)
           if (result.error.message?.includes('condition callback returning false')) {
@@ -195,6 +157,20 @@ const Recentcreation: React.FC = () => {
             console.log('History fetch aborted - another request in progress')
           } else {
             console.error('Failed to fetch recent creations for', active, ':', result.error)
+            // Retry once after a brief delay if user is authenticated (handles early 401)
+            try {
+              const authed = isUserAuthenticated()
+              if (authed && !hasRetriedRef.current) {
+                hasRetriedRef.current = true
+                setTimeout(async () => {
+                  dispatch(loadHistory({ 
+                    filters, 
+                    paginationParams: { limit: active === 'All' ? 5 : 12 },
+                    debugTag: `recent:${active}:retry:${Date.now()}`
+                  }))
+                }, 800)
+              }
+            } catch {}
           }
         }
       } catch (error) {
@@ -202,11 +178,12 @@ const Recentcreation: React.FC = () => {
       } finally {
         setLoading(false)
         setHasCheckedForGenerations(true)
+        fetchInFlightRef.current = false
       }
     }
     
     fetchRecentCreations()
-  }, [dispatch, isHistoryLoading, active])
+  }, [dispatch, active])
 
   // Convert history entries to creation items
   const creationItems: CreationItem[] = useMemo(() => {
@@ -214,7 +191,7 @@ const Recentcreation: React.FC = () => {
     const items: CreationItem[] = []
     
     historyEntries.forEach((entry: HistoryEntry) => {
-      console.log('Processing entry:', entry.id, entry.generationType, entry.images?.length, entry.videos?.length)
+      console.log('Processing entry:', entry.id, entry.generationType, entry.images?.length, entry.videos?.length, (entry as any)?.audios?.length)
       // Map generation type to category
       const getCategory = (type: string): CreationItem['category'] => {
         switch (type) {
@@ -246,7 +223,7 @@ const Recentcreation: React.FC = () => {
           items.push({
             id: `${entry.id}-image-${index}`,
             src: image.url || image.firebaseUrl || '',
-            title: entry.prompt.length > 50 ? entry.prompt.substring(0, 50) + '...' : entry.prompt,
+            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -264,7 +241,7 @@ const Recentcreation: React.FC = () => {
           items.push({
             id: `${entry.id}-video-${index}`,
             src: video.url || video.firebaseUrl || '',
-            title: entry.prompt.length > 50 ? entry.prompt.substring(0, 50) + '...' : entry.prompt,
+            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -277,27 +254,35 @@ const Recentcreation: React.FC = () => {
         })
       }
 
-      // Process music (text-to-music entries)
+  // Process music (text-to-music entries)
       if (entry.generationType === 'text-to-music') {
-        // For music, get the audio URL from images field (where it's stored)
-        const audioUrl = entry.images && entry.images.length > 0 
+        // Prefer audios[] from backend; fallback to images[0] if older format
+        const audioFromAudios = (entry as any)?.audios && (entry as any).audios.length > 0
+          ? ((entry as any).audios[0].url || (entry as any).audios[0].firebaseUrl || '')
+          : ''
+        const audioFromImages = entry.images && entry.images.length > 0
           ? (entry.images[0].url || entry.images[0].firebaseUrl || '')
           : ''
-        
-        items.push({
-          id: `${entry.id}-music`,
-          src: audioUrl, // Use the actual audio URL
-          title: entry.prompt.length > 50 ? entry.prompt.substring(0, 50) + '...' : entry.prompt,
-          date: new Date(entry.timestamp).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          category: 'Music',
-          entry,
-          isMusic: true // Add flag to identify music items
-        })
+        const audioUrl = audioFromAudios || audioFromImages
+
+        if (audioUrl) {
+          items.push({
+            id: `${entry.id}-music`,
+            src: audioUrl,
+            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
+            date: new Date(entry.timestamp).toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            }),
+            category: 'Music',
+            entry,
+            isMusic: true
+          })
+        }
       }
+
+      // Do not add placeholders; Recent Creations should show completed items with media only
 
       // Process logos (if they have images)
       if (entry.generationType === 'logo' && entry.images && entry.images.length > 0) {
@@ -305,7 +290,7 @@ const Recentcreation: React.FC = () => {
           items.push({
             id: `${entry.id}-logo-${index}`,
             src: image.url || image.firebaseUrl || '',
-            title: entry.prompt.length > 50 ? entry.prompt.substring(0, 50) + '...' : entry.prompt,
+            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -323,7 +308,7 @@ const Recentcreation: React.FC = () => {
           items.push({
             id: `${entry.id}-sticker-${index}`,
             src: image.url || image.firebaseUrl || '',
-            title: entry.prompt.length > 50 ? entry.prompt.substring(0, 50) + '...' : entry.prompt,
+            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -341,7 +326,7 @@ const Recentcreation: React.FC = () => {
           items.push({
             id: `${entry.id}-product-${index}`,
             src: image.url || image.firebaseUrl || '',
-            title: entry.prompt.length > 50 ? entry.prompt.substring(0, 50) + '...' : entry.prompt,
+            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',

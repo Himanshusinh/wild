@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import SmartImage from '@/components/media/SmartImage'
 import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
@@ -995,7 +996,7 @@ export default function ArtStationPage() {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
                                 const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
                                 const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                return <video src={proxied} className="w-full h-full object-cover" muted />
+                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" />
                               })()}
                             </button>
                           ))}

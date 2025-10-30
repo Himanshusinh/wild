@@ -69,7 +69,7 @@ const isApiDebugEnabled = (): boolean => {
   return process.env.NEXT_PUBLIC_API_DEBUG === 'true'
 }
 
-// Attach device headers; rely on httpOnly session cookies for auth
+// Attach device headers; rely on Bearer tokens primarily (session cookie is optional fallback)
 axiosInstance.interceptors.request.use(async (config) => {
   try {
     // Use backend baseURL for all calls; session is now direct to backend
@@ -128,7 +128,7 @@ axiosInstance.interceptors.request.use(async (config) => {
       }
     } catch {}
 
-    // Attach bearer token for protected backend routes when cookies may be missing (ngrok/first-load)
+    // Attach bearer token for protected backend routes (primary auth path); cookie is optional fallback
     try {
       const raw = typeof config.url === 'string' ? config.url : ''
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
@@ -240,6 +240,7 @@ export function isUserAuthenticated(): boolean {
   }
 }
 
+// Light-touch readiness: if we have a Bearer path, skip creating a session. Only return true/false, don't force network.
 export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boolean> {
   try {
     // Check if we're in browser environment
@@ -253,7 +254,12 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       return true
     }
     
-    // Check if user is authenticated
+    // If we have a token path (either cached token or firebase user), proceed without creating a session
+    const stored = getStoredIdToken()
+    if (stored) {
+      console.log('[ensureSessionReady] Bearer token present; skipping session creation')
+      return true
+    }
     if (!auth?.currentUser) {
       console.error('[ensureSessionReady] No authenticated user found')
       return false
@@ -267,14 +273,10 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       isAnonymous: auth.currentUser.isAnonymous
     })
     
-    // Quick fallback: if we have a user but session creation is problematic, 
-    // try to proceed anyway with just the auth_hint cookie
+    // Hint cookie to help middleware if needed
     try {
       document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
-      console.log('[ensureSessionReady] Set auth_hint cookie as quick fallback')
-    } catch (cookieError) {
-      console.error('[ensureSessionReady] Failed to set auth_hint cookie:', cookieError)
-    }
+    } catch {}
     
     // Always get a fresh token from Firebase to ensure validity
     let idToken: string | null = null
@@ -324,100 +326,8 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       parts: idToken.split('.').length
     })
     
-    // Create session directly with backend to avoid proxy issues
-    try {
-      const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-      console.log('[ensureSessionReady] Creating session with backend:', backendBase)
-      console.log('[ensureSessionReady] Token length:', idToken.length)
-      console.log('[ensureSessionReady] Token preview:', idToken.substring(0, 50) + '...')
-      
-      const requestBody = { idToken }
-      console.log('[ensureSessionReady] Request body prepared:', { idTokenLength: idToken.length })
-      
-      const sessionResponse = await fetch(`${backendBase}/api/auth/session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important for cookie handling
-        body: JSON.stringify(requestBody)
-      })
-      
-      console.log('[ensureSessionReady] Session response status:', sessionResponse.status)
-      console.log('[ensureSessionReady] Session response headers:', Object.fromEntries(sessionResponse.headers.entries()))
-      
-      if (!sessionResponse.ok) {
-        const errorText = await sessionResponse.text()
-        console.error('[ensureSessionReady] Session creation failed:', {
-          status: sessionResponse.status,
-          statusText: sessionResponse.statusText,
-          error: errorText,
-          url: `${backendBase}/api/auth/session`,
-          method: 'POST'
-        })
-        throw new Error(`Session creation failed with status ${sessionResponse.status}: ${errorText}`)
-      }
-      
-      const responseText = await sessionResponse.text()
-      console.log('[ensureSessionReady] Session response body:', responseText)
-      console.log('[ensureSessionReady] Session created successfully')
-    } catch (error: any) {
-      console.error('[ensureSessionReady] Direct fetch failed, trying axios fallback...')
-      
-      // Try axios as fallback
-      try {
-        const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-        console.log('[ensureSessionReady] Trying axios fallback to:', `${backendBase}/api/auth/session`)
-        
-        const axiosResponse = await axiosInstance.post('/api/auth/session', { idToken })
-        console.log('[ensureSessionReady] Axios fallback successful:', axiosResponse.status)
-        
-        // Set auth_hint cookie as additional fallback
-        try {
-          document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
-          console.log('[ensureSessionReady] Set auth_hint cookie as fallback')
-        } catch (cookieError) {
-          console.error('[ensureSessionReady] Failed to set auth_hint cookie:', cookieError)
-        }
-        
-      } catch (axiosError: any) {
-        console.error('[ensureSessionReady] Axios fallback also failed:', axiosError)
-        
-        // As a final fallback, set auth_hint cookie to help middleware allow the request
-        try {
-          document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
-          console.log('[ensureSessionReady] Set auth_hint cookie as final fallback')
-        } catch (cookieError) {
-          console.error('[ensureSessionReady] Failed to set auth_hint cookie:', cookieError)
-        }
-        
-        console.error('[ensureSessionReady] All session creation methods failed:', {
-          directFetchError: error.message,
-          axiosError: axiosError.message,
-          tokenLength: idToken.length
-        })
-        
-        // Even if session creation fails, if we have a valid user and token,
-        // we can try to proceed with just the auth_hint cookie
-        console.log('[ensureSessionReady] Attempting to proceed with auth_hint only...')
-        return true // Return true to allow the request to proceed
-      }
-    }
-    
-    // Wait for cookie to be set
-    console.log('[ensureSessionReady] Waiting for session cookie...')
-    const start = Date.now()
-    while (Date.now() - start < maxWaitMs) {
-      if (document.cookie.includes('app_session=')) {
-        console.log('[ensureSessionReady] Session cookie found!')
-        return true
-      }
-      await new Promise(r => setTimeout(r, 50))
-    }
-    
-    const finalResult = document.cookie.includes('app_session=')
-    console.log('[ensureSessionReady] Final result:', finalResult)
-    return finalResult
+    // Do NOT create a session here; rely on Bearer token path
+    return true
   } catch (error) {
     console.error('[ensureSessionReady] Error:', error)
     return false
@@ -427,6 +337,20 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
 // Response interceptor: on 401, try to refresh session cookie once
 let isRefreshing = false
 let pendingRequests: Array<() => void> = []
+let lastSessionCreateAt = 0
+const SESSION_CREATE_COOLDOWN_MS = 2 * 60 * 1000 // 2 minutes
+const getNow = () => Date.now()
+const canCreateSession = (): boolean => {
+  try {
+    const fromStorage = Number(sessionStorage.getItem('session_last_create') || '0')
+    const last = Math.max(lastSessionCreateAt, isNaN(fromStorage) ? 0 : fromStorage)
+    return getNow() - last > SESSION_CREATE_COOLDOWN_MS
+  } catch { return getNow() - lastSessionCreateAt > SESSION_CREATE_COOLDOWN_MS }
+}
+const markSessionCreated = () => {
+  lastSessionCreateAt = getNow()
+  try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch {}
+}
 
 axiosInstance.interceptors.response.use(
   (response) => {
@@ -483,25 +407,42 @@ axiosInstance.interceptors.response.use(
       if (isApiDebugEnabled()) console.log('[API][401][refresh] starting')
       const currentUser = auth.currentUser
       if (!currentUser) {
-        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser')
-        // If session cookie might be racing to be set, wait briefly then retry once
-        await new Promise((r) => setTimeout(r, 300))
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser - retry once without session create')
+        await new Promise((r) => setTimeout(r, 200))
         return axiosInstance(original)
       }
+      // Refresh ID token and retry WITHOUT creating a session
       const freshIdToken = await currentUser.getIdToken(true)
-      // Refresh session directly with backend
-      const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-      await axiosInstance.post(
-        `${backendBase}/api/auth/session`,
-        { idToken: freshIdToken },
-        { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
-      )
-      if (isApiDebugEnabled()) console.log('[API][401][refresh] success, retrying original')
-
-      // Resume queued requests
-      pendingRequests.forEach((resolve) => resolve())
-      pendingRequests = []
-      return axiosInstance(original)
+      original.headers = original.headers || {}
+      original.headers['Authorization'] = `Bearer ${freshIdToken}`
+      try {
+        const retryResp = await axiosInstance(original)
+        // Resume queued requests
+        pendingRequests.forEach((resolve) => resolve())
+        pendingRequests = []
+        return retryResp
+      } catch (retryErr: any) {
+        // Only as fallback: create session if we haven't done so recently
+        if (canCreateSession()) {
+          try {
+            // Use the same resolved backend base URL as the axios instance
+            const backendBase = resolvedBaseUrl
+            await axios.post(
+              `${backendBase}/api/auth/session`,
+              { idToken: freshIdToken },
+              { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
+            )
+            markSessionCreated()
+            if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
+            return axiosInstance(original)
+          } catch (createErr) {
+            if (isApiDebugEnabled()) console.warn('[API][401][session-create] failed')
+          }
+        } else {
+          if (isApiDebugEnabled()) console.log('[API][401][session-create] skipped (cooldown)')
+        }
+        throw retryErr
+      }
     } catch (e) {
       try { if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) } catch {}
       return Promise.reject(error)

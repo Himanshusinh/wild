@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
@@ -61,9 +62,16 @@ const InputBox = () => {
     (state: any) => state.history?.hasMore ?? true
   );
   const theme = useAppSelector((state: any) => state.ui?.theme || "dark");
+  const pathname = usePathname();
   // Local mount loading to prevent empty flash and ensure render without reload
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  // Safety: avoid getting stuck behind overlay if something goes wrong
+  useEffect(() => {
+    if (!initialLoading) return;
+    const t = setTimeout(() => setInitialLoading(false), 10000);
+    return () => clearTimeout(t);
+  }, [initialLoading]);
 
   // Credits management
   const {
@@ -90,6 +98,7 @@ const InputBox = () => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
+  const loadLockRef = useRef(false);
 
   // Helpers: clean prompt (remove [Style: ...]) and copy
   const getCleanPrompt = (text: string): string => {
@@ -118,34 +127,36 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to logo)
+  // Load history on mount (scoped to logo) — single initial request, no auto-fill loop
   useEffect(() => {
     console.log('[Logo] useEffect: mount -> loading logo history');
     (async () => {
       try {
+        // Skip if route already changed during navigation
+        if (typeof pathname === 'string' && !pathname.includes('/logo-generation')) {
+          console.log('[Logo] initial load skipped: pathname not logo-generation', { pathname });
+          return;
+        }
+        if (loadLockRef.current) {
+          console.log('[Logo] initial load skipped (lock)');
+          return;
+        }
+        loadLockRef.current = true;
         setInitialLoading(true);
         const baseFilters: any = { generationType: 'logo' };
+        const debugTag = `page:logo:${Date.now()}`;
         dispatch(setFilters(baseFilters));
         // Fresh list for this view
         dispatch(clearHistory());
         // First page
+        console.log('[Logo] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
         await (dispatch as any)(loadHistory({ 
           filters: baseFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'logo',
+          debugTag
         })).unwrap();
-        // Auto-fill viewport like TextToImage
-        let attempts = 0;
-        while (
-          attempts < 6 &&
-          (document.documentElement.scrollHeight - window.innerHeight) < 240
-        ) {
-          const more: any = await (dispatch as any)(loadMoreHistory({
-            filters: baseFilters,
-            paginationParams: { limit: 10 }
-          })).unwrap();
-          if (!more?.hasMore) break;
-          attempts += 1;
-        }
         console.log('[Logo] initial loadHistory fulfilled');
       } catch (e: any) {
         if (e && e.name === 'ConditionError') {
@@ -158,7 +169,7 @@ const InputBox = () => {
         setHasInitiallyLoaded(true);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, pathname]);
 
   // Mark user scroll
   useEffect(() => {
@@ -330,12 +341,19 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       }
 
       // Refresh history to show the new logo
-      dispatch(
-        loadHistory({
-          filters: { generationType: "logo" },
-          paginationParams: { limit: 10 },
-        })
-      );
+      {
+        const debugTag = `page:logo:refresh:${Date.now()}`;
+        console.log('[Logo] refresh loadHistory after generation', { debugTag });
+        dispatch(
+          loadHistory({
+            filters: { generationType: "logo" },
+            paginationParams: { limit: 10 },
+            requestOrigin: 'page',
+            expectedType: 'logo',
+            debugTag,
+          })
+        );
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);

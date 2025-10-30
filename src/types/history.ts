@@ -13,6 +13,14 @@ export interface GeneratedVideo {
   originalUrl?: string; // Original URL from provider API
 }
 
+export interface GeneratedAudio {
+  id: string;
+  url: string;
+  storagePath?: string; // Storage path in Zata
+  firebaseUrl?: string; // If uploaded to Firebase Storage
+  originalUrl?: string; // Original URL from provider API
+}
+
 export interface HistoryEntry {
   id: string;
   prompt: string;
@@ -20,6 +28,7 @@ export interface HistoryEntry {
   generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
+  audios?: GeneratedAudio[];
   timestamp: string; // ISO string for Redux serializability
   createdAt: string; // ISO string for Firestore
   imageCount: number;
@@ -53,6 +62,7 @@ export interface HistoryEntryFirestore {
   generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
+  audios?: GeneratedAudio[];
   timestamp: any; // Firestore Timestamp
   createdAt: string;
   imageCount: number;

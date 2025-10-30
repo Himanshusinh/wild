@@ -64,7 +64,10 @@ const Nav = () => {
   })
 
   // Fetch user and credits from backend
+  const didInitUserRef = useRef(false)
   useEffect(() => {
+    if (didInitUserRef.current) return; // Prevent StrictMode double-mount fetches in dev
+    didInitUserRef.current = true;
     const fetchUserData = async () => {
       try {
   const api = getApiClient()
@@ -98,7 +101,10 @@ const Nav = () => {
   }, [])
 
   // Listen for credits refresh requests
+  const didInitCreditsRef = useRef(false)
   useEffect(() => {
+    if (didInitCreditsRef.current) return;
+    didInitCreditsRef.current = true;
     const api = getApiClient()
     const unsubscribe = onCreditsRefresh(async () => {
       try {
