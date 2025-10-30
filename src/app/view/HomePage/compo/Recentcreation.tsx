@@ -748,11 +748,11 @@ const Recentcreation: React.FC = () => {
                 )}
               </div>
               {/* Title and aspect ratio in one row */}
-              <div className="flex items-baseline justify-between gap-1 p-0.5">
+              {/* <div className="flex items-baseline justify-between gap-1 p-0.5">
                 <div className="text-white text-xs truncate">{item.title}</div>
                 <div className="text-white/70 text-xs flex-shrink-0">{ratios[item.id] ?? ''}</div>
               </div>
-              <div className="text-white/60 text-xs p-0.5">{item.date}</div>
+              <div className="text-white/60 text-xs p-0.5">{item.date}</div> */}
             </article>
           ))}
         </div>
