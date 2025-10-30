@@ -1293,14 +1293,14 @@ const EditImageInterface: React.FC = () => {
               <div className="flex gap-2 2xl:gap-3">
                 <button
                   onClick={handleReset}
-                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors 2xl:text-sm 2xl:py-2"
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
                 >
                   Reset
                 </button>
                 <button
                   onClick={handleRun}
                   disabled={!inputs[selectedFeature] || processing[selectedFeature]}
-                  className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors 2xl:text-sm 2xl:py-2"
+                  className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
                 >
                   {processing[selectedFeature] ? 'Processing...' : 'Generate'}
                 </button>
@@ -1321,9 +1321,11 @@ const EditImageInterface: React.FC = () => {
               <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
                 {/* Dotted grid background overlay */}
                 <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
-              <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
-                <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
-              </div>
+              {outputs[selectedFeature] && (
+                <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
+                  <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
+                </div>
+              )}
               
 
               {/* Themed three dots menu - only show when there's an output */}

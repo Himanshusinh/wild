@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
+import AuthBootstrap from "@/components/providers/AuthBootstrap";
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import ToastMount from './toast-mount'
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ReduxProvider>
+          <AuthBootstrap />
           <ConsoleSilencer />
           {children}
           <Toaster

@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
-import { getMeCached } from '../../../../lib/me'
+import { getMeCached, clearMeCache } from '../../../../lib/me'
 import { useCredits } from '../../../../hooks/useCredits'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import toast from 'react-hot-toast'
@@ -85,6 +85,9 @@ const Nav = () => {
     try {
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
+      try { localStorage.removeItem('me_cache') } catch {}
+      try { sessionStorage.removeItem('me_cache') } catch {}
+      try { clearMeCache() } catch {}
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
       try { await signOut(auth) } catch {}
       const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'

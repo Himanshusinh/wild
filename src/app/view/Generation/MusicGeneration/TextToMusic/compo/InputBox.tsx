@@ -105,19 +105,11 @@ const InputBox = () => {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  // Load history on mount (music only)
+  // Initial history is loaded centrally by PageRouter; after it finishes, auto-fill if content is short
   useEffect(() => {
-    dispatch(clearFilters());
-    (async () => {
-      try {
-        await (dispatch as any)(loadHistory({ 
-          filters: { generationType: 'text-to-music' }, 
-          paginationParams: { limit: 10 } 
-        })).unwrap();
-        await autoFillViewport();
-      } catch {}
-    })();
-  }, [dispatch]);
+    // Trigger viewport top-up once when initial data arrives
+    autoFillViewport();
+  }, [historyEntries.length, storeHasMore, storeLoading]);
 
   // Remove unused local loader; rely on Redux loadMoreHistory
 

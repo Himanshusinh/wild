@@ -47,14 +47,14 @@
           {creditPackages.map((pkg) => (
             <div 
               key={pkg.id}
-              className={`relative text-white rounded-[2rem]
+              className={`relative text-white rounded-lg
               bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
               border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-1 ring-white/10
               p-5 py-6 w-full overflow-hidden isolate flex flex-col`}
             >
               {/* Glass highlight */}
-              <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-              <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
 
               <div className="relative z-10 min-h-[120px]">
                 <div className="flex justify-between items-start mb-3 mx-4">

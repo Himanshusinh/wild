@@ -67,6 +67,7 @@ export default function ArtStationPage() {
   const revealRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // (deduped) measuredRatios declared above
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
   // Control concurrent fetches with sequencing (no manual aborts to avoid canceled requests)
@@ -344,7 +345,7 @@ export default function ArtStationPage() {
         loadingMoreRef.current = false
       }
     }, {
-      root: null,
+      root: scrollContainerRef.current || null,
       rootMargin: '600px',
       threshold: 0.01
     })
@@ -534,39 +535,44 @@ export default function ArtStationPage() {
   return (
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
-      <div className="flex pt-10">
+      <div className="flex pt-0">
         <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
-          <div className=" mb-2 md:mb-3">
-            <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
-              Art Station
-            </h3>
-            <p className="text-white/80 text-base sm:text-lg md:text-xl">
-              Discover amazing AI-generated content from our creative community
-            </p>
-          </div>
+          {/* Sticky header + filters */}
+          <div className="sticky top-4 z-20 bg-[#07070B] pt-2">
+            <div className=" mb-2 md:mb-3">
+              <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+                Art Station
+              </h3>
+              <p className="text-white/80 text-base sm:text-lg md:text-xl">
+                Discover amazing AI-generated content from our creative community
+              </p>
+            </div>
 
-          {/* Category Filter Bar */}
-          <div className="mb-4">
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-              {(['All', 'Images', 'Videos', 'Music', 'Logos', 'Stickers', 'Products'] as Category[]).map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${activeCategory === category
-                      ? 'bg-white border-white/5 text-black shadow-sm'
-                      : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                  {category}
-                </button>
-              ))}
+            {/* Category Filter Bar */}
+            <div className="mb-4">
+              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                {(['All', 'Images', 'Videos', 'Music', 'Logos', 'Stickers', 'Products'] as Category[]).map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
+                        ? 'bg-white border-white/5 text-black shadow-sm'
+                        : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                      }`}
+                  >
+                    {category}
+                  </button>
+                ))}
 
+              </div>
             </div>
           </div>
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
+          {/* Scrollable feed container */}
+          <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
           <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
@@ -751,6 +757,7 @@ export default function ArtStationPage() {
           )}
 
           <div ref={sentinelRef} style={{ height: 1 }} />
+          </div>
 
           {/* Preview Modals */}
           {preview && (
