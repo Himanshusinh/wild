@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface VideoPreviewModalProps {
   preview: { entry: HistoryEntry; video: any } | null;
@@ -446,7 +447,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-[78vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-10 mb-10">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto custom-scrollbar">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">
@@ -461,7 +462,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                     <path d="M5 19h14" />
                   </svg>
                 </button>
-                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 backdrop-blur-3xl -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
               </div>
 
               <div className="relative group flex-1">
@@ -554,7 +555,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white/80 text-sm">{preview.entry.model}</span>
+                  <span className="text-white/80 text-sm">{getModelDisplayName(preview.entry.model)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Style:</span>

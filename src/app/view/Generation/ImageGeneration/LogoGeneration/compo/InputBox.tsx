@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
@@ -14,7 +15,7 @@ import {
 } from '@/store/slices/uiSlice';
 import { setFilters } from '@/store/slices/historySlice';
 import { useGenerationCredits } from '@/hooks/useCredits';
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+// Replaced custom loader with Logo.gif
 import { 
   loadMoreHistory,
   loadHistory,
@@ -61,9 +62,16 @@ const InputBox = () => {
     (state: any) => state.history?.hasMore ?? true
   );
   const theme = useAppSelector((state: any) => state.ui?.theme || "dark");
+  const pathname = usePathname();
   // Local mount loading to prevent empty flash and ensure render without reload
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  // Safety: avoid getting stuck behind overlay if something goes wrong
+  useEffect(() => {
+    if (!initialLoading) return;
+    const t = setTimeout(() => setInitialLoading(false), 10000);
+    return () => clearTimeout(t);
+  }, [initialLoading]);
 
   // Credits management
   const {
@@ -90,6 +98,7 @@ const InputBox = () => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
+  const loadLockRef = useRef(false);
 
   // Helpers: clean prompt (remove [Style: ...]) and copy
   const getCleanPrompt = (text: string): string => {
@@ -118,34 +127,36 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to logo)
+  // Load history on mount (scoped to logo) — single initial request, no auto-fill loop
   useEffect(() => {
     console.log('[Logo] useEffect: mount -> loading logo history');
     (async () => {
       try {
+        // Skip if route already changed during navigation
+        if (typeof pathname === 'string' && !pathname.includes('/logo-generation')) {
+          console.log('[Logo] initial load skipped: pathname not logo-generation', { pathname });
+          return;
+        }
+        if (loadLockRef.current) {
+          console.log('[Logo] initial load skipped (lock)');
+          return;
+        }
+        loadLockRef.current = true;
         setInitialLoading(true);
         const baseFilters: any = { generationType: 'logo' };
+        const debugTag = `page:logo:${Date.now()}`;
         dispatch(setFilters(baseFilters));
         // Fresh list for this view
         dispatch(clearHistory());
         // First page
+        console.log('[Logo] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
         await (dispatch as any)(loadHistory({ 
           filters: baseFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'logo',
+          debugTag
         })).unwrap();
-        // Auto-fill viewport like TextToImage
-        let attempts = 0;
-        while (
-          attempts < 6 &&
-          (document.documentElement.scrollHeight - window.innerHeight) < 240
-        ) {
-          const more: any = await (dispatch as any)(loadMoreHistory({
-            filters: baseFilters,
-            paginationParams: { limit: 10 }
-          })).unwrap();
-          if (!more?.hasMore) break;
-          attempts += 1;
-        }
         console.log('[Logo] initial loadHistory fulfilled');
       } catch (e: any) {
         if (e && e.name === 'ConditionError') {
@@ -158,7 +169,7 @@ const InputBox = () => {
         setHasInitiallyLoaded(true);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, pathname]);
 
   // Mark user scroll
   useEffect(() => {
@@ -330,12 +341,19 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       }
 
       // Refresh history to show the new logo
-      dispatch(
-        loadHistory({
-          filters: { generationType: "logo" },
-          paginationParams: { limit: 10 },
-        })
-      );
+      {
+        const debugTag = `page:logo:refresh:${Date.now()}`;
+        console.log('[Logo] refresh loadHistory after generation', { debugTag });
+        dispatch(
+          loadHistory({
+            filters: { generationType: "logo" },
+            paginationParams: { limit: 10 },
+            requestOrigin: 'page',
+            expectedType: 'logo',
+            debugTag,
+          })
+        );
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);
@@ -449,12 +467,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           {(initialLoading || (loading && logoHistoryEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <WildMindLogoGenerating 
-                    running={true}
-                    size="lg"
-                    speedMs={1600}
-                    className="mx-auto"
-                  />
+                  <Image src="/styles/Logo.gif" alt="Generating" width={88} height={88} className="mx-auto" />
                   <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
@@ -478,12 +491,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <WildMindLogoGenerating 
-                                running={localGeneratingEntries[0].status === 'generating'}
-                                size="md"
-                                speedMs={1600}
-                                className="mx-auto"
-                              />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
             </div>
           </div>
@@ -552,12 +560,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                               "generating" ? (
                                 <div className="w-full h-full flex items-center justify-center bg-black/90">
                                   <div className="flex flex-col items-center gap-2">
-                                    <WildMindLogoGenerating 
-                                      running={localGeneratingEntries[0].status === 'generating'}
-                                      size="md"
-                                      speedMs={1600}
-                                      className="mx-auto"
-                                    />
+                                    <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                     <div className="text-xs text-white/60 text-center">
                                       Generating...
                                     </div>
@@ -620,12 +623,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           // Loading frame
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <WildMindLogoGenerating 
-                                running={entry.status === 'generating'}
-                                size="md"
-                                speedMs={1600}
-                                className="mx-auto"
-                              />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">
                                 Generating...
                               </div>
@@ -690,12 +688,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           {hasMore && loading && logoHistoryEntries.length > 0 && (
           <div className="flex items-center justify-center py-10">
             <div className="flex flex-col items-center gap-3">
-              <WildMindLogoGenerating 
-                running={loading}
-                size="md"
-                speedMs={1600}
-                className="mx-auto"
-              />
+              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
               <div className="text-sm text-white/60">Loading more logos...</div>
             </div>
           </div>
@@ -708,7 +701,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       {/* Input Section */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[780px] z-[60]">
         <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
-          <div className="flex items-center gap-3 p-3">
+          <div className="flex items-center gap-0 p-3">
             <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
               <input
                 type="text"
@@ -722,6 +715,33 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                 autoCapitalize="on"
                 className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
               />
+              {prompt.trim() && (
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      dispatch(setPrompt(""));
+                    }}
+                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    aria-label="Clear prompt"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-white/80"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2">
               {error && <div className="text-red-500 text-sm">{error}</div>}

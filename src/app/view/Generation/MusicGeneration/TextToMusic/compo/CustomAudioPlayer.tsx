@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Music4, Copy, Check, Download } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface CustomAudioPlayerProps {
   audioUrl: string;

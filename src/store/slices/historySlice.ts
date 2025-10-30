@@ -8,12 +8,21 @@ const mapGenerationTypeForBackend = (type?: string): string | undefined => {
   if (!type) return type;
   const normalized = type.toLowerCase();
   switch (normalized) {
+    // Backend stores 'logo' (not 'logo-generation')
     case 'logo-generation':
       return 'logo';
+    // Branding kit: backend expects these values exactly as-is
+    case 'sticker-generation':
+    case 'product-generation':
+    case 'mockup-generation':
+    case 'ad-generation':
+    case 'text-to-image':
+      return normalized;
+    // Video variants mapping kept only if backend expects snake-case for those endpoints (not used by branding kit pages)
     case 'image-to-video':
-      return 'image_to_video';
+      return 'image-to-video';
     case 'video-to-video':
-      return 'video_to_video';
+      return 'video-to-video';
     default:
       return type;
   }
@@ -69,10 +78,22 @@ const initialState: HistoryState = {
 export const loadHistory = createAsyncThunk(
   'history/loadHistory',
   async (
-    { filters, paginationParams }: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
-    { rejectWithValue }
+    { filters, paginationParams, requestOrigin, expectedType, debugTag }: { filters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page'; expectedType?: string; debugTag?: string } = {},
+    { rejectWithValue, getState, signal }
   ) => {
     try {
+      // Early bailout to avoid stale requests if navigation changed after condition check
+      const state: any = getState();
+      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+      const uiType: string = (state && state.ui && state.ui.currentGenerationType) || 'text-to-image';
+      const currentType = normalize(uiType === 'image-to-image' ? 'text-to-image' : uiType);
+      const expected = normalize(expectedType);
+      // Allow logo/logo-generation synonym
+      const expectedMatches = !expected || expected === currentType || (expected === 'logo' && currentType === 'logo-generation') || (expected === 'logo-generation' && currentType === 'logo');
+      if (!expectedMatches) {
+        try { console.log('[historySlice] loadHistory.abort-before-request: expectedType changed', { expected, currentType, debugTag }); } catch {}
+        return rejectWithValue('__CONDITION_ABORT__');
+      }
       const client = axiosInstance;
       const params: any = {};
       if (filters?.status) params.status = filters.status;
@@ -90,7 +111,7 @@ export const loadHistory = createAsyncThunk(
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-      const res = await client.get('/api/generations', { params });
+      const res = await client.get('/api/generations', { params, signal });
       const result = res.data?.data || { items: [], nextCursor: undefined };
 
       // Normalize dates so UI always has a valid timestamp (ISO)
@@ -109,15 +130,57 @@ export const loadHistory = createAsyncThunk(
         });
       const nextCursor = result.nextCursor;
       return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
-    } catch (error) {
+    } catch (error: any) {
+      if (error === '__CONDITION_ABORT__' || (typeof error?.message === 'string' && error.message === '__CONDITION_ABORT__')) {
+        return rejectWithValue('__CONDITION_ABORT__');
+      }
+      // If axios was aborted via signal, treat as silent
+      if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
+        try { console.log('[historySlice] loadHistory.aborted', { debugTag }); } catch {}
+        return rejectWithValue('__CONDITION_ABORT__');
+      }
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load history');
     }
   },
   {
-    condition: () => {
-      // Always allow; feature pages chain their own fetches and reducer merges safely
-      try { console.log('[historySlice] loadHistory.condition OK'); } catch {}
-      return true;
+    condition: (args = {} as any, { getState }) => {
+      try {
+        const state: any = getState();
+        const uiType: string = (state && state.ui && state.ui.currentGenerationType) || 'text-to-image';
+        const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+        const isVideoType = (t: string) => ['text-to-video','image-to-video','video-to-video','video','video-generation'].includes(normalize(t));
+        const currentType = normalize(uiType === 'image-to-image' ? 'text-to-image' : uiType);
+        const expected = normalize((args as any)?.expectedType);
+        const origin = (args as any)?.requestOrigin;
+        const debugTag = (args as any)?.debugTag;
+        const fType = normalize((args as any)?.filters?.generationType);
+        const fMode = (args as any)?.filters?.mode;
+
+        // Global guard: if caller provided an expectedType and it no longer matches current UI type, skip for any origin
+        if (expected && expected !== currentType && !(expected === 'logo' && currentType === 'logo-generation') && !(expected === 'logo-generation' && currentType === 'logo')) {
+          try { console.log('[historySlice] loadHistory.condition SKIP: expectedType changed (any-origin)', { origin, expected, currentType, debugTag }); } catch {}
+          return false;
+        }
+        // Only gatekeep central-origin requests; page-origin always allowed
+        if (origin === 'central') {
+          // If filter is a specific generationType, ensure it matches current UI type
+          if (fType) {
+            if (fType !== currentType && !(fType === 'logo' && currentType === 'logo-generation') && !(fType === 'logo-generation' && currentType === 'logo')) {
+              console.log('[historySlice] loadHistory.condition SKIP central: type mismatch', { fType, currentType, debugTag });
+              return false;
+            }
+          }
+          // If filter is a video mode, ensure UI is on a video type
+          if (fMode === 'video' && !isVideoType(currentType)) {
+            console.log('[historySlice] loadHistory.condition SKIP central: not on video type', { currentType, debugTag });
+            return false;
+          }
+        }
+        console.log('[historySlice] loadHistory.condition OK', { origin, currentType, fType, fMode, expected, debugTag });
+        return true;
+      } catch {
+        return true;
+      }
     }
   }
 );
@@ -305,9 +368,22 @@ const historySlice = createSlice({
       };
       
       const normalizedPayload = normalizeGenerationType(action.payload);
+      const synonymSet = new Set<string>([normalizedPayload]);
+      // Expand synonyms so that 'logo' clears 'logo-generation' too, etc.
+      if (normalizedPayload === 'logo') synonymSet.add('logo-generation');
+      if (normalizedPayload === 'logo-generation') synonymSet.add('logo');
+      if (normalizedPayload === 'sticker') synonymSet.add('sticker-generation');
+      if (normalizedPayload === 'sticker-generation') synonymSet.add('sticker');
+      if (normalizedPayload === 'product') synonymSet.add('product-generation');
+      if (normalizedPayload === 'product-generation') synonymSet.add('product');
+      if (normalizedPayload === 'video' || normalizedPayload === 'video-generation') {
+        synonymSet.add('text-to-video');
+        synonymSet.add('image-to-video');
+        synonymSet.add('video-to-video');
+      }
       state.entries = state.entries.filter(entry => {
         const normalizedEntryType = normalizeGenerationType(entry.generationType);
-        return normalizedEntryType !== normalizedPayload;
+        return !synonymSet.has(normalizedEntryType);
       });
       
       // Reset pagination if we cleared all entries
@@ -333,7 +409,7 @@ const historySlice = createSlice({
         state.error = null;
         try {
           const pendingArg = (action as any)?.meta?.arg;
-          console.log('[historySlice] loadHistory.pending', { currentFilters: state.filters, pendingArg });
+          console.log('[historySlice] loadHistory.pending', { currentFilters: state.filters, pendingArg, debugTag: pendingArg?.debugTag });
         } catch {}
       })
       .addCase(loadHistory.fulfilled, (state, action) => {
@@ -371,10 +447,12 @@ const historySlice = createSlice({
         state.lastLoadedCount = action.payload.entries.length;
         state.error = null;
         try {
+          const debugTag = (action as any)?.meta?.arg?.debugTag;
           console.log('[historySlice] loadHistory.fulfilled', {
             usedFilters,
             received: action.payload.entries.length,
-            hasMore: state.hasMore
+            hasMore: state.hasMore,
+            debugTag
           });
         } catch {}
       })
@@ -382,8 +460,19 @@ const historySlice = createSlice({
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+        if (action.payload === '__CONDITION_ABORT__') {
+          // Silent abort due to navigation/type change; do not set error
+          try {
+            const debugTag = (action as any)?.meta?.arg?.debugTag;
+            console.log('[historySlice] loadHistory.rejected (silent abort)', { debugTag });
+          } catch {}
+          return;
+        }
         state.error = action.payload as string;
-        try { console.warn('[historySlice] loadHistory.rejected', { error: state.error }); } catch {}
+        try {
+          const debugTag = (action as any)?.meta?.arg?.debugTag;
+          console.warn('[historySlice] loadHistory.rejected', { error: state.error, debugTag });
+        } catch {}
       })
       // Load more history
       .addCase(loadMoreHistory.pending, (state, action) => {

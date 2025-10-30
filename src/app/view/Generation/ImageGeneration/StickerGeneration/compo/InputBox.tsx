@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
@@ -31,7 +32,7 @@ const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 import ModelsDropdown from './ModelsDropdown';
 import StickerCountDropdown from './StickerCountDropdown';
 import StickerImagePreview from './StickerImagePreview';
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+// Replaced custom loader with Logo.gif
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -47,9 +48,16 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const pathname = usePathname();
   // Local mount loading to avoid empty flash and ensure first render
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  // Safety: avoid overlay lock-ups if a request is aborted/blocked
+  useEffect(() => {
+    if (!initialLoading) return;
+    const t = setTimeout(() => setInitialLoading(false), 10000);
+    return () => clearTimeout(t);
+  }, [initialLoading]);
   
   // Credits management
   const {
@@ -74,6 +82,7 @@ const InputBox = () => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
+  const loadLockRef = useRef(false);
 
   // Helpers: clean prompt and copy
   const getCleanPrompt = (text: string): string => {
@@ -102,32 +111,35 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to sticker-generation)
+  // Load history on mount (scoped to sticker-generation) — single initial request, no auto-fill loop
   useEffect(() => {
     console.log('[Sticker] useEffect: mount -> loading sticker history');
     (async () => {
       try {
+        // Skip if route already changed during navigation
+        if (typeof pathname === 'string' && !pathname.includes('/sticker-generation')) {
+          console.log('[Sticker] initial load skipped: pathname not sticker-generation', { pathname });
+          return;
+        }
+        if (loadLockRef.current) {
+          console.log('[Sticker] initial load skipped (lock)');
+          return;
+        }
+        loadLockRef.current = true;
         setInitialLoading(true);
         const baseFilters: any = { generationType: 'sticker-generation' };
+        const debugTag = `page:sticker:${Date.now()}`;
         // Set filters early so other observers (PageRouter) show correct type immediately
         dispatch(setFilters(baseFilters));
         dispatch(clearHistory());
+        console.log('[Sticker] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
         await (dispatch as any)(loadHistory({ 
           filters: baseFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'sticker-generation',
+          debugTag
         })).unwrap();
-        let attempts = 0;
-        while (
-          attempts < 6 &&
-          (document.documentElement.scrollHeight - window.innerHeight) < 240
-        ) {
-          const more: any = await (dispatch as any)(loadMoreHistory({
-            filters: baseFilters,
-            paginationParams: { limit: 10 }
-          })).unwrap();
-          if (!more?.hasMore) break;
-          attempts += 1;
-        }
         console.log('[Sticker] initial loadHistory fulfilled');
       } catch (e: any) {
         if (e && e.name === 'ConditionError') {
@@ -140,7 +152,7 @@ const InputBox = () => {
         setHasInitiallyLoaded(true);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, pathname]);
 
   // Mark user scroll
   useEffect(() => {
@@ -337,10 +349,17 @@ const InputBox = () => {
       }
 
       // Refresh history to show the new sticker
-      dispatch(loadHistory({ 
-        filters: { generationType: 'sticker-generation' }, 
-        paginationParams: { limit: 10 } 
-      }));
+      {
+        const debugTag = `page:sticker:refresh:${Date.now()}`;
+        console.log('[Sticker] refresh loadHistory after generation', { debugTag });
+        dispatch(loadHistory({ 
+          filters: { generationType: 'sticker-generation' }, 
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'sticker-generation',
+          debugTag,
+        }));
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);
@@ -444,12 +463,7 @@ const InputBox = () => {
           {(initialLoading || (loading && stickerHistoryEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <WildMindLogoGenerating 
-                    running={true}
-                    size="lg"
-                    speedMs={1600}
-                    className="mx-auto"
-                  />
+                  <Image src="/styles/Logo.gif" alt="Generating" width={88} height={88} className="mx-auto" />
                   <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
@@ -473,12 +487,7 @@ const InputBox = () => {
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <WildMindLogoGenerating 
-                                running={localGeneratingEntries[0].status === 'generating'}
-                                size="md"
-                                speedMs={1600}
-                                className="mx-auto"
-                              />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
                           </div>
@@ -547,12 +556,7 @@ const InputBox = () => {
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <WildMindLogoGenerating 
-                                    running={localGeneratingEntries[0].status === 'generating'}
-                                    size="md"
-                                    speedMs={1600}
-                                    className="mx-auto"
-                                  />
+                                  <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                   <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
@@ -582,7 +586,7 @@ const InputBox = () => {
 
                     {/* Regular history entries */}
                     {groupedByDate[date].map((entry: HistoryEntry) => 
-                      entry.images.map((image, imageIndex) => (
+                      (entry.images || []).map((image, imageIndex) => (
                         <div
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
@@ -599,12 +603,7 @@ const InputBox = () => {
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <WildMindLogoGenerating 
-                                  running={entry.status === 'generating'}
-                                  size="md"
-                                  speedMs={1600}
-                                  className="mx-auto"
-                                />
+                                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>
@@ -679,12 +678,7 @@ const InputBox = () => {
           {hasMore && loading && stickerHistoryEntries.length > 0 && (
             <div className="flex items-center justify-center py-10">
               <div className="flex flex-col items-center gap-3">
-                <WildMindLogoGenerating 
-                  running={loading}
-                  size="md"
-                  speedMs={1600}
-                  className="mx-auto"
-                />
+                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                 <div className="text-sm text-white/60">Loading more stickers...</div>
               </div>
             </div>
@@ -709,6 +703,33 @@ const InputBox = () => {
                 autoCapitalize="on"
                 className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
               />
+              {prompt.trim() && (
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      dispatch(setPrompt(''));
+                    }}
+                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    aria-label="Clear prompt"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-white/80"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2">
               {error && (

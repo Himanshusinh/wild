@@ -84,8 +84,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       return [
         { value: "veo3-t2v-8s", label: "Veo3", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
-        { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
-        { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video, 5s/10s, 16:9/9:16/1:1 (standard/pro)", provider: "replicate" },
+        { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 T2V", description: "Text→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 T2V Fast", description: "Faster text→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
@@ -95,8 +94,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       return [
         { value: "veo3-i2v-8s", label: "Veo3 ", description: "Google's image-to-video model, 8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-i2v-8s", label: "Veo3 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
-        { value: "kling-v2.5-turbo-pro-i2v", label: "Kling 2.5 Turbo Pro", description: "Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
-        { value: "kling-v2.1-i2v", label: "Kling 2.1", description: "Image→Video, 5s/10s, 16:9/9:16/1:1 (standard/pro)", provider: "replicate" },
+        { value: "kling-v2.5-turbo-pro-i2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "kling-v2.1-i2v", label: "Kling 2.1", description: "Image→Video only, 5s/10s, 720p/1080p (requires start image)", provider: "replicate" },
+        { value: "kling-v2.1-master-i2v", label: "Kling 2.1 Master", description: "Image→Video only, 5s/10s, 1080p (requires start image)", provider: "replicate" },
         { value: "wan-2.5-i2v", label: "WAN 2.5 I2V", description: "Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-i2v-fast", label: "WAN 2.5 I2V Fast", description: "Faster image→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
@@ -151,65 +151,135 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         } catch {}
         setIsOpen(!isOpen);
       }}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedModel === 'gen4_aleph' || selectedModel.includes('MiniMax') || selectedModel.includes('veo3') || selectedModel.includes('wan-2.5')
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
       >
         <Cpu className="w-4 h-4 mr-1" />
         {selectedModelInfo?.label || selectedModel}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-          {/* Mode indicator */}
-          <div className="px-4 py-2 text-xs text-white/60 border-b border-white/10">
-            {generationMode === "text_to_video" ? "Text → Video Models" : 
-             generationMode === "image_to_video" ? "Image → Video Models" : "Video → Video Models"}
-          </div>
-          
-          {modelsWithCredits.map((model) => (
-            <button
-              key={model.value}
-              onClick={() => {
-                try { onModelChange(model.value); } catch {}
-                setIsOpen(false);
-              }}
-              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                selectedModel === model.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{model.label}</span>
-                  {model.provider === "minimax" && (
-                    <Sparkles className="w-3 h-3 text-yellow-400" />
-                  )}
-                  {model.provider === "fal" && (
-                    <img src="/icons/crown.svg" alt="priority" className="w-4 h-4 opacity-90" />
-                  )}
-                  {model.provider === "replicate" && (
-                    <Zap className="w-3 h-3 text-blue-400" />
-                  )}
+        <div className="absolute bottom-full left-0 mb-2 w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar">
+          {(() => {
+            // Filter models based on current mode (text-to-video or image-to-video)
+            const filteredModels = modelsWithCredits.filter(model => {
+              if (generationMode === 'text_to_video') {
+                return model.value.includes('t2v') || model.value.includes('T2V') || 
+                       model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
+                       model.value === 'MiniMax-Hailuo-02' || model.value === 'S2V-01';
+              } else {
+                return model.value.includes('i2v') || model.value.includes('I2V') || 
+                       model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
+                       model.value === 'MiniMax-Hailuo-02';
+              }
+            });
+
+            // For text-to-video: single column
+            if (generationMode === 'text_to_video') {
+              return (
+                <div className="divide-y divide-white/10">
+                  {filteredModels.map((model) => (
+                    <button
+                      key={model.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        try { onModelChange(model.value); } catch {}
+                        setIsOpen(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        ? 'bg-white text-black'
+                        : 'text-white/90 hover:bg-white/10'
+                        }`}
+                    >
+                      <div className="flex flex-col mb-0">
+                        <span className="flex items-center gap-2">
+                          {model.label}
+                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                        </span>
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
+                        {model.credits && (
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                        )}
+                      </div>
+                      {selectedModel === model.value && (
+                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                      )}
+                    </button>
+                  ))}
                 </div>
-                <span className="text-xs opacity-70">{model.description}</span>
-                {model.credits && (
-                  <span className="text-xs opacity-70 mt-0.5">{model.displayText}</span>
-                )}
+              );
+            }
+
+            // For image-to-video: two columns
+            const leftModels = filteredModels.slice(0, Math.ceil(filteredModels.length / 2));
+            const rightModels = filteredModels.slice(Math.ceil(filteredModels.length / 2));
+            
+            return (
+              <div className="grid grid-cols-2 gap-0">
+                {/* Left column */}
+                <div className="divide-y divide-white/10">
+                  {leftModels.map((model) => (
+                    <button
+                      key={`left-${model.value}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        try { onModelChange(model.value); } catch {}
+                        setIsOpen(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        ? 'bg-white text-black'
+                        : 'text-white/90 hover:bg-white/10'
+                        }`}
+                    >
+                      <div className="flex flex-col mb-0">
+                        <span className="flex items-center gap-2">
+                          {model.label}
+                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                        </span>
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
+                        {model.credits && (
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                        )}
+                      </div>
+                      {selectedModel === model.value && (
+                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {/* Right column */}
+                <div className="border-l border-white/10 divide-y divide-white/10">
+                  {rightModels.map((model) => (
+                    <button
+                      key={`right-${model.value}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        try { onModelChange(model.value); } catch {}
+                        setIsOpen(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        ? 'bg-white text-black'
+                        : 'text-white/90 hover:bg-white/10'
+                        }`}
+                    >
+                      <div className="flex flex-col -mb-0">
+                        <span className="flex items-center gap-2">
+                          {model.label}
+                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                        </span>
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
+                        {model.credits && (
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                        )}
+                      </div>
+                      {selectedModel === model.value && (
+                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {/* {model.value.startsWith('veo3') && (
-                  <img src="/icons/crown.svg" alt="priority" className="w-4 h-4 opacity-90" />
-                )} */}
-                {selectedModel === model.value && (
-                  <div className="w-2 h-2 bg-black rounded-full"></div>
-                )}
-              </div>
-            </button>
-          ))}
+            );
+          })()}
         </div>
       )}
     </div>

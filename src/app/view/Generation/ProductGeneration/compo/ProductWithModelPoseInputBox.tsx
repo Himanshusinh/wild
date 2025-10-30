@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
@@ -13,7 +14,7 @@ import {
   addNotification 
 } from '@/store/slices/uiSlice';
 import { useGenerationCredits } from '@/hooks/useCredits';
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+// Replaced custom loader with Logo.gif
 import { 
   loadMoreHistory,
   loadHistory,
@@ -54,9 +55,18 @@ const ProductWithModelPoseInputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
+  const pathname = usePathname();
   // Local mount loading to prevent empty flash
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const loadLockRef = useRef(false);
+  // Safety: ensure overlay can't get stuck
+  useEffect(() => {
+    if (!initialLoading) return;
+    const t = setTimeout(() => setInitialLoading(false), 10000);
+    return () => clearTimeout(t);
+  }, [initialLoading]);
 
   // Credits management
   const {
@@ -122,31 +132,41 @@ const ProductWithModelPoseInputBox = () => {
     console.log('✅ Set generation mode to: product-only');
   }, [selectedModel]);
 
-  // Load product-generation history on mount (scoped)
+  // Load product-generation history on mount (scoped) — single initial request, no auto-fill loop
   useEffect(() => {
     console.log('[Product] useEffect: mount -> loading product history');
     (async () => {
       try {
+        // Skip if route already changed during navigation
+        if (typeof pathname === 'string' && !pathname.includes('/product-generation')) {
+          console.log('[Product] initial load skipped: pathname not product-generation', { pathname });
+          return;
+        }
+        // Skip if user navigated away during a concurrent transition
+        const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+        const cur = normalize(currentGenerationType);
+        if (cur !== 'product-generation' && cur !== 'product') {
+          console.log('[Product] initial load skipped: not on product page anymore', { currentGenerationType });
+          return;
+        }
+        if (loadLockRef.current) {
+          console.log('[Product] initial load skipped (lock)');
+          return;
+        }
+        loadLockRef.current = true;
         setInitialLoading(true);
         const baseFilters: any = { generationType: 'product-generation' };
         dispatch(setFilters(baseFilters));
         dispatch(clearHistory());
+        const debugTag = `page:product:${Date.now()}`;
+        console.log('[Product] dispatch loadHistory', { filters: baseFilters, limit: 10, debugTag });
         await (dispatch as any)(loadHistory({ 
           filters: baseFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'product-generation',
+          debugTag,
         })).unwrap();
-        let attempts = 0;
-        while (
-          attempts < 6 &&
-          (document.documentElement.scrollHeight - window.innerHeight) < 240
-        ) {
-          const more: any = await (dispatch as any)(loadMoreHistory({
-            filters: baseFilters,
-            paginationParams: { limit: 10 }
-          })).unwrap();
-          if (!more?.hasMore) break;
-          attempts += 1;
-        }
         console.log('[Product] initial loadHistory fulfilled');
       } catch (e: any) {
         if (e && e.name === 'ConditionError') {
@@ -159,7 +179,7 @@ const ProductWithModelPoseInputBox = () => {
         setHasInitiallyLoaded(true);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, currentGenerationType, pathname]);
 
   // IntersectionObserver-based infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -430,10 +450,17 @@ GENERATOR HINTS:
       }
 
       // Refresh history to show the new product
-      dispatch(loadHistory({ 
-        filters: { generationType: 'product-generation' }, 
-        paginationParams: { limit: 10 } 
-      }));
+      {
+        const debugTag = `page:product:refresh:${Date.now()}`;
+        console.log('[Product] refresh loadHistory after generation', { debugTag });
+        dispatch(loadHistory({ 
+          filters: { generationType: 'product-generation' }, 
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'product-generation',
+          debugTag,
+        }));
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);
@@ -560,12 +587,7 @@ GENERATOR HINTS:
           {(initialLoading || (loading && finalProductEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <WildMindLogoGenerating 
-                    running={true}
-                    size="lg"
-                    speedMs={1600}
-                    className="mx-auto"
-                  />
+                  <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
                   <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
@@ -589,12 +611,7 @@ GENERATOR HINTS:
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <WildMindLogoGenerating 
-                                running={localGeneratingEntries[0].status === 'generating'}
-                                size="md"
-                                speedMs={1600}
-                                className="mx-auto"
-                              />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
                           </div>
@@ -652,12 +669,7 @@ GENERATOR HINTS:
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <WildMindLogoGenerating 
-                                    running={localGeneratingEntries[0].status === 'generating'}
-                                    size="md"
-                                    speedMs={1600}
-                                    className="mx-auto"
-                                  />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                   <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
@@ -694,16 +706,11 @@ GENERATOR HINTS:
                           onClick={() => setPreviewEntry(entry)}
                           className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                         >
-                          {entry.status === "generating" ? (
+                            {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <WildMindLogoGenerating 
-                                  running={entry.status === 'generating'}
-                                  size="md"
-                                  speedMs={1600}
-                                  className="mx-auto"
-                                />
+                                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>
@@ -768,16 +775,13 @@ GENERATOR HINTS:
           {hasMore && loading && finalProductEntries.length > 0 && (
             <div className="flex items-center justify-center py-10">
               <div className="flex flex-col items-center gap-3">
-                <WildMindLogoGenerating 
-                  running={loading}
-                  size="md"
-                  speedMs={1600}
-                  className="mx-auto"
-                />
+                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
                 <div className="text-sm text-white/60">Loading more products...</div>
               </div>
             </div>
           )}
+          {/* Sentinel for infinite scroll */}
+          <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
       </div>
 
@@ -799,6 +803,33 @@ GENERATOR HINTS:
                 onChange={(e) => dispatch(setPrompt(e.target.value))}
                 className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
               />
+              {prompt.trim() && (
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      dispatch(setPrompt(''));
+                    }}
+                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    aria-label="Clear prompt"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-white/80"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2">
               {error && (

@@ -5,6 +5,7 @@ import ReduxProvider from "@/components/providers/ReduxProvider";
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import ToastMount from './toast-mount'
+import ConsoleSilencer from "@/components/ConsoleSilencer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ReduxProvider>
+          <ConsoleSilencer />
           {children}
           <Toaster
             position="top-center"

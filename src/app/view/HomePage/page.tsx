@@ -161,7 +161,10 @@ const HomePage: React.FC = () => {
 
   const [artItems, setArtItems] = useState<Creation[]>([])
 
+  const didInitArtRef = React.useRef(false)
   useEffect(() => {
+    if (didInitArtRef.current) return; // Prevent React StrictMode double-invoke in dev
+    didInitArtRef.current = true;
     const fetchHomeArt = async () => {
       try {
         const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE

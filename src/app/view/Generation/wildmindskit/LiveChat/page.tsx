@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
 import LiveChatInputBox from './compo/InputBox';
 // import { useAppSelector } from '@/store/hooks';
@@ -234,4 +234,10 @@ const LiveChatGrid: React.FC = () => {
   );
 }
 
-export default LiveChatPage;
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="text-white/70 p-6">Loading…</div>}>
+      <LiveChatPage />
+    </Suspense>
+  );
+}

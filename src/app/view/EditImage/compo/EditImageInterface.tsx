@@ -13,7 +13,7 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize';
+type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill';
 
 const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
@@ -23,17 +23,20 @@ const EditImageInterface: React.FC = () => {
     'upscale': null,
     'remove-bg': null,
     'resize': null,
+    'fill': null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
     'upscale': null,
     'remove-bg': null,
     'resize': null,
+    'fill': null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
     'upscale': false,
     'remove-bg': false,
     'resize': false,
+    'fill': false,
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
@@ -53,6 +56,17 @@ const EditImageInterface: React.FC = () => {
   const imageRef = useRef<HTMLImageElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  // Fill mask drawing
+  const fillCanvasRef = useRef<HTMLCanvasElement>(null);
+  const fillContainerRef = useRef<HTMLDivElement>(null);
+  const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [isMasking, setIsMasking] = useState(false);
+  const [hasMask, setHasMask] = useState(false);
+  const [brushSize, setBrushSize] = useState(35);
+  const [eraseMode, setEraseMode] = useState(false);
+  const [fillSteps, setFillSteps] = useState(30);
+  const [fillGuidance, setFillGuidance] = useState(7.5);
+  const [fillSeed, setFillSeed] = useState<string>('');
   
   // Form states
   const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'  | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
@@ -94,10 +108,11 @@ const EditImageInterface: React.FC = () => {
       try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch {}
     })();
     try {
-      const featureParam = (searchParams?.get('feature') || '').toLowerCase();
+      // Allow tab selection via query or path (for /edit-image/fill)
+      const featureParam = (searchParams?.get('feature') || '').toLowerCase() || (typeof window !== 'undefined' && window.location.pathname.includes('/edit-image/fill') ? 'fill' : '');
       const imageParam = searchParams?.get('image') || '';
       const storagePathParam = searchParams?.get('sp') || '';
-      const validFeature = ['upscale', 'remove-bg', 'resize'].includes(featureParam)
+      const validFeature = ['upscale', 'remove-bg', 'resize', 'fill'].includes(featureParam)
         ? (featureParam as EditFeature)
         : null;
       if (validFeature) {
@@ -296,17 +311,8 @@ const EditImageInterface: React.FC = () => {
     return () => window.removeEventListener('keydown', handleSpaceScrollBlock as any);
   }, []);
 
-  // Force-disable page scroll while this interface is mounted
-  useEffect(() => {
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = (document.documentElement as HTMLElement).style.overflow;
-    document.body.style.overflow = 'hidden';
-    (document.documentElement as HTMLElement).style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevBodyOverflow;
-      (document.documentElement as HTMLElement).style.overflow = prevHtmlOverflow;
-    };
-  }, []);
+  // Allow page scroll so actions are reachable on small screens
+  // (removed the global overflow lock)
 
   // Close image menu when clicking outside
   useEffect(() => {
@@ -351,6 +357,7 @@ const EditImageInterface: React.FC = () => {
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
     { id: 'remove-bg', label: 'Remove Background', description: 'Remove background from your image' },
     { id: 'resize', label: 'Resize (coming Soon....)', description: 'Resize image to specific dimensions' },
+    { id: 'fill', label: 'Image Fill', description: 'Mask areas to regenerate with a prompt' },
   ] as const;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -366,6 +373,83 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleOpenUploadModal = () => setIsUploadOpen(true);
+
+  // Fill: canvas helpers for mask drawing
+  const getCanvasContext = useCallback(() => {
+    const c = fillCanvasRef.current;
+    if (!c) return null as any;
+    const ctx = c.getContext('2d');
+    return ctx;
+  }, []);
+
+  const resizeCanvasToContainer = useCallback(() => {
+    const container = fillContainerRef.current;
+    const canvas = fillCanvasRef.current;
+    if (!container || !canvas) return;
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    const ctx = getCanvasContext();
+    if (ctx) {
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setHasMask(false);
+    }
+  }, [getCanvasContext]);
+
+  useEffect(() => {
+    if (selectedFeature !== 'fill') return;
+    const onResize = () => resizeCanvasToContainer();
+    resizeCanvasToContainer();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [selectedFeature, resizeCanvasToContainer]);
+
+  // Recreate canvas when image changes on Fill
+  useEffect(() => {
+    if (selectedFeature !== 'fill') return;
+    resizeCanvasToContainer();
+  }, [inputs.fill, selectedFeature, resizeCanvasToContainer]);
+
+  const beginMaskStroke = useCallback((x: number, y: number) => {
+    const ctx = getCanvasContext();
+    if (!ctx) return;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = brushSize;
+    ctx.globalCompositeOperation = eraseMode ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = 'rgba(255,255,255,1)';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsMasking(true);
+  }, [brushSize, eraseMode, getCanvasContext]);
+
+  const continueMaskStroke = useCallback((x: number, y: number) => {
+    if (!isMasking) return;
+    const ctx = getCanvasContext();
+    if (!ctx) return;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setHasMask(true);
+  }, [isMasking, getCanvasContext]);
+
+  const endMaskStroke = useCallback(() => {
+    if (!isMasking) return;
+    const ctx = getCanvasContext();
+    if (ctx) ctx.closePath();
+    setIsMasking(false);
+  }, [isMasking, getCanvasContext]);
+
+  const pointFromMouseEvent = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const c = fillCanvasRef.current;
+    if (!c) return { x: 0, y: 0 };
+    const r = c.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
 
   const handleRun = async () => {
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
@@ -401,6 +485,78 @@ const EditImageInterface: React.FC = () => {
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
       const isPublic = await getIsPublic();
+      if (selectedFeature === 'fill') {
+        const img = inputs[selectedFeature];
+        if (!img) throw new Error('Please upload an image for fill');
+        // Export mask as PNG data URI
+        const maskDataUrl = (() => {
+          const c = fillCanvasRef.current;
+          if (!c) return undefined as any;
+          if (!hasMask) {
+            try {
+              // Create a full-opaque mask covering the whole image so provider doesn't reject missing mask
+              const natW = Math.max(1, Math.floor(inputNaturalSize.width || 1024));
+              const natH = Math.max(1, Math.floor(inputNaturalSize.height || 1024));
+              const off = document.createElement('canvas');
+              off.width = natW;
+              off.height = natH;
+              const octx = off.getContext('2d');
+              if (octx) {
+                octx.fillStyle = '#FFFFFF';
+                octx.fillRect(0, 0, natW, natH);
+                return off.toDataURL('image/png');
+              }
+            } catch {}
+            return undefined as any;
+          }
+          try {
+            // Scale painted mask (display canvas) to input image's natural resolution
+            const off = document.createElement('canvas');
+            const dispRect = fillContainerRef.current?.getBoundingClientRect();
+            const displayW = Math.max(1, Math.floor(dispRect?.width || c.width));
+            const displayH = Math.max(1, Math.floor(dispRect?.height || c.height));
+            const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
+            const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+            off.width = natW;
+            off.height = natH;
+            const octx = off.getContext('2d');
+            if (!octx) return c.toDataURL('image/png');
+            octx.drawImage(c, 0, 0, displayW, displayH, 0, 0, natW, natH);
+            return off.toDataURL('image/png');
+          } catch {
+            return c.toDataURL('image/png');
+          }
+        })();
+        if (!prompt || !prompt.trim()) {
+          setErrorMsg('Please enter a prompt for fill');
+          setProcessing((prev) => ({ ...prev, ['fill']: false }));
+          return;
+        }
+        const body: any = {
+          image: currentInput,
+          steps: Math.floor(Math.max(15, Math.min(50, Number(fillSteps) || 30))),
+          guidance: Number((Math.max(1.5, Math.min(100, Number(fillGuidance) || 7.5))).toFixed(1)),
+          output_format: 'jpeg',
+          generationType: 'text-to-image',
+          isPublic,
+        };
+        if (prompt && prompt.trim()) body.prompt = prompt.trim();
+        console.log('[Fill] Image URL:', currentInput);
+        if (maskDataUrl) body.mask = maskDataUrl;
+        if (String(fillSeed).trim() !== '' && Number.isFinite(Number(fillSeed))) body.seed = Math.floor(Number(fillSeed));
+        console.log('[Fill] Request payload:', { ...body, mask: body.mask ? '[MASK_DATA]' : undefined });
+        try {
+          const res = await axiosInstance.post('/api/bfl/fill', body);
+          const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
+          if (out) setOutputs((prev) => ({ ...prev, ['fill']: out }));
+          return;
+        } catch (fillError) {
+          console.error('[Fill] API Error:', fillError);
+          const fillErrorData = (fillError as any)?.response?.data;
+          console.log('[Fill] Error response:', fillErrorData);
+          throw fillError;
+        }
+      }
 
       if (selectedFeature === 'remove-bg') {
         const body: any = {
@@ -574,16 +730,24 @@ const EditImageInterface: React.FC = () => {
       }
     } catch (e) {
       console.error('[EditImage] run.error', e);
-      const msg = (e as any)?.response?.data?.message || (e as any)?.message || 'Request failed';
-      setErrorMsg(msg);
+      const errorData = (e as any)?.response?.data;
+      let msg = (errorData && (errorData.message || errorData.error)) || (e as any)?.message || 'Request failed';
+      if (!msg && Array.isArray(errorData)) {
+        try { msg = errorData.map((x: any) => x?.msg || x).join(', '); } catch {}
+      }
+      if (typeof msg !== 'string') {
+        try { msg = JSON.stringify(errorData); } catch {}
+      }
+      console.log('[EditImage] Error details:', errorData);
+      setErrorMsg(String(msg));
     } finally {
       setProcessing((prev) => ({ ...prev, [selectedFeature]: false }));
     }
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null });
+    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null });
+    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
@@ -729,7 +893,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-[#07070B]">
+    <div className="min-h-screen bg-[#07070B] overflow-auto">
       {/* Header + Feature cards in a single row so the heading sits in the left gap */}
       <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] md:px-6 md:pt-4 md:pb-3">
         <div className="flex items-center gap-4">
@@ -762,6 +926,7 @@ const EditImageInterface: React.FC = () => {
                   {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
                   {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4 md:w-5 md:h-5" />)}
                   {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4 md:w-5 md:h-5" />)}
+                  {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4 md:w-5 md:h-5" />)}
                 </div>
                 <div>
                   <h3 className="text-white text-xs font-medium md:text-sm">{feature.label}</h3>
@@ -807,14 +972,37 @@ const EditImageInterface: React.FC = () => {
           )}
 
 
-          {/* Input Image Upload */}
+          {/* Input Image Upload (Fill mask overlays here) */}
           <div className="px-3 md:px-4">
             <h3 className="text-xs pl-1  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
             <div className="relative">
-              <div className="bg-white/5 px-4 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] md:min-h-[18rem]">
+              <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] md:min-h-[18rem]">
                   {inputs[selectedFeature] ? (
                     <>
-                    <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-contain rounded-xl p-2" />
+                      <Image
+                        src={inputs[selectedFeature] as string}
+                        alt="Input"
+                        fill
+                        className="object-contain rounded-xl"
+                        onLoad={(e:any)=>{
+                          try { setInputNaturalSize({ width: e?.target?.naturalWidth || 0, height: e?.target?.naturalHeight || 0 }); } catch {}
+                          // re-fit canvas on first load
+                          try { setTimeout(() => resizeCanvasToContainer(), 0); } catch {}
+                        }}
+                      />
+                      {/* Fill: mask canvas overlay over input image */}
+                      {selectedFeature === 'fill' && (
+                        <div ref={fillContainerRef} className="absolute inset-0">
+                          <canvas
+                            ref={fillCanvasRef}
+                            className="absolute inset-0 w-full h-full cursor-crosshair"
+                            onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
+                            onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
+                            onMouseUp={() => endMaskStroke()}
+                            onMouseLeave={() => endMaskStroke()}
+                          />
+                        </div>
+                      )}
                       <button
                         onClick={handleOpenUploadModal}
                         className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
@@ -910,6 +1098,19 @@ const EditImageInterface: React.FC = () => {
                 )}
               </div>
 
+              {/* Prompt for Fill */}
+              {selectedFeature === 'fill' && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt</label>
+                  <input
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe what to fill"
+                    className="w-full h-[32px] px-2 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 md:text-sm"
+                  />
+                </div>
+              )}
+
               {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
               {selectedFeature === 'resize' && (
                 <div>
@@ -963,6 +1164,32 @@ const EditImageInterface: React.FC = () => {
                     )}
                   </div>
                 </div>
+              )}
+
+              {selectedFeature === 'fill' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
+                    <input type="range" min={5} max={200} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                  </div>
+                  <div className="flex items-end">
+                    <button type="button" onClick={() => setEraseMode(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${eraseMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
+                      {eraseMode ? 'Erase' : 'Paint'}
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Steps (15-50)</label>
+                    <input type="number" min={15} max={50} value={fillSteps} onChange={(e) => setFillSteps(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Guidance (1.5-100)</label>
+                    <input type="number" min={1.5} max={100} step={0.5} value={fillGuidance} onChange={(e) => setFillGuidance(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Seed (optional)</label>
+                    <input type="number" value={fillSeed} onChange={(e) => setFillSeed(e.target.value)} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                  </div>
+                </>
               )}
 
                 {/* Buttons moved to bottom footer */}
@@ -1409,6 +1636,7 @@ const EditImageInterface: React.FC = () => {
                   </div>
                 </div>
               )}
+              {/* Fill mask overlay moved to input area */}
             </div>
           </div>
         </div>

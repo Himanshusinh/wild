@@ -77,6 +77,19 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
 
   // Get available durations based on model and generation mode
   const getAvailableDurations = () => {
+    if (selectedModel?.includes("MiniMax")) {
+      // MiniMax-Hailuo-02 supports only 6s and 10s
+      return [
+        { value: 6, label: "6 seconds", description: "Short video" },
+        { value: 10, label: "10 seconds", description: "Standard length" }
+      ];
+    }
+    if (selectedModel === 'T2V-01-Director' || selectedModel === 'I2V-01-Director' || selectedModel === 'S2V-01') {
+      // Director variants are fixed at 6s
+      return [
+        { value: 6, label: "6 seconds", description: "Fixed duration" }
+      ];
+    }
     if (selectedModel?.includes("veo3")) {
       // For Veo3 image-to-video, only show 8s
       if (generationMode === "image_to_video") {
@@ -105,8 +118,18 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel?.includes("gen4") || selectedModel?.includes("gen3a")) {
+      // Runway models support 4s, 6s, and 10s
+      return [
+        { value: 4, label: "4 seconds", description: "Quick video" },
+        { value: 6, label: "6 seconds", description: "Short video" },
+        { value: 10, label: "10 seconds", description: "Standard length" }
+      ];
+    }
+    // Default fallback
     return [
-      { value: 5, label: "5 seconds", description: "Short video" },
+      { value: 4, label: "4 seconds", description: "Quick video" },
+      { value: 6, label: "6 seconds", description: "Short video" },
       { value: 10, label: "10 seconds", description: "Standard length" }
     ];
   };
@@ -119,24 +142,21 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
     <div className="relative dropdown-container">
       <button
         onClick={() => {
-          // Close other dropdowns if they exist
-          if (onCloseOtherDropdowns) {
-            onCloseOtherDropdowns();
-          }
+          try {
+            if (onCloseOtherDropdowns) {
+              onCloseOtherDropdowns();
+            }
+          } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedDuration !== 5 
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
       >
         <Clock className="w-4 h-4 mr-1" />
         {selectedDurationInfo?.label || `${selectedDuration}s`}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {availableDurations.map((duration) => (
             <button
               key={duration.value}

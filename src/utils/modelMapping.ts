@@ -294,6 +294,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate',
     options: { duration: [5, 10] }
   },
+  {
+    frontendValue: 'kling-v2.1-master-i2v',
+    creditModelName: 'Kling 2.1 Master I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
   
   // WAN 2.5 Fast Models
   {
@@ -392,8 +399,13 @@ export const buildCreditModelName = (
       const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
       modelName = `Kling 2.1 T2V ${d}s ${res}`;
     } else if (mapping.frontendValue.includes('v2.1') && mapping.frontendValue.includes('i2v')) {
-      const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
-      modelName = `Kling 2.1 I2V ${d}s ${res}`;
+      if (mapping.frontendValue.includes('master')) {
+        // Master variants in credit table do NOT include resolution suffix
+        modelName = `Kling 2.1 Master I2V ${d}s`;
+      } else {
+        const res = (options?.resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+        modelName = `Kling 2.1 I2V ${d}s ${res}`;
+      }
     }
   }
 

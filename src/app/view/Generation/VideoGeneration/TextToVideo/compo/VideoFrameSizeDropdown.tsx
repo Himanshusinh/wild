@@ -10,6 +10,8 @@ interface VideoFrameSizeDropdownProps {
   generationMode?: string;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
+  // MiniMax specific: needed to filter resolutions per backend rules
+  miniMaxDuration?: number;
 }
 
 const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
@@ -19,6 +21,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   generationMode,
   onCloseOtherDropdowns,
   onCloseThisDropdown,
+  miniMaxDuration,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -116,6 +119,31 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         { value: "16:10", label: "16:10", description: "1280×768 landscape", icon: "landscape" },
         { value: "10:16", label: "10:16", description: "768×1280 portrait", icon: "portrait" }
       ];
+    } else if (selectedModel?.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+      // MiniMax models use resolution values
+      if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+        // Director models have fixed 720P resolution
+        return [
+          { value: "720P", label: "720P", description: "1280×720 HD", icon: "landscape" }
+        ];
+      } else {
+        // MiniMax-Hailuo-02 supports multiple resolutions
+        let options = [
+          { value: "512P", label: "512P", description: "512×512 square", icon: "square" },
+          { value: "768P", label: "768P", description: "768×768 square", icon: "square" },
+          { value: "1080P", label: "1080P", description: "1080×1080 square", icon: "square" }
+        ];
+        // Backend rules:
+        // - Text→Video does not support 512P
+        if (generationMode === "text_to_video") {
+          options = options.filter(o => o.value !== "512P");
+        }
+        // - 10s duration does not support 1080P
+        if (miniMaxDuration === 10) {
+          options = options.filter(o => o.value !== "1080P");
+        }
+        return options;
+      }
     } else {
       // gen4_turbo and gen4_aleph support more ratios
       return [
@@ -138,31 +166,27 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
     if (!availableSizes.find(size => size.value === selectedFrameSize)) {
       onFrameSizeChange(availableSizes[0].value);
     }
-  }, [selectedModel, selectedFrameSize, onFrameSizeChange]);
+  }, [selectedModel, selectedFrameSize, onFrameSizeChange, generationMode, miniMaxDuration]);
 
   return (
     <div className="relative dropdown-container">
       <button
         onClick={() => {
-          // Close other dropdowns if they exist
-          if (onCloseOtherDropdowns) {
-            onCloseOtherDropdowns();
-          }
+          try {
+            if (onCloseOtherDropdowns) {
+              onCloseOtherDropdowns();
+            }
+          } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          (selectedFrameSize !== '16:9' && !selectedModel?.includes("wan-2.5")) || 
-          (selectedModel?.includes("wan-2.5") && selectedFrameSize !== '1280*720')
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
       >
         <Crop className="w-4 h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-44 bg-black/70 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {availableFrameSizes.map((size) => (
             <button
               key={size.value}
@@ -199,9 +223,6 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
                   }`}></span>
                 )}
                 <span>{size.label}</span>
-                <span className={`text-[12px] ${
-                  selectedFrameSize === size.value ? 'text-black/70' : 'text-white/50'
-                }`}>{size.value}</span>
               </span>
               {selectedFrameSize === size.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>
