@@ -104,7 +104,8 @@ export default function WorkflowCarousel({
 
                 {/* Right: image */}
                 <div className="relative md:absolute md:right-8 lg:right-8 md:top-0 md:bottom-0 md:w-[600px] lg:w-[700px] h-[180px] md:h-auto flex-shrink-0">
-                  <div className="absolute inset-x-0 top-1 bottom-1 md:top-4 md:bottom-4 lg:top-6 lg:bottom-6 rounded-xl md:rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black/20">
+                  {/* Desktop/Tablet: single image (unchanged) */}
+                  <div className="hidden md:block absolute inset-x-0 top-1 bottom-1 md:top-4 md:bottom-4 lg:top-6 lg:bottom-6 rounded-xl md:rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black/20">
                     <Image
                       src={item.image}
                       alt={item.title}
@@ -113,6 +114,29 @@ export default function WorkflowCarousel({
                       priority
                     />
                   </div>
+
+                  {/* Mobile: for Branding card only, show two images side-by-side; others keep single */}
+                  {item.id === 'Branding' ? (
+                    <div className="md:hidden grid grid-cols-2 gap-2 h-full">
+                      <div className="relative rounded-lg overflow-hidden ring-1 ring-white/10 bg-black/20">
+                        <Image src={item.image} alt={`${item.title} A`} fill className="object-cover" priority />
+                      </div>
+                      <div className="relative rounded-lg overflow-hidden ring-1 ring-white/10 bg-black/20">
+                        <Image src={item.image} alt={`${item.title} B`} fill className="object-cover" priority />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="md:hidden absolute inset-x-0 top-1 bottom-1 rounded-xl overflow-hidden ring-1 ring-white/10 bg-black/20">
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        priority
+                        
+                      />
+                    </div>
+                  )}
                   
                   {/* Button positioned at bottom right of image */}
                   {item.ctaText && (

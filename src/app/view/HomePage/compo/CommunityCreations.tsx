@@ -116,8 +116,8 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
   const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
 
   return (
-    <div ref={setRef} className={`break-inside-avoid mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
-      <div className="relative w-full rounded-lg md:rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group cursor-pointer" onClick={onClick}>
+    <div ref={setRef} className={`break-inside-avoid mb-2 sm:mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
+      <div className="relative w-full rounded-lg md:rounded-xl overflow-hidden sm:ring-1 sm:ring-white/10 sm:bg-white/5 group cursor-pointer" onClick={onClick}>
         <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
           {isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
@@ -160,8 +160,8 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
             />
           )}
         </div>
-        <div className="absolute inset-x-0 bottom-0 p-2 md:p-3">
-          <div className="rounded-lg md:rounded-xl bg-black/40 backdrop-blur-sm p-2 md:p-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
+        <div className="absolute inset-x-0 bottom-0 p-2 md:p-3 hidden sm:block">
+          <div className="rounded-lg md:rounded-xl bg-black/40 backdrop-blur-sm p-2 md:p-3 opacity-0 group-hover:opacity-100 transition">
             <div className="flex items-center justify-between">
               <p className="text-[12px] md:text-[13px] leading-snug text-white/90 line-clamp-2">
                 {item.prompt ?? "—"}
@@ -172,7 +172,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
             )}
           </div>
         </div>
-        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-lg md:rounded-xl pointer-events-none transition" />
+        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-lg md:rounded-xl pointer-events-none transition hidden sm:block" />
       </div>
     </div>
   );
@@ -188,6 +188,13 @@ export default function CommunityCreations({
   initialFilter?: Category;
   className?: string;
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
   const [active, setActive] = useState<Category>(initialFilter);
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
@@ -198,9 +205,10 @@ export default function CommunityCreations({
     return items.filter((i) => i.categories.includes(active));
   }, [active, items]);
 
-  // Limit to ~4-5 rows (with 4 columns ≈ 16-20 items)
-  const limited = useMemo(() => filtered.slice(0, 20), [filtered]);
-  const showOverlay = useMemo(() => active === 'All' && limited.length >= 12, [active, limited]);
+  // Mobile: show only first 10 images; other screens keep existing limit (20)
+  const limited = useMemo(() => filtered.slice(0, isMobile ? 10 : 20), [filtered, isMobile]);
+  // Ensure overlay remains on mobile; desktop/tablet follow previous rule
+  const showOverlay = useMemo(() => isMobile ? true : (active === 'All' && limited.length >= 12), [isMobile, active, limited]);
 
   // Staggered reveal like ArtStation
   const [visibleTiles, setVisibleTiles] = useState<Set<string>>(new Set());
@@ -234,7 +242,7 @@ export default function CommunityCreations({
   }, [active])
 
   return (
-    <section className={`w-full ${className}`}>
+    <section className={`w-full mt-[5px] md:mt-0 mb-[5px] md:mb-0 ${className}`}>
       <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 md:mb-5">
         Community Creations
       </h2>
@@ -267,8 +275,8 @@ export default function CommunityCreations({
       </div>
 
       {/* Masonry grid with conditional overlay */}
-      <div className="relative">
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
+        <div className="relative">
+          <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-2 sm:gap-1 [overflow-anchor:none]">
           {limited.map((item, idx) => (
             <Card
               key={item.id}

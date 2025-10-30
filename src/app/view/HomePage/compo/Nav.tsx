@@ -233,7 +233,7 @@ const Nav = () => {
 
         {/* Group 2: person icon with dropdown */}
         <div className='relative' ref={dropdownRef}>
-          <div className='rounded-full backdrop-blur-3xl bg-black/30 shadow-lg border border-white/10 p-1'>
+          <div className='rounded-full'>
             <button 
               onClick={() => {
                 console.log('Profile button clicked, current state:', showDropdown);

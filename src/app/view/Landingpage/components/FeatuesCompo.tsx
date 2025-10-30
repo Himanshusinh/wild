@@ -1,7 +1,6 @@
 "use client"
 
 import { useRef, useState } from 'react';
-import Image from 'next/image';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { cn } from '../../../../lib/utils';
 import { getImageUrl } from '../routes';
@@ -147,13 +146,14 @@ export default function AiToolsGrid({ activeCategory = 'All' }: AiToolsGridProps
               >
                 <div className={cn('rounded-2xl h-full w-full overflow-hidden bg-black relative z-20')}>
                   <div className="relative w-full h-44 md:h-72">
-                    <Image
+                    {/* Match CommunityCreations approach: plain img with object-cover for consistent rendering */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={card.src}
                       alt={card.title}
-                      fill
-                      className="object-cover"
-                      sizes="(min-width: 1440px) 33vw, (min-width: 768px) 50vw, 100vw"
-                      priority={idx < 10}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading={idx < 10 ? 'eager' : 'lazy'}
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   </div>
                   {/* Left-side gradient for readability */}

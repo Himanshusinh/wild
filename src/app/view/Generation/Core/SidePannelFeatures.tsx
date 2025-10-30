@@ -33,6 +33,7 @@ const SidePannelFeatures = ({
   const pathname = usePathname();
   const router = useRouter();
   const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
+  const brandingClickCount = React.useRef(0);
   const [showVideoEditDropdown, setShowVideoEditDropdown] = React.useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
@@ -88,9 +89,17 @@ const SidePannelFeatures = ({
   };
 
   const toggleBrandingDropdown = () => {
-    setShowBrandingDropdown(!showBrandingDropdown);
-    // Close video edit dropdown when opening branding dropdown
-    setShowVideoEditDropdown(false);
+    if (!showBrandingDropdown) {
+      setShowBrandingDropdown(true);
+      brandingClickCount.current = 1;
+      setShowVideoEditDropdown(false);
+      return;
+    }
+    brandingClickCount.current += 1;
+    if (brandingClickCount.current >= 2) {
+      setShowBrandingDropdown(false);
+      brandingClickCount.current = 0;
+    }
   };
 
   const toggleVideoEditDropdown = () => {
@@ -108,6 +117,7 @@ const SidePannelFeatures = ({
         !sidebarRef.current.contains(event.target as Node)
       ) {
         setShowBrandingDropdown(false);
+        brandingClickCount.current = 0;
         setShowVideoEditDropdown(false);
         return;
       }
@@ -120,6 +130,7 @@ const SidePannelFeatures = ({
         !(brandingDropdownRef.current && brandingDropdownRef.current.contains(event.target as Node))
       ) {
         setShowBrandingDropdown(false);
+        brandingClickCount.current = 0;
       }
 
       // Handle video edit dropdown
@@ -137,18 +148,17 @@ const SidePannelFeatures = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showBrandingDropdown, showVideoEditDropdown]);
 
-  // Close dropdowns when sidebar is not hovered (collapsed)
+  // Close dropdowns when sidebar is not hovered (desktop only). Do NOT auto-close on mobile menu.
   React.useEffect(() => {
-    if (!isSidebarHovered) {
-      // Add a small delay to prevent dropdowns from closing too quickly
+    if (!isSidebarHovered && !isMobileMenuOpen) {
       const timer = setTimeout(() => {
         setShowBrandingDropdown(false);
+        brandingClickCount.current = 0;
         setShowVideoEditDropdown(false);
-      }, 150); // 150ms delay
-
+      }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isSidebarHovered]);
+  }, [isSidebarHovered, isMobileMenuOpen]);
 
   const isBrandingActive = pathname?.includes('/logo') ||
     pathname?.includes('/sticker-generation') ||
@@ -190,7 +200,7 @@ const SidePannelFeatures = ({
 
       {/* Overlay for mobile menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-[2px] z-30" onClick={() => setIsMobileMenuOpen(false)}></div>
+        <div className="md:hidden fixed inset-0 bg-transparent md:bg-black/30 backdrop-blur-[2px] z-30" onClick={() => setIsMobileMenuOpen(false)}></div>
       )}
 
       <div
@@ -198,7 +208,7 @@ const SidePannelFeatures = ({
         onMouseEnter={() => setIsSidebarHovered(true)}
         onMouseLeave={() => setIsSidebarHovered(false)}
         className={`fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 group transition-all text-white duration-200 backdrop-blur-lg z-50 shadow-2xl md:w-[68px] hover:w-60
-        ${isMobileMenuOpen ? 'w-[75%] bg-black/80 rounded-r-3xl' : 'w-0 md:w-[68px]'}
+        ${isMobileMenuOpen ? 'w-[75%] bg-transparent md:bg-black/80 rounded-r-3xl' : 'w-0 md:w-[68px]'}
         flex`}
         style={{}}
       >
@@ -243,7 +253,7 @@ const SidePannelFeatures = ({
       )}
 
       {/* Mobile bordered container starting from Home */}
-      <div className={`${isMobileMenuOpen ? 'mt-2 mx-3 p-4 bg-black/90 rounded-2xl' : ''}`}>
+      <div className={`${isMobileMenuOpen ? 'mt-1 mx-2 p-3 bg-transparent md:bg-black/90 rounded-2xl' : ''}`}>
         <div>
           <div
             onClick={async () => {
@@ -297,7 +307,7 @@ const SidePannelFeatures = ({
         <div className="relative">
           <div
             ref={videoEditRef}
-            onClick={toggleVideoEditDropdown}
+            onClick={() => router.push('/video-edit')}
             className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
               }`}
           >
@@ -305,39 +315,7 @@ const SidePannelFeatures = ({
             <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Video Edit</span>
           </div>
 
-        {showVideoEditDropdown && (
-          <div
-            ref={videoEditDropdownRef}
-            className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
-          >
-            <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
-              <span className='text-xs text-white/90 uppercase tracking-wider'>Video Edit</span>
-            </div>
-
-            <div
-              onClick={() => router.push('/video-edit')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Video Edit</span>
-            </div>
-
-            <div
-              onClick={() => router.push('/video-edit')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Video Edit</span>
-            </div>
-
-            <div
-              onClick={() => router.push('/video-edit')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Video Edit</span>
-            </div>
-          </div>)}
+        {/* Video Edit dropdown removed per request */}
 
         </div>
 
@@ -395,51 +373,52 @@ const SidePannelFeatures = ({
               }`}
           >
             <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Branding Kit</span>
+            <div className={`flex items-center gap-1 text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>
+              <span>Branding Kit</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-4 w-4 transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : 'rotate-0'}`}
+                aria-hidden="true"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
           </div>
 
-        {showBrandingDropdown && (
           <div
             ref={brandingDropdownRef}
-            className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
+            className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${showBrandingDropdown ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}
           >
-            <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
-              <span className='text-xs text-white/90 uppercase tracking-wider'>Branding Kit</span>
-            </div>
+            <div className='mt-2 ml-12 mr-2 bg-transparent md:bg-transparent backdrop-blur-0 border border-white/20 rounded-2xl shadow-none p-2 space-y-1'>
 
-            <div
-              onClick={() => router.push('/logo-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'logo' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Logo Generation</span>
-            </div>
+              <div
+                onClick={() => router.push('/logo-generation')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'logo' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Logo Generation</span>
+              </div>
 
-            <div
-              onClick={() => router.push('/sticker-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Sticker Generation</span>
-            </div>
+              <div
+                onClick={() => router.push('/sticker-generation')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Sticker Generation</span>
+              </div>
 
-            {/* <div
-                        onClick={() => handleGenerationTypeChange('mockup-generation')}
-                        className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
-                            currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
-                        }`}
-                    >
-                        <span className='text-sm text-white'>Mockup Generation</span>
-                    </div> */}
-
-            <div
-              onClick={() => router.push('/product-generation')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Product Generation</span>
+              <div
+                onClick={() => router.push('/product-generation')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'product-generation' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Product Generation</span>
+              </div>
             </div>
-          </div>)}
+          </div>
 
         </div>
 
