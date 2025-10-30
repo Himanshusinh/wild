@@ -410,6 +410,7 @@ const Recentcreation: React.FC = () => {
   }
 
   const cols = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
+  const cardHeight = gridSize === 'small' ? 170 : gridSize === 'medium' ? 220 : 320
 
   const gridColsClass = (base: string) => {
     const xl = gridSize === 'small' ? 'xl:grid-cols-10' : gridSize === 'medium' ? 'xl:grid-cols-7' : 'xl:grid-cols-5'
@@ -481,10 +482,10 @@ const Recentcreation: React.FC = () => {
 
       {/* Cards grid */}
       {loading || isInitialLoad || !hasCheckedForGenerations ? (
-        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6')}>
+        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
           {[...Array(cols)].map((_, i) => (
-            <div key={i} className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
-              <div className="h-[250px] bg-white/10 rounded-xl mb-3"></div>
+            <div key={i} className="rounded-lg bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
+              <div className="bg-white/10 rounded-xl mb-3" style={{height: cardHeight}}></div>
               <div className="h-4 bg-white/10 rounded mb-2"></div>
               <div className="h-3 bg-white/10 rounded w-2/3"></div>
             </div>
@@ -639,14 +640,14 @@ const Recentcreation: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6')}>
+        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
           {filtered.map((item) => (
             <article
               key={item.id}
               onClick={() => handleItemClick(item)}
-              className="rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-4 flex flex-col gap-3 cursor-pointer"
+              className="rounded-lg bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-0.5 flex flex-col gap-0 cursor-pointer"
             >
-              <div className="relative h-[250px] rounded-xl overflow-hidden">
+              <div className="relative rounded-lg overflow-hidden" style={{height: cardHeight}}>
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
                     (() => {
@@ -747,11 +748,11 @@ const Recentcreation: React.FC = () => {
                 )}
               </div>
               {/* Title and aspect ratio in one row */}
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="text-white text-sm truncate">{item.title}</div>
-                <div className="text-white/70 text-sm flex-shrink-0">{ratios[item.id] ?? ''}</div>
+              <div className="flex items-baseline justify-between gap-1 p-0.5">
+                <div className="text-white text-xs truncate">{item.title}</div>
+                <div className="text-white/70 text-xs flex-shrink-0">{ratios[item.id] ?? ''}</div>
               </div>
-              <div className="text-white/60 text-xs">{item.date}</div>
+              <div className="text-white/60 text-xs p-0.5">{item.date}</div>
             </article>
           ))}
         </div>
