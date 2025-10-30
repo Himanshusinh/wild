@@ -333,7 +333,7 @@ const LandingPage: React.FC = () => {
         containerClassName="text-center md:mt-24 desktop:mt-0 desktop-lg:mt-0"
         animationDuration={5}
         ease="back.inOut(5)"
-        textClassName="text-white font-medium md:font-semibold -mb-20 font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        textClassName="text-white font-small md:font-semibold -mb-20 font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 85%"
         scrollEnd="bottom 25%"
       >
@@ -342,7 +342,7 @@ const LandingPage: React.FC = () => {
 
       <ScrollFloat
         containerClassName="text-center -mt-5  md:-mt-6 lg:-mt-8 md:mb-16"
-        textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        textClassName="text-white font-small md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 100%"
         scrollEnd="bottom 25%"
       >
