@@ -75,7 +75,7 @@ const FrameSizeButton = () => {
     <div ref={containerRef} className="relative inline-block">
       <button
         onClick={open}
-        className={`h-8 px-3 rounded-full text-md font-medium transition flex items-center  ${
+        className={`h-8 px-3 rounded-lg text-md font-medium transition flex items-center  ${
           isDisabled 
             ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
@@ -94,8 +94,8 @@ const FrameSizeButton = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[90] w-[110px] max-w-[85vw]">
-          <div className="relative rounded-2xl bg-black/80 backdrop-blur-xl ring-1 ring-white/20 shadow-2xl p-2 pt-3">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[50] w-auto max-w-[85vw]">
+          <div className="relative rounded-lg bg-black/70 backdrop-blur-3xl border shadow-xl border-white/20 shadow-2xl p-2 pt-3 z-[100]">
             <div className="flex flex-col gap-1.5 max-h-[240px] overflow-auto">
               {FRAME_OPTIONS.map((opt) => (
                 <button
@@ -105,7 +105,7 @@ const FrameSizeButton = () => {
                   aria-label={`Choose ${opt.label}`}
                 >
                   <div className="relative">
-                    <div className={`relative rounded-[3px] ring-1 transition ${saved === opt.id ? 'bg-white/20 ring-white/40' : 'bg-white/10 ring-white/30'}`} style={renderPreviewStyle(opt, 36)}>
+                    <div className={`relative rounded-lg ring-1 transition ${saved === opt.id ? 'bg-white/20 ring-white/40' : 'bg-white/10 ring-white/30'}`} style={renderPreviewStyle(opt, 36)}>
                       <span className={`absolute inset-0 grid place-items-center text-[10px] transition ${saved === opt.id ? 'text-white font-medium' : 'text-white/90'}`}>{opt.label}</span>
                     </div>
                   </div>

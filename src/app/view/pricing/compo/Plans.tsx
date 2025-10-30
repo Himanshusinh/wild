@@ -83,17 +83,14 @@ function Plans({ isAnnual }: PlansProps) {
           const nonEnterprise = plans.filter((p) => p.name !== 'Enterprise');
           const enterprise = plans.find((p) => p.name === 'Enterprise');
 
-          const firstRow = nonEnterprise.slice(0, 3);
-          const secondRow = nonEnterprise.slice(3, 5);
-
           return (
             <>
-              {/* First row: 3 cards */}
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                {firstRow.map((plan) => (
+              {/* Single row: all non-enterprise plans */}
+              <div className="grid gap-4 grid-cols-5">
+                {nonEnterprise.map((plan) => (
                   <div 
                     key={plan.name} 
-                    className={`relative text-white rounded-[2rem]
+                    className={`relative text-white rounded-lg
                     bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
                     border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]
                     ring-1 ring-white/10
@@ -102,8 +99,8 @@ function Plans({ isAnnual }: PlansProps) {
                     transition-all duration-300 hover:bg-white/10 hover:backdrop-saturate-200 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] hover:border-white/15`}
                   >
                     {/* Glass highlight and edge lighting */}
-                    <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-                    <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+                    <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+                    <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
                     <div className={`min-h-[120px]`}>
                       <h2 className={`text-3xl font-medium leading-tight mx-4 mt-3 mb-1`}>{plan.name}</h2>
                       <div className={`mx-4 ${typeof plan.monthlyPrice !== 'undefined' ? 'min-h-[70px]' : 'min-h-0'}`}>
@@ -150,73 +147,11 @@ function Plans({ isAnnual }: PlansProps) {
                 ))}
               </div>
 
-              {/* Second row: 2 cards (same sizing as first row, third column intentionally empty) */}
-              <div className="mt-3 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                {secondRow.map((plan) => (
-                  <div 
-                    key={plan.name} 
-                    className={`relative text-white rounded-[2rem]
-                    bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
-                    border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]
-                    ring-1 ring-white/10
-                    p-5 py-6
-                    w-full overflow-hidden isolate flex flex-col
-                    transition-all duration-300 hover:bg-white/10 hover:backdrop-saturate-200 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] hover:border-white/15`}
-                  >
-                    {/* Glass highlight and edge lighting */}
-                    <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-                    <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
-                    <div className={`min-h-[120px]`}>
-                      <h3 className={`text-3xl font-medium leading-tight mx-4 mt-3 mb-1`}>{plan.name}</h3>
-                      <div className={`mx-4 ${typeof plan.monthlyPrice !== 'undefined' ? 'min-h-[70px]' : 'min-h-0'}`}>
-                        {typeof plan.monthlyPrice !== 'undefined' && (
-                          <div>
-                            <div className={`flex items-baseline gap-2 mt-4`}>
-                              <div className={`text-2xl md:text-3xl font-bold tracking-tight`}>
-                                {typeof plan.monthlyPrice === 'string' ? plan.monthlyPrice : 
-                                  `$${isAnnual && typeof plan.annualPrice !== 'undefined' ? plan.annualPrice : plan.monthlyPrice}`}
-                              </div>
-                              <div className={`text-sm md:text-base text-white/80`}>
-                                / month
-                              </div>
-                            </div>
-                            {isAnnual && typeof plan.monthlyPrice === 'number' && typeof plan.annualPrice === 'number' && (
-                              <span className={`block text-[#ADD8E6] text-xs mt-1`}>
-                                Save ${(plan.monthlyPrice - plan.annualPrice).toFixed(2)}/month
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {plan.subtitle && (
-                        <p className={`text-sm text-white/70 mx-3 leading-snug break-words text-center`}>{plan.subtitle}</p>
-                      )}
-                    </div>
-
-                    <div className={`mt-4 mb-3 mx-3`}>
-                      <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-5 py-2 text-sm font-medium ring-1 ring-white/15 transition-colors w-full`}>
-                        {plan.buttonText}
-                      </button>
-                    </div>
-
-                    <ul className={`mt-2.5 space-y-2 mx-3 text-white/90`}>
-                      {plan.features.map((f, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <span className={`mt-1.5 h-1.5 w-1.5 rounded-full bg-white/70 flex-shrink-0`} />
-                          <span className={`text-sm leading-snug break-words`}>{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-
-              {/* Last row: Enterprise full width */}
+              {/* Enterprise row: single, full-width card */}
               {enterprise && (
                 <div className="mt-3">
                   <div 
-                    className={`relative text-white rounded-[2rem]
+                    className={`relative text-white rounded-lg
                     bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
                     border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]
                     ring-1 ring-white/10
@@ -224,8 +159,8 @@ function Plans({ isAnnual }: PlansProps) {
                     transition-all duration-300 hover:bg-white/10 hover:backdrop-saturate-200 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] hover:border-white/15`}
                   >
                     {/* Glass highlight and edge lighting */}
-                    <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-                    <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+                    <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+                    <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
                     <div className={`min-h-[60px] ml-2`}>
                       <div className="flex items-center justify-between gap-3 mx-3 mt-2 mb-0.5">
                         <h3 className={`text-3xl font-medium leading-tight`}>{enterprise.name}</h3>

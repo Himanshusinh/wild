@@ -41,6 +41,7 @@ const Recentcreation: React.FC = () => {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const [active, setActive] = useState<CreationItem['category']>('All')
+  const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large')
   const [ratios, setRatios] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -69,15 +70,9 @@ const Recentcreation: React.FC = () => {
 
   // Fetch recent creations for the active category
   useEffect(() => {
-    console.log('Recentcreation useEffect triggered:', { 
-      isHistoryLoading, 
-      historyEntriesLength: historyEntries.length, 
-      activeCategory: active 
-    })
     
     // Local guard to prevent duplicate calls (StrictMode double-mount or quick re-renders)
     if (fetchInFlightRef.current) {
-      console.log('Skipping fetch - in flight')
       return
     }
 
@@ -99,10 +94,9 @@ const Recentcreation: React.FC = () => {
       }
     }
     const baseFilters = computeFiltersForCategory(active)
-    console.log('Fetching for category:', active, 'filters:', baseFilters)
+    
 
     const fetchRecentCreations = async () => {
-      console.log('Starting to fetch recent creations for category:', active)
       fetchInFlightRef.current = true
       
       // Always fetch on category change
@@ -111,28 +105,26 @@ const Recentcreation: React.FC = () => {
       setHasCheckedForGenerations(false)
       
       // Set a minimum loading time to prevent flash of "No generations found"
-      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500)) // 500ms minimum
+      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 200))
       
       try {
         const filters: any = { sortOrder: 'desc', status: 'completed', ...baseFilters }
         
         // Wait for both the API call and minimum loading time
+        const cols = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
         const [result] = await Promise.all([
           dispatch(loadHistory({ 
             filters, 
             paginationParams: { 
-              limit: active === 'All' ? 5 : 12
+              limit: active === 'All' ? cols : 12
             },
             debugTag: `recent:${active}:${Date.now()}`
           })),
           minLoadingTime
         ])
         
-        console.log('LoadHistory result for', active, ':', result)
-        
         // Check if the action was aborted
         if (loadHistory.fulfilled.match(result)) {
-          console.log('History fetch successful for', active, ':', result.payload)
           // If we got zero items (likely due to auth race) and we haven't retried, retry once
           const items = (result as any)?.payload?.entries || []
           if (!hasRetriedRef.current && Array.isArray(items) && items.length === 0) {
@@ -143,7 +135,7 @@ const Recentcreation: React.FC = () => {
                 setTimeout(async () => {
                   dispatch(loadHistory({ 
                     filters, 
-                    paginationParams: { limit: active === 'All' ? 5 : 12 },
+                    paginationParams: { limit: active === 'All' ? cols : 12 },
                     debugTag: `recent:${active}:retry:${Date.now()}`
                   }))
                 }, 800)
@@ -154,9 +146,8 @@ const Recentcreation: React.FC = () => {
           // Handle rejection (including condition aborts)
           if (result.error.message?.includes('condition callback returning false')) {
             // This is expected - another request is already in progress
-            console.log('History fetch aborted - another request in progress')
           } else {
-            console.error('Failed to fetch recent creations for', active, ':', result.error)
+            
             // Retry once after a brief delay if user is authenticated (handles early 401)
             try {
               const authed = isUserAuthenticated()
@@ -165,7 +156,7 @@ const Recentcreation: React.FC = () => {
                 setTimeout(async () => {
                   dispatch(loadHistory({ 
                     filters, 
-                    paginationParams: { limit: active === 'All' ? 5 : 12 },
+                    paginationParams: { limit: active === 'All' ? cols : 12 },
                     debugTag: `recent:${active}:retry:${Date.now()}`
                   }))
                 }, 800)
@@ -174,7 +165,7 @@ const Recentcreation: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch recent creations for', active, ':', error)
+        
       } finally {
         setLoading(false)
         setHasCheckedForGenerations(true)
@@ -183,15 +174,14 @@ const Recentcreation: React.FC = () => {
     }
     
     fetchRecentCreations()
-  }, [dispatch, active])
+  }, [dispatch, active, gridSize])
 
   // Convert history entries to creation items
   const creationItems: CreationItem[] = useMemo(() => {
-    console.log('Processing history entries:', historyEntries.length, historyEntries)
     const items: CreationItem[] = []
     
     historyEntries.forEach((entry: HistoryEntry) => {
-      console.log('Processing entry:', entry.id, entry.generationType, entry.images?.length, entry.videos?.length, (entry as any)?.audios?.length)
+      
       // Map generation type to category
       const getCategory = (type: string): CreationItem['category'] => {
         switch (type) {
@@ -340,13 +330,13 @@ const Recentcreation: React.FC = () => {
     })
 
     // Sort by date (most recent first) and limit to 5 items
+    const colsLocal = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
     const result = items
       .sort((a, b) => new Date(b.entry.timestamp).getTime() - new Date(a.entry.timestamp).getTime())
-      .slice(0, 5)
+      .slice(0, colsLocal)
     
-    console.log('Final creation items:', result.length, result)
     return result
-  }, [historyEntries])
+  }, [historyEntries, gridSize])
 
   const filtered = useMemo(() => {
     const result = active === 'All' ? creationItems : creationItems.filter((i) => i.category === active)
@@ -419,6 +409,14 @@ const Recentcreation: React.FC = () => {
     }
   }
 
+  const cols = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
+  const cardHeight = gridSize === 'small' ? 170 : gridSize === 'medium' ? 220 : 320
+
+  const gridColsClass = (base: string) => {
+    const xl = gridSize === 'small' ? 'xl:grid-cols-10' : gridSize === 'medium' ? 'xl:grid-cols-7' : 'xl:grid-cols-5'
+    return `${base} ${xl}`
+  }
+
   return (
     <section className="w-full px-3 md:px-8 lg:px-12 mt-16 md:mt-32">
       {/* Heading */}
@@ -438,7 +436,7 @@ const Recentcreation: React.FC = () => {
                   setHasCheckedForGenerations(false) // Reset checked state when switching
                 }}
                 className={
-                  `px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm transition ` +
+                  `px-4 py-2 rounded-lg text-sm transition ` +
                   (isActive
                     ? 'bg-white text-[#0b0f17]'
                     : 'bg-white/10 text-white/80 hover:bg-white/15')
@@ -449,22 +447,47 @@ const Recentcreation: React.FC = () => {
             )
           })}
         </div>
-        <button 
-          onClick={handleMyCreationsClick}
-          className="text-white/80 hover:text-white text-xs md:text-sm transition-colors"
-        >
-          My Creations <span className="opacity-70"></span>
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white/5 rounded-full px-2 py-1 ring-1 ring-white/10">
+            <button
+              aria-label="Small thumbnails"
+              onClick={() => setGridSize('small')}
+              className={`w-5 h-5 rounded-full flex items-center justify-center ${gridSize === 'small' ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+            >
+              <span className="block w-1.5 h-1.5 rounded-full bg-current"></span>
+            </button>
+            <button
+              aria-label="Medium thumbnails"
+              onClick={() => setGridSize('medium')}
+              className={`w-6 h-6 rounded-full flex items-center justify-center ${gridSize === 'medium' ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+            >
+              <span className="block w-2 h-2 rounded-full bg-current"></span>
+            </button>
+            <button
+              aria-label="Large thumbnails"
+              onClick={() => setGridSize('large')}
+              className={`w-7 h-7 rounded-full flex items-center justify-center ${gridSize === 'large' ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+            >
+              <span className="block w-2.5 h-2.5 rounded-full bg-current"></span>
+            </button>
+          </div>
+          <button 
+            onClick={handleMyCreationsClick}
+            className="text-white/80 hover:text-white text-sm ml-2 mr-4 transition-colors"
+          >
+            My Creations <span className="opacity-70"></span>
+          </button>
+        </div>
       </div>
 
       {/* Cards grid */}
       {loading || isInitialLoad || !hasCheckedForGenerations ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-xl md:rounded-2xl bg-white/5 ring-1 ring-white/10 p-2 md:p-4 animate-pulse">
-              <div className="h-[150px] md:h-[250px] bg-white/10 rounded-lg md:rounded-xl mb-2 md:mb-3"></div>
-              <div className="h-3 md:h-4 bg-white/10 rounded mb-1 md:mb-2"></div>
-              <div className="h-2 md:h-3 bg-white/10 rounded w-2/3"></div>
+        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
+          {[...Array(cols)].map((_, i) => (
+            <div key={i} className="rounded-lg bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
+              <div className="bg-white/10 rounded-xl mb-3" style={{height: cardHeight}}></div>
+              <div className="h-4 bg-white/10 rounded mb-2"></div>
+              <div className="h-3 bg-white/10 rounded w-2/3"></div>
             </div>
           ))}
         </div>
@@ -617,14 +640,14 @@ const Recentcreation: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
+        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
           {filtered.map((item) => (
             <article
               key={item.id}
               onClick={() => handleItemClick(item)}
-              className="rounded-xl md:rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-2 md:p-4 flex flex-col gap-2 md:gap-3 cursor-pointer"
+              className="rounded-lg bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-0.5 flex flex-col gap-0 cursor-pointer"
             >
-              <div className="relative h-[150px] md:h-[250px] rounded-lg md:rounded-xl overflow-hidden">
+              <div className="relative rounded-lg overflow-hidden" style={{height: cardHeight}}>
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
                     (() => {
@@ -725,11 +748,11 @@ const Recentcreation: React.FC = () => {
                 )}
               </div>
               {/* Title and aspect ratio in one row */}
-              <div className="flex items-baseline justify-between gap-2 md:gap-3">
-                <div className="text-white text-xs md:text-sm truncate">{item.title}</div>
-                <div className="text-white/70 text-xs md:text-sm flex-shrink-0">{ratios[item.id] ?? ''}</div>
+              <div className="flex items-baseline justify-between gap-1 p-0.5">
+                <div className="text-white text-xs truncate">{item.title}</div>
+                <div className="text-white/70 text-xs flex-shrink-0">{ratios[item.id] ?? ''}</div>
               </div>
-              <div className="text-white/60 text-[10px] md:text-xs">{item.date}</div>
+              <div className="text-white/60 text-xs p-0.5">{item.date}</div>
             </article>
           ))}
         </div>

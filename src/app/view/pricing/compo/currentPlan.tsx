@@ -62,13 +62,13 @@ function CurrentPlan() {
   }, []);
 
   return (
-    <div className="relative text-white rounded-[2rem]
+    <div className="relative text-white rounded-lg
       bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
       border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-1 ring-white/10
       p-5 py-6 w-full md:w-[60%] lg:w-[60%] max-w-7xl min-h-[260px] isolate">
       {/* Glass highlight */}
-      <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
-      <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
 
       <div className="min-h-[92px]">
         <h1 className="text-2xl font-semibold mx-2">Current Plan</h1>
