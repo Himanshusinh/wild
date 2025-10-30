@@ -71,9 +71,9 @@ export default function WorkflowCarousel({
   };
 
   return (
-    <div className={`w-full select-none ${className}`}>
+    <div className={`w-full select-none  ${className}`}>
       {/* Outer frame */}
-      <div className="relative overflow-hidden backdrop-blur-md pb-12 md:pb-16">
+      <div className="relative overflow-hidden backdrop-blur-md pb-8 md:pb-10">
         {/* Slider track */}
         <div
           ref={trackRef}

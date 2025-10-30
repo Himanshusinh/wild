@@ -264,14 +264,14 @@ const HomePage: React.FC = () => {
           <Header />
           <Recentcreation />
           <Second />
-          <main className="min-h-screen bg-[#07070B] text-white py-6 md:py-10">
-            <div className="w-full px-3 md:px-8 lg:px-12 mt-0 md:mt-32">
+          <main className="min-h-auto bg-[#07070B] text-white py-6 md:pt-10 -mb-10">
+            <div className="w-full px-3 md:px-8 lg:px-12 mt-16 md:mt-32">
               <h2 className="text-white text-2xl md:text-4xl font-medium ml-2 md:ml-6">Workflow</h2>
               <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
             </div>
           </main>
 
-          <main className="min-h-screen bg-[#07070B] text-white px-3 md:px-8 py-6 md:py-10">
+          <main className="min-h-screen bg-[#07070B] text-white px-3 md:px-8 py-6 md:pb-10">
             <div className="w-full px-2 md:px-8 lg:px-12">
               <CommunityCreations items={artItems} initialFilter="All" />
             </div>
