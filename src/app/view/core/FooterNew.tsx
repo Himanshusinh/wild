@@ -97,7 +97,7 @@ const FooterNew: React.FC = () => {
                 </div>
 
                 {/* Home Category */}
-                <div className="space-y-4 ml-6">
+                <div className="space-y-4 ml-0 md:ml-6">
                   <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
                   Solutions
                   </h3>
@@ -136,7 +136,7 @@ const FooterNew: React.FC = () => {
                 </div>
 
                 {/* Features Category */}
-                <div className="space-y-4 ml-6">
+                <div className="space-y-4 ml-0 md:ml-6">
                   <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
                   Product
                   </h3>
@@ -184,7 +184,7 @@ const FooterNew: React.FC = () => {
                 </div>
 
                 {/* Company Category */}
-                <div className="space-y-4 ml-6">
+                <div className="space-y-4 ml-0 md:ml-6">
                   <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
                     Company
                   </h3>
@@ -227,7 +227,7 @@ const FooterNew: React.FC = () => {
                   </ul>
                 </div>
 
-                <div className="space-y-4 ml-6">
+                <div className="space-y-4 ml-0 md:ml-6">
                   <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
                   Stay Connected
                   </h3>
