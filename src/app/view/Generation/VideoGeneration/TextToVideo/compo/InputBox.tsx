@@ -1869,7 +1869,7 @@ const InputBox = () => {
   };
 
   return (
-    <>
+    <React.Fragment>
       {(historyEntries.length > 0 || localVideoPreview) && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
@@ -2258,8 +2258,6 @@ const InputBox = () => {
         </div>
       )}
 
-      
-
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Tabs row - non-overlapping, right aligned */}
@@ -2321,8 +2319,6 @@ const InputBox = () => {
             }
           }}
         >
-          
-
           {/* Input Row: prompt + actions */}
           <div className="flex items-start gap-3 p-3 pt-0">
             <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg px-4 pt-2.5">
@@ -2682,7 +2678,7 @@ const InputBox = () => {
                 )}
 
               </div>
-
+            </div>
 
             </div>
 
@@ -3150,7 +3146,7 @@ const InputBox = () => {
           loading={loading}
         />
       )}
-    </>
+    </React.Fragment>
   );
 };
 
