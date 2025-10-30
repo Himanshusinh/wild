@@ -2315,7 +2315,7 @@ const InputBox = () => {
           }}
         >
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start gap-3 p-3 pt-0">
+          <div className="flex items-start gap-3 p-3 pt-2">
             <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4">
               <textarea
                 ref={inputEl}
