@@ -879,12 +879,7 @@ const InputBox = () => {
     setPage(1);
   }, []);
 
-  // Ensure only video history is loaded for this page
-  useEffect(() => {
-    dispatch(clearFilters());
-    // Initial load: 50 entries of all video types (mode=video groups T2V/I2V/V2V)
-    dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
-  }, [dispatch]);
+  // Initial history is loaded centrally by PageRouter. This component only manages pagination.
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -2320,7 +2315,7 @@ const InputBox = () => {
           }}
         >
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start gap-3 p-3 pt-3 pt-0">
+          <div className="flex items-start gap-3 p-3 pt-0">
             <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4">
               <textarea
                 ref={inputEl}
