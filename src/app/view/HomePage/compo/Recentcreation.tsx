@@ -482,7 +482,7 @@ const Recentcreation: React.FC = () => {
 
       {/* Cards grid */}
       {loading || isInitialLoad || !hasCheckedForGenerations ? (
-        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
+        <div className={gridColsClass('grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
           {[...Array(cols)].map((_, i) => (
             <div key={i} className="rounded-lg bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
               <div className="bg-white/10 rounded-xl mb-3" style={{height: cardHeight}}></div>
@@ -640,7 +640,7 @@ const Recentcreation: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className={gridColsClass('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
+        <div className={gridColsClass('grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
           {filtered.map((item) => (
             <article
               key={item.id}

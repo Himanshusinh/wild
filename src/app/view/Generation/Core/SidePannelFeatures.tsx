@@ -307,15 +307,46 @@ const SidePannelFeatures = ({
         <div className="relative">
           <div
             ref={videoEditRef}
-            onClick={() => router.push('/video-edit')}
+            onClick={toggleVideoEditDropdown}
             className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
               }`}
           >
             <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Video Edit</span>
+            <div className={`flex items-center gap-1 text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>
+              <span>Video Edit</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-4 w-4 transition-transform duration-200 ${showVideoEditDropdown ? 'rotate-180' : 'rotate-0'}`}
+                aria-hidden="true"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
           </div>
 
-        {/* Video Edit dropdown removed per request */}
+          {showVideoEditDropdown && (
+            <div
+              ref={videoEditDropdownRef}
+              className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
+            >
+              <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
+                <span className='text-xs text-white/90 uppercase tracking-wider'>Video Edit</span>
+              </div>
+
+              <div
+                onClick={() => router.push('/video-edit')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Open Video Editor</span>
+              </div>
+            </div>
+          )}
 
         </div>
 

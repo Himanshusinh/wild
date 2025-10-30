@@ -242,7 +242,7 @@ export default function CommunityCreations({
   }, [active])
 
   return (
-    <section className={`w-full mt-[5px] md:mt-0 mb-[5px] md:mb-0 ${className}`}>
+    <section className={`w-full md:-pt-10 md:-mb-10 ${className}`}>
       <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 md:mb-5">
         Community Creations
       </h2>
