@@ -114,9 +114,9 @@ const Header = () => {
 
   return (
     <div className="w-full relative">
-      {/* Video wrapper with right padding */}
-      <div className="pr-6 md:pr-12 mt-4 ml-12">
-        <div className="relative overflow-hidden rounded-3xl">
+      {/* Video wrapper with responsive padding */}
+      <div className="pr-3 md:pr-12 mt-2 md:mt-4 ml-3 md:ml-12">
+        <div className="relative overflow-hidden rounded-2xl md:rounded-3xl">
           {currentVideo.videoSrc && (
             <video
               ref={videoRef}
@@ -152,7 +152,7 @@ const Header = () => {
                   console.log(`Video too short or already transitioning, waiting for timer`);
                 }
               }}
-              className={`w-full h-[60vh] object-cover rounded-3xl transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
+              className={`w-full h-[40vh] md:h-[60vh] object-cover rounded-2xl md:rounded-3xl transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
                 isTransitioning ? '-translate-x-full' : 'translate-x-0'
               }`}
             />
@@ -181,20 +181,20 @@ const Header = () => {
       </div>
 
       {/* Text Overlay - Centered above the video */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 mt-64">
-        <h1 className={`text-3xl md:text-4xl font-medium mb-2 mt-6 transition-opacity duration-1000 ease-in-out ${
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 mt-32 md:mt-64">
+        <h1 className={`text-xl md:text-3xl lg:text-4xl font-medium mb-2 mt-4 md:mt-6 px-4 transition-opacity duration-1000 ease-in-out ${
           isTransitioning ? 'opacity-0' : 'opacity-100'
         }`}>
           {currentVideo.title}
         </h1>
-        <p className={`text-lg md:text-xl mb-4 transition-opacity duration-1000 ease-in-out delay-150 ${
+        <p className={`text-sm md:text-lg lg:text-xl mb-4 px-4 transition-opacity duration-1000 ease-in-out delay-150 ${
           isTransitioning ? 'opacity-0' : 'opacity-90'
         }`}>
           {currentVideo.description}
         </p>
         <button 
           onClick={handleTryNowClick}
-          className={`bg-[#1C303D] hover:bg-blue-700 text-white px-4 py-2 rounded-full text-md font-medium transition-opacity duration-1000 ease-in-out delay-300 ${
+          className={`bg-[#1C303D] hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm md:text-md font-medium transition-opacity duration-1000 ease-in-out delay-300 ${
             isTransitioning ? 'opacity-0' : 'opacity-100'
           }`}
         >

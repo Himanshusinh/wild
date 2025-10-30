@@ -95,7 +95,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${
+      className={`inline-flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all border ${
         active
           ? 'bg-white  text-black shadow-sm'
           : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
@@ -117,7 +117,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
 
   return (
     <div ref={setRef} className={`break-inside-avoid mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
-      <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group cursor-pointer" onClick={onClick}>
+      <div className="relative w-full rounded-lg md:rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group cursor-pointer" onClick={onClick}>
         <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
           {isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
@@ -150,31 +150,29 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
             })()
           ) : (
             // Use compressed thumbnail for fast grid load; full-res shown in modal on click
-            <SmartImage
-              src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 640, q: 60 }) || src) : src } catch { return src } })()}
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 400, q: 70 }) || src) : src } catch { return src } })()}
               alt={item.prompt ?? 'creation'}
-              className="absolute inset-0 object-cover"
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              thumbWidth={640}
-              thumbQuality={60}
-              priority={false}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
             />
           )}
         </div>
-        <div className="absolute inset-x-0 bottom-0 p-3">
-          <div className="rounded-xl bg-black/40 backdrop-blur-sm p-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
+        <div className="absolute inset-x-0 bottom-0 p-2 md:p-3">
+          <div className="rounded-lg md:rounded-xl bg-black/40 backdrop-blur-sm p-2 md:p-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
             <div className="flex items-center justify-between">
-              <p className="text-[13px] leading-snug text-white/90 line-clamp-2">
+              <p className="text-[12px] md:text-[13px] leading-snug text-white/90 line-clamp-2">
                 {item.prompt ?? "—"}
               </p>
             </div>
             {item.createdBy && (
-              <div className="mt-2 text-white/80 text-xs">By {item.createdBy}</div>
+              <div className="mt-1.5 md:mt-2 text-white/80 text-[10px] md:text-xs">By {item.createdBy}</div>
             )}
           </div>
         </div>
-        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
+        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-lg md:rounded-xl pointer-events-none transition" />
       </div>
     </div>
   );
@@ -237,13 +235,13 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className="text-4xl md:text-4xl font-medium text-white mb-5">
+      <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 md:mb-5">
         Community Creations
       </h2>
 
       {/* Filter bar + Explore link */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+      <div className="mb-4 md:mb-6">
+        <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-1.5 md:pb-2 scrollbar-none">
           {CHIPS.map((chip, idx) => {
             const isActive = chip.key === active;
             return (
@@ -259,7 +257,7 @@ export default function CommunityCreations({
           <div className="ml-auto">
             <button
               onClick={() => router.push('/view/ArtStation')}
-              className="shrink-0 text-white/80 hover:text-white text-sm font-medium transition-colors"
+              className="shrink-0 text-white/80 hover:text-white text-xs md:text-sm font-medium transition-colors"
               title="Explore Art Station"
             >
               Explore Art Station →
@@ -283,26 +281,29 @@ export default function CommunityCreations({
         </div>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">{active === 'All' ? 'Loading...' : `Loading ${active}...`}</p>
+            <div className="text-center py-6 md:py-8">
+              <div className="inline-block animate-spin rounded-full h-7 w-7 md:h-8 md:w-8 border-b-2 border-white"></div>
+              <p className="text-white/60 mt-2 text-sm md:text-base">{active === 'All' ? 'Loading...' : `Loading ${active}...`}</p>
             </div>
           </div>
         )}
         {showOverlay && (
           <>
             {/* Explore Art Station Overlay - positioned over the images */}
-            <div className="absolute bottom-0 left-0 right-0 h-[28rem] md:h-[32rem] bg-gradient-to-t from-black/70 via-black/60 to-transparent z-10 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 right-0 h-64 md:h-80 bg-gradient-to-t from-black/40 via-black/60 to-transparent z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-[18rem] md:h-[32rem] bg-gradient-to-t from-black/70 via-black/60 to-transparent z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-48 md:h-80 bg-gradient-to-t from-black/40 via-black/60 to-transparent z-10 pointer-events-none" />
             {/* Clickable text overlay - centered in the gradient */}
-            <div onClick={() => router.push('/view/ArtStation')} className="absolute bottom-0 left-0 right-0 h-[28rem] md:h-[32rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto">
+            <div onClick={() => router.push('/view/ArtStation')} className="absolute bottom-0 left-0 right-0 h-[18rem] md:h-[32rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto px-4">
               <div className="text-center">
-                <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
+                <h3 className="text-xl md:text-4xl lg:text-5xl font-bold text-white mb-1 md:mb-2">
                   Explore Art Station
                 </h3>
-                <p className="text-white/80 text-lg font-medium">
+                <p className="text-white/80 text-xs md:text-lg font-medium">
                   Discover more amazing creations
                 </p>
+                <button className="mt-3 md:mt-4 bg-white text-black px-4 py-2 md:px-6 md:py-3 rounded-full text-sm md:text-base font-semibold hover:bg-white/90 transition-colors">
+                  Explore Now
+                </button>
               </div>
             </div>
           </>
@@ -340,9 +341,6 @@ export default function CommunityCreations({
                   <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt={preview.prompt || 'preview'} className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
                 )
               })()}
-              {preview.prompt && (
-                <div className="mt-3 text-white/80 text-sm line-clamp-3">{preview.prompt}</div>
-              )}
             </div>
           </div>
         )}

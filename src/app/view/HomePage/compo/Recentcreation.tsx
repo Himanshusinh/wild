@@ -420,12 +420,12 @@ const Recentcreation: React.FC = () => {
   }
 
   return (
-    <section className="w-full px-4 md:px-8 lg:px-12 mt-32">
+    <section className="w-full px-3 md:px-8 lg:px-12 mt-16 md:mt-32">
       {/* Heading */}
-      <h3 className="text-white text-4xl md:text-4xl font-medium mb-4">Recent Creations</h3>
+      <h3 className="text-white text-2xl md:text-4xl font-medium mb-4">Recent Creations</h3>
 
       {/* Filters + My creations aligned */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
         <div className="flex items-center gap-2 flex-wrap">
           {CATEGORIES.map((cat) => {
             const isActive = cat === active
@@ -438,7 +438,7 @@ const Recentcreation: React.FC = () => {
                   setHasCheckedForGenerations(false) // Reset checked state when switching
                 }}
                 className={
-                  `px-4 py-2 rounded-full text-sm transition ` +
+                  `px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm transition ` +
                   (isActive
                     ? 'bg-white text-[#0b0f17]'
                     : 'bg-white/10 text-white/80 hover:bg-white/15')
@@ -451,7 +451,7 @@ const Recentcreation: React.FC = () => {
         </div>
         <button 
           onClick={handleMyCreationsClick}
-          className="text-white/80 hover:text-white text-sm ml-4 mr-4 transition-colors"
+          className="text-white/80 hover:text-white text-xs md:text-sm transition-colors"
         >
           My Creations <span className="opacity-70"></span>
         </button>
@@ -459,12 +459,12 @@ const Recentcreation: React.FC = () => {
 
       {/* Cards grid */}
       {loading || isInitialLoad || !hasCheckedForGenerations ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
-              <div className="h-[250px] bg-white/10 rounded-xl mb-3"></div>
-              <div className="h-4 bg-white/10 rounded mb-2"></div>
-              <div className="h-3 bg-white/10 rounded w-2/3"></div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-xl md:rounded-2xl bg-white/5 ring-1 ring-white/10 p-2 md:p-4 animate-pulse">
+              <div className="h-[150px] md:h-[250px] bg-white/10 rounded-lg md:rounded-xl mb-2 md:mb-3"></div>
+              <div className="h-3 md:h-4 bg-white/10 rounded mb-1 md:mb-2"></div>
+              <div className="h-2 md:h-3 bg-white/10 rounded w-2/3"></div>
             </div>
           ))}
         </div>
@@ -617,14 +617,14 @@ const Recentcreation: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
           {filtered.map((item) => (
             <article
               key={item.id}
               onClick={() => handleItemClick(item)}
-              className="rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-4 flex flex-col gap-3 cursor-pointer"
+              className="rounded-xl md:rounded-2xl bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-2 md:p-4 flex flex-col gap-2 md:gap-3 cursor-pointer"
             >
-              <div className="relative h-[250px] rounded-xl overflow-hidden">
+              <div className="relative h-[150px] md:h-[250px] rounded-lg md:rounded-xl overflow-hidden">
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
                     (() => {
@@ -725,11 +725,11 @@ const Recentcreation: React.FC = () => {
                 )}
               </div>
               {/* Title and aspect ratio in one row */}
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="text-white text-sm truncate">{item.title}</div>
-                <div className="text-white/70 text-sm flex-shrink-0">{ratios[item.id] ?? ''}</div>
+              <div className="flex items-baseline justify-between gap-2 md:gap-3">
+                <div className="text-white text-xs md:text-sm truncate">{item.title}</div>
+                <div className="text-white/70 text-xs md:text-sm flex-shrink-0">{ratios[item.id] ?? ''}</div>
               </div>
-              <div className="text-white/60 text-xs">{item.date}</div>
+              <div className="text-white/60 text-[10px] md:text-xs">{item.date}</div>
             </article>
           ))}
         </div>
