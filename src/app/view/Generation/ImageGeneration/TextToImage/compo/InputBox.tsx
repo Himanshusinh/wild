@@ -1949,10 +1949,10 @@ const InputBox = () => {
         </div>
       )}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto">
-        <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
+        <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
-          <div className="flex items-center gap-0 p-3">
-            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5 w-full relative">
+          <div className="flex items-start gap-0 p-3 pr-3">
+            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-2.5 w-full relative">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -1977,90 +1977,92 @@ const InputBox = () => {
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
                 }}
               />
-              {/* Clear prompt button - only show when there's text */}
-              {prompt.trim() && (
+              {/* Fixed position buttons container */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Clear prompt button - only show when there's text */}
+                {prompt.trim() && (
+                  <div className="relative group">
+                    <button
+                      onClick={() => {
+                        dispatch(setPrompt(''));
+                        if (inputEl.current) {
+                          inputEl.current.focus();
+                        }
+                      }}
+                      className="px-1.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      aria-label="Clear prompt"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-white/80"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                  </div>
+                )}
+                {/* Previews just to the left of upload */}
+                {uploadedImages.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    {uploadedImages.map((u: string, i: number) => (
+                      <div
+                        key={i}
+                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={u}
+                          alt={`ref-${i}`}
+                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                        />
+                        <button
+                          aria-label="Remove reference"
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = uploadedImages.filter(
+                              (_: string, idx: number) => idx !== i
+                            );
+                            dispatch(setUploadedImages(next));
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="relative group">
                   <button
-                    onClick={() => {
-                      dispatch(setPrompt(''));
-                      if (inputEl.current) {
-                        inputEl.current.focus();
-                      }
-                    }}
-                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                    aria-label="Clear prompt"
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
+                    onClick={() => setIsUploadOpen(true)}
+                    type="button"
+                    aria-label="Upload"
                   >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-white/80"
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
+                    <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
+                    <span className="text-white text-sm"> </span>
                   </button>
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
                 </div>
-              )}
-              {/* Previews just to the left of upload */}
-              {uploadedImages.length > 0 && (
-                <div className="flex items-center gap-1.5 pr-1">
-                  {uploadedImages.map((u: string, i: number) => (
-                    <div
-                      key={i}
-                      className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={u}
-                        alt={`ref-${i}`}
-                        className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                      />
-                      <button
-                        aria-label="Remove reference"
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const next = uploadedImages.filter(
-                            (_: string, idx: number) => idx !== i
-                          );
-                          dispatch(setUploadedImages(next));
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="relative group">
-                <button
-                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/10 transition cursor-pointer flex items-center gap-0"
-                  onClick={() => setIsUploadOpen(true)}
-                  type="button"
-                  aria-label="Upload"
-                >
-                  <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
-                  <span className="text-white text-sm"> </span>
-                </button>
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
               </div>
             </div>
 
-            {/* Small + button (between attach and Generate in the mock) */}
-
-            <div className="flex flex-col items-end gap-2">
+            {/* Fixed position Generate button */}
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
                 disabled={isGeneratingLocally || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
                 {isGeneratingLocally ? "Generating..." : "Generate"}
               </button>
@@ -2099,7 +2101,7 @@ const InputBox = () => {
             </span>
           </div> */}
 
-            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
               <ModelsDropdown />
               <ImageCountDropdown />
               <FrameSizeDropdown />
@@ -2112,7 +2114,7 @@ const InputBox = () => {
                   <div className="relative dropdown-container">
                     <button
                       onClick={() => dispatch(toggleDropdown('seedreamSize'))}
-                      className="h-[32px] px-4 rounded-full text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
                     >
                       {seedreamSize}
                       <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
@@ -2143,7 +2145,7 @@ const InputBox = () => {
                         value={seedreamWidth}
                         onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
                         placeholder="Width"
-                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
                       />
                       <input
                         type="number"
@@ -2152,7 +2154,7 @@ const InputBox = () => {
                         value={seedreamHeight}
                         onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
                         placeholder="Height"
-                        className="h-[32px] w-24 px-3 rounded-full text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
                       />
                     </>
                   )}

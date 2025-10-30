@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
@@ -54,9 +55,18 @@ const ProductWithModelPoseInputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? true);
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
+  const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image');
+  const pathname = usePathname();
   // Local mount loading to prevent empty flash
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const loadLockRef = useRef(false);
+  // Safety: ensure overlay can't get stuck
+  useEffect(() => {
+    if (!initialLoading) return;
+    const t = setTimeout(() => setInitialLoading(false), 10000);
+    return () => clearTimeout(t);
+  }, [initialLoading]);
 
   // Credits management
   const {
@@ -122,31 +132,41 @@ const ProductWithModelPoseInputBox = () => {
     console.log('✅ Set generation mode to: product-only');
   }, [selectedModel]);
 
-  // Load product-generation history on mount (scoped)
+  // Load product-generation history on mount (scoped) — single initial request, no auto-fill loop
   useEffect(() => {
     console.log('[Product] useEffect: mount -> loading product history');
     (async () => {
       try {
+        // Skip if route already changed during navigation
+        if (typeof pathname === 'string' && !pathname.includes('/product-generation')) {
+          console.log('[Product] initial load skipped: pathname not product-generation', { pathname });
+          return;
+        }
+        // Skip if user navigated away during a concurrent transition
+        const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+        const cur = normalize(currentGenerationType);
+        if (cur !== 'product-generation' && cur !== 'product') {
+          console.log('[Product] initial load skipped: not on product page anymore', { currentGenerationType });
+          return;
+        }
+        if (loadLockRef.current) {
+          console.log('[Product] initial load skipped (lock)');
+          return;
+        }
+        loadLockRef.current = true;
         setInitialLoading(true);
         const baseFilters: any = { generationType: 'product-generation' };
         dispatch(setFilters(baseFilters));
         dispatch(clearHistory());
+        const debugTag = `page:product:${Date.now()}`;
+        console.log('[Product] dispatch loadHistory', { filters: baseFilters, limit: 10, debugTag });
         await (dispatch as any)(loadHistory({ 
           filters: baseFilters,
-          paginationParams: { limit: 10 }
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'product-generation',
+          debugTag,
         })).unwrap();
-        let attempts = 0;
-        while (
-          attempts < 6 &&
-          (document.documentElement.scrollHeight - window.innerHeight) < 240
-        ) {
-          const more: any = await (dispatch as any)(loadMoreHistory({
-            filters: baseFilters,
-            paginationParams: { limit: 10 }
-          })).unwrap();
-          if (!more?.hasMore) break;
-          attempts += 1;
-        }
         console.log('[Product] initial loadHistory fulfilled');
       } catch (e: any) {
         if (e && e.name === 'ConditionError') {
@@ -159,7 +179,7 @@ const ProductWithModelPoseInputBox = () => {
         setHasInitiallyLoaded(true);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, currentGenerationType, pathname]);
 
   // IntersectionObserver-based infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -430,10 +450,17 @@ GENERATOR HINTS:
       }
 
       // Refresh history to show the new product
-      dispatch(loadHistory({ 
-        filters: { generationType: 'product-generation' }, 
-        paginationParams: { limit: 10 } 
-      }));
+      {
+        const debugTag = `page:product:refresh:${Date.now()}`;
+        console.log('[Product] refresh loadHistory after generation', { debugTag });
+        dispatch(loadHistory({ 
+          filters: { generationType: 'product-generation' }, 
+          paginationParams: { limit: 10 },
+          requestOrigin: 'page',
+          expectedType: 'product-generation',
+          debugTag,
+        }));
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);
@@ -753,6 +780,8 @@ GENERATOR HINTS:
               </div>
             </div>
           )}
+          {/* Sentinel for infinite scroll */}
+          <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
       </div>
 

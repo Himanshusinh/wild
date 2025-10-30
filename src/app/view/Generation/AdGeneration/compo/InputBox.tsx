@@ -9,6 +9,7 @@ import AdvancedManualForm from './AdvancedManualForm';
 import { bflGenerate, runwayVideo } from '@/store/slices/generationsApi';
 import { waitForRunwayVideoCompletion } from '@/lib/runwayVideoService';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+import { setFilters, clearHistory } from '@/store/slices/historySlice';
 
 const AdGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -28,6 +29,10 @@ const AdGenerationInputBox: React.FC = () => {
   const history = useAppSelector((state) => state.history.entries);
   const hasMore = useAppSelector((state) => state.history.hasMore);
   const loading = useAppSelector((state) => state.history.loading);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
+  const loadLockRef = useRef(false);
 
   // Filter history for ad generation (read-only)
   const adGenerationHistory = history.filter(entry => entry.generationType === 'ad-generation');
@@ -48,9 +53,49 @@ const AdGenerationInputBox: React.FC = () => {
   );
 
   useEffect(() => {
-    // Initial fetch from backend
-    dispatch(loadHistory({ filters: { generationType: 'ad-generation' } }));
+    // Mark user scroll to prevent auto-triggering IO before user interacts
+    const onScroll = () => { hasUserScrolledRef.current = true; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll as any);
+  }, []);
+
+  useEffect(() => {
+    // Initial fetch from backend — single request with filter + limit
+    (async () => {
+      try {
+        if (loadLockRef.current) return;
+        loadLockRef.current = true;
+        const baseFilters: any = { generationType: 'ad-generation' };
+        dispatch(setFilters(baseFilters));
+        dispatch(clearHistory());
+        await (dispatch as any)(loadHistory({ filters: baseFilters, paginationParams: { limit: 10 } })).unwrap();
+      } catch (e) {
+        // ignore
+      }
+    })();
   }, [dispatch]);
+
+  useEffect(() => {
+    // IntersectionObserver-based infinite scroll
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (!hasUserScrolledRef.current) return;
+      if (!hasMore || loading || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      try {
+        await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } })).unwrap();
+      } catch (e) {
+        // ignore
+      } finally {
+        loadingMoreRef.current = false;
+      }
+    }, { root: null, threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading, dispatch]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -288,7 +333,7 @@ const AdGenerationInputBox: React.FC = () => {
                   {/* All Ad Videos for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-9">
                     {groupedByDate[date].map((entry: any) => 
-                      entry.images.map((video: any) => (
+                      (entry.images || []).map((video: any) => (
                         <div
                           key={`${entry.id}-${video.id}`}
                           data-ad-video-id={`${entry.id}-${video.id}`}
@@ -555,6 +600,9 @@ const AdGenerationInputBox: React.FC = () => {
            isGenerating={isGeneratingLocal}
          />
        )}
+
+      {/* Sentinel for infinite scroll */}
+      <div ref={sentinelRef} style={{ height: 1 }} />
      </>
    );
  };

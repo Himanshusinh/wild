@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import SmartImage from '@/components/media/SmartImage';
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
@@ -42,6 +43,8 @@ const History = () => {
   const [productPreviewEntry, setProductPreviewEntry] = useState<HistoryEntry | null>(null);
   const didInitialLoadRef = useRef(false);
   const isFetchingMoreRef = useRef(false);
+  const loadLockRef = useRef(false);
+  const hasUserScrolledRef = useRef(false);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -86,9 +89,20 @@ const History = () => {
   // Helper: load only the first page; more pages load on scroll
   const loadFirstPage = async (filtersObj: any) => {
     try {
+      if (loadLockRef.current) return; // prevent duplicate initial loads
+      loadLockRef.current = true;
       const initialLimit = computeDynamicLimit(0);
       const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
-      setHasMore(Boolean(result && result.hasMore));
+      const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
+      let nextHasMore: boolean;
+      if (typeof (result && result.hasMore) !== 'undefined') {
+        nextHasMore = Boolean(result.hasMore);
+      } else {
+        // Fallback heuristic: if we received fewer than requested or zero, assume no more
+        nextHasMore = entries.length > 0 && entries.length >= initialLimit;
+      }
+      if (entries.length === 0) nextHasMore = false;
+      setHasMore(nextHasMore);
     } catch (error) {
       // Handle condition aborts gracefully
       if (error && typeof error === 'object' && 'message' in error && 
@@ -97,6 +111,8 @@ const History = () => {
       } else {
         console.error('Error in loadFirstPage:', error);
       }
+    } finally {
+      loadLockRef.current = false;
     }
   };
 
@@ -117,30 +133,7 @@ const History = () => {
     }
   };
 
-  const autoFillViewport = async (baseFilters: any) => {
-    try {
-      let attempts = 0;
-      while (
-        attempts < 10 &&
-        hasMore &&
-        !loading &&
-        (document.documentElement.scrollHeight - window.innerHeight) < 200
-      ) {
-        const pageLimit = computeDynamicLimit(getFilteredItemsCount());
-        const more: any = await (dispatch as any)(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: pageLimit } })).unwrap();
-        setHasMore(Boolean(more && more.hasMore));
-        attempts += 1;
-      }
-    } catch (error) {
-      // Handle condition aborts gracefully
-      if (error && typeof error === 'object' && 'message' in error && 
-          typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
-        console.log('autoFillViewport aborted - another request in progress');
-      } else {
-        console.error('Error in autoFillViewport:', error);
-      }
-    }
-  };
+  // Removed autoFillViewport to avoid multiple rapid requests. We do a single initial request and then on-scroll loads.
 
   // Load initial history on mount and when view mode changes
   useEffect(() => {
@@ -153,13 +146,11 @@ const History = () => {
           if (sortOrder) base.sortOrder = sortOrder;
           dispatch(setFilters(base));
           await loadFirstPage(base);
-          await autoFillViewport(base);
         } else {
           const f: any = { generationType: currentGenerationType };
           if (sortOrder) f.sortOrder = sortOrder;
           dispatch(setFilters(f));
           await loadFirstPage(f);
-          await autoFillViewport(f);
         }
         setPage(1);
         didInitialLoadRef.current = true;
@@ -177,55 +168,46 @@ const History = () => {
   }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
 
 
-  // Fallback: if nothing loaded (e.g., on hard refresh), trigger first page load
-  useEffect(() => {
-    if (historyEntries.length === 0 && !didInitialLoadRef.current) {
-      const base = viewMode === 'global' ? {} : { generationType: currentGenerationType };
-      if (sortOrder) (base as any).sortOrder = sortOrder;
-      if (dateRange.start && dateRange.end) (base as any).dateRange = { start: dateRange.start, end: dateRange.end };
-      (async () => {
-        try {
-          await loadFirstPage(base);
-          await autoFillViewport(base);
-          setPage(1);
-          didInitialLoadRef.current = true;
-        } catch (error) {
-          // Handle condition aborts gracefully
-          if (error && typeof error === 'object' && 'message' in error && 
-              typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
-            console.log('Fallback history load aborted - another request in progress');
-          } else {
-            console.error('Error in fallback history load:', error);
-          }
-        }
-      })();
-    }
-  }, [loading, historyEntries.length, viewMode, currentGenerationType]);
+  // Removed fallback loader to prevent duplicate initial requests.
 
-  // Handle sort order changes
+  // Handle sort order changes (skip on initial mount)
   useEffect(() => {
-    // Re-apply current filters with new sort order and force viewport fill to avoid partial top rows
+    if (!didInitialLoadRef.current) return;
     (async () => {
-      const finalFilters = { ...filters } as any;
+  const finalFilters = { ...filters } as any;
       if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
       if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
       dispatch(setFilters(finalFilters));
       setOverlayLoading(true);
       try {
-        await (dispatch as any)(loadHistory({
+        const limit = computeDynamicLimit(0);
+        const res: any = await (dispatch as any)(loadHistory({
           filters: finalFilters,
-          paginationParams: { limit: sortOrder === 'asc' ? 30 : 10 }
+          paginationParams: { limit }
         })).unwrap();
-        await autoFillViewport(finalFilters);
+        const entries = (res && Array.isArray(res.entries)) ? res.entries : [];
+        let nextHasMore: boolean;
+        if (typeof (res && res.hasMore) !== 'undefined') {
+          nextHasMore = Boolean(res.hasMore);
+        } else {
+          nextHasMore = entries.length > 0 && entries.length >= limit;
+        }
+        if (entries.length === 0) nextHasMore = false;
+        setHasMore(nextHasMore);
       } catch {}
       setPage(1);
       setOverlayLoading(false);
     })();
   }, [sortOrder, dispatch]);
 
-  // Handle scroll to load more
+  // Handle scroll to load more (only after user actually scrolls)
   useEffect(() => {
     const handleScroll = () => {
+      if (!hasUserScrolledRef.current && window.scrollY > 0) {
+        hasUserScrolledRef.current = true;
+      }
+      if (!hasUserScrolledRef.current) return;
+
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
         if (hasMore && !loading && !isFetchingMoreRef.current) {
           isFetchingMoreRef.current = true;
@@ -233,11 +215,19 @@ const History = () => {
           setPage(nextPage);
           const baseFilters = { ...filters } as any;
           if (sortOrder) baseFilters.sortOrder = sortOrder;
-          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit: sortOrder === 'asc' ? 30 : 10 } }))
+          const limit = sortOrder === 'asc' ? 30 : 10;
+          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }))
             .then((result: any) => {
-              if (result.payload && result.payload.entries) {
-                setHasMore(result.payload.hasMore);
+              const payload = result && result.payload ? result.payload : result;
+              const entries = (payload && Array.isArray(payload.entries)) ? payload.entries : [];
+              let nextHasMore: boolean;
+              if (payload && typeof payload.hasMore !== 'undefined') {
+                nextHasMore = Boolean(payload.hasMore);
+              } else {
+                nextHasMore = entries.length > 0 && entries.length >= limit;
               }
+              if (entries.length === 0) nextHasMore = false;
+              setHasMore(nextHasMore);
             })
             .finally(() => {
               isFetchingMoreRef.current = false;
@@ -248,7 +238,7 @@ const History = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loading, page, dispatch]);
+  }, [hasMore, loading, page, dispatch, filters, sortOrder]);
 
   // Handle click outside to close filter popover
   useEffect(() => {
@@ -787,7 +777,7 @@ const History = () => {
 
     dispatch(setFilters(finalFilters));
     await loadFirstPage(finalFilters);
-    await autoFillViewport(finalFilters);
+    
     setPage(1);
   };
 
@@ -798,7 +788,7 @@ const History = () => {
     dispatch(clearFilters());
     const base = {};
     await loadFirstPage(base);
-    await autoFillViewport(base);
+    
     setPage(1);
   };
 
@@ -1006,7 +996,6 @@ const History = () => {
                 // Immediately clear current list so previous category tiles do not linger
                 dispatch(clearHistory());
                 await loadFirstPage(f);
-                await autoFillViewport(f);
                 setPage(1);
                 setPillLoading(false);
                 setOverlayLoading(false);
@@ -1065,7 +1054,7 @@ const History = () => {
                       setLocalFilters(f);
                       dispatch(setFilters(f));
                       await loadFirstPage(f);
-                      await autoFillViewport(f);
+                      
                       setPage(1);
                       setShowDatePicker(false);
                     }}
@@ -1081,7 +1070,7 @@ const History = () => {
                       setLocalFilters(f);
                       dispatch(setFilters(f));
                       await loadFirstPage(f);
-                      await autoFillViewport(f);
+                      
                       setPage(1);
                       setShowDatePicker(false);
                     }}
@@ -1328,72 +1317,18 @@ const History = () => {
                                     playsInline 
                                     loop 
                                     preload="metadata"
-                                    onMouseEnter={async (e) => {
-                                      const video = e.currentTarget;
-                                      const videoId = `${entry.id}-${mediaIndex}`;
-                                      console.log('🎥 VIDEO HOVER ENTER:', {
-                                        videoId,
-                                        videoSrc: video.src,
-                                        videoReadyState: video.readyState,
-                                        videoPaused: video.paused,
-                                        videoDuration: video.duration,
-                                        entryId: entry.id,
-                                        mediaIndex
-                                      });
-                                      
-                                      try {
-                                        // Force video to load if not ready
-                                        if (video.readyState < 2) {
-                                          console.log('⏳ Video not ready, loading...');
-                                          video.load();
-                                          await new Promise((resolve) => {
-                                            video.addEventListener('loadeddata', resolve, { once: true });
-                                            video.addEventListener('error', resolve, { once: true });
-                                          });
-                                        }
-                                        
-                                        console.log('🎥 Video ready, attempting to play...');
-                                        video.currentTime = 0; // Start from beginning
-                                        await video.play();
-                                        console.log('✅ Video started playing successfully on hover!');
-                                        setPlayingVideos(prev => new Set(prev).add(videoId));
-                                      } catch (error: any) {
-                                        console.error('❌ Video play failed on hover:', error);
-                                        console.log('Video error details:', {
-                                          code: error.code,
-                                          message: error.message,
-                                          name: error.name,
-                                          readyState: video.readyState,
-                                          networkState: video.networkState
-                                        });
-                                        
-                                        // Try alternative approach - user interaction
-                                        console.log('🔄 Trying alternative play method...');
-                                        video.muted = true; // Ensure muted for autoplay
-                                        try {
-                                          await video.play();
-                                          console.log('✅ Video started playing with muted autoplay!');
-                                          setPlayingVideos(prev => new Set(prev).add(videoId));
-                                        } catch (retryError) {
-                                          console.error('❌ Retry also failed:', retryError);
-                                        }
-                                      }
+                                    onMouseEnter={async (e) => { 
+                                      try { 
+                                        await (e.currentTarget as HTMLVideoElement).play();
+                                        setPlayingVideos(prev => new Set(prev).add(`${entry.id}-${mediaIndex}`));
+                                      } catch { } 
                                     }}
-                                    onMouseLeave={(e) => {
-                                      const video = e.currentTarget;
-                                      const videoId = `${entry.id}-${mediaIndex}`;
-                                      console.log('🎥 VIDEO HOVER LEAVE:', {
-                                        videoId,
-                                        videoPaused: video.paused,
-                                        videoCurrentTime: video.currentTime,
-                                        videoDuration: video.duration
-                                      });
-                                      video.pause();
-                                      video.currentTime = 0;
+                                    onMouseLeave={(e) => { 
+                                      const v = e.currentTarget as HTMLVideoElement; 
+                                      try { v.pause(); v.currentTime = 0 } catch { }
                                       setPlayingVideos(prev => {
                                         const newSet = new Set(prev);
-                                        newSet.delete(videoId);
-                                        console.log('🎥 Video removed from playing set:', videoId);
+                                        newSet.delete(`${entry.id}-${mediaIndex}`);
                                         return newSet;
                                       });
                                     }}
@@ -1470,8 +1405,10 @@ const History = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                              <span className="text-xs text-white">Video</span>
+                            <div className={`absolute bottom-2 right-2 transition-opacity ${playingVideos.has(`${entry.id}-${mediaIndex}`) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'}`}> 
+                              <div className="bg-white/5 backdrop-blur-xl rounded px-2 py-1">
+                                <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
+                              </div>
                             </div>
                             {playingVideos.has(`${entry.id}-${mediaIndex}`) && (
                               <div className="absolute top-2 right-2 bg-green-500/80 backdrop-blur-sm rounded px-2 py-1">
@@ -1479,8 +1416,8 @@ const History = () => {
                               </div>
                             )}
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
+                            <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              {/* <span
                                 title={getCleanPrompt(entry.prompt)}
                                 className="text-xs text-white flex-1 leading-snug"
                                 style={{
@@ -1491,14 +1428,14 @@ const History = () => {
                                 }}
                               >
                                 {getCleanPrompt(entry.prompt)}
-                              </span>
+                              </span> */}
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
@@ -1520,8 +1457,8 @@ const History = () => {
                               <span className="text-xs text-white">Audio</span>
                             </div>
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
+                            <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              {/* <span
                                 title={getCleanPrompt(entry.prompt)}
                                 className="text-xs text-white flex-1 leading-snug"
                                 style={{
@@ -1532,33 +1469,50 @@ const History = () => {
                                 }}
                               >
                                 {getCleanPrompt(entry.prompt)}
-                              </span>
+                              </span> */}
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
                         ) : (
                           <div className="w-full h-full relative">
                             {mediaUrl ? (
-                              <Image
-                                src={(() => { try { const { toThumbUrl } = require('@/lib/thumb'); return toThumbUrl(mediaUrl, { w: 640, q: 60 }) } catch { return mediaUrl } })()}
-                                alt={entry.prompt}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200"
-                                sizes="192px"
-                                onLoad={() => {
-                                  setTimeout(() => {
-                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${media.id || mediaIndex}"] .shimmer`) as HTMLElement;
-                                    if (shimmer) shimmer.style.opacity = '0';
-                                  }, 100);
-                                }}
-                              />
+                              (() => {
+                                const isBlobOrData = /^data:|^blob:/i.test(mediaUrl || '');
+                                if (isBlobOrData) {
+                                  // Avoid rendering base64/blob heavy sources in grid; show lightweight placeholder
+                                  return (
+                                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                      <span className="text-gray-400 text-xs">Image pending</span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <SmartImage
+                                    src={mediaUrl}
+                                    alt={entry.prompt}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-200"
+                                    sizes="192px"
+                                    thumbWidth={480}
+                                    thumbQuality={60}
+                                    onLoadingComplete={() => {
+                                      try {
+                                        setTimeout(() => {
+                                          const shimmer = document.querySelector(`[data-image-id=\"${entry.id}-${media.id || mediaIndex}\"] .shimmer`) as HTMLElement;
+                                          if (shimmer) shimmer.style.opacity = '0';
+                                        }, 100);
+                                      } catch {}
+                                    }}
+                                  />
+                                );
+                              })()
                             ) : (
                               <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">Image not available</span>
@@ -1571,26 +1525,14 @@ const History = () => {
                             )}
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover prompt overlay */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity px-2 py-2 flex items-center gap-2 min-h-[44px] z-20">
-                              <span
-                                title={getCleanPrompt(entry.prompt)}
-                                className="text-xs text-white flex-1 leading-snug"
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 3 as any,
-                                  WebkitBoxOrient: 'vertical' as any,
-                                  overflow: 'hidden'
-                                }}
-                              >
-                                {getCleanPrompt(entry.prompt)}
-                              </span>
+                            <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
                               <button
                                 aria-label="Copy prompt"
-                                className="pointer-events-auto p-1 rounded hover:bg-white/10 text-white/90"
+                                className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                 onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
                           </div>
