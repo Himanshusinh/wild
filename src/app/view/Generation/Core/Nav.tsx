@@ -121,7 +121,10 @@ const Nav = () => {
   }
 
   return (
-    <div className='fixed md:top-1 md:left-18 left-4 md:right-4 right-0 z-40 -top-1 '>
+    <>
+      {/* Mobile-only unified translucent background bar behind hamburger + credits/profile */}
+      <div className='md:hidden fixed top-0 left-0 right-0 h-12 bg-white/15 backdrop-blur-md border-b border-white/10 shadow-sm z-30'></div>
+      <div className='fixed md:top-1 md:left-18 left-0 md:right-4 right-0 z-40 -top-1'>
       <div className='flex justify-between items-center m-3'>
         <div className=''>
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
@@ -258,7 +261,8 @@ const Nav = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 
