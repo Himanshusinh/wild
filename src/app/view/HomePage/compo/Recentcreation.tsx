@@ -423,8 +423,8 @@ const Recentcreation: React.FC = () => {
       <h3 className="text-white text-2xl md:text-4xl font-medium mb-4">Recent Creations</h3>
 
       {/* Filters + My creations aligned */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
+          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto scrollbar-none md:flex-wrap">
           {CATEGORIES.map((cat) => {
             const isActive = cat === active
             return (
@@ -436,7 +436,7 @@ const Recentcreation: React.FC = () => {
                   setHasCheckedForGenerations(false) // Reset checked state when switching
                 }}
                 className={
-                  `px-4 py-2 rounded-lg text-sm transition ` +
+                  `shrink-0 px-3 py-1 text-xs md:px-4 md:py-2 md:text-sm rounded-lg transition ` +
                   (isActive
                     ? 'bg-white text-[#0b0f17]'
                     : 'bg-white/10 text-white/80 hover:bg-white/15')
