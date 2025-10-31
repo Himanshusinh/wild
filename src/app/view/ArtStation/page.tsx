@@ -688,7 +688,7 @@ export default function ArtStationPage() {
                           <div className="relative">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
-                              className="peer p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                              className="peer p-2 rounded-lg backdrop-blur-3xl shadow-2xl bg-white/10 text-white/80 hover:bg-white/30 transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -700,7 +700,7 @@ export default function ArtStationPage() {
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
-                                className="peer p-2 rounded-full bg-red-500/70 hover:bg-red-500 text-white transition-colors"
+                                className="peer p-2 rounded-lg bg-red-500/70 hover:bg-red-500 text-white transition-colors"
                               // title="Delete"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -773,7 +773,7 @@ export default function ArtStationPage() {
                       <div className="relative group">
                         <button
                           title="Delete"
-                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                           onClick={() => confirmDelete(preview.item)}
                         >
                           <Trash2 className="w-4 h-4" />
