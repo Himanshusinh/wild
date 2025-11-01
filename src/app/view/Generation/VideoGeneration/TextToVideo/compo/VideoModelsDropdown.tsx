@@ -85,6 +85,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3-t2v-8s", label: "Veo3", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
+        { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 T2V", description: "Text→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 T2V Fast", description: "Faster text→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
@@ -95,6 +97,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3-i2v-8s", label: "Veo3 ", description: "Google's image-to-video model, 8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-i2v-8s", label: "Veo3 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-i2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "seedance-1.0-pro-i2v", label: "Seedance 1.0 Pro", description: "Image→Video, 2-12s, 480p/720p/1080p, supports last frame", provider: "replicate" },
+        { value: "seedance-1.0-lite-i2v", label: "Seedance 1.0 Lite", description: "Image→Video (faster), 2-12s, 480p/720p/1080p, supports last frame", provider: "replicate" },
         { value: "kling-v2.1-i2v", label: "Kling 2.1", description: "Image→Video only, 5s/10s, 720p/1080p (requires start image)", provider: "replicate" },
         { value: "kling-v2.1-master-i2v", label: "Kling 2.1 Master", description: "Image→Video only, 5s/10s, 1080p (requires start image)", provider: "replicate" },
         { value: "wan-2.5-i2v", label: "WAN 2.5 I2V", description: "Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
@@ -165,11 +169,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
               if (generationMode === 'text_to_video') {
                 return model.value.includes('t2v') || model.value.includes('T2V') || 
                        model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
-                       model.value === 'MiniMax-Hailuo-02' || model.value === 'S2V-01';
+                       model.value === 'MiniMax-Hailuo-02' || model.value === 'S2V-01' ||
+                       model.value.includes('seedance');
               } else {
                 return model.value.includes('i2v') || model.value.includes('I2V') || 
                        model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
-                       model.value === 'MiniMax-Hailuo-02';
+                       model.value === 'MiniMax-Hailuo-02' ||
+                       model.value.includes('seedance');
               }
             });
 

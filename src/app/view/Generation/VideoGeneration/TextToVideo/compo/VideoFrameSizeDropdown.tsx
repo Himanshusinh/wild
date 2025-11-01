@@ -97,6 +97,27 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
         ];
       }
+    } else if (selectedModel?.includes("seedance")) {
+      // Seedance supports many aspect ratios, but only for T2V (not I2V)
+      if (generationMode === "image_to_video") {
+        // For I2V, aspect_ratio is ignored by the API, but we can still show limited options
+        return [
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
+          { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+        ];
+      } else {
+        // For T2V, show all supported aspect ratios
+        return [
+          { value: "16:9", label: "16:9", description: "Widescreen landscape", icon: "landscape" },
+          { value: "4:3", label: "4:3", description: "Classic landscape", icon: "landscape" },
+          { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+          { value: "3:4", label: "3:4", description: "Classic portrait", icon: "portrait" },
+          { value: "9:16", label: "9:16", description: "Widescreen portrait", icon: "portrait" },
+          { value: "21:9", label: "21:9", description: "Ultrawide landscape", icon: "landscape" },
+          { value: "9:21", label: "9:21", description: "Ultrawide portrait", icon: "portrait" }
+        ];
+      }
     } else if (selectedModel?.includes("wan-2.5")) {
       // WAN 2.5 models support specific size formats
       return [

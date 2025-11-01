@@ -324,6 +324,48 @@ export const MODEL_MAPPING: ModelMapping[] = [
     }
   },
 
+  // Seedance Models (Replicate)
+  {
+    frontendValue: 'seedance-1.0-pro-t2v',
+    creditModelName: 'Seedance 1.0 Pro T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-pro-i2v',
+    creditModelName: 'Seedance 1.0 Pro I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-lite-t2v',
+    creditModelName: 'Seedance 1.0 Lite T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-lite-i2v',
+    creditModelName: 'Seedance 1.0 Lite I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+
   // MUSIC GENERATION MODELS
   {
     frontendValue: 'music-1.5',
@@ -407,6 +449,17 @@ export const buildCreditModelName = (
         modelName = `Kling 2.1 I2V ${d}s ${res}`;
       }
     }
+  }
+  // Handle Seedance models
+  else if (mapping.frontendValue.includes('seedance') && options?.duration && options?.resolution) {
+    const d = options.duration;
+    const res = String(options.resolution).toLowerCase();
+    const resNormalized = res.includes('480') ? '480p' : res.includes('720') ? '720p' : '1080p';
+    // Map duration: 2-6s -> 5s, 7-12s -> 10s for pricing
+    const durForPricing = (d >= 2 && d <= 6) ? 5 : (d >= 7 && d <= 12) ? 10 : 5;
+    const tier = mapping.frontendValue.includes('lite') ? 'Lite' : 'Pro';
+    const mode = mapping.frontendValue.includes('i2v') ? 'I2V' : 'T2V';
+    modelName = `Seedance 1.0 ${tier} ${mode} ${durForPricing}s ${resNormalized}`;
   }
 
   return modelName;

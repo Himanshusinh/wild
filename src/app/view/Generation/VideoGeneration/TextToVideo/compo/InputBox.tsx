@@ -38,6 +38,7 @@ import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
 import VideoDurationDropdown from "./VideoDurationDropdown";
 import QualityDropdown from "./QualityDropdown";
 import KlingModeDropdown from "./KlingModeDropdown";
+import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 
 
@@ -115,6 +116,8 @@ const InputBox = () => {
   const [selectedQuality, setSelectedQuality] = useState("720p"); // For Veo3 quality
   // Kling specific state (v2.1 mode determines resolution): 'standard'->720p, 'pro'->1080p
   const [klingMode, setKlingMode] = useState<'standard' | 'pro'>('standard');
+  // Seedance specific state
+  const [seedanceResolution, setSeedanceResolution] = useState("1080p"); // For Seedance resolution (480p/720p/1080p)
 
   // Timeout refs for auto-close dropdowns
   const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -156,20 +159,21 @@ const InputBox = () => {
   } = useGenerationCredits('video', selectedModel, {
     resolution: selectedModel.includes("MiniMax") ? selectedResolution : 
                 selectedModel.includes("wan-2.5") ? (frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p") :
-                (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') : undefined),
+                (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') : 
+                (selectedModel.includes('seedance') ? seedanceResolution : undefined)),
     duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
   });
 
   // Auto-select model based onf generation mode (but preserve user's choice when possible)
   useEffect(() => {
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax, Veo3, and WAN models support this
-      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-'))) {
+      // Text→Video: MiniMax, Veo3, WAN, Kling, and Seedance models support this
+      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance'))) {
         setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for text→video
       }
     } else if (generationMode === "image_to_video") {
-      // Image→Video: MiniMax, Runway, Veo3, and WAN models support this
-      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-'))) {
+      // Image→Video: MiniMax, Runway, Veo3, WAN, Kling, and Seedance models support this
+      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance'))) {
         setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for image→video
       }
     } else if (generationMode === "video_to_video") {
@@ -333,8 +337,8 @@ const InputBox = () => {
 
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax, Veo3, and WAN models support this
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-')) {
+      // Text→Video: MiniMax, Veo3, WAN, Kling, and Seedance models support this
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -360,6 +364,11 @@ const InputBox = () => {
         } else if (newModel.startsWith('kling-')) {
           // Kling models: duration default 5s; aspect via frame dropdown not used (we use separate aspect for kling)
           setDuration(5);
+        } else if (newModel.includes('seedance')) {
+          // Seedance models: duration default 5s, resolution default 1080p, aspect ratio default 16:9
+          setDuration(5);
+          setSeedanceResolution("1080p");
+          setFrameSize("16:9"); // For T2V aspect ratio
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -369,8 +378,8 @@ const InputBox = () => {
         return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
-      // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01, Veo3, WAN
-      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-')) {
+      // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01, Veo3, WAN, Kling, Seedance
+      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "I2V-01-Director" || newModel === "S2V-01") {
@@ -400,6 +409,12 @@ const InputBox = () => {
           setFrameSize("1280*720"); // Default 720p for WAN
         } else if (newModel.startsWith('kling-')) {
           setDuration(5);
+        } else if (newModel.includes('seedance')) {
+          // Seedance models: duration default 5s, resolution default 1080p
+          setDuration(5);
+          setSeedanceResolution("1080p");
+          // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
+          setFrameSize("16:9");
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -1093,8 +1108,8 @@ const InputBox = () => {
     console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
 
     // Validate model compatibility with generation mode
-    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-'))) {
-      setError("Text→Video mode only supports MiniMax, Veo3, WAN, and Kling models. Please select a compatible model or switch to Image→Video mode.");
+    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance'))) {
+      setError("Text→Video mode only supports MiniMax, Veo3, WAN, Kling, and Seedance models. Please select a compatible model or switch to Image→Video mode.");
       return;
     }
 
@@ -1107,7 +1122,7 @@ const InputBox = () => {
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
         selectedModel.includes("veo3") ? 'fal' : 
-        (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-')) ? 'replicate' : 'runway';
+        (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance')) ? 'replicate' : 'runway';
       const creditResult = await validateAndReserveCredits(provider);
       transactionId = creditResult.transactionId;
       console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
@@ -1181,14 +1196,28 @@ const InputBox = () => {
           requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'text-to-video', isPublic };
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
+        } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
+          // Seedance T2V
+          const isLite = selectedModel.includes('lite');
+          requestBody = {
+            model: isLite ? 'bytedance/seedance-1.0-lite' : 'bytedance/seedance-1.0-pro',
+            prompt,
+            duration,
+            resolution: seedanceResolution,
+            aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
+            generationType: 'text-to-video',
+            isPublic,
+          };
+          generationType = 'text-to-video';
+          apiEndpoint = '/api/replicate/seedance-t2v/submit';
         } else {
           // Runway models don't support text-to-video (they require an image)
-          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/WAN model.");
+          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/WAN/Seedance model.");
           return;
         }
       } else if (generationMode === "image_to_video") {
-        // Check if we need uploaded images (exclude S2V-01, Veo3, and WAN which only need references/images)
-        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && !selectedModel.includes("wan-2.5") && uploadedImages.length === 0) {
+        // Check if we need uploaded images (exclude S2V-01, Veo3, WAN, and Seedance which only need references/images)
+        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && !selectedModel.includes("wan-2.5") && !selectedModel.includes('seedance') && uploadedImages.length === 0) {
           setError("Please upload at least one image");
           return;
         }
@@ -1309,6 +1338,27 @@ const InputBox = () => {
           }
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/kling-i2v/submit';
+        } else if (selectedModel.includes('seedance') && selectedModel.includes('i2v')) {
+          // Seedance I2V
+          if (uploadedImages.length === 0) {
+            setError("Seedance image-to-video requires an input image");
+            return;
+          }
+          const isLite = selectedModel.includes('lite');
+          requestBody = {
+            model: isLite ? 'bytedance/seedance-1.0-lite' : 'bytedance/seedance-1.0-pro',
+            prompt,
+            image: uploadedImages[0],
+            duration,
+            resolution: seedanceResolution,
+            // aspect_ratio is ignored for I2V, but we can include it for consistency
+            generationType: 'image-to-video',
+            isPublic,
+            // Optional: Add last_frame_image if provided (similar to MiniMax)
+            ...(lastFrameImage && lastFrameImage.trim() !== '' ? { last_frame_image: lastFrameImage } : {}),
+          } as any;
+          generationType = 'image-to-video';
+          apiEndpoint = '/api/replicate/seedance-i2v/submit';
         } else {
           // Runway image to video
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
@@ -3005,6 +3055,60 @@ const InputBox = () => {
                           // Close frame size dropdown
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
+
+                // Seedance Models: Full customization
+                if (selectedModel.includes("seedance")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Only shown for T2V (ignored for I2V) */}
+                      {generationMode === "text_to_video" && (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            // Close resolution dropdown
+                            setResolutionDropdownOpen(true);
+                            setTimeout(() => setResolutionDropdownOpen(false), 0);
+                          }}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        />
+                      )}
+                      {/* Resolution - Always shown for Seedance models */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={seedanceResolution}
+                        onResolutionChange={setSeedanceResolution}
+                      />
+                      {/* Duration - Always shown for Seedance models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close resolution dropdown
+                          setResolutionDropdownOpen(true);
+                          setTimeout(() => setResolutionDropdownOpen(false), 0);
                         }}
                         onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                       />

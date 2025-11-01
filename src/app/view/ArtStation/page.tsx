@@ -736,9 +736,13 @@ export default function ArtStationPage() {
 
           {/* Initial loading */}
           {loading && items.length === 0 && (
-            <div className="text-center py-16">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-4">{activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}</p>
+            <div className="flex items-center justify-center py-28">
+              <div className="flex flex-col items-center gap-4">
+                <Image src="/styles/Logo.gif" alt="Loading" width={112} height={112} className="w-28 h-28" />
+                <div className="text-white text-lg">
+                  {activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}
+                </div>
+              </div>
             </div>
           )}
 

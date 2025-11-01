@@ -22,7 +22,9 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 
   // Get available resolutions based on model
   const getAvailableResolutions = () => {
-    if (selectedModel === "MiniMax-Hailuo-02") {
+    if (selectedModel?.includes("seedance")) {
+      return ["480p", "720p", "1080p"];
+    } else if (selectedModel === "MiniMax-Hailuo-02") {
       return ["768P", "1080P"];
     } else if (selectedModel.includes("Director") || selectedModel === "S2V-01") {
       return ["720P"];
@@ -117,9 +119,11 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
               >
                 <span className="text-white font-medium text-sm">{resolution}</span>
                 <div className="text-xs text-white/60 mt-1">
+                  {resolution === '1080p' && 'Full HD (1920x1080)'}
+                  {resolution === '720p' && 'HD (1280x720)'}
+                  {resolution === '480p' && 'SD (854x480)'}
                   {resolution === '1080P' && 'Full HD (1920x1080)'}
                   {resolution === '768P' && 'HD+ (1366x768)'}
-                  {/* {resolution === '512P' && 'SD (768x512)'} */}
                   {resolution === '720P' && 'HD (1280x720)'}
                 </div>
               </button>

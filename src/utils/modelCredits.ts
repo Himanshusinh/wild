@@ -114,6 +114,34 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'kling-v2.1-i2v-5s-1080p': 1020,
   'kling-v2.1-i2v-10s-720p': 1120,
   'kling-v2.1-i2v-10s-1080p': 1920,
+  
+  // Seedance 1.0 Pro T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
+  'seedance-1.0-pro-t2v-5s-480p': 360,
+  'seedance-1.0-pro-t2v-5s-720p': 660,
+  'seedance-1.0-pro-t2v-5s-1080p': 1560,
+  'seedance-1.0-pro-t2v-10s-480p': 660,
+  'seedance-1.0-pro-t2v-10s-720p': 1260,
+  'seedance-1.0-pro-t2v-10s-1080p': 3060,
+  'seedance-1.0-pro-i2v-5s-480p': 360,
+  'seedance-1.0-pro-i2v-5s-720p': 660,
+  'seedance-1.0-pro-i2v-5s-1080p': 1560,
+  'seedance-1.0-pro-i2v-10s-480p': 660,
+  'seedance-1.0-pro-i2v-10s-720p': 1260,
+  'seedance-1.0-pro-i2v-10s-1080p': 3060,
+  
+  // Seedance 1.0 Lite T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
+  'seedance-1.0-lite-t2v-5s-480p': 300,
+  'seedance-1.0-lite-t2v-5s-720p': 480,
+  'seedance-1.0-lite-t2v-5s-1080p': 840,
+  'seedance-1.0-lite-t2v-10s-480p': 480,
+  'seedance-1.0-lite-t2v-10s-720p': 840,
+  'seedance-1.0-lite-t2v-10s-1080p': 1560,
+  'seedance-1.0-lite-i2v-5s-480p': 300,
+  'seedance-1.0-lite-i2v-5s-720p': 480,
+  'seedance-1.0-lite-i2v-5s-1080p': 840,
+  'seedance-1.0-lite-i2v-10s-480p': 480,
+  'seedance-1.0-lite-i2v-10s-720p': 840,
+  'seedance-1.0-lite-i2v-10s-1080p': 1560,
 };
 
 // Function to get credit cost for a model
@@ -192,6 +220,26 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       return MODEL_CREDITS_MAPPING[key] || null;
     }
     const key = `kling-v2.1-${kind}-${d}s-${res}`;
+    return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
+  // Handle Seedance models
+  if (modelValue.includes('seedance')) {
+    const isI2V = modelValue.includes('i2v');
+    const modelType = isI2V ? 'i2v' : 't2v';
+    const tier = modelValue.includes('lite') ? 'lite' : 'pro';
+    
+    // Map resolution
+    let resolutionKey = '';
+    if (resolution?.includes('480')) resolutionKey = '480p';
+    else if (resolution?.includes('720')) resolutionKey = '720p';
+    else if (resolution?.includes('1080')) resolutionKey = '1080p';
+    
+    // Map duration: 2-6s -> 5s, 7-12s -> 10s for pricing
+    const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const durForPricing = (durationNum >= 2 && durationNum <= 6) ? 5 : (durationNum >= 7 && durationNum <= 12) ? 10 : 5;
+    
+    const key = `seedance-1.0-${tier}-${modelType}-${durForPricing}s-${resolutionKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
 

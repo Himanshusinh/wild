@@ -473,9 +473,12 @@ const Recentcreation: React.FC = () => {
           </div>
           <button 
             onClick={handleMyCreationsClick}
-            className="text-white/80 hover:text-white text-sm ml-2 mr-4 transition-colors"
+            className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 mr-4 transition-colors"
           >
-            My Creations <span className="opacity-70"></span>
+            <span>My Creations</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>
