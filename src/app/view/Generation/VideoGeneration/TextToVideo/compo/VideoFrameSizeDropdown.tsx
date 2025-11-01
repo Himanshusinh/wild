@@ -80,7 +80,40 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
 
   // Get available frame sizes based on model and generation mode
   const getAvailableFrameSizes = () => {
-    if (selectedModel?.includes("veo3")) {
+    if (selectedModel?.includes("sora2")) {
+      // Sora 2 models support limited aspect ratios
+      if (generationMode === "image_to_video") {
+        // Sora 2 I2V supports auto, 16:9, 9:16
+        return [
+          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+        ];
+      } else {
+        // Sora 2 T2V supports 16:9, 9:16
+        return [
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+        ];
+      }
+    } else if (selectedModel?.includes("veo3.1")) {
+      // Veo 3.1 models support limited aspect ratios
+      if (generationMode === "image_to_video") {
+        // Veo 3.1 image-to-video only supports auto, 16:9, 9:16
+        return [
+          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+        ];
+      } else {
+        // Veo 3.1 text-to-video supports more ratios
+        return [
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
+          { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
+        ];
+      }
+    } else if (selectedModel?.includes("veo3") && !selectedModel.includes("veo3.1")) {
       // Veo3 models support limited aspect ratios
       if (generationMode === "image_to_video") {
         // Veo3 image-to-video only supports auto, 16:9, 9:16
@@ -97,6 +130,13 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
         ];
       }
+    } else if (selectedModel?.includes("pixverse")) {
+      // PixVerse supports 16:9, 9:16, 1:1 for both T2V and I2V
+      return [
+        { value: "16:9", label: "16:9", description: "Widescreen landscape", icon: "landscape" },
+        { value: "9:16", label: "9:16", description: "Widescreen portrait", icon: "portrait" },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+      ];
     } else if (selectedModel?.includes("seedance")) {
       // Seedance supports many aspect ratios, but only for T2V (not I2V)
       if (generationMode === "image_to_video") {

@@ -69,6 +69,16 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'veo3-fast-i2v-8s': 2520,
   'RW-veo3-8s': 6520,
   
+  // Veo 3.1 models
+  'veo3.1-t2v-4s': 3260,
+  'veo3.1-t2v-6s': 4860,
+  'veo3.1-t2v-8s': 6460,
+  'veo3.1-i2v-8s': 6460,
+  'veo3.1-fast-t2v-4s': 1260,
+  'veo3.1-fast-t2v-6s': 1860,
+  'veo3.1-fast-t2v-8s': 2460,
+  'veo3.1-fast-i2v-8s': 2460,
+  
   // WAN 2.5 Standard T2V
   'wan-2.5-t2v-5s-480p': 620,
   'wan-2.5-t2v-5s-720p': 1120,
@@ -142,6 +152,48 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedance-1.0-lite-i2v-10s-480p': 380,
   'seedance-1.0-lite-i2v-10s-720p': 740,
   'seedance-1.0-lite-i2v-10s-1080p': 1460,
+  
+  // PixVerse 5 T2V/I2V (duration: 5s or 8s)
+  'pixverse-v5-t2v-5s-360p': 1260,
+  'pixverse-v5-t2v-5s-540p': 1260,
+  'pixverse-v5-t2v-5s-720p': 1660,
+  'pixverse-v5-t2v-5s-1080p': 1660,
+  'pixverse-v5-t2v-8s-360p': 1260,
+  'pixverse-v5-t2v-8s-540p': 1260,
+  'pixverse-v5-t2v-8s-720p': 1660,
+  'pixverse-v5-t2v-8s-1080p': 3260,
+  'pixverse-v5-i2v-5s-360p': 1260,
+  'pixverse-v5-i2v-5s-540p': 1260,
+  'pixverse-v5-i2v-5s-720p': 1660,
+  'pixverse-v5-i2v-5s-1080p': 1660,
+  'pixverse-v5-i2v-8s-360p': 1260,
+  'pixverse-v5-i2v-8s-540p': 1260,
+  'pixverse-v5-i2v-8s-720p': 1660,
+  'pixverse-v5-i2v-8s-1080p': 3260,
+
+  // Sora 2 Standard (T2V/I2V)
+  'sora2-t2v-4s': 860,
+  'sora2-t2v-8s': 1660,
+  'sora2-t2v-12s': 2460,
+  'sora2-i2v-4s': 860,
+  'sora2-i2v-8s': 1660,
+  'sora2-i2v-12s': 2460,
+
+  // Sora 2 Pro (T2V/I2V) - 720p
+  'sora2-pro-t2v-4s-720p': 2460,
+  'sora2-pro-t2v-8s-720p': 4860,
+  'sora2-pro-t2v-12s-720p': 7260,
+  'sora2-pro-i2v-4s-720p': 2460,
+  'sora2-pro-i2v-8s-720p': 4860,
+  'sora2-pro-i2v-12s-720p': 7260,
+
+  // Sora 2 Pro (T2V/I2V) - 1080p
+  'sora2-pro-t2v-4s-1080p': 4060,
+  'sora2-pro-t2v-8s-1080p': 8060,
+  'sora2-pro-t2v-12s-1080p': 12060,
+  'sora2-pro-i2v-4s-1080p': 4060,
+  'sora2-pro-i2v-8s-1080p': 8060,
+  'sora2-pro-i2v-12s-1080p': 12060,
 };
 
 // Function to get credit cost for a model
@@ -166,8 +218,21 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     return MODEL_CREDITS_MAPPING[key] || null;
   }
 
-  // Handle veo3 models
-  if (modelValue.includes('veo3')) {
+  // Handle veo3.1 models (check before veo3)
+  if (modelValue.includes('veo3.1')) {
+    if (modelValue.includes('fast')) {
+      if (duration === '4s') return MODEL_CREDITS_MAPPING['veo3.1-fast-t2v-4s'];
+      else if (duration === '6s') return MODEL_CREDITS_MAPPING['veo3.1-fast-t2v-6s'];
+      else if (duration === '8s') return MODEL_CREDITS_MAPPING[modelValue.includes('i2v') ? 'veo3.1-fast-i2v-8s' : 'veo3.1-fast-t2v-8s'];
+    } else {
+      if (duration === '4s') return MODEL_CREDITS_MAPPING['veo3.1-t2v-4s'];
+      else if (duration === '6s') return MODEL_CREDITS_MAPPING['veo3.1-t2v-6s'];
+      else if (duration === '8s') return MODEL_CREDITS_MAPPING[modelValue.includes('i2v') ? 'veo3.1-i2v-8s' : 'veo3.1-t2v-8s'];
+    }
+  }
+
+  // Handle veo3 models (check after veo3.1 to avoid conflicts)
+  if (modelValue.includes('veo3') && !modelValue.includes('veo3.1')) {
     if (modelValue.includes('fast')) {
       if (duration === '4s') return MODEL_CREDITS_MAPPING['veo3-fast-t2v-4s'];
       else if (duration === '6s') return MODEL_CREDITS_MAPPING['veo3-fast-t2v-6s'];
@@ -241,6 +306,60 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     
     const key = `seedance-1.0-${tier}-${modelType}-${durForPricing}s-${resolutionKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
+  // Handle PixVerse models
+  if (modelValue.includes('pixverse')) {
+    const isI2V = modelValue.includes('i2v');
+    const modelType = isI2V ? 'i2v' : 't2v';
+    
+    // Map quality/resolution: 360p, 540p, 720p, 1080p
+    let qualityKey = '';
+    if (resolution?.includes('360')) qualityKey = '360p';
+    else if (resolution?.includes('540')) qualityKey = '540p';
+    else if (resolution?.includes('720')) qualityKey = '720p';
+    else if (resolution?.includes('1080')) qualityKey = '1080p';
+    else qualityKey = '720p'; // Default
+    
+    // Duration: 5 or 8 seconds
+    const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const durForPricing = (durationNum === 5 || durationNum === 8) ? durationNum : 5;
+    
+    const key = `pixverse-v5-${modelType}-${durForPricing}s-${qualityKey}`;
+    return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
+  // Handle Sora 2 models
+  if (modelValue.includes('sora2')) {
+    const isPro = modelValue.includes('pro');
+    const isI2V = modelValue.includes('i2v');
+    const isV2V = modelValue.includes('v2v');
+    
+    // V2V Remix uses source video's parameters for pricing (handled by backend)
+    // Return a default/estimated cost here to avoid "Unknown model" error
+    // The actual cost will be calculated on the backend based on source video
+    if (isV2V) {
+      // Return an estimated default cost (8s, 720p standard as fallback)
+      // The backend will use the actual source video parameters for final pricing
+      return MODEL_CREDITS_MAPPING['sora2-t2v-8s'] || 1660; // Default to standard 8s cost
+    }
+    
+    const modelType = isI2V ? 'i2v' : 't2v';
+    
+    // Duration: 4, 8, or 12 seconds
+    const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 8;
+    const durForPricing = (durationNum === 4 || durationNum === 8 || durationNum === 12) ? durationNum : 8;
+    
+    if (isPro) {
+      // Pro models: resolution matters (720p or 1080p)
+      const res = (resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
+      const key = `sora2-pro-${modelType}-${durForPricing}s-${res}`;
+      return MODEL_CREDITS_MAPPING[key] || null;
+    } else {
+      // Standard models: only duration matters (always 720p)
+      const key = `sora2-${modelType}-${durForPricing}s`;
+      return MODEL_CREDITS_MAPPING[key] || null;
+    }
   }
 
   // Default lookup

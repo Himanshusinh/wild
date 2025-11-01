@@ -24,6 +24,36 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
 
   // Get available qualities based on selected model
   const getAvailableQualities = () => {
+    // Sora 2 models support different resolutions based on tier
+    if (selectedModel?.includes("sora2-pro")) {
+      // Sora 2 Pro supports 720p and 1080p
+      return [
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
+        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+      ];
+    }
+    if (selectedModel?.includes("sora2")) {
+      // Sora 2 Standard supports only 720p
+      return [
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" }
+      ];
+    }
+    // Veo 3.1 models support 720p, 1080p
+    if (selectedModel?.includes("veo3.1")) {
+      return [
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
+        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+      ];
+    }
+    // PixVerse models support 360p, 540p, 720p, 1080p
+    if (selectedModel?.includes("pixverse")) {
+      return [
+        { value: "360p", label: "360p", description: "SD Quality (640x360)" },
+        { value: "540p", label: "540p", description: "HD- Quality (960x540)" },
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
+        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+      ];
+    }
     // Seedance models support 480p, 720p, 1080p
     if (selectedModel?.includes("seedance")) {
       return [
@@ -112,7 +142,7 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
           setIsOpen(!isOpen);
         }}
         className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedQuality !== "720p" && selectedQuality !== "480p"
+          selectedQuality !== "720p" && selectedQuality !== "480p" && selectedQuality !== "360p" && selectedQuality !== "540p"
             ? 'bg-white text-black' 
             : 'bg-transparent text-white/90 hover:bg-white/5'
         }`}
