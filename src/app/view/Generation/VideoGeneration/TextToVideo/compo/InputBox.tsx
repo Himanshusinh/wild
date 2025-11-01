@@ -1200,7 +1200,7 @@ const InputBox = () => {
           // Seedance T2V
           const isLite = selectedModel.includes('lite');
           requestBody = {
-            model: isLite ? 'bytedance/seedance-1.0-lite' : 'bytedance/seedance-1.0-pro',
+            model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
             prompt,
             duration,
             resolution: seedanceResolution,
@@ -1346,7 +1346,7 @@ const InputBox = () => {
           }
           const isLite = selectedModel.includes('lite');
           requestBody = {
-            model: isLite ? 'bytedance/seedance-1.0-lite' : 'bytedance/seedance-1.0-pro',
+            model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
             prompt,
             image: uploadedImages[0],
             duration,
@@ -1504,6 +1504,18 @@ const InputBox = () => {
       if (selectedModel.includes("wan-2.5") && !result.requestId) {
         console.error('❌ WAN API response missing requestId:', result);
         throw new Error('WAN API response missing requestId');
+      }
+
+      // Validate that we have a requestId for Seedance models
+      if (selectedModel.includes('seedance') && !result.requestId) {
+        console.error('❌ Seedance API response missing requestId:', result);
+        throw new Error('Seedance API response missing requestId');
+      }
+
+      // Validate that we have a requestId for Kling models
+      if (selectedModel.startsWith('kling-') && !result.requestId) {
+        console.error('❌ Kling API response missing requestId:', result);
+        throw new Error('Kling API response missing requestId');
       }
 
       let videoUrl: string;
@@ -1737,6 +1749,71 @@ const InputBox = () => {
           console.error('❌ Kling video generation did not complete properly');
           console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
           throw new Error('Kling video generation did not complete in time');
+        }
+      } else if (selectedModel.includes('seedance')) {
+        // Seedance flow - queue-based polling via replicate queue endpoints (same as WAN/Kling)
+        console.log('🎬 Seedance video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        let videoResult: any;
+        const maxAttemptsSeedance = 900; // up to 15 minutes (same as WAN/Kling)
+        console.log(`🎬 Starting Seedance polling with ${maxAttemptsSeedance} attempts (15 minutes max)`);
+        
+        for (let attempts = 0; attempts < maxAttemptsSeedance; attempts++) {
+          try {
+            console.log(`🎬 Seedance polling attempt ${attempts + 1}/${maxAttemptsSeedance}`);
+            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
+            const statusRes = await api.get('/api/replicate/queue/status', {
+              params: { requestId: result.requestId }
+            });
+            console.log(`🎬 Raw status response:`, statusRes.data);
+            const status = statusRes.data?.data || statusRes.data;
+            const statusValue = String(status?.status || '').toLowerCase();
+            
+            console.log(`🎬 Seedance status check result:`, status);
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
+              console.log('✅ Seedance generation completed, fetching result...');
+              // Get the result
+              const resultRes = await api.get('/api/replicate/queue/result', {
+                params: { requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              console.log('✅ Seedance result fetched:', videoResult);
+              break;
+            }
+            if (statusValue === 'failed' || statusValue === 'error') {
+              console.error('❌ Seedance generation failed with status:', status);
+              throw new Error('Seedance video generation failed');
+            }
+            
+            // Log progress every 30 seconds
+            if (attempts % 30 === 0 && attempts > 0) {
+              console.log(`🎬 Seedance still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+            }
+          } catch (e) {
+            console.error('❌ Seedance status check failed:', e);
+            if (attempts === maxAttemptsSeedance - 1) throw e;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ Seedance video completed with URL:', videoUrl);
+        } else if (videoResult?.video && videoResult.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log('✅ Seedance video completed with URL (fallback):', videoUrl);
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          videoUrl = videoResult.output;
+          console.log('✅ Seedance video completed with URL (output string):', videoUrl);
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          videoUrl = videoResult.output[0];
+          console.log('✅ Seedance video completed with URL (output array):', videoUrl);
+        } else {
+          console.error('❌ Seedance video generation did not complete properly');
+          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
+          throw new Error('Seedance video generation did not complete in time');
         }
       } else {
         // Runway video completion
@@ -3080,25 +3157,17 @@ const InputBox = () => {
                             // Close duration dropdown
                             setCloseDurationDropdown(true);
                             setTimeout(() => setCloseDurationDropdown(false), 0);
-                            // Close resolution dropdown
-                            setResolutionDropdownOpen(true);
-                            setTimeout(() => setResolutionDropdownOpen(false), 0);
+                            // Close quality dropdown (for Seedance)
+                            // QualityDropdown handles its own state
                           }}
                           onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                         />
                       )}
-                      {/* Resolution - Always shown for Seedance models */}
-                      <ResolutionDropdown
+                      {/* Quality - Always shown for Seedance models */}
+                      <QualityDropdown
                         selectedModel={selectedModel}
-                        selectedResolution={seedanceResolution}
-                        onResolutionChange={setSeedanceResolution}
-                      />
-                      {/* Duration - Always shown for Seedance models */}
-                      <VideoDurationDropdown
-                        selectedDuration={duration}
-                        onDurationChange={setDuration}
-                        selectedModel={selectedModel}
-                        generationMode={generationMode}
+                        selectedQuality={seedanceResolution}
+                        onQualityChange={setSeedanceResolution}
                         onCloseOtherDropdowns={() => {
                           // Close models dropdown
                           setCloseModelsDropdown(true);
@@ -3106,10 +3175,28 @@ const InputBox = () => {
                           // Close frame size dropdown
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          // Close resolution dropdown
-                          setResolutionDropdownOpen(true);
-                          setTimeout(() => setResolutionDropdownOpen(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
+                        onCloseThisDropdown={undefined}
+                      />
+                      {/* Duration - Always shown for Seedance models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            // Close quality dropdown (for Seedance)
+                            // QualityDropdown handles its own state
+                          }}
                         onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                       />
                     </div>

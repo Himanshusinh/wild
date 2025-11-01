@@ -130,18 +130,18 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedance-1.0-pro-i2v-10s-1080p': 3060,
   
   // Seedance 1.0 Lite T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
-  'seedance-1.0-lite-t2v-5s-480p': 300,
-  'seedance-1.0-lite-t2v-5s-720p': 480,
-  'seedance-1.0-lite-t2v-5s-1080p': 840,
-  'seedance-1.0-lite-t2v-10s-480p': 480,
-  'seedance-1.0-lite-t2v-10s-720p': 840,
-  'seedance-1.0-lite-t2v-10s-1080p': 1560,
-  'seedance-1.0-lite-i2v-5s-480p': 300,
-  'seedance-1.0-lite-i2v-5s-720p': 480,
-  'seedance-1.0-lite-i2v-5s-1080p': 840,
-  'seedance-1.0-lite-i2v-10s-480p': 480,
-  'seedance-1.0-lite-i2v-10s-720p': 840,
-  'seedance-1.0-lite-i2v-10s-1080p': 1560,
+  'seedance-1.0-lite-t2v-5s-480p': 200,
+  'seedance-1.0-lite-t2v-5s-720p': 380,
+  'seedance-1.0-lite-t2v-5s-1080p': 740,
+  'seedance-1.0-lite-t2v-10s-480p': 380,
+  'seedance-1.0-lite-t2v-10s-720p': 740,
+  'seedance-1.0-lite-t2v-10s-1080p': 1460,
+  'seedance-1.0-lite-i2v-5s-480p': 200,
+  'seedance-1.0-lite-i2v-5s-720p': 380,
+  'seedance-1.0-lite-i2v-5s-1080p': 740,
+  'seedance-1.0-lite-i2v-10s-480p': 380,
+  'seedance-1.0-lite-i2v-10s-720p': 740,
+  'seedance-1.0-lite-i2v-10s-1080p': 1460,
 };
 
 // Function to get credit cost for a model
