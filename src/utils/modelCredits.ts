@@ -44,11 +44,11 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 
   // Video models with duration and resolution variants
   // Minimax-Hailuo-02 variants
-  'MiniMax-Hailuo-02-512P-6s': 320,
-  'MiniMax-Hailuo-02-512P-10s': 420,
-  'MiniMax-Hailuo-02-768P-6s': 680,
-  'MiniMax-Hailuo-02-768P-10s': 1240,
-  'MiniMax-Hailuo-02-1080P-6s': 1100,
+  'MiniMax-Hailuo-02-512P-6s': 220,
+  'MiniMax-Hailuo-02-512P-10s': 320,
+  'MiniMax-Hailuo-02-768P-6s': 580,
+  'MiniMax-Hailuo-02-768P-10s': 1140,
+  'MiniMax-Hailuo-02-1080P-6s': 1000,
 
   // Gen-4 Turbo variants
   'gen4_turbo-5s': 520,
