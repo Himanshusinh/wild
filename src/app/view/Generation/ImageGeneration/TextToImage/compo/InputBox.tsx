@@ -1730,7 +1730,16 @@ const InputBox = () => {
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
 
-            <div>
+            {/* Main Loader */}
+            {loading && historyEntries.length === 0 && (
+              <div className="flex items-center justify-center ">
+                <div className="flex flex-col items-center gap-4">
+                  <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                  <div className="text-white text-lg">Loading your generation history...</div>
+                </div>
+              </div>
+            )}
+
             {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
             {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
               <div className="space-y-4">
@@ -1951,7 +1960,6 @@ const InputBox = () => {
                   </div>
                 </div>
               ))}
-            </div>
 
               {/* Loader for scroll loading */}
               {hasMore && loading && (
