@@ -136,16 +136,113 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const selectedModelInfo = availableModels.find(model => model.value === selectedModel) || availableModels.find(m => selectedModel.startsWith('kling-') && m.value.startsWith('kling-')) || availableModels[0];
 
   // Add credits information to models
+  // Normalize duration/resolution for credit lookup (accept number or string, enforce 'Xs' and lowercase res)
+  // IMPORTANT: Normalize here with defaults so credits always resolve, even before user selects duration/resolution
+  const normalizeDuration = (d: any, defaultDuration: string): string => {
+    if (d == null) return defaultDuration;
+    if (typeof d === 'number') return `${d}s`;
+    const s = String(d);
+    return /s$/.test(s) ? s : `${s}s`;
+  };
+  
+  const normalizeResolution = (r: any, defaultRes: string): string => {
+    if (!r) return defaultRes;
+    return String(r).toLowerCase();
+  };
+
   const modelsWithCredits = availableModels.map(model => {
-    const creditInfo = getModelCreditInfo(model.value, selectedDuration, selectedResolution);
-    // Debug logging for Gen-4 Turbo and Gen-3a Turbo
-    if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
-      console.log(`Credit debug for ${model.value}:`, {
-        selectedDuration,
-        selectedResolution,
-        credits: creditInfo.credits,
-        displayText: creditInfo.displayText
-      });
+    // Per-model normalization/fallbacks so credits always resolve from the first render
+    let d: string;
+    let r: string | undefined;
+    
+    if (model.value.includes('wan-2.5')) {
+      // WAN models: default to 5s and 720p if not provided
+      d = normalizeDuration(selectedDuration, '5s');
+      const rRaw = normalizeResolution(selectedResolution, '720p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('480')) r = '480p';
+      else if (rLower.includes('720')) r = '720p';
+      else if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value.startsWith('kling-')) {
+      // Kling v2.5 only needs duration, v2.1 needs resolution
+      d = normalizeDuration(selectedDuration, '5s');
+      if (model.value.includes('v2.1')) {
+        const rRaw = normalizeResolution(selectedResolution, '720p');
+        const rLower = rRaw.toLowerCase();
+        if (rLower.includes('1080')) r = '1080p';
+        else r = '720p';
+      } else {
+        // For v2.5, don't pass resolution as it's not needed for pricing
+        r = undefined;
+      }
+    } else if (model.value === 'MiniMax-Hailuo-02') {
+      // MiniMax requires explicit resolution and duration to price
+      d = normalizeDuration(selectedDuration, '6s');
+      const rRaw = selectedResolution || '1080P';
+      const rUpper = String(rRaw).toUpperCase();
+      if (rUpper.includes('512')) r = '512P';
+      else if (rUpper.includes('768')) r = '768P';
+      else if (rUpper.includes('1080')) r = '1080P';
+      else r = '1080P';
+    } else if (model.value.includes('pixverse')) {
+      d = normalizeDuration(selectedDuration, '5s');
+      const rRaw = normalizeResolution(selectedResolution, '720p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('360')) r = '360p';
+      else if (rLower.includes('540')) r = '540p';
+      else if (rLower.includes('720')) r = '720p';
+      else if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value.includes('veo3') || model.value.includes('veo3.1')) {
+      d = normalizeDuration(selectedDuration, '8s');
+      const rRaw = normalizeResolution(selectedResolution, '1080p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value.includes('sora2')) {
+      d = normalizeDuration(selectedDuration, '8s');
+      // Sora 2 Pro needs resolution, standard Sora 2 doesn't
+      if (model.value.includes('pro')) {
+        const rRaw = normalizeResolution(selectedResolution, '720p');
+        const rLower = rRaw.toLowerCase();
+        if (rLower.includes('1080')) r = '1080p';
+        else r = '720p';
+      } else {
+        r = undefined; // Standard Sora 2 doesn't need resolution
+      }
+    } else if (model.value.includes('seedance')) {
+      d = normalizeDuration(selectedDuration, '5s');
+      const rRaw = normalizeResolution(selectedResolution, '720p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('480')) r = '480p';
+      else if (rLower.includes('720')) r = '720p';
+      else if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
+      // Gen-4 Turbo and Gen-3a Turbo: only need duration, not resolution
+      d = normalizeDuration(selectedDuration, '5s');
+      r = undefined; // These models don't use resolution for pricing
+    } else {
+      // For other models, normalize with defaults
+      d = normalizeDuration(selectedDuration, '5s');
+      r = normalizeResolution(selectedResolution, '720p');
+    }
+    
+    let creditInfo = getModelCreditInfo(model.value, d, r);
+    // As a final safety net, retry with strict defaults if no credits resolved
+    if (!creditInfo.hasCredits) {
+      if (model.value.includes('wan-2.5')) {
+        creditInfo = getModelCreditInfo(model.value, '5s', '720p');
+      } else if (model.value.startsWith('kling-')) {
+        // v2.5 only needs duration
+        creditInfo = getModelCreditInfo(model.value, '5s');
+      } else if (model.value === 'MiniMax-Hailuo-02') {
+        creditInfo = getModelCreditInfo(model.value, '6s', '1080P');
+      } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
+        // Gen-4 Turbo and Gen-3a Turbo: default to 5s, no resolution needed
+        creditInfo = getModelCreditInfo(model.value, '5s');
+      }
     }
     return {
       ...model,
@@ -196,38 +293,66 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
               }
             });
 
-            // For text-to-video: single column
+            // For text-to-video: two columns like image-to-video
             if (generationMode === 'text_to_video') {
+              const left = filteredModels.slice(0, Math.ceil(filteredModels.length / 2));
+              const right = filteredModels.slice(Math.ceil(filteredModels.length / 2));
               return (
-                <div className="divide-y divide-white/10">
-                  {filteredModels.map((model) => (
-                    <button
-                      key={model.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        try { onModelChange(model.value); } catch {}
-                        setIsOpen(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                        ? 'bg-white text-black'
-                        : 'text-white/90 hover:bg-white/10'
-                        }`}
-                    >
-                      <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.label}
-                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
-                        </span>
-                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                <div className="grid grid-cols-2 gap-0">
+                  <div className="divide-y divide-white/10">
+                    {left.map((model) => (
+                      <button
+                        key={`t2v-left-${model.value}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { onModelChange(model.value); } catch {}
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                          ? 'bg-white text-black'
+                          : 'text-white/90 hover:bg-white/10'
+                          }`}
+                      >
+                        <div className="flex flex-col mb-0">
+                          <span className="flex items-center gap-2">
+                            {model.label}
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          </span>
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
+                        </div>
+                        {selectedModel === model.value && (
+                          <div className="w-2 h-2 bg-black rounded-full"></div>
                         )}
-                      </div>
-                      {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-l border-white/10 divide-y divide-white/10">
+                    {right.map((model) => (
+                      <button
+                        key={`t2v-right-${model.value}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { onModelChange(model.value); } catch {}
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                          ? 'bg-white text-black'
+                          : 'text-white/90 hover:bg-white/10'
+                          }`}
+                      >
+                        <div className="flex flex-col -mb-0">
+                          <span className="flex items-center gap-2">
+                            {model.label}
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          </span>
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
+                        </div>
+                        {selectedModel === model.value && (
+                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               );
             }
@@ -258,10 +383,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.label}
                           <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                         </span>
-                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
-                        )}
+                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
@@ -289,10 +412,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.label}
                           <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                         </span>
-                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
-                        )}
+                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>

@@ -104,54 +104,28 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black ${
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-        } ${isOpen ? "bg-white/10 border-white/20" : ""}`}
+        }`}
       >
-        <div className="flex flex-row gap-2  items-start">
-          <span className="text-white font-medium">Resolution</span>
-          <span className="text-xs text-white/60 mt-0.5">{selectedResolution}</span>
-        </div>
-        <ChevronUp
-          className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        <span>Resolution {selectedResolution ? selectedResolution : ''}</span>
+        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 shadow-2xl">
-          <div className="p-2 space-y-1">
-            {availableResolutions.map((resolution) => {
-              const isSelected = selectedResolution === resolution;
-              const desc =
-                resolution === '2160p' ? '4K UHD (3840x2160)' :
-                resolution === '1440p' ? 'QHD (2560x1440)' :
-                resolution === '1080p' || resolution === '1080P' ? 'Full HD (1920x1080)' :
-                resolution === '768P' ? 'HD+ (1366x768)' :
-                resolution === '720p' || resolution === '720P' ? 'HD (1280x720)' :
-                resolution === '480p' ? 'SD (854x480)' : '';
-              return (
-                <button
-                  key={resolution}
-                  onClick={() => handleResolutionSelect(resolution)}
-                  className={`w-full px-4 py-3 text-left rounded-lg transition-colors flex items-center justify-between ${
-                    isSelected ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Left square indicator to match MiniMax UI */}
-                    <span className={`inline-block w-[16px] h-[16px] rounded-[3px] ${isSelected ? 'bg-black' : 'border border-current'}`} />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold tracking-wide">{resolution}</span>
-                      {desc && <span className={`text-xs ${isSelected ? 'text-black/70' : 'text-white/60'}`}>{desc}</span>}
-                    </div>
-                  </div>
-                  {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
-                </button>
-              );
-            })}
-          </div>
+        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+          {availableResolutions.map((resolution) => (
+            <button
+              key={resolution}
+              onClick={() => handleResolutionSelect(resolution)}
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                selectedResolution === resolution ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <span>{resolution}</span>
+              {selectedResolution === resolution && <div className="w-2 h-2 bg-black rounded-full"></div>}
+            </button>
+          ))}
         </div>
       )}
     </div>

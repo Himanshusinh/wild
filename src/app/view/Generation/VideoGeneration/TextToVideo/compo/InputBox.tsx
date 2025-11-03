@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
@@ -24,6 +24,7 @@ import { getApiClient } from "@/lib/axiosInstance";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
 import VideoUploadModal from "./VideoUploadModal";
+import { getVideoCreditCost } from "@/utils/creditValidation";
 
 // Extend window interface for temporary video data storage
 declare global {
@@ -175,6 +176,17 @@ const InputBox = () => {
     resolution: creditsResolution,
     duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
   });
+
+  // Live credit preview for current selections
+  const liveCreditCost = useMemo(() => {
+    try {
+      const dur = selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration;
+      const res = typeof creditsResolution === 'string' ? creditsResolution : undefined;
+      return Math.max(0, Number(getVideoCreditCost(selectedModel, res, dur)) || 0);
+    } catch {
+      return 0;
+    }
+  }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration]);
 
   // Auto-select model based onf generation mode (but preserve user's choice when possible)
   useEffect(() => {
@@ -3347,6 +3359,9 @@ const InputBox = () => {
               >
                 {isGenerating ? "Generating..." : "Generate Video"}
               </button>
+              <div className="text-white/80 text-sm pr-1">
+                Total credits: <span className="font-semibold">{liveCreditCost}</span>
+              </div>
             </div>
           </div>
 
@@ -3462,7 +3477,7 @@ const InputBox = () => {
                 onModelChange={handleModelChange}
                 generationMode={generationMode}
                 selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
-                selectedResolution={selectedModel.includes("MiniMax") ? selectedResolution : undefined}
+                selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
                 onCloseOtherDropdowns={() => {
                   // Close frame size dropdown
                   setCloseFrameSizeDropdown(true);

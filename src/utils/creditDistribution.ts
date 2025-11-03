@@ -21,15 +21,15 @@ export const creditDistributionData: ModelCreditInfo[] = [
     srNo: 1,
     modelName: "FLUX.1 Kontext [pro]",
     priceToPay: 0.04,
-    overCharge: 0.015,
-    userCost: 0.055,
-    creditsPerGeneration: 110,
+    overCharge: 0.01,
+    userCost: 0.05,
+    creditsPerGeneration: 100,
     plans: {
-      planA: 112.3636364,
-      planB: 224.7272727,
-      planC: 561.8181818,
-      planD: 1797.818182,
-      free: 37.45454545
+      planA: 123.6,
+      planB: 247.2,
+      planC: 618,
+      planD: 1977.6,
+      free: 20
     }
   },
   {
@@ -175,7 +175,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.42,
     overCharge: 0.06,
     userCost: 0.48,
-    creditsPerGeneration: 960,
+    creditsPerGeneration: 900,
     plans: { planA: 12.875, planB: 25.75, planC: 64.375, planD: 206, free: 4.291666667 }
   },
   {
@@ -420,9 +420,24 @@ export const creditDistributionData: ModelCreditInfo[] = [
   },
   {
     srNo: 14,
-    modelName: "Minimax-Hailuo-02 512P 6s",
+    modelName: "Minimax-Hailuo-01 512P 6s",
     priceToPay: 0.1,
-    overCharge: 0.06,
+    overCharge: 0.01,
+    userCost: 0.11,
+    creditsPerGeneration: 220,
+    plans: {
+      planA: 56.18181818,
+      planB: 112.3636364,
+      planC: 280.9090909,
+      planD: 898.9090909,
+      free: 9.090909091
+    }
+  },
+  {
+    srNo: 15,
+    modelName: "Minimax-Hailuo-02 512P 10s",
+    priceToPay: 0.15,
+    overCharge: 0.01,
     userCost: 0.16,
     creditsPerGeneration: 320,
     plans: {
@@ -430,67 +445,52 @@ export const creditDistributionData: ModelCreditInfo[] = [
       planB: 77.25,
       planC: 193.125,
       planD: 618,
-      free: 12.875
-    }
-  },
-  {
-    srNo: 15,
-    modelName: "Minimax-Hailuo-02 512P 10s",
-    priceToPay: 0.15,
-    overCharge: 0.06,
-    userCost: 0.21,
-    creditsPerGeneration: 420,
-    plans: {
-      planA: 29.42857143,
-      planB: 58.85714286,
-      planC: 147.1428571,
-      planD: 470.8571429,
-      free: 9.80952381
+      free: 6.25
     }
   },
   {
     srNo: 16,
     modelName: "Minimax-Hailuo-02 768P 6s",
     priceToPay: 0.28,
-    overCharge: 0.06,
-    userCost: 0.34,
-    creditsPerGeneration: 680,
+    overCharge: 0.01,
+    userCost: 0.29,
+    creditsPerGeneration: 580,
     plans: {
-      planA: 18.17647059,
-      planB: 36.35294118,
-      planC: 90.88235294,
-      planD: 290.8235294,
-      free: 6.058823529
+      planA: 21.31034483,
+      planB: 42.62068966,
+      planC: 106.5517241,
+      planD: 340.9655172,
+      free: 3.448275862
     }
   },
   {
     srNo: 17,
     modelName: "Minimax-Hailuo-02 768P 10s",
     priceToPay: 0.56,
-    overCharge: 0.06,
-    userCost: 0.62,
-    creditsPerGeneration: 1240,
+    overCharge: 0.01,
+    userCost: 0.57,
+    creditsPerGeneration: 1140,
     plans: {
-      planA: 9.967741935,
-      planB: 19.93548387,
-      planC: 49.83870968,
-      planD: 159.483871,
-      free: 3.322580645
+      planA: 10.84210526,
+      planB: 21.68421053,
+      planC: 54.21052632,
+      planD: 173.4736842,
+      free: 1.754385965
     }
   },
   {
     srNo: 18,
     modelName: "Minimax-Hailuo-02 1080P 6s",
     priceToPay: 0.49,
-    overCharge: 0.06,
-    userCost: 0.55,
-    creditsPerGeneration: 1100,
+    overCharge: 0.01,
+    userCost: 0.5,
+    creditsPerGeneration: 1000,
     plans: {
-      planA: 11.23636364,
-      planB: 22.47272727,
-      planC: 56.18181818,
-      planD: 179.7818182,
-      free: 3.745454545
+      planA: 12.36,
+      planB: 24.72,
+      planC: 61.8,
+      planD: 197.76,
+      free: 2
     }
   },
   {
@@ -542,150 +542,150 @@ export const creditDistributionData: ModelCreditInfo[] = [
     srNo: 22,
     modelName: "veo3 t2v 4s",
     priceToPay: 1.6,
-    overCharge: 0.06,
-    userCost: 1.66,
-    creditsPerGeneration: 3320,
+    overCharge: 0.03,
+    userCost: 1.63,
+    creditsPerGeneration: 3260,
     plans: {
-      planA: 3.722891566,
-      planB: 7.445783133,
-      planC: 18.61445783,
-      planD: 59.56626506,
-      free: 1.240963855
+      planA: 3.791411043,
+      planB: 7.582822086,
+      planC: 18.95705521,
+      planD: 60.66257669,
+      free: 0.6134969325
     }
   },
   {
     srNo: 23,
     modelName: "veo3 t2v 6s",
     priceToPay: 2.4,
-    overCharge: 0.06,
-    userCost: 2.46,
-    creditsPerGeneration: 4920,
+    overCharge: 0.03,
+    userCost: 2.43,
+    creditsPerGeneration: 4860,
     plans: {
-      planA: 2.512195122,
-      planB: 5.024390244,
-      planC: 12.56097561,
-      planD: 40.19512195,
-      free: 0.837398374
+      planA: 2.543209877,
+      planB: 5.086419753,
+      planC: 12.71604938,
+      planD: 40.69135802,
+      free: 0.4115226337
     }
   },
   {
     srNo: 24,
     modelName: "veo3 t2v 8s",
     priceToPay: 3.2,
-    overCharge: 0.06,
-    userCost: 3.26,
-    creditsPerGeneration: 6520,
+    overCharge: 0.03,
+    userCost: 3.23,
+    creditsPerGeneration: 6460,
     plans: {
-      planA: 1.895705521,
-      planB: 3.791411043,
-      planC: 9.478527607,
-      planD: 30.33128834,
-      free: 0.6319018405
+      planA: 1.913312693,
+      planB: 3.826625387,
+      planC: 9.566563467,
+      planD: 30.6130031,
+      free: 0.3095975232
     }
   },
   {
     srNo: 25,
     modelName: "veo3 i2v 8s",
     priceToPay: 3.2,
-    overCharge: 0.06,
-    userCost: 3.26,
-    creditsPerGeneration: 6520,
+    overCharge: 0.03,
+    userCost: 3.23,
+    creditsPerGeneration: 6460,
     plans: {
-      planA: 1.895705521,
-      planB: 3.791411043,
-      planC: 9.478527607,
-      planD: 30.33128834,
-      free: 0.6319018405
+      planA: 1.913312693,
+      planB: 3.826625387,
+      planC: 9.566563467,
+      planD: 30.6130031,
+      free: 0.3095975232
     }
   },
   {
     srNo: 26,
     modelName: "veo3 fast t2v 4s",
     priceToPay: 0.6,
-    overCharge: 0.06,
-    userCost: 0.66,
-    creditsPerGeneration: 1320,
+    overCharge: 0.03,
+    userCost: 0.63,
+    creditsPerGeneration: 1260,
     plans: {
-      planA: 9.363636364,
-      planB: 18.72727273,
-      planC: 46.81818182,
-      planD: 149.8181818,
-      free: 3.121212121
+      planA: 9.80952381,
+      planB: 19.61904762,
+      planC: 49.04761905,
+      planD: 156.952381,
+      free: 1.587301587
     }
   },
   {
     srNo: 27,
     modelName: "veo3 fast t2v 6s",
     priceToPay: 0.9,
-    overCharge: 0.06,
-    userCost: 0.96,
-    creditsPerGeneration: 1920,
+    overCharge: 0.03,
+    userCost: 0.93,
+    creditsPerGeneration: 1860,
     plans: {
-      planA: 6.4375,
-      planB: 12.875,
-      planC: 32.1875,
-      planD: 103,
-      free: 2.145833333
+      planA: 6.64516129,
+      planB: 13.29032258,
+      planC: 33.22580645,
+      planD: 106.3225806,
+      free: 1.075268817
     }
   },
   {
     srNo: 28,
     modelName: "veo3 fast t2v 8s",
     priceToPay: 1.2,
-    overCharge: 0.06,
-    userCost: 1.26,
-    creditsPerGeneration: 2520,
+    overCharge: 0.03,
+    userCost: 1.23,
+    creditsPerGeneration: 2460,
     plans: {
-      planA: 4.904761905,
-      planB: 9.80952381,
-      planC: 24.52380952,
-      planD: 78.47619048,
-      free: 1.634920635
+      planA: 5.024390244,
+      planB: 10.04878049,
+      planC: 25.12195122,
+      planD: 80.3902439,
+      free: 0.8130081301
     }
   },
   {
     srNo: 29,
     modelName: "veo3 fast i2v 8s",
     priceToPay: 1.2,
-    overCharge: 0.06,
-    userCost: 1.26,
-    creditsPerGeneration: 2520,
+    overCharge: 0.03,
+    userCost: 1.23,
+    creditsPerGeneration: 2460,
     plans: {
-      planA: 4.904761905,
-      planB: 9.80952381,
-      planC: 24.52380952,
-      planD: 78.47619048,
-      free: 1.634920635
+      planA: 5.024390244,
+      planB: 10.04878049,
+      planC: 25.12195122,
+      planD: 80.3902439,
+      free: 0.8130081301
     }
   },
   {
     srNo: 30,
     modelName: "RW veo3 8s",
     priceToPay: 3.2,
-    overCharge: 0.06,
-    userCost: 3.26,
-    creditsPerGeneration: 6520,
+    overCharge: 0.03,
+    userCost: 3.23,
+    creditsPerGeneration: 6460,
     plans: {
-      planA: 1.895705521,
-      planB: 3.791411043,
-      planC: 9.478527607,
-      planD: 30.33128834,
-      free: 0.6319018405
+      planA: 1.913312693,
+      planB: 3.826625387,
+      planC: 9.566563467,
+      planD: 30.6130031,
+      free: 0.3095975232
     }
   },
   {
     srNo: 31,
     modelName: "Gen-4 Aleph 10s",
     priceToPay: 1.5,
-    overCharge: 0.06,
-    userCost: 1.56,
-    creditsPerGeneration: 3120,
+    overCharge: 0.03,
+    userCost: 1.53,
+    creditsPerGeneration: 3060,
     plans: {
-      planA: 3.961538462,
-      planB: 7.923076923,
-      planC: 19.80769231,
-      planD: 63.38461538,
-      free: 1.320512821
+      planA: 4.039215686,
+      planB: 8.078431373,
+      planC: 20.19607843,
+      planD: 64.62745098,
+      free: 0.6535947712
     }
   },
   {
@@ -878,45 +878,45 @@ export const creditDistributionData: ModelCreditInfo[] = [
     srNo: 45,
     modelName: "Ideogram 3 Quality",
     priceToPay: 0.09,
-    overCharge: 0.015,
-    userCost: 0.105,
-    creditsPerGeneration: 210,
+    overCharge: 0.01,
+    userCost: 0.1,
+    creditsPerGeneration: 200,
     plans: {
-      planA: 58.85714286,
-      planB: 117.7142857,
-      planC: 294.2857143,
-      planD: 941.7142857,
-      free: 19.61904762
+      planA: 61.8,
+      planB: 123.6,
+      planC: 309,
+      planD: 988.8,
+      free: 10
     }
   },
   {
     srNo: 46,
     modelName: "Lucid Origin",
     priceToPay: 0.0765,
-    overCharge: 0.015,
-    userCost: 0.0915,
-    creditsPerGeneration: 183,
+    overCharge: 0.01,
+    userCost: 0.0865,
+    creditsPerGeneration: 173,
     plans: {
-      planA: 67.54098361,
-      planB: 135.0819672,
-      planC: 337.704918,
-      planD: 1080.655738,
-      free: 22.5136612
+      planA: 71.44508671,
+      planB: 142.8901734,
+      planC: 357.2254335,
+      planD: 1143.121387,
+      free: 11.56069364
     }
   },
   {
     srNo: 47,
     modelName: "Phoenix 1.0",
     priceToPay: 0.075,
-    overCharge: 0.015,
-    userCost: 0.09,
-    creditsPerGeneration: 180,
+    overCharge: 0.01,
+    userCost: 0.085,
+    creditsPerGeneration: 170,
     plans: {
-      planA: 68.66666667,
-      planB: 137.3333333,
-      planC: 343.3333333,
-      planD: 1098.666667,
-      free: 22.88888889
+      planA: 72.70588235,
+      planB: 145.4117647,
+      planC: 363.5294118,
+      planD: 1163.294118,
+      free: 11.76470588
     }
   },
   // Wan 2.5 Standard (T2V/I2V)
@@ -926,7 +926,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.25,
     overCharge: 0.06,
     userCost: 0.31,
-    creditsPerGeneration: 620,
+    creditsPerGeneration: 480,
     plans: {
       planA: 19.93548387,
       planB: 39.87096774,
@@ -941,7 +941,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.25,
     overCharge: 0.06,
     userCost: 0.31,
-    creditsPerGeneration: 620,
+    creditsPerGeneration: 480,
     plans: {
       planA: 19.93548387,
       planB: 39.87096774,
@@ -956,7 +956,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.5,
     overCharge: 0.06,
     userCost: 0.56,
-    creditsPerGeneration: 1120,
+    creditsPerGeneration: 900,
     plans: {
       planA: 11.03571429,
       planB: 22.07142857,
@@ -971,7 +971,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.5,
     overCharge: 0.06,
     userCost: 0.56,
-    creditsPerGeneration: 1120,
+    creditsPerGeneration: 900,
     plans: {
       planA: 11.03571429,
       planB: 22.07142857,
@@ -986,7 +986,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.75,
     overCharge: 0.06,
     userCost: 0.81,
-    creditsPerGeneration: 1620,
+    creditsPerGeneration: 1460,
     plans: {
       planA: 7.62962963,
       planB: 15.25925926,
@@ -1001,7 +1001,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.75,
     overCharge: 0.06,
     userCost: 0.81,
-    creditsPerGeneration: 1620,
+    creditsPerGeneration: 1460,
     plans: {
       planA: 7.62962963,
       planB: 15.25925926,
@@ -1016,7 +1016,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.5,
     overCharge: 0.06,
     userCost: 0.56,
-    creditsPerGeneration: 1120,
+    creditsPerGeneration: 900,
     plans: {
       planA: 11.03571429,
       planB: 22.07142857,
@@ -1031,7 +1031,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.5,
     overCharge: 0.06,
     userCost: 0.56,
-    creditsPerGeneration: 1120,
+    creditsPerGeneration: 900,
     plans: {
       planA: 11.03571429,
       planB: 22.07142857,
@@ -1046,7 +1046,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 1,
     overCharge: 0.06,
     userCost: 1.06,
-    creditsPerGeneration: 2120,
+    creditsPerGeneration: 1740,
     plans: {
       planA: 5.830188679,
       planB: 11.66037736,
@@ -1061,7 +1061,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 1,
     overCharge: 0.06,
     userCost: 1.06,
-    creditsPerGeneration: 2120,
+    creditsPerGeneration: 1740,
     plans: {
       planA: 5.830188679,
       planB: 11.66037736,
@@ -1076,7 +1076,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 1.5,
     overCharge: 0.06,
     userCost: 1.56,
-    creditsPerGeneration: 3120,
+    creditsPerGeneration: 2860,
     plans: {
       planA: 3.961538462,
       planB: 7.923076923,
@@ -1091,7 +1091,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 1.5,
     overCharge: 0.06,
     userCost: 1.56,
-    creditsPerGeneration: 3120,
+    creditsPerGeneration: 2860,
     plans: {
       planA: 3.961538462,
       planB: 7.923076923,
@@ -1107,7 +1107,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.34,
     overCharge: 0.06,
     userCost: 0.4,
-    creditsPerGeneration: 800,
+    creditsPerGeneration: 740,
     plans: {
       planA: 15.45,
       planB: 30.9,
@@ -1122,7 +1122,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.34,
     overCharge: 0.06,
     userCost: 0.4,
-    creditsPerGeneration: 800,
+    creditsPerGeneration: 740,
     plans: {
       planA: 15.45,
       planB: 30.9,
@@ -1137,7 +1137,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.51,
     overCharge: 0.06,
     userCost: 0.57,
-    creditsPerGeneration: 1140,
+    creditsPerGeneration: 1080,
     plans: {
       planA: 10.84210526,
       planB: 21.68421053,
@@ -1152,7 +1152,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.51,
     overCharge: 0.06,
     userCost: 0.57,
-    creditsPerGeneration: 1140,
+    creditsPerGeneration: 1080,
     plans: {
       planA: 10.84210526,
       planB: 21.68421053,
@@ -1167,7 +1167,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.68,
     overCharge: 0.06,
     userCost: 0.74,
-    creditsPerGeneration: 1480,
+    creditsPerGeneration: 1420,
     plans: {
       planA: 8.351351351,
       planB: 16.7027027,
@@ -1182,7 +1182,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 0.68,
     overCharge: 0.06,
     userCost: 0.74,
-    creditsPerGeneration: 1480,
+    creditsPerGeneration: 1420,
     plans: {
       planA: 8.351351351,
       planB: 16.7027027,
@@ -1197,7 +1197,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 1.02,
     overCharge: 0.06,
     userCost: 1.08,
-    creditsPerGeneration: 2160,
+    creditsPerGeneration: 2100,
     plans: {
       planA: 5.722222222,
       planB: 11.44444444,
@@ -1212,7 +1212,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
     priceToPay: 1.02,
     overCharge: 0.06,
     userCost: 1.08,
-    creditsPerGeneration: 2160,
+    creditsPerGeneration: 2100,
     plans: {
       planA: 5.722222222,
       planB: 11.44444444,
@@ -1248,4 +1248,4 @@ export const PLAN_CREDITS = {
   FREE: 4120
 } as const;
 
-export const PRICING_VERSION = 'bfl-v1';
+export const PRICING_VERSION = 'bfl-v2';
