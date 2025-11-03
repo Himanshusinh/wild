@@ -206,7 +206,7 @@ const Nav = () => {
 
   return (
     <div className='fixed top-0 left-0 right-0 z-[70] w-full'>
-      <div className='w-full bg-blue-500/10 backdrop-blur-xl border-b border-white/10 px-2 md:px-4 py-2 md:py-3'>
+      <div className='w-full bg-black/10 backdrop-blur-3xl border-b border-white/10 px-2 md:px-4 py-2 md:py-3'>
         <div className='flex items-center justify-end gap-2 md:gap-3 relative'>
           {/* Group 1: search + credits inside shared background */}
           <div className='flex items-center gap-2 md:gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-1.5 py-0.5 md:px-2 md:py-1'>
@@ -214,7 +214,7 @@ const Nav = () => {
             <path d='M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z' stroke='currentColor' strokeWidth='2' className='text-white/70'/>
             <path d='M21 21l-4.3-4.3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' className='text-white/70'/>
           </svg> */}
-          <button className='flex items-center rounded-full text-white text-sm md:text-lg px-3 py-1.5 md:px-6 md:py-2 gap-1.5 md:gap-2'>
+          <button className='flex items-center rounded-full  text-white text-sm md:text-lg px-3 py-1.5 md:px-6 md:py-2 gap-1.5 md:gap-2'>
             {loading ? '...' : (creditBalance ?? userData?.credits ?? 150)}
 
             <Image className='cursor-pointer md:w-[25px] md:h-[25px]' src={imageRoutes.icons.coins} alt='logo' width={18} height={18} />
