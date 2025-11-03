@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import ResizePreview from './ResizePreview';
 import { FilePlus, ChevronUp } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
@@ -40,6 +41,9 @@ const EditImageInterface: React.FC = () => {
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
+  // Resize UI state
+  const [resizeAspect, setResizeAspect] = useState<'Landscape'|'Portrait'|'Square'|'Custom'>('Square');
+  const [resizeSize, setResizeSize] = useState<string>('1280 × 1280');
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
   const [showImageMenu, setShowImageMenu] = useState(false);
@@ -85,7 +89,20 @@ const EditImageInterface: React.FC = () => {
   const [backgroundType, setBackgroundType] = useState('');
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'resizeAspect' | 'resizeSize' | ''>('');
+  // Derive canonical sizes per aspect
+  const getResizeSizeOptions = useCallback((aspect: 'Landscape'|'Portrait'|'Square'|'Custom'): string[] => {
+    if (aspect === 'Landscape') return ['1280 × 720', '1920 × 1080', '2560 × 1440'];
+    if (aspect === 'Portrait') return ['720 × 1280', '1080 × 1920', '1440 × 2560'];
+    if (aspect === 'Square') return ['1280 × 1280', '1024 × 1024', '2048 × 2048'];
+    return ['Custom'];
+  }, []);
+
+  useEffect(() => {
+    if (resizeAspect === 'Landscape') setResizeSize('1280 × 720');
+    else if (resizeAspect === 'Portrait') setResizeSize('720 × 1280');
+    else if (resizeAspect === 'Square') setResizeSize('1280 × 1280');
+  }, [resizeAspect]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
@@ -1032,6 +1049,61 @@ const EditImageInterface: React.FC = () => {
             <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
 
             <div className="space-y-1">
+              {selectedFeature === 'resize' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Aspect</label>
+                    <div className="relative edit-dropdown">
+                      <button
+                        onClick={() => setActiveDropdown(activeDropdown === 'resizeAspect' ? '' : 'resizeAspect')}
+                        className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between text-white/90`}
+                      >
+                        <span className="truncate">{resizeAspect}</span>
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeAspect' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'resizeAspect' && (
+                        <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2`}> 
+                          {(['Landscape','Portrait','Square','Custom'] as const).map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={() => { setResizeAspect(opt); setActiveDropdown(''); }}
+                              className={`w-full px-3 py-2 text-left text-[13px] ${resizeAspect === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Size</label>
+                    <div className="relative edit-dropdown">
+                      <button
+                        onClick={() => setActiveDropdown(activeDropdown === 'resizeSize' ? '' : 'resizeSize')}
+                        className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between text-white/90`}
+                      >
+                        <span className="truncate">{resizeSize}</span>
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeSize' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'resizeSize' && (
+                        <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto`}>
+                          {getResizeSizeOptions(resizeAspect).map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => { setResizeSize(s); setActiveDropdown(''); }}
+                              className={`w-full px-3 py-2 text-left text-[13px] ${resizeSize === s ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
@@ -1400,6 +1472,14 @@ const EditImageInterface: React.FC = () => {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {selectedFeature === 'resize' && inputs[selectedFeature] && (
+                <div className="w-full h-full relative">
+                  {/** Split layout: controls already on the left; render the preview here with draggable handles */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <ResizePreview imageUrl={inputs[selectedFeature] as string} aspectLabel={resizeAspect} />
                 </div>
               )}
 
