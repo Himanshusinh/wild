@@ -3,9 +3,7 @@
 // components/CommunityCreations.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
-import Image from "next/image";
-import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
-import SmartImage from '@/components/media/SmartImage'
+import { toThumbUrl, toMediaProxy } from '../../../../lib/thumb'
 
 /* ---------- Types ---------- */
 type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
