@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image, { ImageProps } from 'next/image';
-import { toThumbUrl } from '@/lib/thumb';
+import { toThumbUrl, toMediaProxy, toZataPath } from '@/lib/thumb';
 
 type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> & {
 	src: string;
@@ -76,11 +76,21 @@ const SmartImage: React.FC<SmartImageProps> = ({
 		)
 	)}`;
 
-	// Prefer our thumbnail proxy for Zata paths; fallback to original src otherwise
+	// Prefer our thumbnail proxy for Zata paths; fallback to media proxy, then original src
 	const optimized = (() => {
 		try {
-			const u = toThumbUrl(src, { w: thumbWidth, q: thumbQuality });
-			return u || src;
+			// Check if this is a Zata URL
+			const zataPath = toZataPath(src);
+			if (zataPath) {
+				// Try thumbnail proxy first
+				const thumbUrl = toThumbUrl(src, { w: thumbWidth, q: thumbQuality });
+				if (thumbUrl) return thumbUrl;
+				// Fallback to media proxy to avoid SSL certificate issues
+				const mediaProxyUrl = toMediaProxy(src);
+				if (mediaProxyUrl) return mediaProxyUrl;
+			}
+			// For non-Zata URLs, use original src
+			return src;
 		} catch {
 			return src;
 		}

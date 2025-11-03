@@ -51,6 +51,7 @@ import { Button } from "@/components/ui/Button";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import axiosInstance from "@/lib/axiosInstance";
 import Image from "next/image";
+import SmartImage from "@/components/media/SmartImage";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -1741,20 +1742,19 @@ const InputBox = () => {
                         </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <Image 
+                          <SmartImage 
                             src={image.url} 
                             alt={`Generated image ${idx + 1}`} 
                             fill 
                             className="object-cover transition-opacity duration-300" 
                             sizes="192px"
-                            onLoad={() => {
+                            onLoadingComplete={() => {
                               // Smooth fade-in effect
                               const img = document.querySelector(`[alt="Generated image ${idx + 1}"]`) as HTMLElement;
                               if (img) {
                                 img.style.opacity = '1';
                               }
                             }}
-                            style={{ opacity: 0 }}
                           />
                           {/* Shimmer loading effect */}
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
@@ -1822,20 +1822,19 @@ const InputBox = () => {
                               </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <Image 
+                          <SmartImage 
                             src={image.url} 
                             alt={`Generated image ${idx + 1}`} 
                             fill 
                             className="object-contain transition-opacity duration-300" 
                             sizes="192px"
-                            onLoad={() => {
+                            onLoadingComplete={() => {
                               // Smooth fade-in effect
                               const img = document.querySelector(`[alt="Generated image ${idx + 1}"]`) as HTMLElement;
                               if (img) {
                                 img.style.opacity = '1';
                               }
                             }}
-                            style={{ opacity: 0 }}
                           />
                           {/* Hover copy button overlay */}
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -1896,13 +1895,13 @@ const InputBox = () => {
                           ) : (
                             // Completed image with shimmer loading
                             <div className="relative w-full h-full group">
-                              <Image
+                              <SmartImage
                                 src={image.url}
                                 alt={entry.prompt}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200 "
                                 sizes="192px"
-                                onLoad={() => {
+                                onLoadingComplete={() => {
                                   // Remove shimmer when image loads
                                   setTimeout(() => {
                                     const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;

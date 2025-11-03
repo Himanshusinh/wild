@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import SmartImage from "@/components/media/SmartImage";
 import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -504,7 +505,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           </div>
         ) : (
                           <div className="relative w-full h-full group">
-                            <Image src={image.url || image.originalUrl || '/placeholder-logo.png'} alt={localGeneratingEntries[0].prompt} fill loading="lazy" className="object-cover" sizes="192px" />
+                            <SmartImage src={image.url || image.originalUrl || '/placeholder-logo.png'} alt={localGeneratingEntries[0].prompt} fill className="object-cover" sizes="192px" />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover copy button overlay */}
                             <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -648,14 +649,13 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           ) : (
                             // Completed logo
                           <div className="relative w-full h-full group">
-                            <Image
+                            <SmartImage
                                 src={image.url || image.originalUrl || '/placeholder-logo.png'}
                                 alt={entry.prompt}
                               fill
-                                loading="lazy"
                                 className="object-cover transition-transform group-hover:scale-105"
                               sizes="192px"
-                              onLoad={() => {
+                              onLoadingComplete={() => {
                                 setTimeout(() => {
                                   const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
                                     if (shimmer) shimmer.style.opacity = '0';

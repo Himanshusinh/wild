@@ -33,8 +33,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const toProxyResourceUrl = React.useCallback((urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}?ngrok-skip-browser-warning=true` : '';
-  }, [API_BASE, toProxyPath]);
+    // Use frontend Next.js proxy instead of backend API to avoid SSL issues
+    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
+  }, [toProxyPath]);
   
   // Move all hooks to the top before any conditional returns
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
@@ -318,6 +319,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     };
   }, [preview]);
 
+  // Helper to get media proxy URL
+  const toMediaProxyUrl = React.useCallback((urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+  }, [toProxyPath]);
+
   React.useEffect(() => {
     if (!preview) return;
     
@@ -327,11 +334,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
         const selectedImage = selectedPair.image || preview.image;
-        const url = toProxyResourceUrl(selectedImage?.url || preview.image.url);
+        // Use media proxy like SmartImage does (more reliable than resource proxy)
+        const url = toMediaProxyUrl(selectedImage?.url || preview.image.url);
         if (!url) return;
         const res = await fetch(url, {
-          credentials: 'include',
-          headers: { 'ngrok-skip-browser-warning': 'true' }
+          credentials: 'include'
         });
         if (!res.ok) return;
         const blob = await res.blob();
@@ -344,7 +351,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return () => {
       if (revoke) URL.revokeObjectURL(revoke);
     };
-  }, [selectedIndex, preview, sameDateGallery, toProxyResourceUrl]);
+  }, [selectedIndex, preview, sameDateGallery, toMediaProxyUrl]);
 
   if (!preview) return null;
 
@@ -621,7 +628,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             {selectedImage?.url && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
-                  src={objectUrl || selectedImage.url || toProxyResourceUrl(selectedImage.url)}
+                  src={objectUrl || toMediaProxyUrl(selectedImage.url)}
                   alt={selectedEntry?.prompt}
                   className="object-contain w-auto h-auto max-w-full max-h-full mx-auto"
                 />
@@ -645,7 +652,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             </button>
           </div>
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar mt-10">
+          <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">
@@ -787,7 +794,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
-                      <img src={pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -924,7 +931,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               }}
             >
               <img
-                src={objectUrl || selectedImage?.url || preview.image.url}
+                src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
                 alt={selectedEntry?.prompt}
                 onLoad={(e) => {
                   const img = e.currentTarget as HTMLImageElement;

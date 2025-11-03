@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import SmartImage from "@/components/media/SmartImage";
 
 type UploadModalProps = {
   isOpen: boolean;
@@ -80,7 +81,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                         if (selected) next.delete(im.url); else next.add(im.url);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        <Image src={im.url} alt="library" fill className="object-cover" />
+                        <SmartImage src={im.url} alt="library" fill className="object-cover" />
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>
