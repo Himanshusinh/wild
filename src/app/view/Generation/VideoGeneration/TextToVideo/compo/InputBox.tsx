@@ -40,6 +40,7 @@ import QualityDropdown from "./QualityDropdown";
 import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
+import { toThumbUrl } from '@/lib/thumb';
 
 
 const InputBox = () => {
@@ -2720,6 +2721,7 @@ const InputBox = () => {
                                         playsInline
                                         loop
                                         preload="metadata"
+                                        poster={toThumbUrl(raw, { w: 640, q: 60 }) || undefined}
                                         onMouseEnter={async (e) => {
                                           const video = e.currentTarget;
                                           const videoId = `${entry.id}-${video.id}`;

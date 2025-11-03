@@ -139,6 +139,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
                   muted
                   playsInline
                   preload="metadata"
+                  poster={toThumbUrl(src, { w: 640, q: 60 }) || undefined}
                   onMouseEnter={async (e) => {
                     try { await (e.currentTarget as HTMLVideoElement).play() } catch {}
                   }}
@@ -158,6 +159,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               thumbWidth={640}
               thumbQuality={60}
+              decorative
               priority={false}
             />
           )}
@@ -325,19 +327,19 @@ export default function CommunityCreations({
                   return (
                     <div className="bg-[#0a0f1a] p-6 rounded-2xl text-white/90">
                       <div className="mb-3">Audio Preview</div>
-                      <audio src={toMediaProxy(src)} controls autoPlay className="w-[80vw] max-w-[720px]" />
+                      <audio src={toMediaProxy(src)} controls autoPlay preload="metadata" className="w-[80vw] max-w-[720px]" />
                     </div>
                   )
                 }
                 if (isVideo) {
                   return (
-                    <video src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} controls autoPlay className="max-w-[92vw] max-h-[88vh] rounded-2xl" />
+                    <video src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} controls autoPlay className="max-w-[92vw] max-h-[88vh] rounded-2xl" poster={toThumbUrl(src, { w: 1280, q: 60 }) || undefined} />
                   )
                 }
                 return (
                   // Full resolution via media proxy for images
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt={preview.prompt || 'preview'} className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
+                  <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt="" aria-hidden="true" decoding="async" fetchPriority="high" className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
                 )
               })()}
               {preview.prompt && (

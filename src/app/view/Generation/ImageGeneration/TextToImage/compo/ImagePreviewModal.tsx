@@ -629,7 +629,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
                   src={objectUrl || toMediaProxyUrl(selectedImage.url)}
-                  alt={selectedEntry?.prompt}
+                  alt=""
+                  aria-hidden="true"
+                  decoding="async"
+                  fetchPriority="high"
                   className="object-contain w-auto h-auto max-w-full max-h-full mx-auto"
                 />
                 {isUserUploadSelected && (
@@ -794,7 +797,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
-                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt="" aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -932,7 +935,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             >
               <img
                 src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
-                alt={selectedEntry?.prompt}
+                alt=""
+                aria-hidden="true"
+                decoding="async"
+                fetchPriority="high"
                 onLoad={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
                   setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });

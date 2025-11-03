@@ -8,6 +8,8 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 	src: string;
 	thumbWidth?: number;
 	thumbQuality?: number;
+	/** If true, renders as decorative (alt="") to avoid alt text flash on load */
+	decorative?: boolean;
 	// Note: Next/Image onLoadingComplete receives HTMLImageElement
 	onLoadingComplete?: (img: HTMLImageElement) => void;
 };
@@ -30,6 +32,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	fetchPriority,
 	thumbWidth = 640,
 	thumbQuality = 60,
+	decorative,
 	onLoadingComplete,
 	...rest
 }) => {
@@ -47,10 +50,15 @@ const SmartImage: React.FC<SmartImageProps> = ({
 		}
 	})();
 
+	// Use empty alt if decorative or alt not provided to prevent caption flashes on load
+	const finalAlt = decorative ? '' : (typeof alt === 'string' ? alt : '');
+	// Default loading behavior: lazy unless explicitly prioritized
+	const loading = (rest as any).loading ?? (priority ? 'eager' : 'lazy');
+
 	return (
 		<Image
 			src={optimized}
-			alt={alt}
+			alt={finalAlt}
 			className={className}
 			sizes={sizes}
 			{...(fill ? { fill: true } : { width, height })}
@@ -58,6 +66,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 			blurDataURL={BLUR_PLACEHOLDER}
 			priority={priority}
 			fetchPriority={fetchPriority}
+			loading={loading}
 			onLoadingComplete={(img) => {
 				try { onLoadingComplete && onLoadingComplete(img); } catch {}
 			}}

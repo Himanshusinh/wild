@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { toMediaProxy, toThumbUrl } from '@/lib/thumb';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
@@ -127,12 +128,13 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         <video
-                          src={videoUrl}
+                          src={(toMediaProxy(videoUrl) || videoUrl)}
                           className="w-full h-full object-cover transition-opacity duration-200"
                           muted
                           playsInline
                           loop
                           preload="metadata"
+                          poster={toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined}
                           onMouseEnter={async (e) => {
                             const video = e.currentTarget;
                             console.log('🎥 VIDEO HOVER ENTER (UploadModal):', {
