@@ -607,7 +607,7 @@ export default function ArtStationPage() {
                       style={{ aspectRatio: tileRatio, minHeight: 200 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
                     >
-                      {!loadedTiles.has(cardId) && (
+                      {kind !== 'audio' && !loadedTiles.has(cardId) && (
                         <div className="absolute inset-0 bg-white/10" />
                       )}
                       {(() => {
@@ -636,6 +636,20 @@ export default function ArtStationPage() {
                               />
                             )
                           })()
+                        ) : kind === 'audio' ? (
+                          <>
+                            {/* Use a simple music logo image to avoid prompt alt text showing */}
+                            <Image
+                              src="/icons/musicgenerationwhite.svg"
+                              alt=""
+                              fill
+                              sizes={sizes}
+                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827]"
+                              priority={isPriority}
+                              fetchPriority={isPriority ? 'high' : 'auto'}
+                              onLoadingComplete={() => { markTileLoaded(cardId) }}
+                            />
+                          </>
                         ) : (
                           <Image
                             src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
@@ -661,6 +675,19 @@ export default function ArtStationPage() {
                         <div className={`absolute bottom-2 right-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
                           <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
                             <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-6 h-6 opacity-90" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Music overlay if the item contains audio tracks (show even when tile is an image/video) */}
+                      {(item as any).audios && (item as any).audios.length > 0 && (
+                        <div className={`absolute bottom-2 left-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
+                          <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white opacity-90">
+                              <path d="M9 17a4 4 0 1 0 0-8v8z" />
+                              <path d="M9 9v8" />
+                              <path d="M9 9l10-3v8" />
+                            </svg>
                           </div>
                         </div>
                       )}
