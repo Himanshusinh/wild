@@ -967,7 +967,7 @@ const EditImageInterface: React.FC = () => {
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
-              className={`min-w-[260px] bg-white/5 rounded-lg p-3 border cursor-pointer transition-all ${selectedFeature === feature.id
+              className={`min-w-auto bg-white/5 rounded-lg p-3 border cursor-pointer transition-all ${selectedFeature === feature.id
                   ? 'border-white/30 bg-white/10'
                   : 'border-white/10 hover:bg-white/10'
                 }`}
