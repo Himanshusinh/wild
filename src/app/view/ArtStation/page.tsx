@@ -41,7 +41,7 @@ export default function ArtStationPage() {
     return `${dd}-${mm}-${yyyy} ${time}`
   }
   const [items, setItems] = useState<PublicItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -65,6 +65,11 @@ export default function ArtStationPage() {
   // Fancy reveal observer state
   const [visibleTiles, setVisibleTiles] = useState<Set<string>>(new Set())
   const revealRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const initialLoadDoneRef = useRef(false)
+  // Masonry-like grid spans while preserving left-to-right order
+  const [tileSpans, setTileSpans] = useState<Record<string, number>>({})
+  const tileRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   // (deduped) measuredRatios declared above
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -163,7 +168,7 @@ export default function ArtStationPage() {
       default:
         return { mode: 'all' };
     }
-  };
+    };
 
   const fetchFeed = async (reset = false) => {
     try {
@@ -284,6 +289,8 @@ export default function ArtStationPage() {
         // avoid tight loop: yield microtask
         Promise.resolve().then(() => fetchFeed(next.reset))
       }
+      // mark initial load for this tab as complete so infinite scroll can activate
+      initialLoadDoneRef.current = true
     }
   }
 
@@ -317,6 +324,10 @@ export default function ArtStationPage() {
     didFetchForCategoryRef.current = activeCategory
     // reset concurrency guards
     loadingMoreRef.current = false
+    // scroll to top for a clean start of the new category
+    try { scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+    // block infinite scroll until first page for this tab finishes
+    initialLoadDoneRef.current = false
     setItems([])
     setCursor(undefined)
     setHasMore(true)
@@ -327,11 +338,14 @@ export default function ArtStationPage() {
   // Infinite scroll observer
   useEffect(() => {
     if (!sentinelRef.current) return
+    // Don’t start observer until initial page for this tab is loaded
+    if (!initialLoadDoneRef.current) return
     const el = sentinelRef.current
     // Disconnect any prior observer before creating a new one for this tab/state
     let observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0]
       if (!entry.isIntersecting) return
+      if (!initialLoadDoneRef.current) return
       // Serialize loads
       if (loading || loadingMoreRef.current || !hasMore) {
         return
@@ -353,7 +367,7 @@ export default function ArtStationPage() {
     return () => {
       try { observer.disconnect() } catch { }
     }
-  }, [hasMore, loading, cursor, activeCategory])
+  }, [hasMore, loading, cursor, activeCategory, items.length])
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
@@ -493,6 +507,8 @@ export default function ArtStationPage() {
       next.add(tileId)
       return next
     })
+    // Recompute span on load complete for accurate height
+    requestAnimationFrame(() => measureTileSpan(tileId))
   }
 
   const noteMeasuredRatio = (key: string, width: number, height: number) => {
@@ -530,6 +546,48 @@ export default function ArtStationPage() {
 
   // (columns masonry) no measurement needed
 
+  // Compute and apply grid-row span for a tile to achieve masonry look while preserving DOM order
+  const measureTileSpan = (tileId: string) => {
+    try {
+      const el = tileRefs.current[tileId]
+      if (!el) return
+      // Measure inner content if available for more stable height
+      const inner = el.querySelector('.masonry-item-inner') as HTMLElement | null
+      const rect = (inner || el).getBoundingClientRect()
+      const height = rect.height
+      // Keep rowHeight small; gap must match grid gap (Tailwind gap-3 = 12px)
+      const rowHeight = 8 // px
+      const rowGap = 12 // px
+      const span = Math.max(10, Math.ceil((height + rowGap) / (rowHeight + rowGap)))
+      setTileSpans(prev => (prev[tileId] === span ? prev : { ...prev, [tileId]: span }))
+    } catch { }
+  }
+
+  // Setup a ResizeObserver to recompute spans when tiles or container resize
+  useEffect(() => {
+    try {
+      if (resizeObserverRef.current) resizeObserverRef.current.disconnect()
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const target = entry.target as HTMLElement
+          const id = target.dataset.tileId
+          if (id) measureTileSpan(id)
+        }
+      })
+      resizeObserverRef.current = ro
+      // Observe current tile elements
+      Object.entries(tileRefs.current).forEach(([id, el]) => {
+        if (el) {
+          el.dataset.tileId = id
+          try { ro.observe(el) } catch { }
+        }
+      })
+      return () => { try { ro.disconnect() } catch { } }
+    } catch {
+      return () => { }
+    }
+  }, [cards])
+
   // duplicate removed
 
   return (
@@ -562,7 +620,7 @@ export default function ArtStationPage() {
                       }`}
                   >
                     {category}
-                  </button>
+                  </button> 
                 ))}
 
               </div>
@@ -573,7 +631,11 @@ export default function ArtStationPage() {
 
           {/* Scrollable feed container */}
           <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
-          <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
+          {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 [overflow-anchor:none]"
+            style={{ gridAutoRows: '8px' }}
+          >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
@@ -589,8 +651,7 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className={`break-inside-avoid mb-1 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] inline-block w-full align-top ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
-                  style={{ transitionDelay: `${(idx % 12) * 35}ms` }}
+                  className={`mb-3 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
@@ -599,14 +660,18 @@ export default function ArtStationPage() {
                     setSelectedAudioIndex(0)
                     setPreview({ kind, url: media.url, item })
                   }}
-                  ref={(el) => { revealRefs.current[cardId] = el }}
+                  ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
+                  style={{
+                    transitionDelay: `${(idx % 12) * 35}ms`,
+                    gridRowEnd: `span ${tileSpans[cardId] || 30}`
+                  }}
                 >
-                  <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                  <div className="masonry-item-inner relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
                     <div
                       style={{ aspectRatio: tileRatio, minHeight: 200 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
                     >
-                      {!loadedTiles.has(cardId) && (
+                      {kind !== 'audio' && !loadedTiles.has(cardId) && (
                         <div className="absolute inset-0 bg-white/10" />
                       )}
                       {(() => {
@@ -635,6 +700,20 @@ export default function ArtStationPage() {
                               />
                             )
                           })()
+                        ) : kind === 'audio' ? (
+                          <>
+                            {/* Use a simple music logo image to avoid prompt alt text showing */}
+                            <Image
+                              src="/icons/musicgenerationwhite.svg"
+                              alt=""
+                              fill
+                              sizes={sizes}
+                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827]"
+                              priority={isPriority}
+                              fetchPriority={isPriority ? 'high' : 'auto'}
+                              onLoadingComplete={() => { markTileLoaded(cardId) }}
+                            />
+                          </>
                         ) : (
                           <Image
                             src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
@@ -663,6 +742,19 @@ export default function ArtStationPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Music overlay if the item contains audio tracks (show even when tile is an image/video) */}
+                      {(item as any).audios && (item as any).audios.length > 0 && (
+                        <div className={`absolute bottom-2 left-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
+                          <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white opacity-90">
+                              <path d="M9 17a4 4 0 1 0 0-8v8z" />
+                              <path d="M9 9v8" />
+                              <path d="M9 9l10-3v8" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Hover Overlay - Profile and Like Button */}
@@ -688,7 +780,7 @@ export default function ArtStationPage() {
                           <div className="relative">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
-                              className="peer p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                              className="peer p-2 rounded-lg backdrop-blur-3xl shadow-2xl bg-white/10 text-white/80 hover:bg-white/30 transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -700,7 +792,7 @@ export default function ArtStationPage() {
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
-                                className="peer p-2 rounded-full bg-red-500/70 hover:bg-red-500 text-white transition-colors"
+                                className="peer p-2 rounded-lg bg-red-500/70 hover:bg-red-500 text-white transition-colors"
                               // title="Delete"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -725,19 +817,23 @@ export default function ArtStationPage() {
             })}
           </div>
 
-          {/* Loading indicator */}
+          {/* Loading indicator for pagination */}
           {loading && items.length > 0 && (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">{activeCategory === 'All' ? 'Loading more...' : `Loading ${activeCategory}...`}</p>
+              <p className="text-white/60 mt-2">Loading more...</p>
             </div>
           )}
 
-          {/* Initial loading */}
+          {/* Initial loading - unified logo across tabs */}
           {loading && items.length === 0 && (
-            <div className="text-center py-16">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-4">{activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}</p>
+            <div className="flex items-center justify-center py-28">
+              <div className="flex flex-col items-center gap-4">
+                <Image src="/styles/Logo.gif" alt="Loading" width={112} height={112} className="w-28 h-28" />
+                <div className="text-white text-lg">
+                  Loading Art Station...
+                </div>
+              </div>
             </div>
           )}
 
@@ -773,7 +869,7 @@ export default function ArtStationPage() {
                       <div className="relative group">
                         <button
                           title="Delete"
-                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                           onClick={() => confirmDelete(preview.item)}
                         >
                           <Trash2 className="w-4 h-4" />

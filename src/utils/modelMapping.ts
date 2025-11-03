@@ -192,55 +192,104 @@ export const MODEL_MAPPING: ModelMapping[] = [
     frontendValue: 'veo3-t2v-4s',
     creditModelName: 'veo3 t2v 4s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-t2v-6s',
     creditModelName: 'veo3 t2v 6s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-t2v-8s',
     creditModelName: 'veo3 t2v 8s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-i2v-8s',
     creditModelName: 'veo3 i2v 8s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-fast-t2v-4s',
     creditModelName: 'veo3 fast t2v 4s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-fast-t2v-6s',
     creditModelName: 'veo3 fast t2v 6s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-fast-t2v-8s',
     creditModelName: 'veo3 fast t2v 8s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'veo3-fast-i2v-8s',
     creditModelName: 'veo3 fast i2v 8s',
     generationType: 'video',
-    provider: 'runway'
+    provider: 'fal'
   },
   {
     frontendValue: 'rw-veo3-8s',
     creditModelName: 'RW veo3 8s',
     generationType: 'video',
     provider: 'runway'
+  },
+  // Veo 3.1 Models (FAL)
+  {
+    frontendValue: 'veo3.1-t2v-4s',
+    creditModelName: 'Veo 3.1 T2V 4s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-t2v-6s',
+    creditModelName: 'Veo 3.1 T2V 6s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-t2v-8s',
+    creditModelName: 'Veo 3.1 T2V 8s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-i2v-8s',
+    creditModelName: 'Veo 3.1 I2V 8s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-t2v-4s',
+    creditModelName: 'Veo 3.1 Fast T2V 4s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-t2v-6s',
+    creditModelName: 'Veo 3.1 Fast T2V 6s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-t2v-8s',
+    creditModelName: 'Veo 3.1 Fast T2V 8s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-i2v-8s',
+    creditModelName: 'Veo 3.1 Fast I2V 8s',
+    generationType: 'video',
+    provider: 'fal'
   },
   
   // WAN 2.5 Standard Models
@@ -322,6 +371,148 @@ export const MODEL_MAPPING: ModelMapping[] = [
       resolution: ['720p', '1080p'],
       duration: [5, 10]
     }
+  },
+
+  // Seedance Models (Replicate)
+  {
+    frontendValue: 'seedance-1.0-pro-t2v',
+    creditModelName: 'Seedance 1.0 Pro T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-pro-i2v',
+    creditModelName: 'Seedance 1.0 Pro I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-lite-t2v',
+    creditModelName: 'Seedance 1.0 Lite T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-lite-i2v',
+    creditModelName: 'Seedance 1.0 Lite I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+
+  // PixVerse Models (Replicate)
+  {
+    frontendValue: 'pixverse-v5-t2v',
+    creditModelName: 'PixVerse 5 T2V', // Base name, duration and quality appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['360p', '540p', '720p', '1080p'],
+      duration: [5, 8]
+    }
+  },
+  {
+    frontendValue: 'pixverse-v5-i2v',
+    creditModelName: 'PixVerse 5 I2V', // Base name, duration and quality appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['360p', '540p', '720p', '1080p'],
+      duration: [5, 8]
+    }
+  },
+
+  // Sora 2 Models (FAL)
+  {
+    frontendValue: 'sora2-t2v',
+    creditModelName: 'Sora 2 T2V', // Base name, duration appended dynamically (always 720p)
+    generationType: 'video',
+    provider: 'fal',
+    options: {
+      resolution: ['720p'],
+      duration: [4, 8, 12]
+    }
+  },
+  {
+    frontendValue: 'sora2-pro-t2v',
+    creditModelName: 'Sora 2 Pro T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'fal',
+    options: {
+      resolution: ['720p', '1080p'],
+      duration: [4, 8, 12]
+    }
+  },
+  {
+    frontendValue: 'sora2-i2v',
+    creditModelName: 'Sora 2 I2V', // Base name, duration appended dynamically (auto/720p)
+    generationType: 'video',
+    provider: 'fal',
+    options: {
+      resolution: ['auto', '720p'],
+      duration: [4, 8, 12]
+    }
+  },
+  {
+    frontendValue: 'sora2-pro-i2v',
+    creditModelName: 'Sora 2 Pro I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'fal',
+    options: {
+      resolution: ['auto', '720p', '1080p'],
+      duration: [4, 8, 12]
+    }
+  },
+  {
+    frontendValue: 'sora2-v2v-remix',
+    creditModelName: 'Sora 2 V2V Remix', // Uses source video's duration and resolution
+    generationType: 'video',
+    provider: 'fal'
+  },
+
+  // LTX V2 (FAL)
+  {
+    frontendValue: 'ltx2-pro-t2v',
+    creditModelName: 'LTX V2 Pro T2V', // priced dynamically via getCreditsForModel
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+  {
+    frontendValue: 'ltx2-fast-t2v',
+    creditModelName: 'LTX V2 Fast T2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+  {
+    frontendValue: 'ltx2-pro-i2v',
+    creditModelName: 'LTX V2 Pro I2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+  {
+    frontendValue: 'ltx2-fast-i2v',
+    creditModelName: 'LTX V2 Fast I2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
   },
 
   // MUSIC GENERATION MODELS
@@ -407,6 +598,53 @@ export const buildCreditModelName = (
         modelName = `Kling 2.1 I2V ${d}s ${res}`;
       }
     }
+  }
+  // Handle Seedance models
+  else if (mapping.frontendValue.includes('seedance') && options?.duration && options?.resolution) {
+    const d = options.duration;
+    const res = String(options.resolution).toLowerCase();
+    const resNormalized = res.includes('480') ? '480p' : res.includes('720') ? '720p' : '1080p';
+    // Map duration: 2-6s -> 5s, 7-12s -> 10s for pricing
+    const durForPricing = (d >= 2 && d <= 6) ? 5 : (d >= 7 && d <= 12) ? 10 : 5;
+    const tier = mapping.frontendValue.includes('lite') ? 'Lite' : 'Pro';
+    const mode = mapping.frontendValue.includes('i2v') ? 'I2V' : 'T2V';
+    modelName = `Seedance 1.0 ${tier} ${mode} ${durForPricing}s ${resNormalized}`;
+  }
+  // Handle PixVerse models
+  else if (mapping.frontendValue.includes('pixverse') && options?.duration && options?.resolution) {
+    const d = options.duration;
+    const qual = String(options.resolution).toLowerCase();
+    // Normalize quality: 360p, 540p, 720p, 1080p
+    const qualNormalized = qual.includes('360') ? '360p' : qual.includes('540') ? '540p' : qual.includes('720') ? '720p' : '1080p';
+    // Duration: 5 or 8 seconds
+    const durForPricing = (d === 5 || d === 8) ? d : 5;
+    const mode = mapping.frontendValue.includes('i2v') ? 'I2V' : 'T2V';
+    modelName = `PixVerse 5 ${mode} ${durForPricing}s ${qualNormalized}`;
+  }
+  // Handle Sora 2 models
+  else if (mapping.frontendValue.includes('sora2')) {
+    const isPro = mapping.frontendValue.includes('pro');
+    const isV2V = mapping.frontendValue.includes('v2v');
+    const isI2V = mapping.frontendValue.includes('i2v');
+    
+    if (isV2V) {
+      // V2V Remix uses source video's duration and resolution (handled by backend)
+      // No duration/resolution needed for credit model name
+      modelName = `Sora 2 V2V Remix`;
+    } else if (options?.duration) {
+      // T2V and I2V models require duration
+      const d = options.duration;
+      const mode = isI2V ? 'I2V' : 'T2V';
+      if (isPro && options?.resolution) {
+        // Pro models: include resolution
+        const res = String(options.resolution).toLowerCase().includes('1080') ? '1080p' : '720p';
+        modelName = `Sora 2 Pro ${mode} ${d}s ${res}`;
+      } else {
+        // Standard models: only duration (always 720p)
+        modelName = `Sora 2 ${mode} ${d}s`;
+      }
+    }
+    // If T2V/I2V without duration, return base name (shouldn't happen normally)
   }
 
   return modelName;

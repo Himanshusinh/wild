@@ -1,4 +1,4 @@
-"use client"
+  "use client"
 
 import { useState, type FormEvent, useEffect } from "react"
 import axios from "axios"
@@ -10,6 +10,7 @@ import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'fire
 import { auth } from '../../../lib/firebase'
 import { APP_ROUTES } from '../../../routes/routes'
 import toast from 'react-hot-toast'
+import LoadingScreen from '@/components/ui/LoadingScreen'
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 7) => {
@@ -22,7 +23,7 @@ const setCookie = (name: string, value: string, days: number = 7) => {
   const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
 
   console.log("🍪 Setting cookie string:", cookieString)
-  console.log("🍪 Current cookies before setting:", document.cookie)
+  console.log("🍪 Current cookies before setting:", document.cookie)  
 
   document.cookie = cookieString
 
@@ -64,6 +65,7 @@ export default function SignInForm() {
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
 
   // Redeem code states
   const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
@@ -134,7 +136,8 @@ export default function SignInForm() {
 
     setError("")
     setSuccess("")
-    setProcessing(true)
+  setProcessing(true)
+  setAuthLoading(true)
 
     try {
       // Step 1: Send credentials to backend
@@ -167,8 +170,8 @@ export default function SignInForm() {
         try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
 
         // Persist toast flag for next page (faster redirect)
-        try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
-        setIsRedirecting(false)
+  try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
+  setIsRedirecting(true)
         setEmail("")
         setPassword("")
 
@@ -210,12 +213,14 @@ export default function SignInForm() {
       }
     } finally {
       setProcessing(false)
+      // If we're redirecting now, keep the overlay via isRedirecting; otherwise hide it
+      if (!isRedirecting) setAuthLoading(false)
     }
   }
 
-  // Debug logging on component mount
-  useEffect(() => {
-    console.log("🎯 SignUp Form Component Mounted")
+  // Debug logging on component mount 
+  useEffect(() => { 
+    console.log("🎯 SignUp Form Component Mounted") 
     console.log("🌐 Current URL:", window.location.href)
     console.log("🔧 Axios configured:", !!axios)
   }, [])
@@ -502,7 +507,8 @@ export default function SignInForm() {
     console.log("🔵 Starting Google sign-in...")
     console.log("📋 Current form state - showLoginForm:", showLoginForm)
 
-    setProcessing(true)
+  setProcessing(true)
+  setAuthLoading(true)
     setError("")
     setSuccess("")
 
@@ -547,6 +553,7 @@ export default function SignInForm() {
           setSuccess("Google account connected! Please choose a username.")
           toast.success('Google account connected! Choose a username')
           setShowUsernameForm(true)
+          setAuthLoading(false)
 
         } else {
           console.log("✅ Existing user, logging in...")
@@ -567,7 +574,8 @@ export default function SignInForm() {
           try { if (resp?.ok) { localStorage.setItem('authToken', finalIdToken) } } catch {}
 
           console.log("✅ Session created, redirecting...")
-          toast.success('Logged in successfully')
+          // Defer toast to Home page: mark a flag so Home shows a success message after redirect
+          try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
 
           // Store user profile only; rely on httpOnly cookie for auth
           localStorage.setItem("user", JSON.stringify(userData))
@@ -596,6 +604,7 @@ export default function SignInForm() {
       }
     } finally {
       setProcessing(false)
+      if (!isRedirecting) setAuthLoading(false)
     }
   }
 
@@ -894,6 +903,9 @@ export default function SignInForm() {
 
   return (
     <div className="w-full h-full flex flex-col px-4 sm:px-6 md:px-10 lg:px-auto bg-[#1E1E1E] relative overflow-x-hidden">
+      {(authLoading || isRedirecting) && (
+        <LoadingScreen message={isRedirecting ? 'Redirecting…' : 'Signing you in…'} subMessage={isRedirecting ? 'Just a moment while we finish up' : undefined} />
+      )}
       <div className="flex items-center mt-4 md:mt-8 mb-4">
         <Image
           src={getImageUrl('core', 'logo')}

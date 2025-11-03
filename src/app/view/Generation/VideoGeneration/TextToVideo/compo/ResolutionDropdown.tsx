@@ -22,10 +22,25 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 
   // Get available resolutions based on model
   const getAvailableResolutions = () => {
-    if (selectedModel === "MiniMax-Hailuo-02") {
+    if (selectedModel?.includes("seedance")) {
+      return ["480p", "720p", "1080p"];
+    } else if (selectedModel === "MiniMax-Hailuo-02") {
       return ["768P", "1080P"];
     } else if (selectedModel.includes("Director") || selectedModel === "S2V-01") {
       return ["720P"];
+    } else if (selectedModel?.includes("ltx2")) {
+      return ["1080p", "1440p", "2160p"]; // LTX V2 supports 1080p/1440p/2160p
+    } else if (selectedModel?.includes('veo3.1')) {
+      // Veo 3.1 supports 720p/1080p
+      return ["720p","1080p"];
+    } else if (selectedModel?.includes('veo3')) {
+      return ["720p","1080p"];
+    } else if (selectedModel?.includes('sora2')) {
+      // Sora 2 Standard T2V: 720p; Pro T2V: 720p/1080p; I2V: auto/720p (Pro also 1080p)
+      const lower = selectedModel.toLowerCase();
+      if (lower.includes('i2v')) return ["auto","720p","1080p"];
+      if (lower.includes('pro')) return ["720p","1080p"];
+      return ["720p"];
     }
     return ["1080P"];
   };
@@ -89,42 +104,28 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black ${
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-        } ${isOpen ? "bg-white/10 border-white/20" : ""}`}
+        }`}
       >
-        <div className="flex flex-col items-start">
-          <span className="text-white font-medium text-[11px] md:text-sm">Resolution</span>
-          <span className="text-[10px] md:text-xs text-white/60 mt-0.5">{selectedResolution}</span>
-        </div>
-        <ChevronUp
-          className={`w-3 h-3 md:w-4 md:h-4 text-white/60 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        <span>Resolution {selectedResolution ? selectedResolution : ''}</span>
+        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-full md:w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2">
-          <div className="p-2">
-            {availableResolutions.map((resolution) => (
-              <button
-                key={resolution}
-                onClick={() => handleResolutionSelect(resolution)}
-                className={`w-full text-left p-1.5 md:p-3 rounded-lg transition-all duration-200 hover:bg-white/10 ${
-                  selectedResolution === resolution ? "bg-white/20" : ""
-                }`}
-              >
-                <span className="text-white font-medium text-[10px] md:text-sm">{resolution}</span>
-                <div className="text-[9px] md:text-xs text-white/60 mt-1">
-                  {resolution === '1080P' && 'Full HD (1920x1080)'}
-                  {resolution === '768P' && 'HD+ (1366x768)'}
-                  {/* {resolution === '512P' && 'SD (768x512)'} */}
-                  {resolution === '720P' && 'HD (1280x720)'}
-                </div>
-              </button>
-            ))}
-          </div>
+        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+          {availableResolutions.map((resolution) => (
+            <button
+              key={resolution}
+              onClick={() => handleResolutionSelect(resolution)}
+              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                selectedResolution === resolution ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <span>{resolution}</span>
+              {selectedResolution === resolution && <div className="w-2 h-2 bg-black rounded-full"></div>}
+            </button>
+          ))}
         </div>
       )}
     </div>

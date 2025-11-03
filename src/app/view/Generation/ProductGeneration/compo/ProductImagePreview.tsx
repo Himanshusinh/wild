@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { toMediaProxy, toZataPath } from '@/lib/thumb';
 import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';

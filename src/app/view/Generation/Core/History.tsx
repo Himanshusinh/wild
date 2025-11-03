@@ -1529,8 +1529,8 @@
                                 </div>
                               </div>
                               <div className={`absolute bottom-2 right-2 transition-opacity ${playingVideos.has(`${entry.id}-${mediaIndex}`) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'}`}> 
-                                <div className="bg-white/5 backdrop-blur-xl rounded px-2 py-1">
-                                  <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
+                                <div className="bg-white/5 backdrop-blur-xl rounded-lg px-1 py-1">
+                                  <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-4" />
                                 </div>
                               </div>
                               {playingVideos.has(`${entry.id}-${mediaIndex}`) && (
@@ -1539,7 +1539,7 @@
                                 </div>
                               )}
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
                                 {/* <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-xs text-white flex-1 leading-snug"
@@ -1554,11 +1554,11 @@
                                 </span> */}
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto  rounded-lg hover:bg-white/10 text-white/90"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                               </div>
                             </div>
@@ -1648,14 +1648,14 @@
                               )}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
                                 <button
                                   aria-label="Copy prompt"
                                   className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                               </div>
                             </div>
