@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { toMediaProxy, toZataPath } from '@/lib/thumb';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
@@ -120,6 +121,18 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     const selected = selection.has(video.url || video.firebaseUrl || video.originalUrl);
                     const videoUrl = video.url || video.firebaseUrl || video.originalUrl;
                     const key = `${entry.id}-${video.id || videoUrl}`;
+                    // Use proxy for Zata URLs to avoid SSL certificate errors
+                    const proxiedVideoUrl = (() => {
+                      try {
+                        const zataPath = toZataPath(videoUrl);
+                        if (zataPath) {
+                          return toMediaProxy(videoUrl);
+                        }
+                        return videoUrl;
+                      } catch {
+                        return videoUrl;
+                      }
+                    })();
                     return (
                       <button key={key} onClick={() => {
                         const next = new Set(selection);
@@ -127,7 +140,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         <video
-                          src={videoUrl}
+                          src={proxiedVideoUrl}
                           className="w-full h-full object-cover transition-opacity duration-200"
                           muted
                           playsInline
