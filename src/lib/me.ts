@@ -7,7 +7,7 @@ let meCache: MePayload | null = null
 let inFlight: Promise<MePayload> | null = null
 
 // Increase TTL to reduce repeated calls across pages
-const TTL_MS = 60000 // 60 seconds
+const TTL_MS = 120000 // 120 seconds
 
 const STORAGE_KEY = 'me_cache'
 
