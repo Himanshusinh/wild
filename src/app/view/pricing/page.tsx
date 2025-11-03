@@ -1,18 +1,18 @@
   'use client';
 
-  import { StudentDiscount } from "@/app/view/pricing/compo";
-  import AdditionalCredits from "@/app/view/pricing/compo/AdditionalCredits";
-  import CompareTable from "@/app/view/pricing/compo/CompareTable";
-  import CurrentPlan from "@/app/view/pricing/compo/currentPlan";
-  import FAQs from "@/app/view/pricing/compo/FAQs";
-  import Plans from "@/app/view/pricing/compo/Plans";
-  import SidePannelFeatures from "../Generation/Core/SidePannelFeatures";
-  import Nav from "../Generation/Core/Nav";
-  import FooterNew from "../core/FooterNew";
-  import { useState } from "react";
-  import { useRouter } from 'next/navigation';
-  import { useAppDispatch } from '@/store/hooks';
-  import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
+import { StudentDiscount } from "@/app/view/pricing/compo";
+import AdditionalCredits from "@/app/view/pricing/compo/AdditionalCredits";
+import CompareTable from "@/app/view/pricing/compo/CompareTable";
+import CurrentPlan from "@/app/view/pricing/compo/currentPlan";
+import FAQs from "@/app/view/pricing/compo/FAQs";
+import Plans from "@/app/view/pricing/compo/Plans";
+import SidePannelFeatures from "../Generation/Core/SidePannelFeatures";
+import Nav from "../HomePage/compo/Nav";
+import FooterNew from "../core/FooterNew";
+import { useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useAppDispatch } from '@/store/hooks';
+import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 
   export default function Home() {
     const [isAnnual, setIsAnnual] = useState(false);

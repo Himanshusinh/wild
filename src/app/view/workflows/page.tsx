@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures';
-import Nav from '../Generation/Core/Nav';
+import Nav from '../HomePage/compo/Nav';
 import Header from './compo/Header';
 import TemplateGrid from './compo/TemplateGrid';
 import FooterNew from '../core/FooterNew';

@@ -328,12 +328,12 @@ const LandingPage: React.FC = () => {
     {/* <div className="h-0 bg-[#07070B] md:h-32 md:mt-48 md:mb-24"></div> */}
 
     {/* New sections after HeroParallax (not nested inside) */}
-    <div className={`relative z-[10] -mt-96 bg-[#07070B] px-8 md:px-8 md:mt-32 desktop:-mt-40 desktop-lg:-mt-56 lg:px-8 desktop:px-24 desktop-lg:px-32 pt-2 md:pt-1 lg:pt-2 pb-10 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
+    <div className={`relative z-[10] -mt-[] bg-[#07070B] px-8 md:px-8 md:mt-32 desktop:-mt-40 desktop-lg:-mt-56 lg:px-8 desktop:px-24 desktop-lg:px-32 pt-2 md:pt-1 lg:pt-2 pb-10 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
       <ScrollFloat
         containerClassName="text-center md:mt-24 desktop:mt-0 desktop-lg:mt-0"
         animationDuration={5}
         ease="back.inOut(5)"
-        textClassName="text-white font-medium md:font-semibold -mb-20 font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        textClassName="text-white font-small md:font-semibold -mb-20 font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 85%"
         scrollEnd="bottom 25%"
       >
@@ -342,7 +342,7 @@ const LandingPage: React.FC = () => {
 
       <ScrollFloat
         containerClassName="text-center -mt-5  md:-mt-6 lg:-mt-8 md:mb-16"
-        textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
+        textClassName="text-white font-small md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 100%"
         scrollEnd="bottom 25%"
       >
@@ -359,7 +359,7 @@ const LandingPage: React.FC = () => {
       </ScrollFloat>
 
       <ScrollFloat
-        containerClassName="text-center -mb-4  md:-mt-6 lg:-mt-8"
+        containerClassName="text-center -mb-24  md:-mt-6 lg:-mt-8"
         textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
         scrollStart="top 85%"
         scrollEnd="bottom 25%"
@@ -373,10 +373,10 @@ const LandingPage: React.FC = () => {
       <div ref={unlockRef} className="h-1" />
 
         {unlockBelow && showProximity && (
-          <div ref={proximityContainerRef} style={{ position: 'relative' }} className="-mt-10 md:mt-6 lg:-mt-44 mx-auto max-w-[680px] md:max-w-3xl lg:max-w-[1440px]">
+          <div ref={proximityContainerRef} style={{ position: 'relative' }} className="md:mt-6 -mb-20 lg:-mt-44 mx-auto max-w-[680px] md:max-w-3xl lg:max-w-[1440px]">
             <VariableProximity
-              label={'We have got you covered with\nImage Generation, Video Creation,\nAudio Production, Branding Requirements,\nFilming Tools, and 3D Objects!'}
-              className={'variable-proximity-demo text-white font-semibold text-left text-[1.25rem] leading-[1.2] whitespace-pre-line px-4 md:px-0 md:text-[2.5rem] lg:text-[2.8rem] md:leading-normal'}
+              label={'We have got you covered with Image Generation, Video Creation,\nAudio Production, Branding Requirements,\nFilming Tools, and 3D Objects!'}
+              className={'variable-proximity-demo text-white text-left text-[1rem] font-light leading-[1.2] whitespace-pre-line px-4 md:px-0 md:text-[2.5rem] lg:text-[2.8rem] md:leading-normal'}
               fromFontVariationSettings="'wght' 400"
               toFontVariationSettings="'wght' 900"
               containerRef={proximityContainerRef}
@@ -390,7 +390,7 @@ const LandingPage: React.FC = () => {
     {/* Consolidated sections with same background */}
     <div className={`bg-[#07070B] ${unlockBelow ? '' : 'opacity-0 pointer-events-none'}`}>
       <div className="w-full h-full py-20 md:py-16 lg:py-20" ref={hKnowRef}>
-        <h2 className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
+        <h2 className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2.5rem] lg:text-[2.8rem] -mb-5 md:mb-4 lg:mb-6 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
           <VariableProximity
             label={'Feature Categories'}
             className={''}
@@ -416,7 +416,7 @@ const LandingPage: React.FC = () => {
         {/* <ArtGallery /> */}
         {/* <SocialMediaSuite /> */}
         <div ref={hFeaturesRef}>
-          <p id="features-heading" className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2rem] lg:text-[2.5rem] mb-10 md:mb-6 lg:mb-10 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
+          <p id="features-heading" className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2rem] lg:text-[2.5rem] md:mb-6 lg:mb-10 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
             <VariableProximity
               label={'Explore All Our Features'}
               className={''}
@@ -494,30 +494,30 @@ const LandingPage: React.FC = () => {
         
         </div>
         <div className="relative w-full">
-          <div className="flex gap-6 md:gap-4 lg:gap-6 overflow-x-auto px-4 md:px-3 lg:px-4 py-4 md:py-3 lg:py-4 [scrollbar-width:none] scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} ref={workflowScrollRef} onScroll={checkWorkflowScrollability}>
+          <div className="flex gap-3 md:gap-4 lg:gap-6 overflow-x-auto px-2 md:px-3 lg:px-4 py-2 md:py-3 lg:py-4 [scrollbar-width:none] scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} ref={workflowScrollRef} onScroll={checkWorkflowScrollability}>
             {workflowCards.map((item, idx) => (
               <CardContainer key={item.title + idx} className="inter-var" containerClassName="py-6">
-                <CardBody className="bg-[#0f181f] relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-[24rem] md:w-[20rem] lg:w-[22rem] h-auto rounded-xl p-6 md:p-4 lg:p-5 border">
-                  <CardItem translateZ="50" className="text-xl md:text-lg lg:text-xl font-bold text-white dark:text-white">
+                <CardBody className="bg-[#0f181f] relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-[18rem] md:w-[20rem] lg:w-[22rem] h-auto rounded-xl p-3 md:p-4 lg:p-5 border">
+                  <CardItem translateZ="50" className="text-lg md:text-lg lg:text-xl font-bold text-white dark:text-white">
                     {item.title}
                   </CardItem>
-                  <CardItem translateZ="100" rotateX={20} rotateZ={-10} className="w-full mt-4 md:mt-3 lg:mt-4">
+                  <CardItem translateZ="100" rotateX={20} rotateZ={-10} className="w-full mt-3 md:mt-3 lg:mt-4">
                     {item.src ? (
                       <Image
                         src={item.src}
                         height={1000}
                         width={1000}
-                        className="h-60 md:h-48 lg:h-56 w-full object-cover rounded-xl group-hover/card:shadow-xl"
+                        className="h-40 md:h-48 lg:h-56 w-full object-cover rounded-xl group-hover/card:shadow-xl"
                         alt="thumbnail"
                       />
                     ) : (
-                      <div className="h-60 md:h-48 lg:h-56 w-full bg-gray-800 rounded-xl flex items-center justify-center">
+                      <div className="h-40 md:h-48 lg:h-56 w-full bg-gray-800 rounded-xl flex items-center justify-center">
                         <span className="text-gray-400">Image not available</span>
                       </div>
                     )}
                   </CardItem>
-                  <div className="flex justify-end items-center mt-16 md:mt-12 lg:mt-14">
-                    <CardItem translateZ="20" translateX={40} as="button" className="px-4 md:px-3 lg:px-4 py-2 md:py-1.5 lg:py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs md:text-[10px] lg:text-xs font-bold">
+                  <div className="flex justify-end items-center mt-8 md:mt-12 lg:mt-14">
+                    <CardItem translateZ="20" translateX={40} as="button" className="px-3 md:px-3 lg:px-4 py-1.5 md:py-1.5 lg:py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs md:text-[10px] lg:text-xs font-bold">
                       Explore
                     </CardItem>
                   </div>
@@ -526,10 +526,10 @@ const LandingPage: React.FC = () => {
             ))}
           </div>
           {/* Workflow Navigation Arrows */}
-          <div className="flex justify-end gap-2 mr-10 md:mr-6 lg:mr-8">
+          <div className="flex justify-end gap-2 mr-4 md:mr-6 lg:mr-8 -mb-20">
             <button
               onClick={scrollWorkflowLeft}
-              className="relative z-40 flex h-10 w-10 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
+              className="relative z-40 flex h-8 w-8 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
               disabled={!canScrollWorkflowLeft}
             >
               <svg
@@ -540,14 +540,14 @@ const LandingPage: React.FC = () => {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-6 w-6 md:h-5 md:w-5 lg:h-6 lg:w-6 text-gray-500"
+                className="h-5 w-5 md:h-5 md:w-5 lg:h-6 lg:w-6 text-gray-500"
               >
                 <polyline points="15,18 9,12 15,6" />
               </svg>
             </button>
             <button
               onClick={scrollWorkflowRight}
-              className="relative z-40 flex h-10 w-10 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
+              className="relative z-40 flex h-8 w-8 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
               disabled={!canScrollWorkflowRight}
             >
               <svg
@@ -558,7 +558,7 @@ const LandingPage: React.FC = () => {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-6 w-6 md:h-5 md:w-5 lg:h-6 lg:w-6 text-gray-500"
+                className="h-5 w-5 md:h-5 md:w-5 lg:h-6 lg:w-6 text-gray-500"
               >
                 <polyline points="9,18 15,12 9,6" />
               </svg>
@@ -592,7 +592,7 @@ const LandingPage: React.FC = () => {
         </div> */}
 
         {/* Why choose wildmindAI Section */}
-        <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28" ref={hWhyRef}>
+        <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28 -mb-10" ref={hWhyRef}>
           <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[1.5rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
             <VariableProximity
               label={'Why Choose Wild Mind?'}
@@ -642,8 +642,8 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* WobbleCard Section */}
-        <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28" ref={hPricingRef}>
-          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[1.5rem] md:text-[2.5rem] lg:text-[2.8rem] mb-10 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 mt-20 md:mt-20 lg:mt-28" ref={hPricingRef}>
+          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[1.2rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
             <VariableProximity
               label={'Unmatched Value, Unbeatable Pricing Plans.'}
               className={''}
@@ -656,16 +656,16 @@ const LandingPage: React.FC = () => {
           </h2>
           {loadPricing ? (
             <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-3 lg:gap-4 max-w-7xl mx-auto w-full">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-3 lg:gap-4 max-w-7xl mx-auto w-full">
                 <LazyWobbleCard
-                  containerClassName="col-span-1 lg:col-span-2 md:col-span-2 h-full bg-pink-800 min-h-[500px] md:min-h-[350px] lg:min-h-[400px]"
+                  containerClassName="col-span-1 lg:col-span-2 md:col-span-2 h-full bg-pink-800 min-h-[400px] md:min-h-[350px] lg:min-h-[400px]"
                   className=""
                 >
                   <div className="max-w-xs md:max-w-sm lg:max-w-xs">
-                    <h2 className="text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                    <h2 className="text-left text-balance text-sm md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
                       Free Plan
                     </h2>
-                    <p className="mt-4 md:mt-3 lg:mt-4 font-poppins text-neutral-200 text-justify font-medium text-sm md:text-sm lg:text-sm">
+                    <p className="mt-2 md:mt-3 lg:mt-4 font-poppins text-neutral-200 text-justify font-medium text-xs md:text-sm lg:text-sm">
                     Get started with 2,100 free credits and access to our full creative suite. No cost, no commitment, just pure AI power from day one. Generate 100+ Images monthly with the free plan
                     </p>
                   </div>
@@ -679,26 +679,26 @@ const LandingPage: React.FC = () => {
                     />
                   </div>
                 </LazyWobbleCard>
-                <LazyWobbleCard containerClassName="col-span-1 md:col-span-1 min-h-[300px] md:min-h-[250px] lg:min-h-[280px] bg-[#288F1A]">
-                  <h2 className="max-w-80 text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                <LazyWobbleCard containerClassName="col-span-1 md:col-span-1 min-h-[250px] md:min-h-[250px] lg:min-h-[280px] bg-[#288F1A]">
+                  <h2 className="max-w-80 text-left text-balance text-sm md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
                     Student Discount
                   </h2>
-                  <p className="mt-4 md:mt-3 lg:mt-4 max-w-[26rem] text-base/6 md:text-sm lg:text-base text-neutral-200 text-justify font-medium">
+                  <p className="mt-2 md:mt-3 lg:mt-4 max-w-[26rem] text-xs md:text-sm lg:text-base text-neutral-200 text-justify font-medium">
                   Students save 33% on all plans — verified student ID required. Unlock pro-level AI tools at a student-friendly price.
                   </p>
                 </LazyWobbleCard>
-                <LazyWobbleCard containerClassName="col-span-1 lg:col-span-3 md:col-span-3 bg-[#3F2185] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]">
+                <LazyWobbleCard containerClassName="col-span-1 lg:col-span-3 md:col-span-3 bg-[#3F2185] min-h-[400px] md:min-h-[400px] lg:min-h-[500px]">
                   <div className="max-w-sm md:max-w-md lg:max-w-sm">
-                    <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                    <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-2xl font-semibold tracking-[-0.015em] text-white font-poppins">
                       Explore All Plans
                     </h2>
-                    <p className="mt-4 md:mt-3 lg:mt-4 max-w-[26rem] text-base/6 md:text-sm lg:text-base text-neutral-200 text-justify mr-2 font-medium">
+                    <p className="mt-2 md:mt-3 lg:mt-4 max-w-[26rem] text-xs md:text-sm lg:text-base text-neutral-200 text-justify mr-2 font-medium">
                     From hobbyist to enterprise, our plans <br/>scale with your creativity. Get more<br/>credits, more power, more freedom — <br/>see what fits you best
                     </p>
                   </div>
                   
                   {/* Pricing Plans Button - Bottom Left */}
-                  <button className="absolute font-poppins text-sm bottom-6 left-10 bg-white text-[#3F2185] font-medium px-4 py-2 rounded-full hover:bg-gray-100 transition-all duration-200 shadow-lg">
+                  <button className="absolute font-poppins text-xs md:text-sm bottom-4 left-4 md:bottom-6 md:left-10 bg-white text-[#3F2185] font-medium px-3 py-1.5 md:px-4 md:py-2 rounded-full hover:bg-gray-100 transition-all duration-200 shadow-lg">
                     Pricing Plans
                   </button>
                   

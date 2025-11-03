@@ -261,7 +261,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
       <motion.div 
         className="fixed top-0 left-0 w-full z-[1000] md:hidden bg-transparent shadow-none"
       >
-  <div className="flex items-center justify-between px-5 py-2 bg-transparent">
+        <div className="mt-2 mx-2 flex items-center justify-between px-6 py-3 bg-transparent">
           {/* Left: Logo */}
           <div className="flex items-center cursor-pointer" onClick={() => { try { console.log('[NAV_LAND] mobile brand clicked -> /view/Landingpage') } catch {}; router.push('/view/Landingpage') }}>
           {(() => {
@@ -272,24 +272,26 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
           })()}
           </div>
 
-          {/* Right: Hamburger */}
-          <button onClick={() => setIsMobileMenuOpen(true)} className="text-white p-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
+          {/* Right: Hamburger - only show when menu is closed */}
+          {!isMobileMenuOpen && (
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-white p-1">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+          )}
         </div>
 
         <AnimatePresence>
@@ -319,28 +321,28 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
         {/* Mobile Menu Sidebar */}
         {isMobileMenuOpen && (
           <>
-            {/* Overlay */}
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
+            {/* Overlay - transparent on mobile, unchanged on md+ */}
+            <div className="fixed inset-0 bg-transparent md:bg-black/30 backdrop-blur-[2px] z-40" onClick={() => setIsMobileMenuOpen(false)}></div>
 
             {/* Sidebar */}
             <div
               ref={menuRef}
-              className="fixed inset-y-0 right-0 w-[70%] bg-black/70 backdrop-blur-xl border-l border-white/20 z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-right h-full overflow-y-auto custom-scrollbar"
+              className="fixed top-2 right-2 w-[68%] z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-right rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden"
             >
-          <div className="flex justify-end items-center p-4 border-b border-white/10 bg-black/60 backdrop-blur-sm">
+          <div className="flex justify-end items-center p-3 rounded-t-3xl">
                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-white p-1">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="p-4 flex flex-col space-y-4 bg-black/95 backdrop-blur-sm">
+              <div className="mt-0 md:mt-1 mx-2 md:mx-3 p-3 md:p-4 flex flex-col space-y-3 bg-transparent md:bg-black/90 rounded-2xl border border-white/15 overflow-y-auto custom-scrollbar max-h-[calc(90vh-4rem)] pb-4 md:pb-6">
                 {/* Features Dropdown */}
-                <div className="border-b border-gray-800 pb-3">
+                <div className="pb-2">
                   <div
                     className="flex justify-between items-center py-2 cursor-pointer"
                     onClick={() => toggleDropdown("features")}
                   >
-                    <span className="text-white text-lg">Features</span>
+                    <span className="text-white text-base">Features</span>
                     {activeDropdown === "features" ? (
                       <ChevronUp className="w-5 h-5 text-white" />
                     ) : (
@@ -356,10 +358,10 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="mt-2 ml-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm px-2 py-2"
+                      className="mt-2 -mx-4 rounded-none border border-white/10 bg-black/40 px-4 py-3"
                     >
-                      {/* Scrollable container to fit on smaller screens */}
-                      <div className="grid grid-cols-1 gap-3 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
+                      {/* Expanded container: no inner scroll, show all items */}
+                      <div className="grid grid-cols-1 gap-3 pr-1">
                         <div className="space-y-2">
                           <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Image Generation</h4>
                           <div className="space-y-1 pl-2">
@@ -520,7 +522,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
 
                 {/* Templates */}
                 <div
-                  className="py-2 text-lg text-white border-b border-gray-800 pb-3 cursor-pointer"
+                  className="py-2 text-base text-white cursor-pointer"
                   onClick={() => {
                     router.push(NAV_ROUTES.TEMPLATES)
                     setIsMobileMenuOpen(false)
@@ -531,7 +533,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
 
                 {/* Pricing */}
                 <div
-                  className="py-2 text-lg text-white border-b border-gray-800 pb-3 cursor-pointer"
+                  className="py-2 text-base text-white cursor-pointer"
                   onClick={() => {
                     router.push(NAV_ROUTES.PRICING)
                     setIsMobileMenuOpen(false)
@@ -542,7 +544,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
 
                 {/* Art Station */}
                 <div
-                  className="py-2 text-lg text-white border-b border-gray-800 pb-3 cursor-pointer"
+                  className="py-2 text-base text-white cursor-pointer"
                   onClick={() => {
                     router.push(NAV_ROUTES.ART_STATION)
                     setIsMobileMenuOpen(false)

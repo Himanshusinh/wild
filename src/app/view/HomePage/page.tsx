@@ -262,7 +262,7 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* Main layout - side panel + content area */}
-      <div className="flex pt-[80px]"> {/* pt-[80px] to account for fixed nav */}
+      <div className="flex pt-16 md:pt-20"> {/* Responsive top padding */}
         {/* Side Panel - fixed width */}
         <div className="w-[68px] flex-shrink-0">
           <SidePannelFeatures
@@ -270,60 +270,61 @@ const HomePage: React.FC = () => {
             onViewChange={onViewChange}
             onGenerationTypeChange={onGenerationTypeChange}
             onWildmindSkitClick={() => setShowWildmindSkitPopup(true)}
+            showMobileHeader={false}
           />
         </div>
 
         {/* Main Content Area - takes remaining width */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 w-full md:w-auto -ml-[68px] md:ml-0">
           <Header />
           <Recentcreation />
           <Second />
-          <main className="min-h-screen bg-[#07070B] text-white py-10">
-            <div className="w-full px-4 md:px-8 lg:px-12 mt-32">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-6 ">Workflow</h2>
+          <main className="min-h-auto bg-[#07070B] text-white py-6 md:pt-10 -mb-10">
+            <div className="w-full px-3 md:px-8 lg:px-12 mt-16 md:mt-32">
+              <h2 className="text-white text-2xl md:text-4xl font-medium ml-2 md:ml-6">Workflow</h2>
               <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
             </div>
           </main>
 
-          <main className="min-h-screen bg-[#07070B] text-white px-4 md:px-8 py-10">
-            <div className="w-full px-4 md:px-8 lg:px-12">
+          <main className="min-h-screen bg-[#07070B] text-white px-3 md:px-8 py-6 md:pb-10">
+            <div className="w-full px-2 md:px-8 lg:px-12">
               <CommunityCreations items={artItems} initialFilter="All" />
             </div>
           </main>
 
           {/* WobbleCard Section */}
-          <main className="bg-[#07070B] text-white px-4 md:px-8 py-6 mb-32 mt-32">
-            <div className="w-full px-4 md:px-8 lg:px-12">
+          <main className="bg-[#07070B] text-white px-3 md:px-8 py-4 md:py-6 mb-16 md:mb-32 mt-5 md:mt-32">
+            <div className="w-full px-2 md:px-8 lg:px-12">
               <div className="w-full">
                 <WobbleCard
-                  containerClassName="w-full bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]"
+                  containerClassName="w-full bg-[#002933] min-h-[300px] md:min-h-[400px] lg:min-h-[500px]"
                   className="!p-0 !py-0 !h-full !min-h-full"
                 >
                   <div
-                    className="flex w-full h-full min-h-full relative"
-                    style={{ height: '100%', minHeight: '500px' }}
+                    className="flex flex-col md:flex-row w-full h-full min-h-full relative"
+                    style={{ height: '100%', minHeight: '300px' }}
                   >
                     {/* Left side content */}
-                    <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
+                    <div className="flex-1 flex flex-col justify-between p-4 md:p-8 lg:p-10 z-10">
                       <div className="w-full">
-                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-lg md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
                           Plans That Grow With You
                         </h2>
-                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
-                          Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
+                        <p className="mt-3 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-sm md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
+                          Whether you're a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don't just save money—you unlock endless creative possibilities.
                         </p>
                       </div>
 
                       {/* Join Community Button - Bottom Left */}
-                      <button className="font-poppins text-lg bg-white text-[#1C303D] font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
+                      <button className="font-poppins text-sm md:text-lg bg-white text-[#1C303D] font-semibold px-4 md:px-6 py-2 md:py-3 rounded-full transition-all duration-200 shadow-lg w-fit mt-4 md:mt-0">
                         Pricing Plans
                       </button>
                     </div>
 
                     {/* Right side image */}
                     <div
-                      className="absolute right-0 top-0 w-1/2 h-full"
-                      style={{ height: '100%', minHeight: '500px' }}
+                      className="absolute right-0 top-0 w-1/2 h-1/2 md:h-full"
+                      style={{ height: '50%', minHeight: '150px' }}
                     >
                       <Image
                         src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"

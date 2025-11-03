@@ -1720,16 +1720,26 @@ const InputBox = () => {
         textarea[spellcheck="true"] { text-decoration: none; }
       `}</style>
       
-      <div className="inset-0 pl-0 pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
-        <div className="md:py-6 py-0 md:pl-4 pl-2 ">
-          {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-4">
-            <h2 className="md:text-xl text-md font-semibold text-white pl-0">Image Generation</h2>
+      {(historyEntries.length > 0 || localGeneratingEntries.length > 0) && (
+        <div className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+          <div className="md:py-6 py-0 md:pl-4 pl-0 ">
+            {/* History Header - Fixed during scroll */}
+            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 ml-0 mr-1 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl md:pl-6 pl-2  ">
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
 
-            <div>
+            {/* Main Loader */}
+            {loading && historyEntries.length === 0 && (
+              <div className="flex items-center justify-center ">
+                <div className="flex flex-col items-center gap-4">
+                  <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                  <div className="text-white text-lg">Loading your generation history...</div>
+                </div>
+              </div>
+            )}
+
             {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
             {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
               <div className="space-y-4">
@@ -1740,9 +1750,9 @@ const InputBox = () => {
                   </div>
                   <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
                 </div>
-                <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
+                <div className="grid grid-cols-2 md:flex md:flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                    <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                       {localGeneratingEntries[0].status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                           <div className="flex flex-col items-center gap-2">
@@ -1815,12 +1825,12 @@ const InputBox = () => {
                   </div>
 
                   {/* All Images for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 md:ml-9 ml-0">
+                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-3 md:ml-9 ml-0">
                     {/* Prepend local preview tiles at the start of today's row to push images right */}
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-xl border border-white/20">
                                 <div className="flex flex-col items-center gap-2">
@@ -1880,7 +1890,7 @@ const InputBox = () => {
                           key={`${entry.id}-${image.id}`}
                           data-image-id={`${entry.id}-${image.id}`}
                           onClick={() => setPreview({ entry, image })}
-                          className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
@@ -1951,13 +1961,20 @@ const InputBox = () => {
                 </div>
               ))}
 
-              
+              {/* Loader for scroll loading */}
+              {hasMore && loading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex flex-col items-center gap-3">
+                    <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                    <div className="text-sm text-white/60">Loading more generations...</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          
         </div>
-      </div>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto">
+      )}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[90%]  md:max-w-[60%] z-[60] h-auto">
         <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
           <div className="flex items-start gap-0 p-3 pr-3">
