@@ -28,6 +28,19 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       return ["768P", "1080P"];
     } else if (selectedModel.includes("Director") || selectedModel === "S2V-01") {
       return ["720P"];
+    } else if (selectedModel?.includes("ltx2")) {
+      return ["1080p", "1440p", "2160p"]; // LTX V2 supports 1080p/1440p/2160p
+    } else if (selectedModel?.includes('veo3.1')) {
+      // Veo 3.1 supports 720p/1080p
+      return ["720p","1080p"];
+    } else if (selectedModel?.includes('veo3')) {
+      return ["720p","1080p"];
+    } else if (selectedModel?.includes('sora2')) {
+      // Sora 2 Standard T2V: 720p; Pro T2V: 720p/1080p; I2V: auto/720p (Pro also 1080p)
+      const lower = selectedModel.toLowerCase();
+      if (lower.includes('i2v')) return ["auto","720p","1080p"];
+      if (lower.includes('pro')) return ["720p","1080p"];
+      return ["720p"];
     }
     return ["1080P"];
   };
@@ -95,7 +108,7 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         } ${isOpen ? "bg-white/10 border-white/20" : ""}`}
       >
-        <div className="flex flex-col items-start">
+        <div className="flex flex-row gap-2  items-start">
           <span className="text-white font-medium">Resolution</span>
           <span className="text-xs text-white/60 mt-0.5">{selectedResolution}</span>
         </div>
@@ -107,27 +120,37 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
-          <div className="p-2">
-            {availableResolutions.map((resolution) => (
-              <button
-                key={resolution}
-                onClick={() => handleResolutionSelect(resolution)}
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 hover:bg-white/10 ${
-                  selectedResolution === resolution ? "bg-white/20" : ""
-                }`}
-              >
-                <span className="text-white font-medium text-sm">{resolution}</span>
-                <div className="text-xs text-white/60 mt-1">
-                  {resolution === '1080p' && 'Full HD (1920x1080)'}
-                  {resolution === '720p' && 'HD (1280x720)'}
-                  {resolution === '480p' && 'SD (854x480)'}
-                  {resolution === '1080P' && 'Full HD (1920x1080)'}
-                  {resolution === '768P' && 'HD+ (1366x768)'}
-                  {resolution === '720P' && 'HD (1280x720)'}
-                </div>
-              </button>
-            ))}
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 shadow-2xl">
+          <div className="p-2 space-y-1">
+            {availableResolutions.map((resolution) => {
+              const isSelected = selectedResolution === resolution;
+              const desc =
+                resolution === '2160p' ? '4K UHD (3840x2160)' :
+                resolution === '1440p' ? 'QHD (2560x1440)' :
+                resolution === '1080p' || resolution === '1080P' ? 'Full HD (1920x1080)' :
+                resolution === '768P' ? 'HD+ (1366x768)' :
+                resolution === '720p' || resolution === '720P' ? 'HD (1280x720)' :
+                resolution === '480p' ? 'SD (854x480)' : '';
+              return (
+                <button
+                  key={resolution}
+                  onClick={() => handleResolutionSelect(resolution)}
+                  className={`w-full px-4 py-3 text-left rounded-lg transition-colors flex items-center justify-between ${
+                    isSelected ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Left square indicator to match MiniMax UI */}
+                    <span className={`inline-block w-[16px] h-[16px] rounded-[3px] ${isSelected ? 'bg-black' : 'border border-current'}`} />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold tracking-wide">{resolution}</span>
+                      {desc && <span className={`text-xs ${isSelected ? 'text-black/70' : 'text-white/60'}`}>{desc}</span>}
+                    </div>
+                  </div>
+                  {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

@@ -82,8 +82,8 @@ axiosInstance.interceptors.request.use(async (config) => {
         const hasHint = document.cookie.includes('auth_hint=')
         const hasSession = document.cookie.includes('app_session=')
         if (hasHint && !hasSession) {
-          if (isApiDebugEnabled()) console.log('[API][request-delay] auth_hint present, delaying 250ms for session cookie')
-          await new Promise((r) => setTimeout(r, 250))
+          if (isApiDebugEnabled()) console.log('[API][request-delay] auth_hint present, delaying 100ms for session cookie')
+          await new Promise((r) => setTimeout(r, 100))
         }
       } catch {}
       const token = getStoredIdToken()
@@ -142,8 +142,8 @@ axiosInstance.interceptors.request.use(async (config) => {
           const hasHint = document.cookie.includes('auth_hint=')
           const hasSession = document.cookie.includes('app_session=')
           if (hasHint && !hasSession) {
-            if (isApiDebugEnabled()) console.log('[API][request-delay] protected call while auth_hint present, delaying 250ms', { path })
-            await new Promise((r) => setTimeout(r, 250))
+            if (isApiDebugEnabled()) console.log('[API][request-delay] protected call while auth_hint present, delaying 100ms', { path })
+            await new Promise((r) => setTimeout(r, 100))
           }
         } catch {}
       }

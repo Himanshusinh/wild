@@ -329,6 +329,31 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     return MODEL_CREDITS_MAPPING[key] || null;
   }
 
+  // Handle LTX V2 models (Pro/Fast, T2V/I2V) with duration and resolution
+  if (modelValue.includes('ltx2')) {
+    const isPro = modelValue.includes('pro');
+    const res = (resolution || '1080p').toLowerCase();
+    const durNum = duration ? parseInt(String(duration).replace('s','')) : 6;
+    // Pricing table (credits) based on user's provided chart
+    const table: Record<'pro'|'fast', Record<'1080p'|'1440p'|'2160p', Record<6|8|10, number>>> = {
+      pro: {
+        '1080p': { 6: 780, 8: 1020, 10: 1260 },
+        '1440p': { 6: 1500, 8: 1980, 10: 2460 },
+        '2160p': { 6: 2940, 8: 3900, 10: 4860 }
+      },
+      fast: {
+        '1080p': { 6: 540, 8: 700, 10: 860 },
+        '1440p': { 6: 1020, 8: 1340, 10: 1660 },
+        '2160p': { 6: 1980, 8: 2620, 10: 3260 }
+      }
+    };
+    const tier: 'pro'|'fast' = isPro ? 'pro' : 'fast';
+    const resKey = (res.includes('1440') ? '1440p' : (res.includes('2160') || res.includes('4k') ? '2160p' : '1080p')) as '1080p'|'1440p'|'2160p';
+    const d: 6|8|10 = (durNum === 8 ? 8 : (durNum === 10 ? 10 : 6));
+    const cost = table[tier][resKey][d];
+    return cost || null;
+  }
+
   // Handle Sora 2 models
   if (modelValue.includes('sora2')) {
     const isPro = modelValue.includes('pro');

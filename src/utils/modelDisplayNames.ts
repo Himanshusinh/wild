@@ -119,6 +119,15 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
     return `WAN${isFast ? ' Fast' : ''}`;
   }
 
+  // LTX V2 models (remove any provider prefixes and format nicely)
+  if (lower.includes('ltx') || lower.includes('ltxv-2') || lower.includes('ltx2')) {
+    const isFast = /fast/i.test(normalized);
+    const isPro = /pro/i.test(normalized) && !isFast; // prefer Fast if both words appear
+    if (isFast) return 'LTX V2 FAST';
+    // Default to PRO when unspecified, per design
+    return 'LTX V2 PRO';
+  }
+
   // Heuristic remapping for Kling models (remove vendor misspellings like Kwai/Kwaivgi)
   if (lower.includes('kling')) {
     const isMaster = /master/i.test(normalized);
