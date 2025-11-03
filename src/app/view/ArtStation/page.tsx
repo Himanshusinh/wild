@@ -42,7 +42,7 @@ export default function ArtStationPage() {
     return `${dd}-${mm}-${yyyy} ${time}`
   }
   const [items, setItems] = useState<PublicItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -66,6 +66,11 @@ export default function ArtStationPage() {
   // Fancy reveal observer state
   const [visibleTiles, setVisibleTiles] = useState<Set<string>>(new Set())
   const revealRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const initialLoadDoneRef = useRef(false)
+  // Masonry-like grid spans while preserving left-to-right order
+  const [tileSpans, setTileSpans] = useState<Record<string, number>>({})
+  const tileRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   // (deduped) measuredRatios declared above
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -164,7 +169,7 @@ export default function ArtStationPage() {
       default:
         return { mode: 'all' };
     }
-  };
+    };
 
   const fetchFeed = async (reset = false) => {
     try {
@@ -285,6 +290,8 @@ export default function ArtStationPage() {
         // avoid tight loop: yield microtask
         Promise.resolve().then(() => fetchFeed(next.reset))
       }
+      // mark initial load for this tab as complete so infinite scroll can activate
+      initialLoadDoneRef.current = true
     }
   }
 
@@ -318,6 +325,10 @@ export default function ArtStationPage() {
     didFetchForCategoryRef.current = activeCategory
     // reset concurrency guards
     loadingMoreRef.current = false
+    // scroll to top for a clean start of the new category
+    try { scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+    // block infinite scroll until first page for this tab finishes
+    initialLoadDoneRef.current = false
     setItems([])
     setCursor(undefined)
     setHasMore(true)
@@ -328,11 +339,14 @@ export default function ArtStationPage() {
   // Infinite scroll observer
   useEffect(() => {
     if (!sentinelRef.current) return
+    // Don’t start observer until initial page for this tab is loaded
+    if (!initialLoadDoneRef.current) return
     const el = sentinelRef.current
     // Disconnect any prior observer before creating a new one for this tab/state
     let observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0]
       if (!entry.isIntersecting) return
+      if (!initialLoadDoneRef.current) return
       // Serialize loads
       if (loading || loadingMoreRef.current || !hasMore) {
         return
@@ -354,7 +368,7 @@ export default function ArtStationPage() {
     return () => {
       try { observer.disconnect() } catch { }
     }
-  }, [hasMore, loading, cursor, activeCategory])
+  }, [hasMore, loading, cursor, activeCategory, items.length])
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
@@ -494,6 +508,8 @@ export default function ArtStationPage() {
       next.add(tileId)
       return next
     })
+    // Recompute span on load complete for accurate height
+    requestAnimationFrame(() => measureTileSpan(tileId))
   }
 
   const noteMeasuredRatio = (key: string, width: number, height: number) => {
@@ -531,6 +547,48 @@ export default function ArtStationPage() {
 
   // (columns masonry) no measurement needed
 
+  // Compute and apply grid-row span for a tile to achieve masonry look while preserving DOM order
+  const measureTileSpan = (tileId: string) => {
+    try {
+      const el = tileRefs.current[tileId]
+      if (!el) return
+      // Measure inner content if available for more stable height
+      const inner = el.querySelector('.masonry-item-inner') as HTMLElement | null
+      const rect = (inner || el).getBoundingClientRect()
+      const height = rect.height
+      // Keep rowHeight small; gap must match grid gap (Tailwind gap-3 = 12px)
+      const rowHeight = 8 // px
+      const rowGap = 12 // px
+      const span = Math.max(10, Math.ceil((height + rowGap) / (rowHeight + rowGap)))
+      setTileSpans(prev => (prev[tileId] === span ? prev : { ...prev, [tileId]: span }))
+    } catch { }
+  }
+
+  // Setup a ResizeObserver to recompute spans when tiles or container resize
+  useEffect(() => {
+    try {
+      if (resizeObserverRef.current) resizeObserverRef.current.disconnect()
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const target = entry.target as HTMLElement
+          const id = target.dataset.tileId
+          if (id) measureTileSpan(id)
+        }
+      })
+      resizeObserverRef.current = ro
+      // Observe current tile elements
+      Object.entries(tileRefs.current).forEach(([id, el]) => {
+        if (el) {
+          el.dataset.tileId = id
+          try { ro.observe(el) } catch { }
+        }
+      })
+      return () => { try { ro.disconnect() } catch { } }
+    } catch {
+      return () => { }
+    }
+  }, [cards])
+
   // duplicate removed
 
   return (
@@ -563,7 +621,7 @@ export default function ArtStationPage() {
                       }`}
                   >
                     {category}
-                  </button>
+                  </button> 
                 ))}
 
               </div>
@@ -574,7 +632,11 @@ export default function ArtStationPage() {
 
           {/* Scrollable feed container */}
           <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
-          <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
+          {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 [overflow-anchor:none]"
+            style={{ gridAutoRows: '8px' }}
+          >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
@@ -590,8 +652,7 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className={`break-inside-avoid mb-1 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] inline-block w-full align-top ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
-                  style={{ transitionDelay: `${(idx % 12) * 35}ms` }}
+                  className={`mb-3 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
@@ -600,9 +661,13 @@ export default function ArtStationPage() {
                     setSelectedAudioIndex(0)
                     setPreview({ kind, url: media.url, item })
                   }}
-                  ref={(el) => { revealRefs.current[cardId] = el }}
+                  ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
+                  style={{
+                    transitionDelay: `${(idx % 12) * 35}ms`,
+                    gridRowEnd: `span ${tileSpans[cardId] || 30}`
+                  }}
                 >
-                  <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                  <div className="masonry-item-inner relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
                     <div
                       style={{ aspectRatio: tileRatio, minHeight: 200 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
@@ -753,21 +818,21 @@ export default function ArtStationPage() {
             })}
           </div>
 
-          {/* Loading indicator */}
+          {/* Loading indicator for pagination */}
           {loading && items.length > 0 && (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">{activeCategory === 'All' ? 'Loading more...' : `Loading ${activeCategory}...`}</p>
+              <p className="text-white/60 mt-2">Loading more...</p>
             </div>
           )}
 
-          {/* Initial loading */}
+          {/* Initial loading - unified logo across tabs */}
           {loading && items.length === 0 && (
             <div className="flex items-center justify-center py-28">
               <div className="flex flex-col items-center gap-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={112} height={112} className="w-28 h-28" />
                 <div className="text-white text-lg">
-                  {activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}
+                  Loading Art Station...
                 </div>
               </div>
             </div>
