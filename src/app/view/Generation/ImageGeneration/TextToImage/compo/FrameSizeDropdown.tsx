@@ -131,17 +131,17 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${frameSize !== '1:1'
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${frameSize !== '1:1'
             ? 'bg-transparent text-white/90'
             : 'bg-transparent text-white/90 hover:bg-white/5'
           }`}
       >
-        <Crop className="w-4 h-4 mr-1" />
+        <Crop className="w-3 h-3 md:w-4 md:h-4 mr-1" />
         {frameSizes.find(s => s.value === frameSize)?.name || 'Frame Size'}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'frameSize' ? 'rotate-180' : ''}`} />
+        <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${activeDropdown === 'frameSize' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'frameSize' && (
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 pb-2 pt-2`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2`}>
           {frameSizes.map((size) => (
             <button
               key={size.value}
@@ -149,7 +149,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
                 e.stopPropagation();
                 handleFrameSizeSelect(size.value);
               }}
-              className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between gap-3 ${frameSize === size.value
+              className={`w-full px-2 md:px-3 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between gap-2 md:gap-3 ${frameSize === size.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
                 }`}
@@ -157,26 +157,26 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
               <span className="flex items-center gap-2">
                 {/* Icon */}
                 {size.icon === 'square' && (
-                  <span className={`inline-block w-4 h-4 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
+                  <span className={`inline-block w-3 h-3 md:w-4 md:h-4 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
                     }`}></span>
                 )}
                 {size.icon === 'portrait' && (
-                  <span className={`inline-block w-3 h-4 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
+                  <span className={`inline-block w-2.5 h-3.5 md:w-3 md:h-4 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
                     }`}></span>
                 )}
                 {size.icon === 'landscape' && (
-                  <span className={`inline-block w-4 h-3 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
+                  <span className={`inline-block w-3.5 h-2.5 md:w-4 md:h-3 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
                     }`}></span>
                 )}
                 {size.icon === 'ultrawide' && (
-                  <span className={`inline-block w-5 h-2 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
+                  <span className={`inline-block w-4 h-1.5 md:w-5 md:h-2 border ${frameSize === size.value ? 'border-black' : 'border-white/60'
                     }`}></span>
                 )}
                 <span>{size.name}</span>
-                <span className={`text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'
+                <span className={`text-[10px] md:text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'
                   }`}>{size.value}</span>
               </span>
-              {frameSize === size.value && <div className="w-2 h-2 bg-black rounded-full" />}
+              {frameSize === size.value && <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full" />}
             </button>
             
           ))}

@@ -36,6 +36,9 @@ const SidePannelFeatures = ({
   const brandingClickCount = React.useRef(0);
   const [showVideoEditDropdown, setShowVideoEditDropdown] = React.useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
+  // Track hover on floating desktop panels so moving from the sidebar
+  // into the panel doesn't immediately close the dropdowns
+  const [isPanelHovered, setIsPanelHovered] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
   const videoEditRef = React.useRef<HTMLDivElement>(null);
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -148,9 +151,9 @@ const SidePannelFeatures = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showBrandingDropdown, showVideoEditDropdown]);
 
-  // Close dropdowns when sidebar is not hovered (desktop only). Do NOT auto-close on mobile menu.
+  // Close dropdowns when neither the sidebar nor a floating panel is hovered (desktop only).
   React.useEffect(() => {
-    if (!isSidebarHovered && !isMobileMenuOpen) {
+    if (!isSidebarHovered && !isPanelHovered && !isMobileMenuOpen) {
       const timer = setTimeout(() => {
         setShowBrandingDropdown(false);
         brandingClickCount.current = 0;
@@ -158,7 +161,7 @@ const SidePannelFeatures = ({
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isSidebarHovered, isMobileMenuOpen]);
+  }, [isSidebarHovered, isPanelHovered, isMobileMenuOpen]);
 
   const isBrandingActive = pathname?.includes('/logo') ||
     pathname?.includes('/sticker-generation') ||
@@ -170,7 +173,7 @@ const SidePannelFeatures = ({
   return (
     <>
       {/* Mobile header: hamburger then logo - show on mobile regardless of showMobileHeader */}
-      <div className="md:hidden fixed top-0 left-0 z-40 flex items-center px-4 py-3">
+      <div className="md:hidden fixed top-0 left-0 z-[80] flex items-center px-4 py-3">
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
           className="text-white p-1"
@@ -200,20 +203,20 @@ const SidePannelFeatures = ({
 
       {/* Overlay for mobile menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-transparent md:bg-black/30 backdrop-blur-[2px] z-30" onClick={() => setIsMobileMenuOpen(false)}></div>
+        <div className="md:hidden fixed inset-0 bg-transparent md:bg-black/30 backdrop-blur-[2px] z-[90]" onClick={() => setIsMobileMenuOpen(false)}></div>
       )}
 
       <div
         ref={sidebarRef}
         onMouseEnter={() => setIsSidebarHovered(true)}
         onMouseLeave={() => setIsSidebarHovered(false)}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 group transition-all text-white duration-200 backdrop-blur-lg z-50 shadow-2xl md:w-[68px] hover:w-60
-        ${isMobileMenuOpen ? 'w-[75%] bg-transparent md:bg-black/80 rounded-r-3xl' : 'w-0 md:w-[68px]'}
+        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 group transition-all text-white duration-200 backdrop-blur-lg z-[100] md:z-[2000] shadow-2xl md:w-[68px] hover:w-60
+        ${isMobileMenuOpen ? 'w-[75%] bg-black/60 backdrop-blur-xl md:bg-black/80 rounded-r-3xl' : 'w-0 md:w-[68px]'}
         flex`}
         style={{}}
       >
       {/* Logo at the top - only show on desktop */}
-      <div className="hidden md:flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0  -ml-1">
+      <div className="hidden md:flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0 -ml-1 relative z-[2001]">
         <div
           onClick={() => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
@@ -221,7 +224,7 @@ const SidePannelFeatures = ({
             // Force hard navigation to avoid race conditions
             try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
           }}
-          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
+          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer relative z-[2001]">
           <Image
             src="/icons/wildmind_icon_darkbg.svg"
             
@@ -234,7 +237,7 @@ const SidePannelFeatures = ({
         </div>
         <span
           onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
-          className={`text-white text-2xl mt-1 font-medium overflow-hidden transition-all duration-200 whitespace-nowrap cursor-pointer ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}
+          className={`text-white text-2xl mt-1 font-medium overflow-hidden transition-all duration-200 whitespace-nowrap cursor-pointer relative z-[2001] ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}
         >
           <Image src="/icons/wildmind_text_whitebg (2).svg" alt="Wild Mind Logo" width={32} height={32} className="w-auto h-full" />
         </span>
@@ -325,7 +328,7 @@ const SidePannelFeatures = ({
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={`h-4 w-4 transition-transform duration-200 ${showVideoEditDropdown ? 'rotate-180' : 'rotate-0'}`}
+                className={`hidden md:inline-block h-4 w-4 transition-transform duration-200 ${showVideoEditDropdown ? 'rotate-180' : 'rotate-0'}`}
                 aria-hidden="true"
               >
                 <path d="M6 9l6 6 6-6" />
@@ -333,10 +336,28 @@ const SidePannelFeatures = ({
             </div>
           </div>
 
+          {/* Mobile: expand below item */}
+          <div
+            ref={videoEditDropdownRef}
+            className={`md:hidden overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${showVideoEditDropdown ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}
+          >
+            <div className='mt-2 ml-12 mr-2 bg-transparent backdrop-blur-0 border border-white/20 rounded-2xl shadow-none p-2 space-y-1'>
+              <div
+                onClick={() => router.push('/video-edit')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Open Video Editor</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: floating panel */}
           {showVideoEditDropdown && (
             <div
               ref={videoEditDropdownRef}
-              className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
+              className='hidden md:block absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-[9999] min-w-[200px] pointer-events-auto'
+              onMouseEnter={() => setIsPanelHovered(true)}
+              onMouseLeave={() => setIsPanelHovered(false)}
             >
               <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
                 <span className='text-xs text-white/90 uppercase tracking-wider'>Video Edit</span>
@@ -417,7 +438,7 @@ const SidePannelFeatures = ({
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={`h-4 w-4 transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : 'rotate-0'}`}
+                className={`hidden md:inline-block h-4 w-4 transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : 'rotate-0'}`}
                 aria-hidden="true"
               >
                 <path d="M6 9l6 6 6-6" />
@@ -425,11 +446,12 @@ const SidePannelFeatures = ({
             </div>
           </div>
 
+          {/* Mobile: expand below item */}
           <div
             ref={brandingDropdownRef}
-            className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${showBrandingDropdown ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}
+            className={`md:hidden overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${showBrandingDropdown ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}
           >
-            <div className='mt-2 ml-12 mr-2 bg-transparent md:bg-transparent backdrop-blur-0 border border-white/20 rounded-2xl shadow-none p-2 space-y-1'>
+            <div className='mt-2 ml-12 mr-2 bg-transparent backdrop-blur-0 border border-white/20 rounded-2xl shadow-none p-2 space-y-1'>
 
               <div
                 onClick={() => router.push('/logo-generation')}
@@ -453,6 +475,38 @@ const SidePannelFeatures = ({
               </div>
             </div>
           </div>
+
+          {/* Desktop: floating panel like Video Edit */}
+          {showBrandingDropdown && (
+            <div
+              ref={brandingDropdownRef}
+              className='hidden md:block absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-[9999] min-w-[200px] pointer-events-auto'
+              onMouseEnter={() => setIsPanelHovered(true)}
+              onMouseLeave={() => setIsPanelHovered(false)}
+            >
+
+              <div
+                onClick={() => router.push('/logo-generation')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'logo' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Logo Generation</span>
+              </div>
+
+              <div
+                onClick={() => router.push('/sticker-generation')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Sticker Generation</span>
+              </div>
+
+              <div
+                onClick={() => router.push('/product-generation')}
+                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'product-generation' ? 'bg-white/15' : ''}`}
+              >
+                <span className='text-sm text-white'>Product Generation</span>
+              </div>
+            </div>
+          )}
 
         </div>
 

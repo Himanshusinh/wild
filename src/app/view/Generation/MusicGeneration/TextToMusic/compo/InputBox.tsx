@@ -377,14 +377,14 @@ const InputBox = () => {
   return (
     <>
       {/* History Section - Fixed overlay like image/video generation */}
-      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 scrollbar-hide">
-          <div className="py-6 pl-4 "> 
+      <div className="inset-0 pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 scrollbar-hide">
+          <div className="md:py-6 py-0 md:pl-4 pl-0">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Music Generation </h2>
+          <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+            <h2 className="md:text-xl text-md font-semibold text-white pl-0">Music Generation</h2>
           </div>
           {/* Spacer to keep content below fixed header */}
-          <div className="h-0"></div>
+          <div className="h-[32px] md:h-0"></div>
 
           {/* Main Loader */}
           {storeLoading && historyEntries.length === 0 && (
@@ -403,13 +403,13 @@ const InputBox = () => {
 
           {/* No History State */}
           {!storeLoading && historyEntries.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Music4 className="w-8 h-8 text-white/60" />
+            <div className="flex items-center justify-center py-8 md:py-12">
+              <div className="flex flex-col items-center gap-2 md:gap-4 text-center">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-full flex items-center justify-center">
+                  <Music4 className="w-6 h-6 md:w-8 md:h-8 text-white/60" />
                 </div>
-                <div className="text-white text-lg">No music generations yet</div>
-                <div className="text-white/60 text-sm max-w-md">
+                <div className="text-white text-base md:text-lg">No music generations yet</div>
+                <div className="text-white/60 text-xs md:text-sm max-w-md px-4 md:px-0">
                   Create your first piece of AI-generated music using the interface below
                 </div>
               </div>
@@ -443,7 +443,7 @@ const InputBox = () => {
               </div>
 
               {/* All Music Tracks for this Date - Horizontal Layout */}
-              <div className="flex flex-wrap gap-3 ml-9">
+              <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
                 <MusicTileFromPreview preview={localMusicPreview} />
               </div>
             </div>
@@ -455,7 +455,7 @@ const InputBox = () => {
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3 md:px-0">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
@@ -478,7 +478,7 @@ const InputBox = () => {
                   </div>
 
                   {/* All Music Tracks for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
                     {/* Prepend local preview to today's row to push items right */}
                     {date === todayKey && localMusicPreview && <MusicTileFromPreview preview={localMusicPreview} />}
                     {groupedByDate[date].map((entry: any) => 
@@ -486,7 +486,7 @@ const InputBox = () => {
                         <div
                           key={`${entry.id}-${audio.id}`}
                           onClick={() => setSelectedAudio({ entry, audio })}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          className="relative md:w-48 md:h-48 w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
                         >
                           {entry.status === "generating" ? (
                             // Loading frame
@@ -622,7 +622,7 @@ export default InputBox;
 
 // Helper component for music preview tile
 const MusicTileFromPreview = ({ preview }: { preview: any }) => (
-  <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 flex-shrink-0">
+  <div className="relative md:w-48 md:h-48 w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
     {preview.status === 'generating' ? (
       <div className="w-full h-full flex items-center justify-center bg-black/90">
         <div className="flex flex-col items-center gap-2">

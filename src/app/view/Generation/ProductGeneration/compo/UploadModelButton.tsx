@@ -100,7 +100,7 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
       <button
         onClick={toggle}
         disabled={isDisabled}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium transition flex items-center gap-2 ${
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium transition flex items-center gap-1.5 md:gap-2 ${
           isDisabled 
             ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
@@ -108,7 +108,7 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
         aria-label="Upload model"
         title={isDisabled ? "Model image not needed for text-only model" : "Upload model"}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 md:w-4 md:h-4">
           <path d="M12 5v14" />
           <path d="M5 12h14" />
         </svg>
@@ -126,7 +126,7 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
       )}
 
       {isOpen && (
-        <div ref={panelRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[50] w-auto max-w-[85vw]">
+        <div ref={panelRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[50] w-auto max-w-[95vw] md:max-w-[85vw]">
           <div className="relative rounded-lg bg-black/70 backdrop-blur-3xl border shadow-xl border-white/20 shadow-2xl p-4 pb-14 z-[100]">
             <div className="grid grid-cols-4 gap-3 justify-items-center">
               <div className="space-y-2">

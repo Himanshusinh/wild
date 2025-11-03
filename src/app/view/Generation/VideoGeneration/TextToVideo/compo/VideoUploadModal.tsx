@@ -280,7 +280,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       <div className="mt-2 text-sm">Drop videos here or click to browse</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full place-content-start">
+                    <div className="grid grid-cols-2 max-[360px]:grid-cols-1 md:grid-cols-4 gap-3 w-full place-content-start">
                       {localUploads.map((url, idx) => (
                         <div key={`${url}-${idx}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
                           <video

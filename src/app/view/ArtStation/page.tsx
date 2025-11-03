@@ -536,7 +536,7 @@ export default function ArtStationPage() {
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-0">
-        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
+        <div className="w-0 md:w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} showMobileHeader={true} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
           {/* Sticky header + filters */}
           <div className="sticky top-4 z-20 bg-[#07070B] pt-2">
@@ -573,7 +573,7 @@ export default function ArtStationPage() {
 
           {/* Scrollable feed container */}
           <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
-          <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
+          <div className="columns-2 max-[360px]:columns-1 sm:columns-2 md:columns-5 gap-2 [overflow-anchor:none]">
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
@@ -1004,7 +1004,7 @@ export default function ArtStationPage() {
                     {preview.item.images && preview.item.images.length > 1 && (
                       <div className="mb-4">
                         <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Images ({preview.item.images.length})</div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {preview.item.images.map((im: any, idx: number) => (
                             <button
                               key={im.id || idx}
@@ -1022,7 +1022,7 @@ export default function ArtStationPage() {
                     {preview.item.videos && preview.item.videos.length > 1 && (
                       <div className="mb-4">
                         <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({preview.item.videos.length})</div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {preview.item.videos.map((vd: any, idx: number) => (
                             <button
                               key={vd.id || idx}

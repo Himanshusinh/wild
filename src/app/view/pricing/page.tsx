@@ -54,7 +54,7 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
         {/* Main layout - side panel + content area */}
         <div className="flex "> {/* pt-[80px] to account for fixed nav */}
           {/* Side Panel - fixed width */}
-          <div className="w-[68px] flex-shrink-0">
+          <div className="w-0 md:w-[68px] flex-shrink-0">
             <SidePannelFeatures
               onViewChange={handleViewChange}
               onGenerationTypeChange={handleGenerationTypeChange}
@@ -64,13 +64,13 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
           {/* Main Content Area - takes remaining width */}
           <div className="flex-1 min-w-0">
             <main className="text-white min-h-screen">
-              <section className="header space-y-4 px-6 py-6 w-full">
-                <h2 className="head text-4xl font-semibold text-center mt-20">Plans Made for Everyone</h2>
+              <section className="header space-y-4 px-4 sm:px-6 md:px-8 lg:px-12 py-6 w-full">
+                <h2 className="head text-2xl sm:text-4xl font-semibold text-center mt-20">Plans Made for Everyone</h2>
                 <p className="line text-center font-xs">Scalable solutions tailored to teams of all sizes.</p>
 
                 {/* Toggle Switch - simplified style like reference */}
-                <div className="flex items-center justify-center mt-10 rounded-lg">
-                  <div className="flex items-center gap-4 rounded-lg bg-white/10 backdrop-blur-2xl backdrop-saturate-150 border border-white/10 shadow-xl p-2 ring-1 ring-white/10">
+                <div className="flex items-center justify-center mt-8 sm:mt-10 rounded-lg">
+                  <div className="flex items-center gap-3 sm:gap-4 rounded-lg bg-white/10 backdrop-blur-2xl backdrop-saturate-150 border border-white/10 shadow-xl p-2 ring-1 ring-white/10">
                     <button
                       onClick={() => setIsAnnual(false)}
                       aria-pressed={!isAnnual}
@@ -89,7 +89,7 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
                       />
                     </button>
                     <div className="relative flex items-center justify-center">
-                      <div className=" ml-16 absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-lg whitespace-nowrap shadow-md">
+                      <div className="hidden sm:block ml-16 absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-lg whitespace-nowrap shadow-md">
                         Save 20% on everything
                       </div>
                       <button
@@ -102,9 +102,11 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
                     </div>
                   </div>
                 </div>
+                {/* Mobile hint below the switch */}
+                <div className="sm:hidden mt-2 text-center text-[11px] text-green-400">Save 20% on everything</div>
               </section>
 
-              <section className="pricing-packages w-full  pt-8 flex flex-col items-center gap-10 px-14">
+              <section className="pricing-packages w-full pt-8 flex flex-col items-center gap-8 sm:gap-10 px-4 sm:px-6 md:px-10 lg:px-14">
                 {/* {plans.map((p, i) => (
                 <div key={p.packageName} className={i === 0 ? "w-full sm:w-[60%]" : "w-full sm:w-[30%]"}>
                 <Package
@@ -116,7 +118,7 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
                   />
                 </div>
                   ))} */}
-                <div className="flex flex-col md:flex-row flex-wrap gap-6 justify-start w-full">
+                <div className="flex flex-col md:flex-row flex-wrap gap-4 sm:gap-6 justify-start w-full">
                   <CurrentPlan />
                   <StudentDiscount />
                 </div>
