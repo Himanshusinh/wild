@@ -19,8 +19,9 @@ export default function ToastMount() {
       const key = 'toastMessage'
       const flag = localStorage.getItem(key)
       if (flag) {
+        // Only handle logout here to avoid duplicate login toasts.
+        // Login success is handled in HomePage with a small delay for better UX.
         if (flag === 'LOGOUT_SUCCESS') toast.success('Logged out')
-        if (flag === 'LOGIN_SUCCESS') toast.success('Logged in')
         localStorage.removeItem(key)
       }
     } catch {}

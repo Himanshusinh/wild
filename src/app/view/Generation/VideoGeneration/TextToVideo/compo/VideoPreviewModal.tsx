@@ -447,7 +447,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto custom-scrollbar">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-6">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">

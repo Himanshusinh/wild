@@ -82,9 +82,18 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const getAvailableModels = () => {
     if (generationMode === "text_to_video") {
       return [
-        { value: "veo3-t2v-8s", label: "Veo3", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
+        { value: "sora2-t2v", label: "Sora 2", description: "OpenAI's Sora 2, 4s/8s/12s, 720p, 16:9/9:16", provider: "fal" },
+        { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
+        { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
+        { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
+        { value: "veo3-t2v-8s", label: "Veo3", description: "Google's video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
+        { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
+        { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "ltx2-pro-t2v", label: "LTX V2 Pro (T2V)", description: "Text→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
+        { value: "ltx2-fast-t2v", label: "LTX V2 Fast (T2V)", description: "Text→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 T2V", description: "Text→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 T2V Fast", description: "Faster text→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
@@ -92,13 +101,22 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ];
     } else if (generationMode === "image_to_video") {
       return [
+        { value: "sora2-i2v", label: "Sora 2", description: "OpenAI's Sora 2 I2V, 4s/8s/12s, auto/720p, auto/16:9/9:16", provider: "fal" },
+        { value: "sora2-pro-i2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro I2V, 4s/8s/12s, auto/720p/1080p, auto/16:9/9:16", provider: "fal" },
+        { value: "veo3.1-i2v-8s", label: "Veo 3.1", description: "Google's image-to-video model, 8s, 720p/1080p", provider: "fal" },
+        { value: "veo3.1-fast-i2v-8s", label: "Veo 3.1 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
         { value: "veo3-i2v-8s", label: "Veo3 ", description: "Google's image-to-video model, 8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-i2v-8s", label: "Veo3 Fast", description: "Faster image-to-video, 8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-i2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "seedance-1.0-pro-i2v", label: "Seedance 1.0 Pro", description: "Image→Video, 2-12s, 480p/720p/1080p, supports last frame", provider: "replicate" },
+        { value: "seedance-1.0-lite-i2v", label: "Seedance 1.0 Lite", description: "Image→Video (faster), 2-12s, 480p/720p/1080p, supports last frame", provider: "replicate" },
+        { value: "pixverse-v5-i2v", label: "PixVerse v5", description: "Image→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
         { value: "kling-v2.1-i2v", label: "Kling 2.1", description: "Image→Video only, 5s/10s, 720p/1080p (requires start image)", provider: "replicate" },
         { value: "kling-v2.1-master-i2v", label: "Kling 2.1 Master", description: "Image→Video only, 5s/10s, 1080p (requires start image)", provider: "replicate" },
         { value: "wan-2.5-i2v", label: "WAN 2.5 I2V", description: "Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-i2v-fast", label: "WAN 2.5 I2V Fast", description: "Faster image→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
+        { value: "ltx2-pro-i2v", label: "LTX V2 Pro (I2V)", description: "Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9/9:16/auto", provider: "fal" },
+        { value: "ltx2-fast-i2v", label: "LTX V2 Fast (I2V)", description: "Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9/9:16/auto", provider: "fal" },
         { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
         { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
@@ -106,8 +124,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "S2V-01", label: "S2V-01", description: "Subject→Video (character reference), 6s, 720P", provider: "minimax" }
       ];
     } else {
-      // video_to_video - only Runway models support this
+      // video_to_video - Runway and Sora 2 models support this
       return [
+        { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
         { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
       ];
     }
@@ -117,16 +136,113 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const selectedModelInfo = availableModels.find(model => model.value === selectedModel) || availableModels.find(m => selectedModel.startsWith('kling-') && m.value.startsWith('kling-')) || availableModels[0];
 
   // Add credits information to models
+  // Normalize duration/resolution for credit lookup (accept number or string, enforce 'Xs' and lowercase res)
+  // IMPORTANT: Normalize here with defaults so credits always resolve, even before user selects duration/resolution
+  const normalizeDuration = (d: any, defaultDuration: string): string => {
+    if (d == null) return defaultDuration;
+    if (typeof d === 'number') return `${d}s`;
+    const s = String(d);
+    return /s$/.test(s) ? s : `${s}s`;
+  };
+  
+  const normalizeResolution = (r: any, defaultRes: string): string => {
+    if (!r) return defaultRes;
+    return String(r).toLowerCase();
+  };
+
   const modelsWithCredits = availableModels.map(model => {
-    const creditInfo = getModelCreditInfo(model.value, selectedDuration, selectedResolution);
-    // Debug logging for Gen-4 Turbo and Gen-3a Turbo
-    if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
-      console.log(`Credit debug for ${model.value}:`, {
-        selectedDuration,
-        selectedResolution,
-        credits: creditInfo.credits,
-        displayText: creditInfo.displayText
-      });
+    // Per-model normalization/fallbacks so credits always resolve from the first render
+    let d: string;
+    let r: string | undefined;
+    
+    if (model.value.includes('wan-2.5')) {
+      // WAN models: default to 5s and 720p if not provided
+      d = normalizeDuration(selectedDuration, '5s');
+      const rRaw = normalizeResolution(selectedResolution, '720p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('480')) r = '480p';
+      else if (rLower.includes('720')) r = '720p';
+      else if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value.startsWith('kling-')) {
+      // Kling v2.5 only needs duration, v2.1 needs resolution
+      d = normalizeDuration(selectedDuration, '5s');
+      if (model.value.includes('v2.1')) {
+        const rRaw = normalizeResolution(selectedResolution, '720p');
+        const rLower = rRaw.toLowerCase();
+        if (rLower.includes('1080')) r = '1080p';
+        else r = '720p';
+      } else {
+        // For v2.5, don't pass resolution as it's not needed for pricing
+        r = undefined;
+      }
+    } else if (model.value === 'MiniMax-Hailuo-02') {
+      // MiniMax requires explicit resolution and duration to price
+      d = normalizeDuration(selectedDuration, '6s');
+      const rRaw = selectedResolution || '1080P';
+      const rUpper = String(rRaw).toUpperCase();
+      if (rUpper.includes('512')) r = '512P';
+      else if (rUpper.includes('768')) r = '768P';
+      else if (rUpper.includes('1080')) r = '1080P';
+      else r = '1080P';
+    } else if (model.value.includes('pixverse')) {
+      d = normalizeDuration(selectedDuration, '5s');
+      const rRaw = normalizeResolution(selectedResolution, '720p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('360')) r = '360p';
+      else if (rLower.includes('540')) r = '540p';
+      else if (rLower.includes('720')) r = '720p';
+      else if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value.includes('veo3') || model.value.includes('veo3.1')) {
+      d = normalizeDuration(selectedDuration, '8s');
+      const rRaw = normalizeResolution(selectedResolution, '1080p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value.includes('sora2')) {
+      d = normalizeDuration(selectedDuration, '8s');
+      // Sora 2 Pro needs resolution, standard Sora 2 doesn't
+      if (model.value.includes('pro')) {
+        const rRaw = normalizeResolution(selectedResolution, '720p');
+        const rLower = rRaw.toLowerCase();
+        if (rLower.includes('1080')) r = '1080p';
+        else r = '720p';
+      } else {
+        r = undefined; // Standard Sora 2 doesn't need resolution
+      }
+    } else if (model.value.includes('seedance')) {
+      d = normalizeDuration(selectedDuration, '5s');
+      const rRaw = normalizeResolution(selectedResolution, '720p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('480')) r = '480p';
+      else if (rLower.includes('720')) r = '720p';
+      else if (rLower.includes('1080')) r = '1080p';
+      else r = '720p';
+    } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
+      // Gen-4 Turbo and Gen-3a Turbo: only need duration, not resolution
+      d = normalizeDuration(selectedDuration, '5s');
+      r = undefined; // These models don't use resolution for pricing
+    } else {
+      // For other models, normalize with defaults
+      d = normalizeDuration(selectedDuration, '5s');
+      r = normalizeResolution(selectedResolution, '720p');
+    }
+    
+    let creditInfo = getModelCreditInfo(model.value, d, r);
+    // As a final safety net, retry with strict defaults if no credits resolved
+    if (!creditInfo.hasCredits) {
+      if (model.value.includes('wan-2.5')) {
+        creditInfo = getModelCreditInfo(model.value, '5s', '720p');
+      } else if (model.value.startsWith('kling-')) {
+        // v2.5 only needs duration
+        creditInfo = getModelCreditInfo(model.value, '5s');
+      } else if (model.value === 'MiniMax-Hailuo-02') {
+        creditInfo = getModelCreditInfo(model.value, '6s', '1080P');
+      } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
+        // Gen-4 Turbo and Gen-3a Turbo: default to 5s, no resolution needed
+        creditInfo = getModelCreditInfo(model.value, '5s');
+      }
     }
     return {
       ...model,
@@ -165,46 +281,78 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
               if (generationMode === 'text_to_video') {
                 return model.value.includes('t2v') || model.value.includes('T2V') || 
                        model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
-                       model.value === 'MiniMax-Hailuo-02' || model.value === 'S2V-01';
+                       model.value === 'MiniMax-Hailuo-02' || model.value === 'S2V-01' ||
+                       model.value.includes('seedance') || model.value.includes('pixverse') ||
+                       model.value.includes('veo3') || model.value.includes('sora2') || model.value.includes('ltx2');
               } else {
                 return model.value.includes('i2v') || model.value.includes('I2V') || 
                        model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
-                       model.value === 'MiniMax-Hailuo-02';
+                       model.value === 'MiniMax-Hailuo-02' ||
+                       model.value.includes('seedance') || model.value.includes('pixverse') ||
+                       model.value.includes('veo3') || model.value.includes('sora2') || model.value.includes('ltx2');
               }
             });
 
-            // For text-to-video: single column
+            // For text-to-video: two columns like image-to-video
             if (generationMode === 'text_to_video') {
+              const left = filteredModels.slice(0, Math.ceil(filteredModels.length / 2));
+              const right = filteredModels.slice(Math.ceil(filteredModels.length / 2));
               return (
-                <div className="divide-y divide-white/10">
-                  {filteredModels.map((model) => (
-                    <button
-                      key={model.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        try { onModelChange(model.value); } catch {}
-                        setIsOpen(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
-                        ? 'bg-white text-black'
-                        : 'text-white/90 hover:bg-white/10'
-                        }`}
-                    >
-                      <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.label}
-                          <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
-                        </span>
-                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                <div className="grid grid-cols-2 gap-0">
+                  <div className="divide-y divide-white/10">
+                    {left.map((model) => (
+                      <button
+                        key={`t2v-left-${model.value}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { onModelChange(model.value); } catch {}
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                          ? 'bg-white text-black'
+                          : 'text-white/90 hover:bg-white/10'
+                          }`}
+                      >
+                        <div className="flex flex-col mb-0">
+                          <span className="flex items-center gap-2">
+                            {model.label}
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          </span>
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
+                        </div>
+                        {selectedModel === model.value && (
+                          <div className="w-2 h-2 bg-black rounded-full"></div>
                         )}
-                      </div>
-                      {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-l border-white/10 divide-y divide-white/10">
+                    {right.map((model) => (
+                      <button
+                        key={`t2v-right-${model.value}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { onModelChange(model.value); } catch {}
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                          ? 'bg-white text-black'
+                          : 'text-white/90 hover:bg-white/10'
+                          }`}
+                      >
+                        <div className="flex flex-col -mb-0">
+                          <span className="flex items-center gap-2">
+                            {model.label}
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          </span>
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
+                        </div>
+                        {selectedModel === model.value && (
+                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               );
             }
@@ -235,10 +383,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.label}
                           <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                         </span>
-                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
-                        )}
+                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
@@ -266,10 +412,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.label}
                           <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                         </span>
-                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
-                        )}
+                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>

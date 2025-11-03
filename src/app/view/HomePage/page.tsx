@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import Nav from './compo/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures';
@@ -71,6 +72,20 @@ const HomePage: React.FC = () => {
     };
 
     checkFirstTimeUser();
+  }, []);
+
+  // Show deferred toast from login (set in signup/signin flow)
+  useEffect(() => {
+    try {
+      const msg = localStorage.getItem('toastMessage');
+      if (msg === 'LOGIN_SUCCESS') {
+        const t = setTimeout(() => {
+          try { toast.success('Logged in successfully') } catch {}
+          try { localStorage.removeItem('toastMessage') } catch {}
+        }, 2000);
+        return () => clearTimeout(t);
+      }
+    } catch {}
   }, []);
 
   const CARDS: WorkflowCard[] = [

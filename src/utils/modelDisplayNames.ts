@@ -27,14 +27,27 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   // Video Generation Models
   'veo3-t2v-8s': 'Veo3',
   'veo3-fast-t2v-8s': 'Veo3 Fast',
+  'veo3.1-t2v-4s': 'Veo 3.1',
+  'veo3.1-t2v-6s': 'Veo 3.1',
+  'veo3.1-t2v-8s': 'Veo 3.1',
+  'veo3.1-fast-t2v-4s': 'Veo 3.1 Fast',
+  'veo3.1-fast-t2v-6s': 'Veo 3.1 Fast',
+  'veo3.1-fast-t2v-8s': 'Veo 3.1 Fast',
+  'veo3-i2v-8s': 'Veo3',
+  'veo3-fast-i2v-8s': 'Veo3 Fast',
+  'veo3.1-i2v-8s': 'Veo 3.1',
+  'veo3.1-fast-i2v-8s': 'Veo 3.1 Fast',
+  'sora2-t2v': 'Sora 2',
+  'sora2-pro-t2v': 'Sora 2 Pro',
+  'sora2-i2v': 'Sora 2',
+  'sora2-pro-i2v': 'Sora 2 Pro',
+  'sora2-v2v-remix': 'Sora 2 Remix',
   'kling-v2.5-turbo-pro-t2v': 'Kling 2.5 Turbo Pro',
   'kling-v2.1-t2v': 'Kling 2.1',
   'wan-2.5-t2v': 'WAN 2.5 T2V',
   'wan-2.5-t2v-fast': 'WAN 2.5 T2V Fast',
   'MiniMax-Hailuo-02': 'MiniMax-Hailuo-02',
   'T2V-01-Director': 'T2V-01-Director',
-  'veo3-i2v-8s': 'Veo3',
-  'veo3-fast-i2v-8s': 'Veo3 Fast',
   'kling-v2.5-turbo-pro-i2v': 'Kling 2.5 Turbo Pro',
   'kling-v2.1-i2v': 'Kling 2.1',
   'wan-2.5-i2v': 'WAN 2.5 I2V',
@@ -69,14 +82,34 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
     .replace(/^\s*(kwai|kwaivgi|kuaishou|kuaigv)\s*/i, '')
     .replace(/\bkling\s*video\b/ig, 'kling')
     .replace(/\bvideo\b/ig, '')
+    .replace(/\bimage\s*to\b/ig, '') // Remove "Image To" suffix
+    .replace(/\btext\s*to\b/ig, '') // Remove "Text To" suffix
+    .replace(/\bto\s*video\b/ig, '') // Remove "To Video" suffix
     .replace(/\bi2v\b/ig, '')
     .replace(/\bt2v\b/ig, '')
     .trim();
 
-  // Heuristic remapping for Veo models if provider text snuck into the model string
+  // Heuristic remapping for models if provider text snuck into the model string
   const lower = normalized.toLowerCase();
-  if (lower.includes('veo3') && lower.includes('fast')) return 'Veo3 Fast';
-  if (lower.includes('veo3')) return 'Veo3';
+  
+  // Sora 2 models (check before other models)
+  if (lower.includes('sora2') || lower.includes('sora-2')) {
+    if (lower.includes('remix') || lower.includes('v2v')) return 'Sora 2 Remix';
+    if (lower.includes('pro')) return 'Sora 2 Pro';
+    return 'Sora 2';
+  }
+  
+  // Veo 3.1 models (check before generic Veo3)
+  if (lower.includes('veo3.1') || lower.includes('veo 3.1')) {
+    if (lower.includes('fast')) return 'Veo 3.1 Fast';
+    return 'Veo 3.1';
+  }
+  
+  // Veo3 models (legacy)
+  if (lower.includes('veo3')) {
+    if (lower.includes('fast')) return 'Veo3 Fast';
+    return 'Veo3';
+  }
 
   // Heuristic remapping for WAN models (remove "Wan Video" etc.)
   if (lower.includes('wan')) {
@@ -84,6 +117,15 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
     if (lower.includes('2.5')) return `WAN 2.5${isFast ? ' Fast' : ''}`;
     if (lower.includes('2')) return `WAN 2${isFast ? ' Fast' : ''}`;
     return `WAN${isFast ? ' Fast' : ''}`;
+  }
+
+  // LTX V2 models (remove any provider prefixes and format nicely)
+  if (lower.includes('ltx') || lower.includes('ltxv-2') || lower.includes('ltx2')) {
+    const isFast = /fast/i.test(normalized);
+    const isPro = /pro/i.test(normalized) && !isFast; // prefer Fast if both words appear
+    if (isFast) return 'LTX V2 FAST';
+    // Default to PRO when unspecified, per design
+    return 'LTX V2 PRO';
   }
 
   // Heuristic remapping for Kling models (remove vendor misspellings like Kwai/Kwaivgi)
