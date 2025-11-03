@@ -657,7 +657,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">
                 <button
-                  onClick={() => downloadImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => downloadImage(selectedImage?.url || preview?.image?.url || '')}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -671,7 +671,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
               <div className="relative group flex-1">
                 <button
-                  onClick={() => shareImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => shareImage(selectedImage?.url || preview?.image?.url || '')}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <Share className="h-4 w-4" />
@@ -886,11 +886,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             </div>
             </div>
           </div>
-        </div>
-      </div>
-      {/* Fullscreen viewer overlay */}
-      {isFsOpen && (
-        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+          {/* Fullscreen viewer overlay */}
+          {isFsOpen && (
+            <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
           <div className="absolute top-3 right-4 z-[90]">
             <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
               ✕
@@ -935,7 +933,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               }}
             >
               <img
-                src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
+                src={objectUrl || toMediaProxyUrl(selectedImage?.url) || (preview ? toMediaProxyUrl(preview.image.url) : '')}
                 alt={selectedEntry?.prompt}
                 onLoad={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
@@ -950,9 +948,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
             Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
           </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
   );
 };
 
