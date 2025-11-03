@@ -786,10 +786,10 @@ GENERATOR HINTS:
       </div>
 
       {/* Input Section */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[780px] z-[60]">
-        <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
+        <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           <div className="flex items-center gap-3 p-3">
-            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-xl px-4 py-2.5">
+            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-lg pr-4 py-2.5">
               <input
                 type="text"
                 placeholder={
@@ -809,7 +809,7 @@ GENERATOR HINTS:
                     onClick={() => {
                       dispatch(setPrompt(''));
                     }}
-                    className="ml-2 px-2 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    className="ml-2 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
                     aria-label="Clear prompt"
                   >
                     <svg
@@ -838,7 +838,7 @@ GENERATOR HINTS:
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold transition-colors"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition-colors"
               >
                 {isGeneratingLocally ? 'Generating Product...' : (
                   generationMode === 'product-only'
@@ -848,7 +848,7 @@ GENERATOR HINTS:
               </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+          <div className="flex flex-wrap items-center gap-3 px-3 pb-3">
             <ModelsDropdown />
             <GenerationModeDropdown 
               selectedMode={generationMode}

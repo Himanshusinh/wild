@@ -6,7 +6,7 @@ import Image from 'next/image';
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (urls: string[]) => void;
+  onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
   historyEntries: any[];
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
   onLoadMore?: () => void;
@@ -34,11 +34,30 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   const handleAdd = () => {
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen);
+      if (chosen.length) {
+        // Find the entries corresponding to the selected URLs (use Set to ensure uniqueness)
+        const entryMap = new Map<string, any>(); // Map entry ID to entry
+        videoEntries.forEach((entry: any) => {
+          const videos = entry.videos || [];
+          const fallbackVideos = (entry.images || []).filter((img: any) => {
+            const url = img.url || img.firebaseUrl || img.originalUrl;
+            return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+          });
+          const allVideos = videos.length > 0 ? videos : fallbackVideos;
+          allVideos.forEach((video: any) => {
+            const videoUrl = video.url || video.firebaseUrl || video.originalUrl;
+            if (chosen.includes(videoUrl) && entry.id) {
+              entryMap.set(entry.id, entry); // Use entry ID as key to ensure uniqueness
+            }
+          });
+        });
+        const selectedEntries = Array.from(entryMap.values());
+        onAdd(chosen, selectedEntries);
+      }
       setSelection(new Set());
     } else {
       const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen);
+      if (chosen.length) onAdd(chosen, []); // No entries for local uploads
       setLocalUploads([]);
     }
     onClose();

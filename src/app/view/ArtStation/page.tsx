@@ -67,6 +67,7 @@ export default function ArtStationPage() {
   const revealRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // (deduped) measuredRatios declared above
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
   // Control concurrent fetches with sequencing (no manual aborts to avoid canceled requests)
@@ -344,7 +345,7 @@ export default function ArtStationPage() {
         loadingMoreRef.current = false
       }
     }, {
-      root: null,
+      root: scrollContainerRef.current || null,
       rootMargin: '600px',
       threshold: 0.01
     })
@@ -534,39 +535,44 @@ export default function ArtStationPage() {
   return (
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
-      <div className="flex pt-10">
+      <div className="flex pt-0">
         <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
-          <div className=" mb-2 md:mb-3">
-            <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
-              Art Station
-            </h3>
-            <p className="text-white/80 text-base sm:text-lg md:text-xl">
-              Discover amazing AI-generated content from our creative community
-            </p>
-          </div>
+          {/* Sticky header + filters */}
+          <div className="sticky top-4 z-20 bg-[#07070B] pt-2">
+            <div className=" mb-2 md:mb-3">
+              <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+                Art Station
+              </h3>
+              <p className="text-white/80 text-base sm:text-lg md:text-xl">
+                Discover amazing AI-generated content from our creative community
+              </p>
+            </div>
 
-          {/* Category Filter Bar */}
-          <div className="mb-4">
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-              {(['All', 'Images', 'Videos', 'Music', 'Logos', 'Stickers', 'Products'] as Category[]).map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border ${activeCategory === category
-                      ? 'bg-white border-white/5 text-black shadow-sm'
-                      : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                  {category}
-                </button>
-              ))}
+            {/* Category Filter Bar */}
+            <div className="mb-4">
+              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                {(['All', 'Images', 'Videos', 'Music', 'Logos', 'Stickers', 'Products'] as Category[]).map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
+                        ? 'bg-white border-white/5 text-black shadow-sm'
+                        : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                      }`}
+                  >
+                    {category}
+                  </button>
+                ))}
 
+              </div>
             </div>
           </div>
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
+          {/* Scrollable feed container */}
+          <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
           <div className="columns-1 sm:columns-2 md:columns-5 gap-1 [overflow-anchor:none]">
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
@@ -682,7 +688,7 @@ export default function ArtStationPage() {
                           <div className="relative">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
-                              className="peer p-2 rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                              className="peer p-2 rounded-lg backdrop-blur-3xl shadow-2xl bg-white/10 text-white/80 hover:bg-white/30 transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -694,7 +700,7 @@ export default function ArtStationPage() {
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
-                                className="peer p-2 rounded-full bg-red-500/70 hover:bg-red-500 text-white transition-colors"
+                                className="peer p-2 rounded-lg bg-red-500/70 hover:bg-red-500 text-white transition-colors"
                               // title="Delete"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -729,9 +735,13 @@ export default function ArtStationPage() {
 
           {/* Initial loading */}
           {loading && items.length === 0 && (
-            <div className="text-center py-16">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-4">{activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}</p>
+            <div className="flex items-center justify-center py-28">
+              <div className="flex flex-col items-center gap-4">
+                <Image src="/styles/Logo.gif" alt="Loading" width={112} height={112} className="w-28 h-28" />
+                <div className="text-white text-lg">
+                  {activeCategory === 'All' ? 'Loading Art Station...' : `Loading ${activeCategory}...`}
+                </div>
+              </div>
             </div>
           )}
 
@@ -751,6 +761,7 @@ export default function ArtStationPage() {
           )}
 
           <div ref={sentinelRef} style={{ height: 1 }} />
+          </div>
 
           {/* Preview Modals */}
           {preview && (
@@ -766,7 +777,7 @@ export default function ArtStationPage() {
                       <div className="relative group">
                         <button
                           title="Delete"
-                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                           onClick={() => confirmDelete(preview.item)}
                         >
                           <Trash2 className="w-4 h-4" />

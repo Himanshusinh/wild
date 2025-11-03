@@ -70,7 +70,7 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
       <button
         onClick={handleClick}
         disabled={isDisabled}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium transition flex items-center gap-2 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium transition flex items-center gap-2 ${
           isDisabled 
             ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
@@ -87,7 +87,7 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
       {selectedFileName && (
         <button
           onClick={clearImage}
-          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-600 transition-colors"
+          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-lg flex items-center justify-center text-white text-xs hover:bg-red-600 transition-colors"
           title="Remove image"
         >
           ×

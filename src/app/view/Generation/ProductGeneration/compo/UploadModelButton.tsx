@@ -100,7 +100,7 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
       <button
         onClick={toggle}
         disabled={isDisabled}
-        className={`h-[32px] px-4 rounded-full text-[13px] font-medium transition flex items-center gap-2 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium transition flex items-center gap-2 ${
           isDisabled 
             ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
@@ -126,8 +126,8 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
       )}
 
       {isOpen && (
-        <div ref={panelRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[90] w-[420px] max-w-[85vw]">
-          <div className="relative rounded-2xl bg-black/80 backdrop-blur-xl ring-1 ring-white/20 shadow-2xl p-4 pb-14">
+        <div ref={panelRef} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[50] w-auto max-w-[85vw]">
+          <div className="relative rounded-lg bg-black/70 backdrop-blur-3xl border shadow-xl border-white/20 shadow-2xl p-4 pb-14 z-[100]">
             <div className="grid grid-cols-4 gap-3 justify-items-center">
               <div className="space-y-2">
                 <input

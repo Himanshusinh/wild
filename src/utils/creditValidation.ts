@@ -1,6 +1,7 @@
 // @ts-ignore
 import { creditDistributionData, ModelCreditInfo } from './creditDistribution';
 import { buildCreditModelName, getModelMapping } from './modelMapping';
+import { getCreditsForModel } from './modelCredits';
 
 /**
  * Get credit cost for a specific model
@@ -26,6 +27,16 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
     console.warn(`Unknown or invalid video model: ${frontendModel}`);
     return 0;
   }
+
+        // For models that use dynamic pricing (like Seedance, WAN, Kling, PixVerse, Veo 3.1), use getCreditsForModel
+        // This handles models with duration/resolution variants that might not be in creditDistributionData
+        if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2')) {
+          const cost = getCreditsForModel(frontendModel, duration ? `${duration}s` : undefined, resolution);
+          if (cost !== null && cost > 0) {
+            console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
+            return cost;
+          }
+        }
 
   // Build the complete model name with options
   const creditModelName = buildCreditModelName(frontendModel, { resolution, duration });

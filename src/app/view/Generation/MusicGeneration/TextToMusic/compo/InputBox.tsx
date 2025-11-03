@@ -105,19 +105,11 @@ const InputBox = () => {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  // Load history on mount (music only)
+  // Initial history is loaded centrally by PageRouter; after it finishes, auto-fill if content is short
   useEffect(() => {
-    dispatch(clearFilters());
-    (async () => {
-      try {
-        await (dispatch as any)(loadHistory({ 
-          filters: { generationType: 'text-to-music' }, 
-          paginationParams: { limit: 10 } 
-        })).unwrap();
-        await autoFillViewport();
-      } catch {}
-    })();
-  }, [dispatch]);
+    // Trigger viewport top-up once when initial data arrives
+    autoFillViewport();
+  }, [historyEntries.length, storeHasMore, storeLoading]);
 
   // Remove unused local loader; rely on Redux loadMoreHistory
 
@@ -413,7 +405,7 @@ const InputBox = () => {
           {!storeLoading && historyEntries.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
                   <Music4 className="w-8 h-8 text-white/60" />
                 </div>
                 <div className="text-white text-lg">No music generations yet</div>

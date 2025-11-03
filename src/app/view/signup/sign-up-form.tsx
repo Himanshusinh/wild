@@ -150,32 +150,21 @@ export default function SignInForm() {
       console.log("📥 Login response data:", response.data)
 
       if (response.data?.data) {
-        const { user, idToken: customToken, redirect } = response.data.data
+        // Server sets the session cookie; custom token is optional and not required on client
+        const { user, customToken, passwordLoginIdToken, redirect } = response.data.data
 
         console.log("✅ Login successful!")
         console.log("👤 User:", user)
-        console.log("🔄 Step 2: Converting custom token to ID token...")
 
-        // Step 2: Convert custom token to ID token
-        const userCredential = await signInWithCustomToken(auth, customToken)
-        const idToken = await userCredential.user.getIdToken()
+        // Optionally store ID token (helps with Bearer-first APIs); safe to proceed without it since cookie is set
+        try {
+          if (passwordLoginIdToken && typeof passwordLoginIdToken === 'string') {
+            localStorage.setItem("authToken", passwordLoginIdToken)
+          }
+        } catch {}
 
-        console.log("✅ ID token obtained!")
-
-        // Step 3: Create session
-        console.log("🔄 Step 3: Creating session with backend...")
-        // Create session directly on backend so cookie is set on API domain
-        const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-        await (axiosInstance || getApiClient()).post(`${backendBase}/api/auth/session`,
-          { idToken: idToken },
-          { withCredentials: true }
-        )
-
-        console.log("✅ Session created!")
-
-        // Step 4: Store user data and redirect
-        localStorage.setItem("user", JSON.stringify(user))
-        localStorage.setItem("authToken", idToken)
+        // Store user profile; rely on httpOnly session cookie for auth
+        try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
 
         // Persist toast flag for next page (faster redirect)
         try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
@@ -183,7 +172,6 @@ export default function SignInForm() {
         setEmail("")
         setPassword("")
 
-        // Redirect immediately with optional query flag for safety
         // Set a short-lived hint cookie to prevent race-condition redirects in middleware
         try { document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax' } catch {}
         const redirectUrl = (redirect || APP_ROUTES.HOME) + '?toast=LOGIN_SUCCESS'
