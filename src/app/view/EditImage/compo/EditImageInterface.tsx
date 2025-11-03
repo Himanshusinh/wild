@@ -355,9 +355,15 @@ const EditImageInterface: React.FC = () => {
 
   const features = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
-    { id: 'remove-bg', label: 'Remove Background', description: 'Remove background from your image' },
-    { id: 'resize', label: 'Resize (coming Soon....)', description: 'Resize image to specific dimensions' },
-    { id: 'fill', label: 'Image Fill', description: 'Mask areas to regenerate with a prompt' },
+    { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your image' },
+    { id: 'fill', label: 'Replace', description: 'Mask areas to regenerate with a prompt' },
+    { id: 'fill', label: 'Erase', description: 'Mask areas to regenerate with a prompt' },
+
+    { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
+    { id: 'fill', label: 'Vectorize', description: 'Mask areas to regenerate with a prompt' },
+    { id: 'fill', label: 'Enhance +', description: 'Mask areas to regenerate with a prompt' },
+
+    
   ] as const;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -915,12 +921,12 @@ const EditImageInterface: React.FC = () => {
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
-              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-[260px] md:p-3 ${selectedFeature === feature.id
+              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-auto md:p-3 ${selectedFeature === feature.id
                   ? 'border-white/30 bg-white/10'
                   : 'border-white/10 hover:bg-white/10'
                 }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-1">
                 <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
                   }`}>
                   {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
@@ -929,7 +935,7 @@ const EditImageInterface: React.FC = () => {
                   {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4 md:w-5 md:h-5" />)}
                 </div>
                 <div>
-                  <h3 className="text-white text-xs font-medium md:text-sm">{feature.label}</h3>
+                  <h3 className="text-white text-xs font-medium md:text-sm pr-2">{feature.label}</h3>
             </div>
           </div>
                 </div>
@@ -975,6 +981,7 @@ const EditImageInterface: React.FC = () => {
           {/* Input Image Upload (Fill mask overlays here) */}
           <div className="px-3 md:px-4">
             <h3 className="text-xs pl-1  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
+            
             <div className="relative">
               <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] md:min-h-[18rem]">
                   {inputs[selectedFeature] ? (

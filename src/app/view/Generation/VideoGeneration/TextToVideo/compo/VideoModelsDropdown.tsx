@@ -92,6 +92,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
         { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
         { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "ltx2-pro-t2v", label: "LTX V2 Pro (T2V)", description: "Text→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
+        { value: "ltx2-fast-t2v", label: "LTX V2 Fast (T2V)", description: "Text→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 T2V", description: "Text→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 T2V Fast", description: "Faster text→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
@@ -113,6 +115,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "kling-v2.1-master-i2v", label: "Kling 2.1 Master", description: "Image→Video only, 5s/10s, 1080p (requires start image)", provider: "replicate" },
         { value: "wan-2.5-i2v", label: "WAN 2.5 I2V", description: "Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-i2v-fast", label: "WAN 2.5 I2V Fast", description: "Faster image→video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
+        { value: "ltx2-pro-i2v", label: "LTX V2 Pro (I2V)", description: "Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9/9:16/auto", provider: "fal" },
+        { value: "ltx2-fast-i2v", label: "LTX V2 Fast (I2V)", description: "Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9/9:16/auto", provider: "fal" },
         { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
         { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
         { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
@@ -182,13 +186,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                        model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
                        model.value === 'MiniMax-Hailuo-02' || model.value === 'S2V-01' ||
                        model.value.includes('seedance') || model.value.includes('pixverse') ||
-                       model.value.includes('veo3') || model.value.includes('sora2');
+                       model.value.includes('veo3') || model.value.includes('sora2') || model.value.includes('ltx2');
               } else {
                 return model.value.includes('i2v') || model.value.includes('I2V') || 
                        model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' ||
                        model.value === 'MiniMax-Hailuo-02' ||
                        model.value.includes('seedance') || model.value.includes('pixverse') ||
-                       model.value.includes('veo3') || model.value.includes('sora2');
+                       model.value.includes('veo3') || model.value.includes('sora2') || model.value.includes('ltx2');
               }
             });
 

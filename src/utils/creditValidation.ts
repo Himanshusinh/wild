@@ -30,7 +30,7 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
 
         // For models that use dynamic pricing (like Seedance, WAN, Kling, PixVerse, Veo 3.1), use getCreditsForModel
         // This handles models with duration/resolution variants that might not be in creditDistributionData
-        if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2')) {
+        if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2')) {
           const cost = getCreditsForModel(frontendModel, duration ? `${duration}s` : undefined, resolution);
           if (cost !== null && cost > 0) {
             console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);

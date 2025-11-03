@@ -62,13 +62,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   const toFrontendProxyResourceUrl = (urlOrPath?: string) => {
     if (!urlOrPath) return '';
     const path = urlOrPath.replace(/^https?:\/\/[^/]+\/devstoragev1\//, '');
-    return `/api/proxy/media/${encodeURIComponent(path)}`;
-  };
-
-  const toMediaProxyUrl = (urlOrPath?: string) => {
-    if (!urlOrPath) return '';
-    const path = urlOrPath.replace(/^https?:\/\/[^/]+\/devstoragev1\//, '');
-    return `/api/proxy/media/${encodeURIComponent(path)}`;
+    return `/api/proxy/resource/${encodeURIComponent(path)}`;
   };
 
   const getUserPrompt = (rawPrompt: string | undefined) => {
@@ -255,7 +249,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
           <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image 
-                src={toMediaProxyUrl(selectedImage.url) || selectedImage.url} 
+                src={selectedImage.url} 
                 alt={entry.prompt} 
                 fill 
                 className="object-contain" 
@@ -408,7 +402,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       <Image
-                        src={toMediaProxyUrl(image.url) || image.url}
+                        src={image.url}
                         alt={`Product ${index + 1}`}
                         fill
                         className="object-cover"
@@ -452,7 +446,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             >
               <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
                 <img
-                  src={toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                  src={selectedImage?.url}
                   alt={entry.prompt}
                   onLoad={(e) => { const img = e.currentTarget as HTMLImageElement; setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight }); }}
                   className="max-w-full max-h-full object-contain select-none"

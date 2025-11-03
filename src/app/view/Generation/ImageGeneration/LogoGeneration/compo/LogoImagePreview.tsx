@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { toMediaProxy, toZataPath } from '@/lib/thumb';
 import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -102,12 +101,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
-
-  const toMediaProxyUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
   };
 
   if (!isOpen) return null;
@@ -427,7 +421,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
-                src={selectedImageObjectUrl || toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
                 alt={entry.prompt}
                 fill
                 className="object-contain"
@@ -564,7 +558,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       <Image
-                        src={toMediaProxyUrl((image as any)?.url) || (image as any)?.url}
+                        src={(image as any)?.url}
                         alt={`Logo ${index + 1}`}
                         fill
                         className="object-cover"
@@ -618,7 +612,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             >
               <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
                 <img
-                  src={selectedImageObjectUrl || toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                  src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
                   alt={entry.prompt}
                   onLoad={(e) => {
                     const img = e.currentTarget as HTMLImageElement;

@@ -485,6 +485,36 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
 
+  // LTX V2 (FAL)
+  {
+    frontendValue: 'ltx2-pro-t2v',
+    creditModelName: 'LTX V2 Pro T2V', // priced dynamically via getCreditsForModel
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+  {
+    frontendValue: 'ltx2-fast-t2v',
+    creditModelName: 'LTX V2 Fast T2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+  {
+    frontendValue: 'ltx2-pro-i2v',
+    creditModelName: 'LTX V2 Pro I2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+  {
+    frontendValue: 'ltx2-fast-i2v',
+    creditModelName: 'LTX V2 Fast I2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+  },
+
   // MUSIC GENERATION MODELS
   {
     frontendValue: 'music-1.5',

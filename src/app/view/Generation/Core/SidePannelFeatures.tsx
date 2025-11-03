@@ -178,7 +178,8 @@ const SidePannelFeatures = ({
           }}
           className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
           <Image
-            src={imageRoutes.core.logo}
+            src="/icons/wildmind_icon_darkbg.svg"
+            // src={imageRoutes.core.logo}
             alt="Wild Mind Logo"
             width={32}
             height={32}
@@ -187,8 +188,8 @@ const SidePannelFeatures = ({
         </div>
         <span
           onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
-          className='text-white text-2xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
-          WildMind Ai
+          className='text-white md:w-[34px] md:h-[34px] w-[25px] h-[25px] text-3xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
+          <Image src="/icons/wildmind_text_whitebg (2).svg" alt="Wild Mind Logo" width={32} height={32} className="w-auto h-full" />
         </span>
       </div>
 

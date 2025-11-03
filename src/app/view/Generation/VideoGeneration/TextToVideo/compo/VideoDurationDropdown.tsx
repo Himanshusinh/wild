@@ -105,6 +105,14 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 8, label: "8 seconds", description: "Long" }
       ];
     }
+    if (selectedModel?.includes("ltx2")) {
+      // LTX V2 supports 6s, 8s, and 10s
+      return [
+        { value: 6, label: "6 seconds", description: "Short video" },
+        { value: 8, label: "8 seconds", description: "Standard length" },
+        { value: 10, label: "10 seconds", description: "Long video" }
+      ];
+    }
     if (selectedModel?.includes("seedance")) {
       // Seedance supports 2-12 seconds
       return [
