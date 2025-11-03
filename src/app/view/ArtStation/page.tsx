@@ -664,6 +664,19 @@ export default function ArtStationPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Music overlay if the item contains audio tracks (show even when tile is an image/video) */}
+                      {(item as any).audios && (item as any).audios.length > 0 && (
+                        <div className={`absolute bottom-2 left-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
+                          <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white opacity-90">
+                              <path d="M9 17a4 4 0 1 0 0-8v8z" />
+                              <path d="M9 9v8" />
+                              <path d="M9 9l10-3v8" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Hover Overlay - Profile and Like Button */}
