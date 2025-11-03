@@ -1951,6 +1951,7 @@ const InputBox = () => {
                   </div>
                 </div>
               ))}
+            </div>
 
               {/* Loader for scroll loading */}
               {hasMore && loading && (
