@@ -179,14 +179,14 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
       >
-        <Crop className="w-4 h-4 mr-1" />
+        <Crop className="w-3 h-3 md:w-4 md:h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 w-[70vw] md:w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
           {availableFrameSizes.map((size) => (
             <button
               key={size.value}
@@ -194,7 +194,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
                 onFrameSizeChange(size.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between gap-3 ${
+              className={`w-full px-2 md:px-3 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between gap-2 md:gap-3 ${
                 selectedFrameSize === size.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
@@ -203,29 +203,29 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
               <span className="flex items-center gap-2">
                 {/* Icon */}
                 {size.icon === 'square' && (
-                  <span className={`inline-block w-4 h-4 border ${
+                  <span className={`inline-block w-3 h-3 md:w-4 md:h-4 border ${
                     selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
                   }`}></span>
                 )}
                 {size.icon === 'portrait' && (
-                  <span className={`inline-block w-3 h-4 border ${
+                  <span className={`inline-block w-2.5 h-3.5 md:w-3 md:h-4 border ${
                     selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
                   }`}></span>
                 )}
                 {size.icon === 'landscape' && (
-                  <span className={`inline-block w-4 h-3 border ${
+                  <span className={`inline-block w-3.5 h-2.5 md:w-4 md:h-3 border ${
                     selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
                   }`}></span>
                 )}
                 {size.icon === 'ultrawide' && (
-                  <span className={`inline-block w-5 h-2 border ${
+                  <span className={`inline-block w-4 h-1.5 md:w-5 md:h-2 border ${
                     selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
                   }`}></span>
                 )}
                 <span>{size.label}</span>
               </span>
               {selectedFrameSize === size.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>
               )}
             </button>
           ))}

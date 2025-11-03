@@ -574,14 +574,14 @@ GENERATOR HINTS:
 
   return (
     <>
-      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
-        <div className="py-6 pl-4 ">
+      <div className="inset-0 pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
+        <div className="md:py-6 py-0 md:pl-4 pl-0">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
-              <h2 className="text-xl font-semibold text-white pl-0 ">Product Generation History</h2>
+            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0">Product Generation History</h2>
             </div>
             {/* Spacer to keep content below fixed header */}
-            <div className="h-0"></div>
+            <div className="h-[32px] md:h-0"></div>
 
             {/* Scoped overlay loader while first page loads */}
           {(initialLoading || (loading && finalProductEntries.length === 0)) && (
@@ -594,18 +594,18 @@ GENERATOR HINTS:
             )}
 
             {/* History Entries - Grouped by Date */}
-            <div className=" space-y-8  ">
+            <div className="space-y-8">
               {/* If there is a local preview but no row for today yet, render today's row so the tile appears immediately */}
               {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
                 <div className="space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3 md:px-0">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
                     </div>
                     <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
                   </div>
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
                     {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                       <div key={`local-only-${idx}`} className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                         {localGeneratingEntries[0].status === 'generating' ? (
@@ -637,7 +637,7 @@ GENERATOR HINTS:
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3 md:px-0">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
@@ -660,7 +660,7 @@ GENERATOR HINTS:
                   </div>
 
                   {/* All Images for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
                     {/* Prepend local preview tiles at the start of today's row to push images right */}
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
@@ -786,10 +786,10 @@ GENERATOR HINTS:
       </div>
 
       {/* Input Section */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 w-[94%] md:w-[90%] md:max-w-[840px] z-[60]">
         <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
-          <div className="flex items-center gap-3 p-3">
-            <div className="flex-1 flex items-center gap-2 bg-transparent rounded-lg pr-4 py-2.5">
+          <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3">
+            <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4 py-1.5 md:py-2.5">
               <input
                 type="text"
                 placeholder={
@@ -801,7 +801,7 @@ GENERATOR HINTS:
                 }
                 value={prompt}
                 onChange={(e) => dispatch(setPrompt(e.target.value))}
-                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none"
+                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed"
               />
               {prompt.trim() && (
                 <div className="relative group">
@@ -809,12 +809,12 @@ GENERATOR HINTS:
                     onClick={() => {
                       dispatch(setPrompt(''));
                     }}
-                    className="ml-2 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                    className="px-1 py-1 md:px-2 md:py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs md:text-sm font-medium transition-colors duration-200 flex items-center gap-1"
                     aria-label="Clear prompt"
                   >
                     <svg
-                      width="14"
-                      height="14"
+                      width="16"
+                      height="16"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -831,24 +831,35 @@ GENERATOR HINTS:
                 </div>
               )}
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-end gap-1 md:gap-2">
               {error && (
-                <div className="text-red-500 text-sm">{error}</div>
+                <div className="text-red-500 text-xs md:text-sm">{error}</div>
               )}
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition-colors"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2.5 rounded-lg text-xs md:text-[15px] font-semibold transition-colors flex items-center justify-center"
               >
-                {isGeneratingLocally ? 'Generating Product...' : (
-                  generationMode === 'product-only'
-                    ? 'Generate Product'
-                    : 'Generate with Model Pose'
+                {isGeneratingLocally ? (
+                  <>
+                    <svg className="w-5 h-5 md:hidden animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    <span className="hidden md:inline">{generationMode === 'product-only' ? 'Generating Product...' : 'Generating with Model Pose...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                    <span className="hidden md:inline">{generationMode === 'product-only' ? 'Generate Product' : 'Generate with Model Pose'}</span>
+                  </>
                 )}
               </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 px-3 pb-3">
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-3 px-2 md:px-3 pb-2 md:pb-3">
             <ModelsDropdown />
             <GenerationModeDropdown 
               selectedMode={generationMode}

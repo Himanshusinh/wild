@@ -48,6 +48,7 @@ const VideoGenerationInputBox: React.FC = () => {
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number; status: string } | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showReferences, setShowReferences] = useState(false);
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
   
   // File refs
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -344,7 +345,44 @@ const VideoGenerationInputBox: React.FC = () => {
   return (
     <div className="w-full max-w-[840px] mx-auto space-y-6">
       {/* Mode Toggle */}
-      <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+      {/* Mobile: compact dropdown */}
+      <div className="md:hidden">
+        <div className="relative">
+          <button
+            onClick={() => setShowModeDropdown(v => !v)}
+            className="w-full flex items-center justify-between bg-white/10 ring-1 ring-white/20 rounded-lg px-2 py-1.5 text-[10px] text-white"
+            aria-haspopup="menu"
+            aria-expanded={showModeDropdown}
+          >
+            <span className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-blue-400" />
+              <span className="font-medium">
+                {state.mode === 'image_to_video' ? 'Image→Video' : 'Video→Video'}
+              </span>
+            </span>
+            <svg className={`w-3 h-3 transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          {showModeDropdown && (
+            <div className="absolute top-full mt-2 left-0 right-0 bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50">
+              <button
+                onClick={() => { setState(prev => ({ ...prev, mode: 'image_to_video' })); setShowModeDropdown(false); }}
+                className={`w-full text-left px-2 py-1.5 rounded-md text-[10px] ${state.mode === 'image_to_video' ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+              >
+                Image→Video
+              </button>
+              <button
+                onClick={() => { setState(prev => ({ ...prev, mode: 'video_to_video' })); setShowModeDropdown(false); }}
+                className={`w-full text-left mt-1 px-2 py-1.5 rounded-md text-[10px] ${state.mode === 'video_to_video' ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+              >
+                Video→Video
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: original toggle */}
+      <div className="hidden md:flex items-center gap-4 p-4 bg-white/5 rounded-lg">
         <div className="flex items-center gap-2">
           <ImageIcon className="w-5 h-5 text-blue-400" />
           <span className="text-white font-medium">Mode:</span>

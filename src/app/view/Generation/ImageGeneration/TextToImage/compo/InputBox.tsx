@@ -1696,7 +1696,7 @@ const InputBox = () => {
         <div className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-0 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 ml-0 mr-1 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl md:pl-6 pl-2  ">
+            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
               <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
@@ -1775,7 +1775,7 @@ const InputBox = () => {
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3 md:px-0">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
@@ -1798,7 +1798,7 @@ const InputBox = () => {
                   </div>
 
                   {/* All Images for this Date - Horizontal Layout */}
-                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-3 md:ml-9 ml-0">
+                  <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
                     {/* Prepend local preview tiles at the start of today's row to push images right */}
                     {date === todayKey && localGeneratingEntries.length > 0 && (
                       <>
@@ -1948,11 +1948,11 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[90%]  md:max-w-[60%] z-[60] h-auto">
-        <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] z-[60] h-auto">
+        <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
-          <div className="flex items-start gap-0 p-3 pr-3">
-            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-2.5 w-full relative">
+          <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
+            <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4 pl-1.5 md:pl-2 py-1.5 md:py-2.5 w-full relative">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -1966,19 +1966,19 @@ const InputBox = () => {
                 autoComplete="off"
                 autoCorrect="on"
                 autoCapitalize="on"
-                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
+                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
                   }`}
                 rows={1}
                 style={{
-                  minHeight: '24px',
-                  maxHeight: '96px',
+                  minHeight: '20px',
+                  maxHeight: '80px',
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
                 }}
               />
               {/* Fixed position buttons container */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
                 {prompt.trim() && (
                   <div className="relative group">
@@ -1989,19 +1989,19 @@ const InputBox = () => {
                           inputEl.current.focus();
                         }
                       }}
-                      className="px-1.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-1 py-1 md:px-1.5 md:py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs md:text-sm font-medium transition-colors duration-200 flex items-center gap-1"
                       aria-label="Clear prompt"
                     >
                       <svg
-                        width="18"
-                        height="18"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-white/80"
+                        className="text-white/80 md:w-[18px] md:h-[18px]"
                       >
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -2012,11 +2012,11 @@ const InputBox = () => {
                 )}
                 {/* Previews just to the left of upload */}
                 {uploadedImages.length > 0 && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1 md:gap-1.5">
                     {uploadedImages.map((u: string, i: number) => (
                       <div
                         key={i}
-                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
+                        className="relative w-8 h-8 md:w-12 md:h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -2043,12 +2043,12 @@ const InputBox = () => {
                 )}
                 <div className="relative group">
                   <button
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
+                    className="p-1 md:p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
                     onClick={() => setIsUploadOpen(true)}
                     type="button"
                     aria-label="Upload"
                   >
-                    <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
+                    <Image src="/icons/fileupload.svg" alt="Attach" width={16} height={16} className="opacity-90 md:w-[18px] md:h-[18px]" />
                     <span className="text-white text-sm"> </span>
                   </button>
                   <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
@@ -2057,20 +2057,35 @@ const InputBox = () => {
             </div>
 
             {/* Fixed position Generate button */}
-            <div className="flex flex-col items-end gap-2 flex-shrink-0">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div className="flex flex-col items-end gap-1 md:gap-2 flex-shrink-0">
+              {error && <div className="text-red-500 text-xs md:text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
                 disabled={isGeneratingLocally || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2.5 rounded-lg text-xs md:text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
               >
-                {isGeneratingLocally ? "Generating..." : "Generate"}
+                {isGeneratingLocally ? (
+                  <>
+                    <svg className="w-5 h-5 md:hidden animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    <span className="hidden md:inline">Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                    <span className="hidden md:inline">Generate</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 px-2 md:px-3 pb-2 md:pb-3">
             {/* Selection Summary */}
             {/* <div className="flex items-center gap-2 text-xs text-white/60 bg-white/5 px-3 py-1.5 rounded-lg transition-all duration-300">
             <span>Selected:</span>
@@ -2101,7 +2116,7 @@ const InputBox = () => {
             </span>
           </div> */}
 
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-3 flex-1 min-w-0">
               <ModelsDropdown />
               <ImageCountDropdown />
               <FrameSizeDropdown />
@@ -2114,7 +2129,7 @@ const InputBox = () => {
                   <div className="relative dropdown-container">
                     <button
                       onClick={() => dispatch(toggleDropdown('seedreamSize'))}
-                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                        className="h-[28px] md:h-[32px] px-3 md:px-4 rounded-lg text-xs md:text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1.5 md:gap-2"
                     >
                       {seedreamSize}
                       <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
@@ -2145,7 +2160,7 @@ const InputBox = () => {
                         value={seedreamWidth}
                         onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
                         placeholder="Width"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        className="h-[28px] md:h-[32px] w-20 md:w-24 px-2 md:px-3 rounded-lg text-xs md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
                       />
                       <input
                         type="number"
@@ -2154,7 +2169,7 @@ const InputBox = () => {
                         value={seedreamHeight}
                         onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
                         placeholder="Height"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        className="h-[28px] md:h-[32px] w-20 md:w-24 px-2 md:px-3 rounded-lg text-xs md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
                       />
                     </>
                   )}

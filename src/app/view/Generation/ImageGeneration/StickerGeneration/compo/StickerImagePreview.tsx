@@ -328,7 +328,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
-      <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
+      <div className="relative h-full md:w-full md:max-w-6xl w-[95%] max-w-[95%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
           <div className="text-white/70 text-sm"></div>
@@ -347,7 +347,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
         {/* Content */}
         <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[46vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
                 src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
@@ -376,32 +376,32 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-[78vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-10 mb-10">
+          <div className="p-3 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[78vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-8 md:mt-10 mb-8 md:mb-10">
             {/* Action Buttons */}
-            <div className="mb-4 flex gap-2">
+            <div className="mb-3 md:mb-4 flex gap-1.5 md:gap-2">
               <div className="relative group flex-1">
-                <button onClick={handleDownload} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                <button onClick={handleDownload} className="w-full flex items-center justify-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-xs md:text-sm">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
                 </button>
                 <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
               </div>
 
               <div className="relative group flex-1">
-                <button onClick={() => shareImage()} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                <button onClick={() => shareImage()} className="w-full flex items-center justify-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-xs md:text-sm">
                   <Share className="h-4 w-4" />
                 </button>
                 <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
               </div>
 
               <div className="relative group flex-1">
-                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
+                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-xs md:text-sm" aria-label="Delete image">
                   <Trash2 className="h-4 w-4" />
                 </button>
                 <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
               </div>
 
               <div className="relative group flex-1">
-                <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
+                <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-xs md:text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
                   {isPublicFlag ? (
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
                   ) : (

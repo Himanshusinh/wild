@@ -88,34 +88,34 @@ const DurationDropdown: React.FC<DurationDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         } ${isOpen ? "bg-white/10 border-white/20" : ""}`}
       >
         <div className="flex flex-col items-start">
-          <span className="text-white font-medium">Duration</span>
-          <span className="text-xs text-white/60 mt-0.5">{selectedDuration}s</span>
+          <span className="text-white font-medium text-[11px] md:text-sm">Duration</span>
+          <span className="text-[10px] md:text-xs text-white/60 mt-0.5">{selectedDuration}s</span>
         </div>
         <ChevronUp
-          className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
+          className={`w-3 h-3 md:w-4 md:h-4 text-white/60 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-full md:w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2">
           <div className="p-2">
             {availableDurations.map((duration) => (
               <button
                 key={duration}
                 onClick={() => handleDurationSelect(duration)}
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 hover:bg-white/10 ${
+                className={`w-full text-left p-1.5 md:p-3 rounded-lg transition-all duration-200 hover:bg-white/10 ${
                   selectedDuration === duration ? "bg-white/20" : ""
                 }`}
               >
-                <span className="text-white font-medium text-sm">{duration}s</span>
-                <div className="text-xs text-white/60 mt-1">
+                <span className="text-white font-medium text-[10px] md:text-sm">{duration}s</span>
+                <div className="text-[9px] md:text-xs text-white/60 mt-1">
                   {duration === 6 && 'Standard duration (6 seconds)'}
                   {duration === 10 && 'Extended duration (10 seconds)'}
                 </div>

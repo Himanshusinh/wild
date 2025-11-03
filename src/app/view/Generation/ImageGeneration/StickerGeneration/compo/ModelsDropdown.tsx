@@ -66,7 +66,7 @@ const ModelsDropdown = () => {
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
           selectedModel !== 'gemini-25-flash-image'
             ? 'bg-white text-black'
             : 'bg-transparent text-white/90 hover:bg-white/5'
@@ -76,10 +76,10 @@ const ModelsDropdown = () => {
           const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
           return currentModel?.name || currentModel?.displayName || 'Models';
         })()}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
+        <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 w-full md:w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 max-h-[50vh] md:max-h-none overflow-y-auto dropdown-scrollbar">
           {modelsWithCredits.map((model) => (
             <button
               key={model.value}
@@ -87,7 +87,7 @@ const ModelsDropdown = () => {
                 e.stopPropagation();
                 handleModelSelect(model.value);
               }}
-              className={`w-full px-4 py-3 text-left transition text-[13px] flex items-center justify-between ${
+              className={`w-full px-2 md:px-4 py-1.5 md:py-3 text-left transition text-[10px] md:text-[13px] flex items-center justify-between ${
                 selectedModel === model.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
@@ -95,17 +95,17 @@ const ModelsDropdown = () => {
             >
               <div className="flex flex-col">
                 <span className="font-medium">{model.name}</span>
-                <span className={`text-xs mt-0.5 ${
+                <span className={`text-[9px] md:text-xs mt-0.5 ${
                   selectedModel === model.value ? 'text-black/70' : 'text-white/60'
                 }`}>{model.description}</span>
                 {model.credits && (
-                  <span className={`text-xs mt-0.5 ${
+                  <span className={`text-[9px] md:text-xs mt-0.5 ${
                     selectedModel === model.value ? 'text-black/70' : 'opacity-70'
                   }`}>{model.credits} credits</span>
                 )}
               </div>
               {selectedModel === model.value && (
-                <div className="w-2 h-2 bg-black rounded-lg flex-shrink-0"></div>
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-lg flex-shrink-0"></div>
               )}
             </button>
           ))}

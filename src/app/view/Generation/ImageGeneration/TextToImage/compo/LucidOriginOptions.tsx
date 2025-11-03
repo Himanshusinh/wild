@@ -110,16 +110,16 @@ const LucidOriginOptions = () => {
       <div className="relative dropdown-container">
         <button
           onClick={handleDropdownClick}
-          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+          className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
         >
           <span>Other Options</span>
-          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'lucidOriginOptions' ? 'rotate-180' : ''}`} />
+          <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${activeDropdown === 'lucidOriginOptions' ? 'rotate-180' : ''}`} />
         </button>
 
       {activeDropdown === 'lucidOriginOptions' && (
-        <div className="absolute bottom-full mb-2 left-0 w-64 bg-black/70 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full mb-2 left-0 w-[95vw] md:w-64 bg-black/70 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
           {/* Style Selection */}
-          <div className="px-4 py-2">
+          <div className="px-2 md:px-4 py-1.5 md:py-2">
             {/* <div className="text-xs text-white/70 mb-2">Style</div>
             <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {lucidStyles.map((style) => (
@@ -152,20 +152,20 @@ const LucidOriginOptions = () => {
                     e.stopPropagation();
                     handleContrastSelect(contrast.value);
                   }}
-                  className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between ${lucidContrast === contrast.value
+                  className={`w-full px-2 md:px-3 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between ${lucidContrast === contrast.value
                       ? 'bg-white text-black'
                       : 'text-white/90 hover:bg-white/10'
                     }`}
                 >
                   <span>{contrast.label}</span>
-                  {lucidContrast === contrast.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                  {lucidContrast === contrast.value && <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full" />}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Mode Selection */}
-          <div className="px-4 py-2">
+          <div className="px-2 md:px-4 py-1.5 md:py-2">
             <div className="text-xs text-white/70 mb-2">Mode</div>
             <div className="max-h-32 overflow-y-auto custom-scrollbar">
               {modeOptions.map((mode) => (
@@ -175,27 +175,27 @@ const LucidOriginOptions = () => {
                     e.stopPropagation();
                     handleModeSelect(mode.value);
                   }}
-                  className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between ${lucidMode === mode.value
+                  className={`w-full px-2 md:px-3 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between ${lucidMode === mode.value
                       ? 'bg-white text-black'
                       : 'text-white/90 hover:bg-white/10'
                     }`}
                 >
                   <span>{mode.label}</span>
-                  {lucidMode === mode.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                  {lucidMode === mode.value && <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full" />}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Prompt Enhance Toggle */}
-          <div className="px-4 py-2">
+          <div className="px-2 md:px-4 py-1.5 md:py-2">
             <div className="flex items-center gap-3">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePromptEnhanceToggle();
                 }}
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                className={`w-4 h-4 md:w-5 md:h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                   lucidPromptEnhance
                     ? 'bg-blue-500 border-blue-500'
                     : 'border-white/40 hover:border-white/60'
@@ -203,8 +203,8 @@ const LucidOriginOptions = () => {
               >
                 {lucidPromptEnhance && (
                   <svg
-                    width="12"
-                    height="12"
+                    width="10"
+                    height="10"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="white"
@@ -216,7 +216,7 @@ const LucidOriginOptions = () => {
                   </svg>
                 )}
               </button>
-              <span className="text-white/90 text-[13px]">Prompt Enhance</span>
+              <span className="text-white/90 text-[10px] md:text-[13px]">Prompt Enhance</span>
             </div>
           </div>
         </div>
