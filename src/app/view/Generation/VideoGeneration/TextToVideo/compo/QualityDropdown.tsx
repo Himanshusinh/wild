@@ -141,18 +141,18 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
           }
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedQuality !== "720p" && selectedQuality !== "480p" && selectedQuality !== "360p" && selectedQuality !== "540p"
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
+          selectedQuality !== "720p" 
             ? 'bg-white text-black' 
             : 'bg-transparent text-white/90 hover:bg-white/5'
         }`}
       >
-        <Monitor className="w-4 h-4 mr-1" />
+        <Monitor className="w-3 h-3 md:w-4 md:h-4 mr-1" />
         {selectedQualityInfo?.label || selectedQuality}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 w-[70vw] md:w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
           {availableQualities.map((quality) => (
             <button
               key={quality.value}
@@ -160,18 +160,18 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
                 onQualityChange(quality.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-3 text-left transition-all duration-200 rounded-lg ${
+              className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between ${
                 selectedQuality === quality.value
                   ? 'bg-white/20'
                   : 'hover:bg-white/10'
               }`}
             >
               <div className="flex flex-col items-start">
-                <span className={`font-medium text-sm ${selectedQuality === quality.value ? 'text-white' : 'text-white/90'}`}>{quality.label}</span>
-                <span className={`text-xs ${selectedQuality === quality.value ? 'text-white/80' : 'text-white/60'}`}>{quality.description}</span>
+                <span className="font-medium">{quality.label}</span>
+                <span className="text-[9px] md:text-xs opacity-70">{quality.description}</span>
               </div>
               {selectedQuality === quality.value && (
-                <div className="w-2 h-2 bg-white rounded-full"></div>
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>
               )}
             </button>
           ))}

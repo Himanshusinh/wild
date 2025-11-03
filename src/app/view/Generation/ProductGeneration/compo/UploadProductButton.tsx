@@ -70,7 +70,7 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
       <button
         onClick={handleClick}
         disabled={isDisabled}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium transition flex items-center gap-2 ${
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium transition flex items-center gap-1.5 md:gap-2 ${
           isDisabled 
             ? 'text-white/40 bg-white/5 ring-1 ring-white/10 cursor-not-allowed' 
             : 'text-white/90 bg-transparent ring-1 ring-white/20 hover:ring-white/30 hover:bg-white/5'
@@ -78,7 +78,7 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
         aria-label="Upload product"
         title={isDisabled ? "Product image not needed for text-only model" : "Upload product"}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 md:w-4 md:h-4">
           <path d="M12 5v14" />
           <path d="M5 12h14" />
         </svg>

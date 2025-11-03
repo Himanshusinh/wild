@@ -116,6 +116,7 @@ const InputBox = () => {
   const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
   const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
   const [selectedQuality, setSelectedQuality] = useState("720p"); // For Veo3 quality
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
   // Kling specific state (v2.1 mode determines resolution): 'standard'->720p, 'pro'->1080p
   const [klingMode, setKlingMode] = useState<'standard' | 'pro'>('standard');
   // Seedance specific state
@@ -2521,14 +2522,14 @@ const InputBox = () => {
   return (
     <React.Fragment>
       {(historyEntries.length > 0 || localVideoPreview) && (
-        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
-          <div className="py-6 pl-4 ">
+        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
+          <div className="md:py-6 py-0 md:pl-4 pl-0 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0  left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
-              <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation </h2>
+            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Video Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
-            <div className="h-0"></div>
+            <div className="h-[32px] md:h-0"></div>
 
             {/* Main Loader */}
             {loading && historyEntries.length === 0 && (
@@ -2546,7 +2547,7 @@ const InputBox = () => {
               {/* If there's a local preview and no row for today, render a dated block for today */}
               {localVideoPreview && !groupedByDate[todayKey] && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3 md:px-0">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
@@ -2556,7 +2557,7 @@ const InputBox = () => {
                       {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                     </h3>
                   </div>
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="flex flex-wrap gap-2 md:gap-3 ml-0 md:ml-9 px-3 md:px-0">
                     <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                       {localVideoPreview.status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -2590,7 +2591,7 @@ const InputBox = () => {
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3 md:px-0">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
@@ -2613,7 +2614,7 @@ const InputBox = () => {
                   </div>
 
                   {/* All Videos for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="flex flex-wrap gap-2 md:gap-3 ml-0 md:ml-9 px-3 md:px-0">
                     {/* Prepend local video preview to today's row to push existing items right */}
                     {date === todayKey && localVideoPreview && (
                       <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
@@ -2904,17 +2905,34 @@ const InputBox = () => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
-        {/* Tabs row - non-overlapping, right aligned */}
-        <div className="mb-1 flex justify-end">
-          <div className="flex bg-transparent backdrop-blur-3xl rounded-lg px-2 pt-2 pb-2 ring-1 ring-white/20 shadow-2xl">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 w-[94%] md:w-[90%] max-w-[840px] z-[0]">
+        {/* Tabs row - right aligned */}
+        <div className="mb-0.5 md:mb-1 flex justify-end">
+          {/* Mobile: dropdown */}
+          <div className="relative md:hidden">
+            <button
+              onClick={() => setShowModeDropdown(v => !v)}
+              className="flex items-center gap-2 bg-transparent backdrop-blur-3xl rounded-lg px-2 py-1.5 ring-1 ring-white/20 shadow-2xl text-[10px] text-white"
+            >
+              <span className="font-medium">
+                {generationMode === 'text_to_video' ? 'Text→Video' : generationMode === 'image_to_video' ? 'Image→Video' : 'Video→Video'}
+              </span>
+              <svg className={`w-3 h-3 transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            {showModeDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-[60vw] bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50">
+                <button onClick={() => { setGenerationMode('text_to_video'); setShowModeDropdown(false); }} className={`w-full text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='text_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Text→Video</button>
+                <button onClick={() => { setGenerationMode('image_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='image_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Image→Video</button>
+                <button onClick={() => { setGenerationMode('video_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='video_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Video→Video</button>
+              </div>
+            )}
+          </div>
+          {/* Desktop: original buttons */}
+          <div className="hidden md:flex bg-transparent backdrop-blur-3xl rounded-lg px-2 pt-2 pb-2 ring-1 ring-white/20 shadow-2xl">
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("text_to_video")}
-                className={`px-2 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "text_to_video"
-                    ? 'bg-white text-black '
-                    : 'text-white hover:bg-white/10'
-                  }`}
+                className={`px-2 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "text_to_video" ? 'bg-white text-black ' : 'text-white hover:bg-white/10'}`}
                 aria-label="Text to Video"
               >
                 Text→Video
@@ -2924,10 +2942,7 @@ const InputBox = () => {
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("image_to_video")}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "image_to_video"
-                    ? 'bg-white text-black'
-                    : 'text-white hover:bg-white/10'
-                  }`}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "image_to_video" ? 'bg-white text-black' : 'text-white hover:bg-white/10'}`}
                 aria-label="Image to Video"
               >
                 Image→Video
@@ -2937,10 +2952,7 @@ const InputBox = () => {
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("video_to_video")}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "video_to_video"
-                    ? 'bg-white text-black'
-                    : 'text-white hover:bg-white/10'
-                  }`}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "video_to_video" ? 'bg-white text-black' : 'text-white hover:bg-white/10'}`}
                 aria-label="Video to Video"
               >
                 Video→Video
@@ -2965,8 +2977,8 @@ const InputBox = () => {
           }}
         >
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start gap-3 p-3 pt-2">
-            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4">
+          <div className="flex items-start gap-2 md:gap-3 p-1.5 md:p-3 pt-1.5 md:pt-3">
+            <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4">
               <textarea
                 ref={inputEl}
                 placeholder="Type your video prompt..."
@@ -2980,19 +2992,19 @@ const InputBox = () => {
                 autoComplete="off"
                 autoCorrect="on"
                 autoCapitalize="on"
-                className={`flex-1 bg-transparent h-[4rem] text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
+                className={`flex-1 bg-transparent h-[2.75rem] md:h-[4rem] text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
                   }`}
                 rows={1}
                 style={{
-                  minHeight: '24px',
-                  maxHeight: '96px',
+                  minHeight: '20px',
+                  maxHeight: '80px',
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
                 }}
               />
               {/* Fixed position buttons container */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                 {prompt.trim() && (
                   <div className="relative group">
                     <button
@@ -3002,19 +3014,19 @@ const InputBox = () => {
                           inputEl.current.focus();
                         }
                       }}
-                      className="px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-1 py-1 md:px-2 md:py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs md:text-sm font-medium transition-colors duration-200 flex items-center gap-1"
                       aria-label="Clear prompt"
                     >
                       <svg
-                        width="14"
-                        height="14"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-white/80"
+                        className="text-white/80 md:w-[14px] md:h-[14px]"
                       >
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -3327,8 +3339,8 @@ const InputBox = () => {
 
             </div>
 
-            <div className="flex flex-col items-end gap-2">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div className="flex flex-col items-end gap-1 md:gap-2">
+              {error && <div className="text-red-500 text-xs md:text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
                 disabled={(() => {
@@ -3355,9 +3367,24 @@ const InputBox = () => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2.5 rounded-lg text-xs md:text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
               >
-                {isGenerating ? "Generating..." : "Generate Video"}
+                {isGenerating ? (
+                  <>
+                    <svg className="w-5 h-5 md:hidden animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    <span className="hidden md:inline">Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                    <span className="hidden md:inline">Generate Video</span>
+                  </>
+                )}
               </button>
               <div className="text-white/80 text-sm pr-1">
                 Total credits: <span className="font-semibold">{liveCreditCost}</span>
@@ -3366,7 +3393,7 @@ const InputBox = () => {
           </div>
 
           {/* Uploaded Content Display */}
-          <div className="px-3 pb-3">
+          <div className="px-2 md:px-3 pb-1 md:pb-3">
             {/* Uploaded Images */}
             {uploadedImages.length > 0 && (
               <div className="mb-3">
@@ -3469,8 +3496,8 @@ const InputBox = () => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex justify-between items-center gap-2 px-3 pb-3">
-            <div className="flex flex-row gap-3 flex-wrap">
+          <div className="flex justify-between items-center gap-1.5 md:gap-2 px-2 md:px-3 pb-1.5 md:pb-3">
+            <div className="flex flex-row gap-1.5 md:gap-3 flex-wrap">
               {/* Model selector */}
               <VideoModelsDropdown
                 selectedModel={selectedModel}
@@ -3497,12 +3524,12 @@ const InputBox = () => {
                   return (
                     <div className="flex flex-row gap-2">
                       {/* Fixed Resolution Display */}
-                      <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                      <div className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
                         <TvMinimalPlay className="w-4 h-4 mr-1" />
                         720P (Fixed)
                       </div>
                       {/* Fixed Duration Display */}
-                      <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                      <div className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
                         <Clock className="w-4 h-4 mr-1" />
                         6s (Fixed)
                       </div>

@@ -928,14 +928,15 @@ const EditImageInterface: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#07070B] overflow-auto">
-      {/* Header + Feature cards in a single row so the heading sits in the left gap */}
-      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] md:px-6 md:pt-4 md:pb-3">
-        <div className="flex items-center gap-4">
-          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14">
-            <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
-            <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
+      {/* Header - Fixed on mobile */}
+      <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl md:w-screen md:px-6 md:pt-20 md:pb-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="shrink-0 px-1 ml-0 md:ml-14 lg:ml-14">
+            <h1 className="text-white text-md md:text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
+            <p className="text-white/80 text-xs md:text-base sm:text-lg md:text-xl hidden md:block">Transform your images with AI</p>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar md:gap-9 ml-6 sm:ml-8 md:ml-12 md:ml-34">
+          {/* Feature cards - inline on desktop */}
+          <div className="hidden md:flex gap-3 overflow-x-auto no-scrollbar md:ml-12 md:ml-34 md:gap-9 md:items-center">
               {features.map((feature) => (
             <div
                   key={feature.id}
@@ -949,28 +950,69 @@ const EditImageInterface: React.FC = () => {
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
-              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-auto md:p-3 ${selectedFeature === feature.id
+              className={`min-w-[260px] bg-white/5 rounded-lg p-3 border cursor-pointer transition-all ${selectedFeature === feature.id
                   ? 'border-white/30 bg-white/10'
                   : 'border-white/10 hover:bg-white/10'
                 }`}
             >
-              <div className="flex items-center gap-2 ml-1">
-                <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded flex items-center justify-center ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
                   }`}>
-                  {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4 md:w-5 md:h-5" />)}
+                  {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-5 h-5" />)}
+                  {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-5 h-5" />)}
+                  {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-5 h-5" />)}
+                  {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-5 h-5" />)}
                 </div>
                 <div>
-                  <h3 className="text-white text-xs font-medium md:text-sm pr-2">{feature.label}</h3>
-            </div>
-          </div>
+                  <h3 className="text-white text-sm font-medium">{feature.label}</h3>
                 </div>
+              </div>
+            </div>
           ))}
           </div>
-            </div>
+        </div>
       </div>
+      {/* Spacer to keep content below fixed header */}
+      <div className="h-[32px] md:h-0"></div>
+      {/* Feature cards - fixed below header on mobile */}
+      <div className="fixed left-0 right-0 z-20 px-3 py-2 top-[76px] md:relative md:top-auto md:z-auto md:hidden bg-[#07070B]">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {features.map((feature) => (
+            <div
+              key={feature.id}
+              onClick={() => { 
+                setSelectedFeature(feature.id); 
+                // Ensure sensible default model per feature when switching tabs
+                if (feature.id === 'remove-bg') {
+                  setModel('851-labs/background-remover');
+                } else if (feature.id === 'upscale') {
+                  setModel('nightmareai/real-esrgan');
+                }
+                setProcessing((p) => ({ ...p, [feature.id]: false }));
+              }}
+              className={`min-w-[75px] flex-1 bg-white/5 rounded-lg py-1 px-1.5 border cursor-pointer transition-all ${selectedFeature === feature.id
+                ? 'border-white/30 bg-white/10'
+                : 'border-white/10 hover:bg-white/10'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-0.5">
+                <div className={`w-4 h-4 rounded flex items-center justify-center ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
+                  }`}>
+                  {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-2.5 h-2.5" />)}
+                  {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-2.5 h-2.5" />)}
+                  {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-2.5 h-2.5" />)}
+                  {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-2.5 h-2.5" />)}
+                </div>
+                <div>
+                  <h3 className="text-white text-[9px] font-medium text-center leading-tight">{feature.label}</h3>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Spacer for fixed feature cards on mobile */}
+      <div className="h-[50px] md:h-0"></div>
       {/* Upload from Library/Computer Modal */}
       <UploadModal
         isOpen={isUploadOpen}
@@ -995,9 +1037,9 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
+      <div className="flex flex-1 min-h-0 py-1 overflow-hidden md:mt-10" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
+        <div className="w-1/2 md:w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-96 md:ml-8 sm:ml-16 md:ml-24 lg:ml-16 md:pt-6 lg:pt-8 xl:pt-12 2xl:pt-16">
           {/* Error Message */}
             {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
@@ -1357,12 +1399,12 @@ const EditImageInterface: React.FC = () => {
           </div>
  
         {/* Right Main Area - Image Display */}
-        <div className="flex-1 flex flex-col bg-[#07070B] overflow-hidden">
+        <div className="w-1/2 md:flex-1 flex flex-col bg-[#07070B] overflow-hidden">
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="p-4 flex items-start justify-center pt-7  ">
-              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
+          <div className="p-2 md:p-4 flex items-start justify-center pt-2 md:pt-24  ">
+              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[20rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
                 {/* Dotted grid background overlay */}
                 <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               {outputs[selectedFeature] && (
