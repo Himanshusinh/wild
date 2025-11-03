@@ -3077,7 +3077,7 @@ const InputBox = () => {
                             Click a movement to select it, then add to your prompt
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div className="grid grid-cols-2 max-[360px]:grid-cols-1 gap-2 mb-3">
                             {[
                               "Tilt up", "Tilt down", "Pan left", "Pan right",
                               "Zoom in", "Zoom out", "Push in", "Push out",

@@ -173,7 +173,7 @@ const SidePannelFeatures = ({
   return (
     <>
       {/* Mobile header: hamburger then logo - show on mobile regardless of showMobileHeader */}
-      <div className="md:hidden fixed top-0 left-0 z-40 flex items-center px-4 py-3">
+      <div className="md:hidden fixed top-0 left-0 z-[80] flex items-center px-4 py-3">
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
           className="text-white p-1"
@@ -216,7 +216,7 @@ const SidePannelFeatures = ({
         style={{}}
       >
       {/* Logo at the top - only show on desktop */}
-      <div className="hidden md:flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0  -ml-1">
+      <div className="hidden md:flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0 -ml-1 relative z-[2001]">
         <div
           onClick={() => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
@@ -224,9 +224,10 @@ const SidePannelFeatures = ({
             // Force hard navigation to avoid race conditions
             try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
           }}
-          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
+          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer relative z-[2001]">
           <Image
             src="/icons/wildmind_icon_darkbg.svg"
+            
             // src={imageRoutes.core.logo}
             alt="Wild Mind Logo"
             width={32}
@@ -236,7 +237,8 @@ const SidePannelFeatures = ({
         </div>
         <span
           onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
-          className='text-white md:w-[34px] md:h-[34px] w-[25px] h-[25px] text-3xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
+          className={`text-white text-2xl mt-1 font-medium overflow-hidden transition-all duration-200 whitespace-nowrap cursor-pointer relative z-[2001] ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}
+        >
           <Image src="/icons/wildmind_text_whitebg (2).svg" alt="Wild Mind Logo" width={32} height={32} className="w-auto h-full" />
         </span>
       </div>

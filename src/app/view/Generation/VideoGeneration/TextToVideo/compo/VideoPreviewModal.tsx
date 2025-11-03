@@ -447,9 +447,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-6">
-            {/* Action Buttons */}
-            <div className="mb-4 flex gap-2">
+          <div className="relative md:p-5 text-white white/10 bg-transparent h-[calc(100vh-35vh-60px)] md:h-[84vh] md:w-[34%] mt-4 md:mt-10 flex flex-col">
+            {/* Action Buttons - Fixed on mobile */}
+            <div className="md:mb-4 sticky md:relative top-0 md:top-auto left-0 right-0 md:left-auto md:right-auto z-40 md:z-auto p-4 md:p-0 bg-transparent md:bg-transparent backdrop-blur-0 md:backdrop-blur-0 border-b-0 md:border-b-0 md:mb-4 flex-shrink-0">
+              <div className="flex gap-2">
               <div className="relative group flex-1">
                 <button
                   onClick={() => downloadVideo(videoUrl)}

@@ -377,7 +377,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             setTimeout(() => setCloseOutputFormatDropdown(false), 0);
             setModelOpen(!modelOpen);
           }}
-          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+          className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
         >
           <Music4 className="w-3 h-3 md:w-4 md:h-4" />
           {model}
@@ -419,7 +419,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseOutputFormatDropdown(false), 0);
           setStyleOpen(!styleOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Palette className="w-3 h-3 md:w-4 md:h-4" />
         {selectedStyle}
@@ -465,7 +465,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseOutputFormatDropdown(false), 0);
           setInstrumentsOpen(!instrumentsOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Guitar className="w-3 h-3 md:w-4 md:h-4" />
         {selectedInstruments.includes('None') ? 'None' : `${selectedInstruments.length} selected`}
@@ -511,7 +511,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseOutputFormatDropdown(false), 0);
           setSrOpen(!srOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-3 h-3 md:w-4 md:h-4" />
         {audio.sample_rate}
@@ -557,7 +557,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseOutputFormatDropdown(false), 0);
           setBrOpen(!brOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-3 h-3 md:w-4 md:h-4" />
         {audio.bitrate}
@@ -603,7 +603,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseOutputFormatDropdown(false), 0);
           setFormatOpen(!formatOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <FileText className="w-3 h-3 md:w-4 md:h-4" />
         {audio.format.toUpperCase()}
@@ -649,7 +649,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseFormatDropdown(false), 0);
           setOutputFormatOpen(!outputFormatOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-full text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <FileText className="w-3 h-3 md:w-4 md:h-4" />
         {outputFormat.toUpperCase()}
@@ -756,12 +756,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
-              className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2 rounded-lg text-lg font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center gap-3"
+              className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2 rounded-full text-xs md:text-lg font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center gap-2 md:gap-3"
             >
               {generating ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
-                  Composing...
+                  <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  <span className="hidden md:inline">Composing...</span>
                 </>
               ) : (
                 <>

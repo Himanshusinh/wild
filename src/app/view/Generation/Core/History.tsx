@@ -934,10 +934,10 @@
     }
 
     return (
-      <div className="min-h-screen bg-[#07070B] text-white p-2 select-none">
+      <div className="min-h-screen bg-[#07070B] text-white p-2 sm:p-2 select-none">
         {/* Fixed Header to match TextToImage style */}
-        <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1 mt-4 backdrop-blur-xl shadow-xl pl-6 ">
-          <h2 className="text-2xl font-semibold text-white">{headerTitle}</h2>
+        <div className="fixed top-0 left-0 right-0 z-30 py-3 sm:py-5 ml-0 sm:ml-18 mr-1 mt-2 sm:mt-4 backdrop-blur-xl shadow-xl pl-4 sm:pl-6">
+          <h2 className="text-lg sm:text-2xl mt-10 ml-5 font-semibold text-white">{headerTitle}</h2>
         </div>
         {/* Spacer below fixed header */}
         <div className="h-0"></div>
@@ -949,16 +949,16 @@
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseLeave={handleMouseUp} 
         >
 
           {/* Controls row (back, count, filters, toggle) */}
-          <div className="sticky top-0 z-10 bg-[#07070B] pb-2">
-          <div className="flex items-center justify-between mb-2">
+          <div className="sticky mt-5 top-0 z-10 bg-[#07070B]/95 backdrop-blur-xl pb-2 overflow-hidden border-b border-white/5" style={{ transform: 'translateZ(0)', willChange: 'transform' }}>
+          <div className="flex items-center justify-between mb-2 px-1 sm:px-0">
           <div className="flex items-center gap-2">
             {/* Drag Selection Hint */}
             {selectedImages.size === 0 && historyEntries.length > 0 && (
-              <div className="pr-3 py-1.5 rounded text-white/60 text-sm">
+              <div className="pr-2 sm:pr-3 py-1.5 rounded text-white/60 text-xs sm:text-sm hidden sm:block">
                 Drag to select multiple images, Scroll to load more
 
                 {/* {hasMore && <span className="mltext-sm text-white/60">•  </span>} */}
@@ -975,86 +975,90 @@
               </svg>
             </button> */}
 
-            <span className="text-md text-white/80">• {getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
+            <span className="text-sm sm:text-md text-white/80 whitespace-nowrap">• {getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
           </div>
           </div>
-          <div className="flex items-center justify-between gap-2 pr-28 mb-2 i ">
-            <div className="flex justify-start gap-2">
-            {([
-              { key: 'all', label: 'All' },
-              { key: 'images', label: 'Images' },
-              { key: 'videos', label: 'Videos' },
-              { key: 'music', label: 'Music' },
-              { key: 'logo', label: 'Logo' },
-              { key: 'sticker', label: 'Stickers' },
-              { key: 'product', label: 'Products' },
-              { key: 'user-uploads', label: 'Your Uploads' },
-            ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={async () => {
-                  setQuickFilter(key);
-                  setPillLoading(true);
-                  setOverlayLoading(true);
-                  let f: any = {};
-                  switch (key) {
-                    case 'images':
-                      f = { generationType: 'text-to-image' };
-                      break;
-                    case 'videos':
-                      f = { mode: 'video' };
-                      break;
-                    case 'music':
-                      f = { generationType: 'text-to-music' };
-                      break;
-                    case 'logo':
-                      f = { generationType: 'logo-generation' };
-                      break;
-                    case 'sticker':
-                      f = { generationType: 'sticker-generation' };
-                      break;
-                    case 'product':
-                      f = { generationType: 'product-generation' };
-                      break;
-                    case 'user-uploads':
-                      f = { isUserUpload: true };
-                      break;
-                    default:
-                      f = {};
-                  }
-                  // Preserve sort order and any date range
-                  if (sortOrder) (f as any).sortOrder = sortOrder;
-                  if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
-                  setLocalFilters(f);
-                  dispatch(setFilters(f));
-                  // Immediately clear current list so previous category tiles do not linger
-                  dispatch(clearHistory());
-                  await loadFirstPage(f);
-                  setPage(1);
-                  setPillLoading(false);
-                  setOverlayLoading(false);
-                }}
-                className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${quickFilter === key ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'
-                  }`}
-              >
-                {label}
-              </button>
-            ))}
-            {/* {pillLoading && (
-              <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                Loading generations...
+          {/* Filter and Sort buttons container - mobile: stacked, desktop: inline */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pr-0 sm:pr-28 mb-2">
+            {/* Filter buttons row */}
+            <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
+              <div className="flex justify-start gap-2 min-w-max flex-nowrap">
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'images', label: 'Images' },
+                { key: 'videos', label: 'Videos' },
+                { key: 'music', label: 'Music' },
+                { key: 'logo', label: 'Logo' },
+                { key: 'sticker', label: 'Stickers' },
+                { key: 'product', label: 'Products' },
+                { key: 'user-uploads', label: 'Your Uploads' },
+              ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={async () => {
+                    setQuickFilter(key);
+                    setPillLoading(true);
+                    setOverlayLoading(true);
+                    let f: any = {};
+                    switch (key) {
+                      case 'images':
+                        f = { generationType: 'text-to-image' };
+                        break;
+                      case 'videos':
+                        f = { mode: 'video' };
+                        break;
+                      case 'music':
+                        f = { generationType: 'text-to-music' };
+                        break;
+                      case 'logo':
+                        f = { generationType: 'logo-generation' };
+                        break;
+                      case 'sticker':
+                        f = { generationType: 'sticker-generation' };
+                        break;
+                      case 'product':
+                        f = { generationType: 'product-generation' };
+                        break;
+                      case 'user-uploads':
+                        f = { isUserUpload: true };
+                        break;
+                      default:
+                        f = {};
+                    }
+                    // Preserve sort order and any date range
+                    if (sortOrder) (f as any).sortOrder = sortOrder;
+                    if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                    setLocalFilters(f);
+                    dispatch(setFilters(f));
+                    // Immediately clear current list so previous category tiles do not linger
+                    dispatch(clearHistory());
+                    await loadFirstPage(f);
+                    setPage(1);
+                    setPillLoading(false);
+                    setOverlayLoading(false);
+                  }}
+                  className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-colors flex-shrink-0 ${quickFilter === key ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+              {/* {pillLoading && (
+                <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                  Loading generations...
+                </div>
+              )} */}
               </div>
-            )} */}
             </div>
-            {/* Sort buttons */}
-            <div className="ml-8 flex items-right justify-end  gap-2">
+            {/* Sort buttons - below on mobile, inline on desktop */}
+            <div className="flex items-center justify-start sm:justify-end gap-1 sm:gap-2 flex-shrink-0 sm:ml-8">
               <button
                 onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
                   className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Newest"
               >
-                <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-5 h-5 sm:w-6 sm:h-6`} />
                 <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Newest</span>
               </button>
               <button
@@ -1062,12 +1066,12 @@
                 className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Oldest"
               >
-                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-5 h-5 sm:w-6 sm:h-6`} />
                 <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Oldest</span>
               </button>
             
             {/* Date picker */}
-             <div className="relative ml-0 flex items-center gap-2">
+             <div className="relative ml-0 flex items-center gap-1 sm:gap-2">
                {/* Hidden native date input used for calendar picker */}
                <input
                  ref={dateInputRef}
@@ -1101,12 +1105,12 @@
                  className={`relative group px-1 py-1 rounded-lg text-sm ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                  aria-label="Date"
                >
-                 <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                 <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5 sm:w-6 sm:h-6`} />
                  <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Date</span>
                </button>
 
                {showCalendar && (
-                 <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                 <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] max-w-[90vw] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-2 sm:p-3">
                    {/* Header */}
                    <div className="flex items-center justify-between mb-2 text-white">
                      <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
@@ -1248,13 +1252,13 @@
 
           {/* History Entries - TextToImage-like UI: date-grouped tiles */}
         {(getFilteredItemsCount() === 0 && !overlayLoading && !loading) ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 text-white/20">
+          <div className="text-center py-8 sm:py-12 px-2 sm:px-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-white/20">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-white/70 mb-2">
+            <h3 className="text-base sm:text-lg font-medium text-white/70 mb-2">
               {(() => {
                 if (quickFilter === 'user-uploads') return 'No uploads found';
                 if (quickFilter === 'videos') return 'No video generations found';
@@ -1263,7 +1267,7 @@
                 return 'No generations found';
               })()}
             </h3>
-            <p className="text-white/50 mb-4">
+            <p className="text-sm sm:text-base text-white/50 mb-4 px-2">
               {(() => {
                 const hasFilters = Object.keys(filters).length > 0 || Boolean((filters as any)?.dateRange);
                 const subject = quickFilter === 'user-uploads' ? 'uploads' : quickFilter === 'videos' ? 'videos' : quickFilter === 'music' ? 'tracks' : quickFilter === 'images' ? 'images' : 'generations';
@@ -1274,7 +1278,7 @@
             {Object.keys(filters).length > 0 && (
               <button
                 onClick={clearAllFilters}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                className="px-4 py-2 text-sm sm:text-base bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
               >
                 Clear All Filters
               </button>
@@ -1331,15 +1335,15 @@
               if (!hasFilteredItems) return null;
 
               return (
-                <div key={dateKey} className="space-y-4">
+                <div key={dateKey} className="space-y-3 sm:space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                  <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-0">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-white/60 sm:w-3 sm:h-3">
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                       </svg>
                     </div>
-                    <h3 className="text-sm font-medium text-white/70">
+                    <h3 className="text-xs sm:text-sm font-medium text-white/70">
                       {new Date(dateKey).toLocaleDateString('en-US', {
                         weekday: 'short',
                         year: 'numeric',
@@ -1350,7 +1354,7 @@
                   </div>
 
                   {/* Tiles for this date */}
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 ml-0 sm:ml-9">
                     {groupedByDate[dateKey].map((entry: HistoryEntry) => {
                     const inputImagesArr = (((entry as any).inputImages) || []) as any[];
                     const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
@@ -1394,10 +1398,10 @@
                           key={`${entry.id}-${video ? 'video' : (audio ? 'audio' : 'image')}-${mediaIndex}`}
                           data-image-id={`${entry.id}-${media.id || mediaIndex}`}
                           onClick={(e) => handleImageClick(e, entry, media, mediaIndex)}
-                          className={`relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 transition-all duration-200 cursor-pointer group flex-shrink-0 ${
+                          className={`relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 transition-all duration-200 cursor-pointer group ${
                             selectedImages.has(`${entry.id}-${media.id || mediaIndex}`)
-                              ? 'ring-blue-400 ring-2 w-46 h-46 scale-98'
-                              : 'ring-white/10 hover:ring-white/20 w-48 h-48'
+                              ? 'ring-blue-400 ring-2 sm:w-46 sm:h-46 scale-98 w-full aspect-square'
+                              : 'ring-white/10 hover:ring-white/20 sm:w-48 sm:h-48 w-full aspect-square'
                           }`}
                         >
                           {/* Selection Indicator */}

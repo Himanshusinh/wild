@@ -177,7 +177,7 @@ export default function SignInForm() {
 
         // Set a short-lived hint cookie to prevent race-condition redirects in middleware
         try { document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax' } catch {}
-        const redirectUrl = (redirect || APP_ROUTES.HOME) + '?toast=LOGIN_SUCCESS'
+        const redirectUrl = (redirect || '/view/HomePage') + '?toast=LOGIN_SUCCESS'
         console.log("🏠 Redirecting to:", redirectUrl)
         window.location.href = redirectUrl
 
@@ -583,7 +583,7 @@ export default function SignInForm() {
           setIsRedirecting(true)
 
           setTimeout(() => {
-            window.location.href = redirect || APP_ROUTES.HOME
+            window.location.href = redirect || '/view/HomePage'
           }, 2000)
         }
       }
@@ -879,7 +879,7 @@ export default function SignInForm() {
         setTimeout(() => {
           setIsRedirecting(true)
           setShowRedeemCodeForm(false)
-          window.location.href = APP_ROUTES.HOME
+          window.location.href = '/view/HomePage'
         }, 2000)
       } else {
         setError(response.data?.message || "Failed to apply redeem code")
@@ -896,7 +896,7 @@ export default function SignInForm() {
     setIsRedirecting(true)
     setShowRedeemCodeForm(false)
     setTimeout(() => {
-      window.location.href = APP_ROUTES.HOME
+      window.location.href = '/view/HomePage'
     }, 1000)
   }
 

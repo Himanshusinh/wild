@@ -727,7 +727,7 @@ const VideoGenerationInputBox: React.FC = () => {
               
               {/* Reference Images List */}
               {state.videoToVideo.references && state.videoToVideo.references.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 max-[360px]:grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {state.videoToVideo.references.map((ref, index) => (
                     <div key={index} className="relative group">
                       <img

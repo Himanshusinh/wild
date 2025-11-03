@@ -95,7 +95,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
+      className={`inline-flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all border ${
         active
           ? 'bg-white  text-black shadow-sm'
           : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
