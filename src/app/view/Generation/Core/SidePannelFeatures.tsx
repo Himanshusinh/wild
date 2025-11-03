@@ -179,6 +179,7 @@ const SidePannelFeatures = ({
           className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
           <Image
             src="/icons/wildmind_icon_darkbg.svg"
+            
             // src={imageRoutes.core.logo}
             alt="Wild Mind Logo"
             width={32}
@@ -201,11 +202,11 @@ const SidePannelFeatures = ({
             } catch (error) {
               // Silent fail
             }
-            router.push(APP_ROUTES.HOME)
+            router.push('/view/HomePage')
           }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
-          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} />
+          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} loading='lazy' />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
         </div>
       </div>
@@ -216,7 +217,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
+          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} loading='lazy' />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
         </div>
       </div>
