@@ -607,7 +607,7 @@ export default function ArtStationPage() {
                       style={{ aspectRatio: tileRatio, minHeight: 200 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
                     >
-                      {!loadedTiles.has(cardId) && (
+                      {kind !== 'audio' && !loadedTiles.has(cardId) && (
                         <div className="absolute inset-0 bg-white/10" />
                       )}
                       {(() => {
@@ -636,6 +636,20 @@ export default function ArtStationPage() {
                               />
                             )
                           })()
+                        ) : kind === 'audio' ? (
+                          <>
+                            {/* Use a simple music logo image to avoid prompt alt text showing */}
+                            <Image
+                              src="/icons/musicgenerationwhite.svg"
+                              alt=""
+                              fill
+                              sizes={sizes}
+                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827]"
+                              priority={isPriority}
+                              fetchPriority={isPriority ? 'high' : 'auto'}
+                              onLoadingComplete={() => { markTileLoaded(cardId) }}
+                            />
+                          </>
                         ) : (
                           <Image
                             src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
