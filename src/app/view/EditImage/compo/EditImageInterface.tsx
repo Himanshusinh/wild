@@ -62,7 +62,7 @@ const EditImageInterface: React.FC = () => {
   const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [isMasking, setIsMasking] = useState(false);
   const [hasMask, setHasMask] = useState(false);
-  const [brushSize, setBrushSize] = useState(35);
+  const [brushSize, setBrushSize] = useState(18);
   const [eraseMode, setEraseMode] = useState(false);
   const [fillSteps, setFillSteps] = useState(30);
   const [fillGuidance, setFillGuidance] = useState(7.5);
@@ -570,7 +570,35 @@ const EditImageInterface: React.FC = () => {
           isPublic,
           model,
         };
-        if (model.startsWith('851-labs/')) {
+        if (model.startsWith('bria/eraser')) {
+          // Export mask if drawn, scaled to input natural size
+          const maskDataUrl = (() => {
+            const c = fillCanvasRef.current;
+            if (!c) return undefined as any;
+            if (!hasMask) return undefined as any;
+            try {
+              const off = document.createElement('canvas');
+              const dispRect = fillContainerRef.current?.getBoundingClientRect();
+              const displayW = Math.max(1, Math.floor(dispRect?.width || c.width));
+              const displayH = Math.max(1, Math.floor(dispRect?.height || c.height));
+              const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
+              const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+              off.width = natW;
+              off.height = natH;
+              const octx = off.getContext('2d');
+              if (!octx) return c.toDataURL('image/png');
+              octx.drawImage(c, 0, 0, displayW, displayH, 0, 0, natW, natH);
+              return off.toDataURL('image/png');
+            } catch {
+              const c = fillCanvasRef.current as HTMLCanvasElement | null;
+              return c ? c.toDataURL('image/png') : undefined;
+            }
+          })();
+          if (maskDataUrl) body.mask = maskDataUrl;
+          body.mask_type = 'manual';
+          body.preserve_alpha = true;
+          body.sync = true;
+        } else if (model.startsWith('851-labs/')) {
           if (output) body.format = output as any;
           if (backgroundType) body.background_type = backgroundType;
           if (threshold) body.threshold = Number(threshold);
@@ -998,18 +1026,18 @@ const EditImageInterface: React.FC = () => {
                         }}
                       />
                       {/* Fill: mask canvas overlay over input image */}
-                      {selectedFeature === 'fill' && (
-                        <div ref={fillContainerRef} className="absolute inset-0">
-                          <canvas
-                            ref={fillCanvasRef}
-                            className="absolute inset-0 w-full h-full cursor-crosshair"
-                            onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
-                            onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
-                            onMouseUp={() => endMaskStroke()}
-                            onMouseLeave={() => endMaskStroke()}
-                          />
-                        </div>
-                      )}
+                      {(selectedFeature === 'fill' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
+                         <div ref={fillContainerRef} className="absolute inset-0">
+                           <canvas
+                             ref={fillCanvasRef}
+                             className="absolute inset-0 w-full h-full cursor-crosshair"
+                             onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
+                             onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
+                             onMouseUp={() => endMaskStroke()}
+                             onMouseLeave={() => endMaskStroke()}
+                           />
+                         </div>
+                       )}
                       <button
                         onClick={handleOpenUploadModal}
                         className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
@@ -1056,6 +1084,7 @@ const EditImageInterface: React.FC = () => {
                       <div className={`absolute top-full mt-2 z-30 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {(selectedFeature === 'remove-bg'
                           ? [
+                              { label: 'bria/eraser', value: 'bria/eraser' },
                               { label: '851-labs/background-remover', value: '851-labs/background-remover' },
                               { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
                             ]
@@ -1076,6 +1105,13 @@ const EditImageInterface: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
+                    <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                    <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
+                  </div>
+                )}
                 {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
                 <div>
                   <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
@@ -1177,7 +1213,8 @@ const EditImageInterface: React.FC = () => {
                 <>
                   <div>
                     <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
-                    <input type="range" min={5} max={200} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                    <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                    <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
                   </div>
                   <div className="flex items-end">
                     <button type="button" onClick={() => setEraseMode(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${eraseMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
