@@ -225,17 +225,19 @@
       })();
     }, [sortOrder, dispatch]);
 
-    // Handle scroll to load more (only after user actually scrolls) - inside container
+    // Handle scroll to load more using main window scrollbar
     useEffect(() => {
-      const el = scrollContainerRef.current;
-      if (!el) return;
       const handleScroll = () => {
-        if (!hasUserScrolledRef.current && el.scrollTop > 0) {
+        const scrollTop = typeof window !== 'undefined' ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
+        const clientHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+        const scrollHeight = document.documentElement ? document.documentElement.scrollHeight : 0;
+
+        if (!hasUserScrolledRef.current && scrollTop > 0) {
           hasUserScrolledRef.current = true;
         }
         if (!hasUserScrolledRef.current) return;
 
-        if (el.clientHeight + el.scrollTop >= el.scrollHeight - 800) {
+        if (clientHeight + scrollTop >= scrollHeight - 800) {
           if (hasMore && !loading && !isFetchingMoreRef.current) {
             isFetchingMoreRef.current = true;
             const nextPage = page + 1;
@@ -263,9 +265,47 @@
         }
       };
 
-      el.addEventListener('scroll', handleScroll, { passive: true } as any);
-      return () => el.removeEventListener('scroll', handleScroll as any);
+      window.addEventListener('scroll', handleScroll, { passive: true } as any);
+      return () => window.removeEventListener('scroll', handleScroll as any);
     }, [hasMore, loading, page, dispatch, filters, sortOrder]);
+
+    // Auto-top-up: if the page doesn't overflow yet, fetch more until it does or no more data
+    useEffect(() => {
+      if (!didInitialLoadRef.current) return;
+      const maybeTopUp = async () => {
+        try {
+          let guard = 0;
+          while (hasMore && !loading && !isFetchingMoreRef.current && guard < 3) {
+            const winH = typeof window !== 'undefined' ? window.innerHeight : 0;
+            const docH = document.documentElement ? document.documentElement.scrollHeight : 0;
+            if (docH > winH + 200) break; // we have enough to scroll
+            isFetchingMoreRef.current = true;
+            const baseFilters = { ...filters } as any;
+            if (sortOrder) baseFilters.sortOrder = sortOrder;
+            const limit = computeDynamicLimit(historyEntries.length);
+            const result: any = await (dispatch as any)(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }));
+            const payload = result && result.payload ? result.payload : result;
+            const entries = (payload && Array.isArray(payload.entries)) ? payload.entries : [];
+            let nextHasMore: boolean;
+            if (payload && typeof payload.hasMore !== 'undefined') {
+              nextHasMore = Boolean(payload.hasMore);
+            } else {
+              nextHasMore = entries.length > 0 && entries.length >= limit;
+            }
+            if (entries.length === 0) nextHasMore = false;
+            setHasMore(nextHasMore);
+            setPage((p) => p + 1);
+            isFetchingMoreRef.current = false;
+            guard += 1;
+          }
+        } catch {
+          isFetchingMoreRef.current = false;
+        }
+      };
+      // Delay slightly to allow layout to settle before measuring
+      const id = setTimeout(maybeTopUp, 50);
+      return () => clearTimeout(id);
+    }, [historyEntries.length, hasMore, loading, sortOrder, filters, dispatch]);
 
     // Handle click outside to close filter popover
     useEffect(() => {
@@ -935,7 +975,7 @@
     }
 
     return (
-      <div className="min-h-full bg-[#07070B] text-white p-2 select-none">
+      <div className="min-h-screen bg-[#07070B] text-white p-2 select-none">
         {/* Fixed Header with title and controls */}
         <div className="fixed top-0 left-0 right-0 z-30 bg-[#07070B] backdrop-blur-xl shadow-xl">
           <div className="py-5 ml-18 mr-1 pl-6">
@@ -1196,14 +1236,13 @@
         </div>
         {/* End of fixed header */}
 
-        {/* Spacer for fixed header */}
-        <div className="h-auto"></div>
+        {/* Spacer for fixed header (keeps content below the pinned controls) */}
+        <div className="h-[160px]"></div>
 
-        {/* Scrollable content area */}
+        {/* Content area uses main page scrollbar */}
         <div 
           ref={scrollContainerRef}
-          className="relative mt-0 overflow-y-auto no-scrollbar ml-14"
-          style={{ maxHeight: 'calc(100vh - 200px)' }}
+          className="relative mt-0 ml-14"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
