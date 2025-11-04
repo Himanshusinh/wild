@@ -72,7 +72,7 @@ const EditImageInterface: React.FC = () => {
   const [fillSeed, setFillSeed] = useState<string>('');
 
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -85,9 +85,19 @@ const EditImageInterface: React.FC = () => {
   const getUpscaleModelLabel = (m: string) => {
     if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
     if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
+    if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
     return m;
   };
   const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
+  // Topaz upscaler state
+  const [topazModel, setTopazModel] = useState<'Low Resolution V2' | 'Standard V2' | 'CGI' | 'High Fidelity V2' | 'Text Refine' | 'Recovery' | 'Redefine' | 'Recovery V2'>('Standard V2');
+  const [topazUpscaleFactor, setTopazUpscaleFactor] = useState<number>(2);
+  const [topazCropToFill, setTopazCropToFill] = useState<boolean>(false);
+  const [topazOutputFormat, setTopazOutputFormat] = useState<'jpeg' | 'png'>('jpeg');
+  const [topazSubjectDetection, setTopazSubjectDetection] = useState<'All' | 'Foreground' | 'Background'>('All');
+  const [topazFaceEnhance, setTopazFaceEnhance] = useState<boolean>(true);
+  const [topazFaceCreativity, setTopazFaceCreativity] = useState<number>(0);
+  const [topazFaceStrength, setTopazFaceStrength] = useState<number>(0.8);
   const [dynamic, setDynamic] = useState('');
   const [sharpen, setSharpen] = useState('');
   const [backgroundType, setBackgroundType] = useState('');
@@ -807,6 +817,47 @@ const EditImageInterface: React.FC = () => {
           const crystalScale = Math.max(1, Math.min(6, clarityScale));
           const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
           payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
+        } else if (model === 'fal-ai/topaz/upscale/image') {
+          // Use FAL Topaz Upscaler endpoint
+          // Normalize local inputs to data URI (handles both data: and blob: sources)
+          const toDataUriIfLocal = async (src: string): Promise<string> => {
+            if (!src) return src as any;
+            if (src.startsWith('data:')) return src;
+            if (src.startsWith('blob:')) {
+              try {
+                const resp = await fetch(src);
+                const blob = await resp.blob();
+                return await new Promise<string>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(String(reader.result || ''));
+                  reader.onerror = reject;
+                  reader.readAsDataURL(blob);
+                });
+              } catch {
+                return src; // fallback
+              }
+            }
+            return src;
+          };
+
+          const normalizedLocal = await toDataUriIfLocal(String(currentInputRaw));
+          const isData = String(normalizedLocal).startsWith('data:');
+          const body: any = {
+            ...(isData ? { image: normalizedLocal } : { image_url: currentInput }),
+            model: topazModel,
+            upscale_factor: Number(topazUpscaleFactor) || 2,
+            crop_to_fill: Boolean(topazCropToFill),
+            output_format: topazOutputFormat,
+            subject_detection: topazSubjectDetection,
+            face_enhancement: Boolean(topazFaceEnhance),
+          };
+          if (topazFaceCreativity != null) body.face_enhancement_creativity = Number(topazFaceCreativity) || 0;
+          if (topazFaceStrength != null) body.face_enhancement_strength = Number(topazFaceStrength) || 0.8;
+          const res = await axiosInstance.post('/api/fal/topaz/upscale/image', body);
+          const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
+          if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          return;
         }
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
@@ -1291,6 +1342,7 @@ const EditImageInterface: React.FC = () => {
                               ]
                             ).concat(selectedFeature !== 'remove-bg' ? [
                               { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+                              { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
                             ] : []).map((opt) => (
                               <button
                                 key={opt.value}
@@ -1537,6 +1589,87 @@ const EditImageInterface: React.FC = () => {
                                   ))}
                                 </div>
                               )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {model === 'fal-ai/topaz/upscale/image' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
+                              <div className="relative edit-dropdown">
+                                <button onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                                  <span className="truncate">{topazModel}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {activeDropdown === 'model' && (
+                                  <div className={`absolute z-30 top-full mt-2 left-0 w-56 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                    {['Low Resolution V2','Standard V2','CGI','High Fidelity V2','Text Refine','Recovery','Redefine','Recovery V2'].map((opt) => (
+                                      <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Upscale factor</label>
+                              <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e)=>setTopazUpscaleFactor(Number(e.target.value)||2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
+                              <div className="relative edit-dropdown">
+                                <button onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                                  <span className="truncate uppercase">{topazOutputFormat}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {activeDropdown === 'output' && (
+                                  <div className={`absolute z-30 top-full mt-2 left-0 w-40 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                    {(['jpeg','png'] as const).map((fmt) => (
+                                      <button key={fmt} onClick={() => { setTopazOutputFormat(fmt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazOutputFormat === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}><span className="uppercase">{fmt}</span></button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Subject detection</label>
+                              <div className="relative edit-dropdown">
+                                <button onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                                  <span className="truncate">{topazSubjectDetection}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {activeDropdown === 'backgroundType' && (
+                                  <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                    {(['All','Foreground','Background'] as const).map((opt) => (
+                                      <button key={opt} onClick={() => { setTopazSubjectDetection(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazSubjectDetection === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhancement</label>
+                              <button type="button" onClick={() => setTopazFaceEnhance(v=>!v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>{topazFaceEnhance ? 'Enabled' : 'Disabled'}</button>
+                            </div>
+                            <div className="flex items-end">
+                              <label className="flex items-center gap-2 text-xs text-white/70">
+                                <input type="checkbox" className="accent-white/90" checked={topazCropToFill} onChange={(e)=>setTopazCropToFill(e.target.checked)} /> Crop to fill
+                              </label>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face creativity (0-1)</label>
+                              <input type="number" min={0} max={1} step={0.1} value={topazFaceCreativity} onChange={(e)=>setTopazFaceCreativity(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face strength (0-1)</label>
+                              <input type="number" min={0} max={1} step={0.1} value={topazFaceStrength} onChange={(e)=>setTopazFaceStrength(Math.max(0, Math.min(1, Number(e.target.value) || 0.8)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                             </div>
                           </div>
                         </div>
