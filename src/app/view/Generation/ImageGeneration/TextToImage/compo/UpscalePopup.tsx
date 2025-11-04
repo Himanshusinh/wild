@@ -24,11 +24,12 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Model selection (clarity upscaler or magic refiner)
-  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | 'wildmind/crystal-upscaler'>('philz1337x/clarity-upscaler');
+  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | 'philz1337x/crystal-upscaler'>('philz1337x/clarity-upscaler');
 
   // Shared/basic
   const [scaleFactor, setScaleFactor] = useState<number>(2); // clarity only
   const [outputFormat, setOutputFormat] = useState<'png' | 'jpg' | 'webp'>('png'); // clarity only
+  const [crystalOutput, setCrystalOutput] = useState<'png' | 'jpg'>('png'); // crystal upscaler
   const [dynamic, setDynamic] = useState<number>(6); // clarity
   const [sharpen, setSharpen] = useState<number>(0); // clarity
   const [seed, setSeed] = useState<number | ''>(''); // both (int)
@@ -145,10 +146,12 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           ...payload,
           task: swinTask,
         };
-      } else if (model === 'wildmind/crystal-upscaler') {
+      } else if (model === 'philz1337x/crystal-upscaler') {
+        // crystal upscaler expects scale_factor and optional output_format (png/jpg)
         payload = {
           ...payload,
-          resolution: crystalResolution,
+          scale_factor: scaleFactor,
+          output_format: crystalOutput,
         };
       }
       const res = await axiosInstance.post('/api/replicate/upscale', payload);
@@ -225,7 +228,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
                       <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
                       <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
-                      <option className='bg-black/80' value="wildmind/crystal-upscaler">Crystal Upscaler</option>
+                      <option className='bg-black/80' value="philz1337x/crystal-upscaler">Crystal Upscaler (Replicate)</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -491,21 +494,21 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         </select>
                       </div>
                     </div>
-                    ) : (
+                    ) : model === 'philz1337x/crystal-upscaler' ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-white/80">Resolution</label>
-                        <select value={crystalResolution} onChange={(e)=>setCrystalResolution(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                          <option value="1080p">1080p</option>
-                          <option value="1440p">1440p</option>
-                          <option value="2160p">2160p (4K)</option>
-                          <option value="6K">6K</option>
-                          <option value="8K">8K</option>
-                          <option value="12K">12K</option>
+                        <label className="text-xs text-white/80">Scale factor</label>
+                        <input type="number" min={1} max={6} step={1} value={scaleFactor} onChange={(e)=>setScaleFactor(Number(e.target.value)||2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-white/80">Output</label>
+                        <select value={crystalOutput} onChange={(e)=>setCrystalOutput(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
+                          <option value="png">PNG</option>
+                          <option value="jpg">JPG</option>
                         </select>
                       </div>
                     </div>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Model Selection - Comment out all form inputs */}

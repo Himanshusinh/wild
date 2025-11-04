@@ -69,7 +69,7 @@ const EditImageInterface: React.FC = () => {
   const [fillSeed, setFillSeed] = useState<string>('');
   
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'  | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'  | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -752,6 +752,10 @@ const EditImageInterface: React.FC = () => {
         // } else 
         if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
+        } else if (model === 'philz1337x/crystal-upscaler') {
+          const crystalScale = Math.max(1, Math.min(6, clarityScale));
+          const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
+          payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
         } 
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
@@ -1092,7 +1096,9 @@ const EditImageInterface: React.FC = () => {
                               { label: 'NightmareAI Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                               // { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
                             ]
-                        ).map((opt) => (
+                        ).concat(selectedFeature !== 'remove-bg' ? [
+                              { label: 'Crystal Upscaler (Replicate)', value: 'philz1337x/crystal-upscaler' },
+                            ] : []).map((opt) => (
                           <button
                             key={opt.value}
                             onClick={() => { setModel(opt.value as any); setActiveDropdown(''); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
@@ -1297,6 +1303,47 @@ const EditImageInterface: React.FC = () => {
                           >
                             {faceEnhance ? 'Enabled' : 'Disabled'}
                           </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {model === 'philz1337x/crystal-upscaler' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale factor (1-6)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={6}
+                          step={1}
+                          value={Number(String(scaleFactor).replace('x','')) || 2}
+                          onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
+                          className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                          >
+                            <span className="truncate uppercase">{(output || 'png').toString()}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'output' && (
+                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {['png','jpg'].map((fmt) => (
+                                <button
+                                  key={fmt}
+                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <span className="uppercase">{fmt}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
