@@ -155,13 +155,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
             <img
               src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 400, q: 70 }) || src) : src } catch { return src } })()}
               alt={item.prompt ?? 'creation'}
-              className="absolute inset-0 object-cover"
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              thumbWidth={640}
-              thumbQuality={60}
-              decorative
-              priority={false}
+              className="absolute inset-0 w-full h-full object-cover"
             />
           )}
         </div>
