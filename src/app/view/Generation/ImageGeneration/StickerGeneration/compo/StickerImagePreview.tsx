@@ -269,21 +269,11 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
           });
           return;
         } catch (e) {
-          // If user cancels or share fails, fall through to download + WhatsApp Web
+          // If user cancels or share fails, fall through to WhatsApp Web link only (no download)
         }
       }
 
-      // Fallback: auto-download the sticker, then open WhatsApp Web to complete sharing manually
-      const a = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      a.href = url;
-      a.download = 'sticker.webp';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      // Open WhatsApp (Web) chat composer for convenience (attachments must be added manually)
+      // Fallback: open WhatsApp (Web) chat composer with prefilled text only (attachments must be added manually)
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       const shareUrl = `${origin}/view/ArtStation?gen=${entry.id}`;
       const text = `${cleanPrompt}\n${shareUrl}`;
@@ -478,7 +468,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                   <MessageCircle className="h-4 w-4" />
                   <span className="hidden sm:inline">Share to WhatsApp</span>
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Exports and shares single sticker</div>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share sticker to WhatsApp (no download)</div>
               </div>
               <div className="relative group">
                 <button onClick={() => exportForWhatsApp(false)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
