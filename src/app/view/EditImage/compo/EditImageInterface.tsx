@@ -1,4 +1,4 @@
-  'use client';
+'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -13,7 +13,7 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill';
+type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize';
 
 const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
@@ -24,6 +24,7 @@ const EditImageInterface: React.FC = () => {
     'remove-bg': null,
     'resize': null,
     'fill': null,
+    'vectorize': null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
@@ -31,19 +32,21 @@ const EditImageInterface: React.FC = () => {
     'remove-bg': null,
     'resize': null,
     'fill': null,
+    'vectorize': null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
     'upscale': false,
     'remove-bg': false,
     'resize': false,
     'fill': false,
+    'vectorize': false,
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
   const [showImageMenu, setShowImageMenu] = useState(false);
-  
+
   // Zoom and pan state
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -51,7 +54,7 @@ const EditImageInterface: React.FC = () => {
   const [lastPoint, setLastPoint] = useState({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [fitScale, setFitScale] = useState(1);
-  
+
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -67,9 +70,9 @@ const EditImageInterface: React.FC = () => {
   const [fillSteps, setFillSteps] = useState(30);
   const [fillGuidance, setFillGuidance] = useState(7.5);
   const [fillSeed, setFillSeed] = useState<string>('');
-  
+
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan'  | '851-labs/background-remover' | 'lucataco/remove-bg'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -79,13 +82,31 @@ const EditImageInterface: React.FC = () => {
     if (t === 'real_sr') return 'real_sr: Upscale real-world photos with mixed noise/compression (default).';
     return 'compressed_sr: Upscale heavily compressed/low-bitrate images.';
   };
+  const getUpscaleModelLabel = (m: string) => {
+    if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
+    if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
+    return m;
+  };
   const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
   const [dynamic, setDynamic] = useState('');
   const [sharpen, setSharpen] = useState('');
   const [backgroundType, setBackgroundType] = useState('');
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | ''>('');
+  // Vectorize controls
+  const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
+  const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
+  const [vHierarchical, setVHierarchical] = useState<'stacked' | 'cutout'>('stacked');
+  const [vMode, setVMode] = useState<'spline' | 'polygon'>('spline');
+  const [vFilterSpeckle, setVFilterSpeckle] = useState<number>(4);
+  const [vColorPrecision, setVColorPrecision] = useState<number>(6);
+  const [vLayerDifference, setVLayerDifference] = useState<number>(16);
+  const [vCornerThreshold, setVCornerThreshold] = useState<number>(60);
+  const [vLengthThreshold, setVLengthThreshold] = useState<number>(4);
+  const [vMaxIterations, setVMaxIterations] = useState<number>(10);
+  const [vSpliceThreshold, setVSpliceThreshold] = useState<number>(45);
+  const [vPathPrecision, setVPathPrecision] = useState<number>(3);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
@@ -95,24 +116,24 @@ const EditImageInterface: React.FC = () => {
 
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const historyEntries = useAppSelector((s:any)=> (s.history?.entries || []).filter((e:any)=> e.generationType === 'text-to-image'));
-  const historyLoading = useAppSelector((s:any)=> s.history?.loading || false);
-  const historyHasMore = useAppSelector((s:any)=> s.history?.hasMore || false);
-  
+  const historyEntries = useAppSelector((s: any) => (s.history?.entries || []).filter((e: any) => e.generationType === 'text-to-image'));
+  const historyLoading = useAppSelector((s: any) => s.history?.loading || false);
+  const historyHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize from query params: feature and image
   useEffect(() => {
     // Ensure we have some history for the upload modal library tab
     (async () => {
-      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch {}
+      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch { }
     })();
     try {
       // Allow tab selection via query or path (for /edit-image/fill)
       const featureParam = (searchParams?.get('feature') || '').toLowerCase() || (typeof window !== 'undefined' && window.location.pathname.includes('/edit-image/fill') ? 'fill' : '');
       const imageParam = searchParams?.get('image') || '';
       const storagePathParam = searchParams?.get('sp') || '';
-      const validFeature = ['upscale', 'remove-bg', 'resize', 'fill'].includes(featureParam)
+      const validFeature = ['upscale', 'remove-bg', 'resize', 'fill', 'vectorize'].includes(featureParam)
         ? (featureParam as EditFeature)
         : null;
       if (validFeature) {
@@ -122,6 +143,8 @@ const EditImageInterface: React.FC = () => {
           setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
           setModel('nightmareai/real-esrgan');
+        } else if (validFeature === 'vectorize') {
+          setModel('fal-ai/recraft/vectorize' as any);
         }
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
@@ -172,12 +195,12 @@ const EditImageInterface: React.FC = () => {
 
   const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageContainerRef.current) return;
-    
+
     const container = imageContainerRef.current;
     const rect = container.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    
+
     if (Math.abs(scale - fitScale) < 1e-3) {
       // Zoom to 1.5x at click point (more reasonable)
       zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 1.5));
@@ -195,16 +218,16 @@ const EditImageInterface: React.FC = () => {
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
-    
+
     e.preventDefault();
     const deltaX = e.clientX - lastPoint.x;
     const deltaY = e.clientY - lastPoint.y;
-    
+
     const newOffset = {
       x: offset.x + deltaX,
       y: offset.y + deltaY
     };
-    
+
     const clampedOffset = clampOffset(newOffset, scale);
     setOffset(clampedOffset);
     setLastPoint({ x: e.clientX, y: e.clientY });
@@ -290,7 +313,7 @@ const EditImageInterface: React.FC = () => {
 
     // Add passive: false to allow preventDefault
     document.addEventListener('wheel', handleGlobalWheel, { passive: false });
-    
+
     return () => {
       document.removeEventListener('wheel', handleGlobalWheel);
     };
@@ -357,13 +380,8 @@ const EditImageInterface: React.FC = () => {
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
     { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your image' },
     { id: 'fill', label: 'Replace', description: 'Mask areas to regenerate with a prompt' },
-    { id: 'fill', label: 'Erase', description: 'Mask areas to regenerate with a prompt' },
-
     { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
-    { id: 'fill', label: 'Vectorize', description: 'Mask areas to regenerate with a prompt' },
-    { id: 'fill', label: 'Enhance +', description: 'Mask areas to regenerate with a prompt' },
-
-    
+    { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
   ] as const;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,7 +418,7 @@ const EditImageInterface: React.FC = () => {
     canvas.style.height = `${rect.height}px`;
     const ctx = getCanvasContext();
     if (ctx) {
-      ctx.setTransform(1,0,0,1,0,0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       setHasMask(false);
@@ -491,6 +509,39 @@ const EditImageInterface: React.FC = () => {
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
       const isPublic = await getIsPublic();
+      if (selectedFeature === 'vectorize') {
+        const img = inputs[selectedFeature];
+        if (!img) throw new Error('Please upload an image to vectorize');
+        if (vectorizeModel === 'fal-ai/recraft/vectorize') {
+          const body: any = { isPublic };
+          if (String(currentInputRaw).startsWith('data:')) body.image = currentInput;
+          else body.image_url = currentInput;
+          const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
+          const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
+          if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+        } else {
+          // fal-ai/image2svg
+          const body: any = {
+            isPublic,
+            colormode: vColorMode,
+            hierarchical: vHierarchical,
+            mode: vMode,
+            filter_speckle: vFilterSpeckle,
+            color_precision: vColorPrecision,
+            layer_difference: vLayerDifference,
+            corner_threshold: vCornerThreshold,
+            length_threshold: vLengthThreshold,
+            max_iterations: vMaxIterations,
+            splice_threshold: vSpliceThreshold,
+            path_precision: vPathPrecision,
+          };
+          if (String(currentInputRaw).startsWith('data:')) body.image = currentInput; else body.image_url = currentInput;
+          const res = await axiosInstance.post('/api/fal/image2svg', body);
+          const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
+          if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+        }
+        return;
+      }
       if (selectedFeature === 'fill') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error('Please upload an image for fill');
@@ -512,7 +563,7 @@ const EditImageInterface: React.FC = () => {
                 octx.fillRect(0, 0, natW, natH);
                 return off.toDataURL('image/png');
               }
-            } catch {}
+            } catch { }
             return undefined as any;
           }
           try {
@@ -650,7 +701,7 @@ const EditImageInterface: React.FC = () => {
           };
           const res = await axiosInstance.post('/api/runway/generate', runwayPayload);
           const taskId = res?.data?.data?.taskId || res?.data?.taskId;
-          
+
           if (taskId) {
             // Poll for completion like the image generation flow
             let imageUrl: string | undefined;
@@ -658,7 +709,7 @@ const EditImageInterface: React.FC = () => {
               try {
                 const statusRes = await axiosInstance.get(`/api/runway/status/${taskId}`);
                 const status = statusRes?.data?.data || statusRes?.data;
-                
+
                 if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
                   imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                   break;
@@ -672,7 +723,7 @@ const EditImageInterface: React.FC = () => {
               }
               await new Promise(res => setTimeout(res, 1000));
             }
-            
+
             if (imageUrl) {
               // no-op after removing using-prompt feature
             } else {
@@ -697,11 +748,11 @@ const EditImageInterface: React.FC = () => {
               max_images: 1,
               isPublic,
             };
-            
+
             // Use Replicate generate endpoint (same as image generation flow)
             const res = await axiosInstance.post('/api/replicate/generate', payload);
             const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-            if (out) {}
+            if (out) { }
             return;
           } else {
             // Google Nano Banana (gemini-25-flash-image)
@@ -719,7 +770,7 @@ const EditImageInterface: React.FC = () => {
           }
           const res = await axiosInstance.post('/api/fal/generate', payload);
           const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) {}
+          if (out) { }
         } else if (isFluxKontext) {
           // Flux Kontext I2I through the same payload shape as text-to-image
           const payload: any = {
@@ -734,7 +785,7 @@ const EditImageInterface: React.FC = () => {
           };
           const res = await axiosInstance.post('/api/bfl/generate', payload);
           const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) {}
+          if (out) { }
         }
       } else {
         const parseScale = (fallback: number) => {
@@ -752,25 +803,29 @@ const EditImageInterface: React.FC = () => {
         // } else 
         if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
-        } 
+        } else if (model === 'philz1337x/crystal-upscaler') {
+          const crystalScale = Math.max(1, Math.min(6, clarityScale));
+          const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
+          payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
+        }
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
-         
+
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
         console.log('[EditImage] upscale.res', res?.data);
         const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
         if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
-        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch {}
+        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
       }
     } catch (e) {
       console.error('[EditImage] run.error', e);
       const errorData = (e as any)?.response?.data;
       let msg = (errorData && (errorData.message || errorData.error)) || (e as any)?.message || 'Request failed';
       if (!msg && Array.isArray(errorData)) {
-        try { msg = errorData.map((x: any) => x?.msg || x).join(', '); } catch {}
+        try { msg = errorData.map((x: any) => x?.msg || x).join(', '); } catch { }
       }
       if (typeof msg !== 'string') {
-        try { msg = JSON.stringify(errorData); } catch {}
+        try { msg = JSON.stringify(errorData); } catch { }
       }
       console.log('[EditImage] Error details:', errorData);
       setErrorMsg(String(msg));
@@ -780,13 +835,15 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null });
+    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null });
+    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
       setModel('nightmareai/real-esrgan');
+    } else if (selectedFeature === 'vectorize') {
+      setModel('fal-ai/recraft/vectorize' as any);
     }
     setPrompt('');
     setScaleFactor('');
@@ -800,11 +857,11 @@ const EditImageInterface: React.FC = () => {
     }
   };
 
-  
 
-  
 
-  
+
+
+
 
   // Helper functions from ImagePreviewModal.tsx
   const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
@@ -829,7 +886,7 @@ const EditImageInterface: React.FC = () => {
         alert('No image available to download')
         return
       }
-      
+
       await downloadFileWithNaming(url, null, 'image', 'edited');
     } catch (e) {
       console.error('[EditImage] download.error', e)
@@ -844,7 +901,7 @@ const EditImageInterface: React.FC = () => {
         alert('No image available to share')
         return
       }
-      
+
       // Use the same logic as ImagePreviewModal
       if (!navigator.share) {
         // Fallback: Copy image URL to clipboard
@@ -864,25 +921,25 @@ const EditImageInterface: React.FC = () => {
         alert('Image URL copied to clipboard!');
         return;
       }
-      
+
       const response = await fetch(downloadUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
       const fileName = (toProxyPath(shareUrl) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-      
+
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
-      
+
       // Use Web Share API
       await navigator.share({
         title: 'Wild Mind AI Generated Image',
         text: `Check out this AI-generated image!`,
         files: [file]
       });
-      
+
       console.log('Image shared successfully');
     } catch (error: any) {
       // Handle user cancellation gracefully
@@ -890,7 +947,7 @@ const EditImageInterface: React.FC = () => {
         console.log('Share cancelled by user');
         return;
       }
-      
+
       // Fallback to copying URL
       console.error('Share failed:', error);
       try {
@@ -927,50 +984,54 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B] overflow-auto">
-      {/* Header + Feature cards in a single row so the heading sits in the left gap */}
-      <div className="w-screen px-4 pt-3 pb-2 bg-[#07070B] md:px-6 md:pt-4 md:pb-3">
+    <div className=" bg-[#07070B]">
+      {/* Sticky header like ArtStation */}
+      <div className="w-full fixed top-0 z-50 px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:px-5 pt-10">
         <div className="flex items-center gap-4">
-          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14">
+          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14 ">
             <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
             <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
           </div>
           <div className="flex gap-3 overflow-x-auto no-scrollbar md:gap-9 ml-6 sm:ml-8 md:ml-12 md:ml-34">
-              {features.map((feature) => (
-            <div
-                  key={feature.id}
-                  onClick={() => { 
-                    setSelectedFeature(feature.id); 
-                    // Ensure sensible default model per feature when switching tabs
-                    if (feature.id === 'remove-bg') {
-                      setModel('851-labs/background-remover');
-                    } else if (feature.id === 'upscale') {
-                      setModel('nightmareai/real-esrgan');
-                    }
-                    setProcessing((p) => ({ ...p, [feature.id]: false }));
-                  }}
-              className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-auto md:p-3 ${selectedFeature === feature.id
+            {features.map((feature) => (
+              <div
+                key={feature.id}
+                onClick={() => {
+                  setSelectedFeature(feature.id as EditFeature);
+                  // Ensure sensible default model per feature when switching tabs
+                  if (feature.id === 'remove-bg') {
+                    setModel('851-labs/background-remover');
+                  } else if (feature.id === 'upscale') {
+                    setModel('nightmareai/real-esrgan');
+                  } else if (feature.id === 'vectorize') {
+                    setModel('fal-ai/recraft/vectorize' as any);
+                  }
+                  setProcessing((p) => ({ ...p, [feature.id]: false }));
+                }}
+                className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-auto md:p-3 ${selectedFeature === feature.id
                   ? 'border-white/30 bg-white/10'
                   : 'border-white/10 hover:bg-white/10'
-                }`}
-            >
-              <div className="flex items-center gap-2 ml-1">
-                <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
-                  }`}>
-                  {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4 md:w-5 md:h-5" />)}
+                  }`}
+              >
+                <div className="flex items-center gap-2 ml-1">
+                  <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
+                    }`}>
+                    {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
+                    {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4 md:w-5 md:h-5" />)}
+                    {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4 md:w-5 md:h-5" />)}
+                    {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4 md:w-5 md:h-5" />)}
+                  </div>
+                  <div>
+                    <h3 className="text-white text-xs font-medium md:text-sm pr-2">{feature.label}</h3>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-white text-xs font-medium md:text-sm pr-2">{feature.label}</h3>
-            </div>
+              </div>
+            ))}
           </div>
-                </div>
-          ))}
-          </div>
-            </div>
+        </div>
       </div>
+      {/* Spacer to offset fixed header height */}
+      {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
       <UploadModal
         isOpen={isUploadOpen}
@@ -986,7 +1047,7 @@ const EditImageInterface: React.FC = () => {
               filters: { generationType: 'text-to-image' },
               paginationParams: { limit: 20 }
             })).unwrap();
-          } catch {}
+          } catch { }
         }}
         onAdd={(urls: string[]) => {
           const first = urls[0];
@@ -995,11 +1056,11 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 py-1 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
+      <div className="flex flex-1 min-h-0 py-1 overflow-hidden pt-14" >
         {/* Left Sidebar - Controls */}
         <div className="w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-96 ml-8 sm:ml-16 md:ml-24 lg:ml-16">
           {/* Error Message */}
-            {errorMsg && (
+          {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
               <p className="text-red-400 text-xs">{errorMsg}</p>
             </div>
@@ -1007,96 +1068,84 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Input Image Upload (Fill mask overlays here) */}
-          <div className="px-3 md:px-4">
-            <h3 className="text-xs pl-1  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
-            
+          <div className="px-3 md:px-4 ">
+            <h3 className="text-xs pl-0  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
+
             <div className="relative">
               <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] md:min-h-[18rem]">
-                  {inputs[selectedFeature] ? (
-                    <>
-                      <Image
-                        src={inputs[selectedFeature] as string}
-                        alt="Input"
-                        fill
-                        className="object-contain rounded-xl"
-                        onLoad={(e:any)=>{
-                          try { setInputNaturalSize({ width: e?.target?.naturalWidth || 0, height: e?.target?.naturalHeight || 0 }); } catch {}
-                          // re-fit canvas on first load
-                          try { setTimeout(() => resizeCanvasToContainer(), 0); } catch {}
-                        }}
-                      />
-                      {/* Fill: mask canvas overlay over input image */}
-                      {(selectedFeature === 'fill' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
-                         <div ref={fillContainerRef} className="absolute inset-0">
-                           <canvas
-                             ref={fillCanvasRef}
-                             className="absolute inset-0 w-full h-full cursor-crosshair"
-                             onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
-                             onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
-                             onMouseUp={() => endMaskStroke()}
-                             onMouseLeave={() => endMaskStroke()}
-                           />
-                         </div>
-                       )}
-                      <button
-                        onClick={handleOpenUploadModal}
-                        className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
-                        aria-label="Change image"
-                      >
-                        <img src="/icons/fileupload.svg" alt="Upload" className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
+                {inputs[selectedFeature] ? (
+                  <>
+                    <Image
+                      src={inputs[selectedFeature] as string}
+                      alt="Input"
+                      fill
+                      className="object-contain rounded-xl"
+                      onLoad={(e: any) => {
+                        try { setInputNaturalSize({ width: e?.target?.naturalWidth || 0, height: e?.target?.naturalHeight || 0 }); } catch { }
+                        // re-fit canvas on first load
+                        try { setTimeout(() => resizeCanvasToContainer(), 0); } catch { }
+                      }}
+                    />
+                    {/* Fill: mask canvas overlay over input image */}
+                    {(selectedFeature === 'fill' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
+                      <div ref={fillContainerRef} className="absolute inset-0">
+                        <canvas
+                          ref={fillCanvasRef}
+                          className="absolute inset-0 w-full h-full cursor-crosshair"
+                          onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
+                          onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
+                          onMouseUp={() => endMaskStroke()}
+                          onMouseLeave={() => endMaskStroke()}
+                        />
+                      </div>
+                    )}
                     <button
                       onClick={handleOpenUploadModal}
-                      className="absolute inset-0 flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
+                      className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
+                      aria-label="Change image"
                     >
-                      <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 md:w-7 md:h-7" />
-                      <span className="text-sm md:text-base">Upload Image</span>
+                      <img src="/icons/fileupload.svg" alt="Upload" className="w-4 h-4" />
                     </button>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-                </div>
-                        </div>
-                      </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleOpenUploadModal}
+                    className="absolute inset-0 flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
+                  >
+                    <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 md:w-7 md:h-7" />
+                    <span className="text-sm md:text-base">Upload Image</span>
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+              </div>
+            </div>
+          </div>
 
-          {/* Action Buttons moved to bottom under Parameters */}
- 
-          {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-          <div className="flex-1 min-h-0 p-3 overflow-hidden md:p-4">
-            <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
-
-            <div className="space-y-1">
-              <div className="grid grid-cols-2 gap-2">
+          {/* Vectorize model & parameters */}
+          {selectedFeature === 'vectorize' && (
+            <div className="px-3 md:px-4">
+              {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
+              <div className="space-y-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
+                  <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm ">Model</label>
                   <div className="relative edit-dropdown">
                     <button
-                      onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                      onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
+                      className={`h-[32px]  w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
                     >
-                      <span className="truncate">
-                        {model || 'Select model'}
-                      </span>
-                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                      <span className="truncate">{vectorizeModel === 'fal-ai/recraft/vectorize' ? 'Recraft Vectorize' : 'Image to SVG'}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
-                    {activeDropdown === 'model' && (
-                      <div className={`absolute top-full mt-2 z-30 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                        {(selectedFeature === 'remove-bg'
-                          ? [
-                              { label: 'bria/eraser', value: 'bria/eraser' },
-                              { label: '851-labs/background-remover', value: '851-labs/background-remover' },
-                              { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
-                            ]
-                          : [
-                              { label: 'NightmareAI Real-ESRGAN', value: 'nightmareai/real-esrgan' },
-                              // { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
-                            ]
-                        ).map((opt) => (
+                    {activeDropdown === 'vectorizeModel' && (
+                      <div className={`absolute top-full mt-2 z-70 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                        {[
+                          { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
+                          { label: 'Image to SVG', value: 'fal-ai/image2svg' },
+                        ].map((opt) => (
                           <button
                             key={opt.value}
-                            onClick={() => { setModel(opt.value as any); setActiveDropdown(''); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
-                            className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
+                            className={`w-full px-3 py-2 text-left text-[13px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                           >
                             <span className="truncate">{opt.label}</span>
                           </button>
@@ -1105,203 +1154,394 @@ const EditImageInterface: React.FC = () => {
                     )}
                   </div>
                 </div>
-                {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
-                    <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                    <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
-                  </div>
-                )}
-                {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
-                  <div className="relative edit-dropdown">
-                    <button
-                      onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                    >
-                      <span className="truncate">{output || 'Select format'}</span>
-                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'output' && (
-                      <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                        {['png','jpg','jpeg','webp'].map((fmt) => (
-                          <button
-                            key={fmt}
-                            onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                            className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <span className="uppercase">{fmt}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                )}
-              </div>
-
-              {/* Prompt for Fill */}
-              {selectedFeature === 'fill' && (
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt</label>
-                  <input
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe what to fill"
-                    className="w-full h-[32px] px-2 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 md:text-sm"
-                  />
-                </div>
-              )}
-
-              {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
-              {selectedFeature === 'resize' && (
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt (Optional)</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe details to guide the edit"
-                    rows={1}
-                    className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-              {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
-                  <div className="relative edit-dropdown">
-                    <button
-                      onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
-                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                    >
-                      <span className="truncate">{backgroundType || 'Select background type'}</span>
-                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'backgroundType' && (
-                      <div className={`absolute top-full z-30 mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-44 overflow-y-auto dropdown-scrollbar`}>
-                        {[
-                          { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
-                          { label: 'white', value: 'white', description: 'Solid white background' },
-                          { label: 'green', value: 'green', description: 'Solid green background' },
-                          { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
-                          { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
-                          { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
-                        ].map((opt) => (
-                          <button
-                            key={opt.value}
-                            onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                            className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span className="truncate font-medium">{opt.label}</span>
-                            </div>
-                            <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
-                              {opt.description}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {selectedFeature === 'fill' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
-                    <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                    <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
-                  </div>
-                  <div className="flex items-end">
-                    <button type="button" onClick={() => setEraseMode(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${eraseMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
-                      {eraseMode ? 'Erase' : 'Paint'}
-                    </button>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Steps (15-50)</label>
-                    <input type="number" min={15} max={50} value={fillSteps} onChange={(e) => setFillSteps(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Guidance (1.5-100)</label>
-                    <input type="number" min={1.5} max={100} step={0.5} value={fillGuidance} onChange={(e) => setFillGuidance(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Seed (optional)</label>
-                    <input type="number" value={fillSeed} onChange={(e) => setFillSeed(e.target.value)} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
-                  </div>
-                </>
-              )}
-
-                {/* Buttons moved to bottom footer */}
-              </div>
-
-              {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={threshold}
-                    onChange={(e) => setThreshold(e.target.value)}
-                    placeholder="0.0 (soft alpha) to 1.0"
-                    className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                  />
-                  <div className="mt-1 text-xs text-white/50">
-                    Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
-                  </div>
-                  <div className="mt-2">
-                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
-                    <button
-                      type="button"
-                      onClick={() => setReverseBg(v => !v)}
-                      className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
-                    >
-                      {reverseBg ? 'Enabled' : 'Disabled'}
-                    </button>
-                    <div className="mt-1 text-xs text-white/50">
-                      Remove foreground instead of background
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedFeature === 'upscale' && (
-                <>
-                  {model === 'nightmareai/real-esrgan' && (
+                {vectorizeModel === 'fal-ai/image2svg' && (
+                  <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={10}
-                          step={1}
-                          value={Number(String(scaleFactor).replace('x','')) || 4}
-                          onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
-                          className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <div className="w-full">
-                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Colormode</label>
+                        <div className="relative edit-dropdown">
                           <button
-                            type="button"
-                            onClick={() => setFaceEnhance(v => !v)}
-                            className={`h-[30px] w-full px-3  rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                            onClick={() => setActiveDropdown(activeDropdown === 'vColorMode' ? '' : 'vColorMode')}
+                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
                           >
-                            {faceEnhance ? 'Enabled' : 'Disabled'}
+                            <span className="truncate">{vColorMode}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vColorMode' ? 'rotate-180' : ''}`} />
                           </button>
+                          {activeDropdown === 'vColorMode' && (
+                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {['color','binary'].map((opt) => (
+                                <button key={opt} onClick={() => { setVColorMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vColorMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Hierarchical</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'vHierarchical' ? '' : 'vHierarchical')}
+                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                          >
+                            <span className="truncate">{vHierarchical}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vHierarchical' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'vHierarchical' && (
+                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {['stacked','cutout'].map((opt) => (
+                                <button key={opt} onClick={() => { setVHierarchical(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vHierarchical === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Mode</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'vMode' ? '' : 'vMode')}
+                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                          >
+                            <span className="truncate">{vMode}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vMode' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'vMode' && (
+                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {['spline','polygon'].map((opt) => (
+                                <button key={opt} onClick={() => { setVMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Filter Speckle</label>
+                        <input type="number" value={vFilterSpeckle} onChange={(e) => setVFilterSpeckle(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Color Precision</label>
+                        <input type="number" value={vColorPrecision} onChange={(e) => setVColorPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Layer Difference</label>
+                        <input type="number" value={vLayerDifference} onChange={(e) => setVLayerDifference(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Corner Threshold</label>
+                        <input type="number" value={vCornerThreshold} onChange={(e) => setVCornerThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Length Threshold</label>
+                        <input type="number" step="0.1" value={vLengthThreshold} onChange={(e) => setVLengthThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Max Iterations</label>
+                        <input type="number" value={vMaxIterations} onChange={(e) => setVMaxIterations(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Splice Threshold</label>
+                        <input type="number" value={vSpliceThreshold} onChange={(e) => setVSpliceThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Path Precision</label>
+                        <input type="number" value={vPathPrecision} onChange={(e) => setVPathPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons moved to bottom under Parameters */}
+
+          {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
+          <div className="flex-1 min-h-0 p-3 overflow-hidden md:p-4">
+            {selectedFeature !== 'vectorize' && (
+              <>
+                <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
+
+                <div className="space-y-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
+                      <div className="relative edit-dropdown">
+                        <button
+                          onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                        >
+                          <span className="truncate">
+                            {model ? getUpscaleModelLabel(model) : 'Select model'}
+                          </span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'model' && (
+                          <div className={`absolute top-full mt-2 z-30 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                            {(selectedFeature === 'remove-bg'
+                              ? [
+                                // { label: 'bria/eraser', value: 'bria/eraser' },
+                                { label: '851-labs/background-remover', value: '851-labs/background-remover' },
+                                { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
+                              ]
+                              : [
+                                { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+                                // { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
+                              ]
+                            ).concat(selectedFeature !== 'remove-bg' ? [
+                              { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+                            ] : []).map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => { setModel(opt.value as any); setActiveDropdown(''); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
+                                className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                              >
+                                <span className="truncate">{opt.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
+                        <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                        <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
+                      </div>
+                    )}
+                    {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                          >
+                            <span className="truncate">{output || 'Select format'}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'output' && (
+                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
+                                <button
+                                  key={fmt}
+                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <span className="uppercase">{fmt}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Prompt for Fill */}
+                  {selectedFeature === 'fill' && (
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt</label>
+                      <input
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe what to fill"
+                        className="w-full h-[32px] px-2 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 md:text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
+                  {selectedFeature === 'resize' && (
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt (Optional)</label>
+                      <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe details to guide the edit"
+                        rows={1}
+                        className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
+                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                          >
+                            <span className="truncate">{backgroundType || 'Select background type'}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'backgroundType' && (
+                            <div className={`absolute top-full z-30 mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-44 overflow-y-auto dropdown-scrollbar`}>
+                              {[
+                                { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
+                                { label: 'white', value: 'white', description: 'Solid white background' },
+                                { label: 'green', value: 'green', description: 'Solid green background' },
+                                { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
+                                { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
+                                { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
+                              ].map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
+                                  className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="truncate font-medium">{opt.label}</span>
+                                  </div>
+                                  <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
+                                    {opt.description}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedFeature === 'fill' && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
+                          <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                          <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
+                        </div>
+                        <div className="flex items-end">
+                          <button type="button" onClick={() => setEraseMode(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${eraseMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
+                            {eraseMode ? 'Erase' : 'Paint'}
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Steps (15-50)</label>
+                          <input type="number" min={15} max={50} value={fillSteps} onChange={(e) => setFillSteps(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Guidance (1.5-100)</label>
+                          <input type="number" min={1.5} max={100} step={0.5} value={fillGuidance} onChange={(e) => setFillGuidance(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Seed (optional)</label>
+                          <input type="number" value={fillSeed} onChange={(e) => setFillSeed(e.target.value)} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Buttons moved to bottom footer */}
+                  </div>
+
+                  {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={threshold}
+                        onChange={(e) => setThreshold(e.target.value)}
+                        placeholder="0.0 (soft alpha) to 1.0"
+                        className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                      />
+                      <div className="mt-1 text-xs text-white/50">
+                        Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
+                      </div>
+                      <div className="mt-2">
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
+                        <button
+                          type="button"
+                          onClick={() => setReverseBg(v => !v)}
+                          className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
+                        >
+                          {reverseBg ? 'Enabled' : 'Disabled'}
+                        </button>
+                        <div className="mt-1 text-xs text-white/50">
+                          Remove foreground instead of background
                         </div>
                       </div>
                     </div>
                   )}
-                  {/* {model === 'mv-lab/swin2sr' && (
+
+                  {selectedFeature === 'upscale' && (
+                    <>
+                      {model === 'nightmareai/real-esrgan' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 4}
+                              onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
+                              className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <div className="w-full">
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
+                              <button
+                                type="button"
+                                onClick={() => setFaceEnhance(v => !v)}
+                                className={`h-[30px] w-full px-3  rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                              >
+                                {faceEnhance ? 'Enabled' : 'Disabled'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {model === 'philz1337x/crystal-upscaler' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale factor (1-6)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={6}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 2}
+                              onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
+                              className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
+                            <div className="relative edit-dropdown">
+                              <button
+                                onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                                className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                              >
+                                <span className="truncate uppercase">{(output || 'png').toString()}</span>
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                              </button>
+                              {activeDropdown === 'output' && (
+                                <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                  {['png', 'jpg'].map((fmt) => (
+                                    <button
+                                      key={fmt}
+                                      onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                      className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                    >
+                                      <span className="uppercase">{fmt}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* {model === 'mv-lab/swin2sr' && (
                     <div>
                       <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Task</label>
                       <div className="relative edit-dropdown">
@@ -1328,9 +1568,11 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     </div>
                   )} */}
-                </>
-              )}
-            </div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Bottom action buttons under parameters */}
             <div className="mt-3 pt-2 border-t border-white/10">
@@ -1351,26 +1593,26 @@ const EditImageInterface: React.FC = () => {
               </div>
             </div>
           </div>
- 
-            {/* Footer removed; buttons are rendered at the end of Parameters above */}
- 
-          </div>
- 
+
+          {/* Footer removed; buttons are rendered at the end of Parameters above */}
+
+        </div>
+
         {/* Right Main Area - Image Display */}
         <div className="flex-1 flex flex-col bg-[#07070B] overflow-hidden">
 
 
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center pt-7  ">
-              <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
-                {/* Dotted grid background overlay */}
-                <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
+            <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
+              {/* Dotted grid background overlay */}
+              <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               {outputs[selectedFeature] && (
                 <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
                   <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
                 </div>
               )}
-              
+
 
               {/* Themed three dots menu - only show when there's an output */}
               {outputs[selectedFeature] && (
@@ -1386,12 +1628,12 @@ const EditImageInterface: React.FC = () => {
                     aria-expanded={showImageMenu}
                   >
                     <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <circle cx="5" cy="12" r="2"/>
-                      <circle cx="12" cy="12" r="2"/>
-                      <circle cx="19" cy="12" r="2"/>
+                      <circle cx="5" cy="12" r="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <circle cx="19" cy="12" r="2" />
                     </svg>
                   </button>
-                  
+
                   {/* Themed dropdown menu */}
                   {showImageMenu && (
                     <div ref={menuRef} className="absolute bottom-12 left-0 bg-black/80 border border-white/30 rounded-xl shadow-2xl min-w-[160px] overflow-hidden md:min-w-[200px]">
@@ -1435,7 +1677,7 @@ const EditImageInterface: React.FC = () => {
                             setShowImageMenu(false);
                           }
                         }}
-                          className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-3.5"
+                        className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-3.5"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -1453,25 +1695,23 @@ const EditImageInterface: React.FC = () => {
                     // Upscale with toggle between comparison and zoom
                     <div className="w-full h-full relative min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
                       {/* View Mode Toggle - centered at bottom */}
-                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
                         <div className="flex bg-black/80 rounded-lg p-1">
                           <button
                             onClick={() => setUpscaleViewMode('comparison')}
-                            className={`px-2 py-1 text-xs rounded transition-colors ${
-                              upscaleViewMode === 'comparison' 
-                                ? 'bg-white text-black' 
+                            className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'comparison'
+                                ? 'bg-white text-black'
                                 : 'text-white hover:bg-white/20'
-                            }`}
+                              }`}
                           >
                             Compare
                           </button>
                           <button
                             onClick={() => setUpscaleViewMode('zoom')}
-                            className={`px-2 py-1 text-xs rounded transition-colors ${
-                              upscaleViewMode === 'zoom' 
-                                ? 'bg-white text-black' 
+                            className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'zoom'
+                                ? 'bg-white text-black'
                                 : 'text-white hover:bg-white/20'
-                            }`}
+                              }`}
                           >
                             Zoom
                           </button>
@@ -1489,7 +1729,7 @@ const EditImageInterface: React.FC = () => {
                               className="object-contain object-center"
                             />
                           </div>
-                          <div 
+                          <div
                             className="absolute inset-0"
                             style={{
                               clipPath: `inset(0 0 0 ${sliderPosition}%)`
@@ -1512,7 +1752,7 @@ const EditImageInterface: React.FC = () => {
                               onChange={(e) => setSliderPosition(Number(e.target.value))}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
                             />
-                            <div 
+                            <div
                               className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
                               style={{ left: `${sliderPosition}%` }}
                             />
@@ -1520,8 +1760,8 @@ const EditImageInterface: React.FC = () => {
                           <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
                             <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
                           </div>
-                          </>
-                       ) : (
+                        </>
+                      ) : (
                         // Zoom mode
                         <div
                           ref={imageContainerRef}
@@ -1552,10 +1792,10 @@ const EditImageInterface: React.FC = () => {
                             }}
                             onClick={handleImageClick}
                           />
-                          
+
                           {/* Zoom Controls */}
                           <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
-                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
+                            <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
                               <button
                                 onClick={() => {
                                   const newScale = Math.max(0.1, scale - 0.1);
@@ -1623,7 +1863,7 @@ const EditImageInterface: React.FC = () => {
                         }}
                         onClick={handleImageClick}
                       />
-                      
+
                       {/* Zoom Controls */}
                       <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
                         <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">

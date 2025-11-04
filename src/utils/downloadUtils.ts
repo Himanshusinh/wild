@@ -97,6 +97,7 @@ export function getExtensionFromUrl(url: string): string {
       'jpeg': 'jpg',
       'png': 'png',
       'gif': 'gif',
+      'svg': 'svg',
       'webp': 'webp',
       'mp4': 'mp4',
       'mov': 'mov',
@@ -149,7 +150,7 @@ export function getFileType(media: any, url: string): 'image' | 'video' | 'audio
   
   // Check URL extension
   const extension = getExtensionFromUrl(url);
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
   const videoExtensions = ['mp4', 'mov', 'avi', 'webm'];
   const audioExtensions = ['mp3', 'wav', 'm4a', 'aac', 'ogg'];
   
@@ -231,9 +232,6 @@ export async function downloadFileWithNaming(
       console.log('[DownloadUtils] Updated extension for image:', extension);
     }
     
-    const filename = generateDownloadFilename(actualUsername, fileType, extension, customPrefix);
-    console.log('[DownloadUtils] Generated filename:', filename);
-    
     // Convert to proxy URL to avoid CORS issues
     const toProxyDownloadUrl = (urlOrPath: string) => {
       const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
@@ -257,6 +255,19 @@ export async function downloadFileWithNaming(
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
+    // Override extension based on server content-type when available
+    const respContentType = response.headers.get('content-type') || '';
+    if (fileType === 'image') {
+      if (respContentType.includes('image/svg')) extension = 'svg';
+      else if (respContentType.includes('image/png')) extension = 'png';
+      else if (respContentType.includes('image/webp')) extension = 'webp';
+      else if (respContentType.includes('image/jpeg')) extension = 'jpg';
+      else if (respContentType.includes('image/gif')) extension = 'gif';
+    }
+
+    const filename = generateDownloadFilename(actualUsername, fileType, extension, customPrefix);
+    console.log('[DownloadUtils] Generated filename:', filename, 'content-type:', respContentType);
+
     const blob = await response.blob();
     const objectUrl = window.URL.createObjectURL(blob);
     
