@@ -530,6 +530,20 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'image', // Assuming it's used for image prompts
     provider: 'openai'
   }
+  ,
+  // IMAGE UTILITIES (FAL)
+  {
+    frontendValue: 'fal-image2svg',
+    creditModelName: 'fal-ai/image2svg',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-recraft-vectorize',
+    creditModelName: 'fal-ai/recraft/vectorize',
+    generationType: 'image',
+    provider: 'fal'
+  }
 ];
 
 /**

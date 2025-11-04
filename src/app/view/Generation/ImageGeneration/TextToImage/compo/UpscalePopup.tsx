@@ -24,7 +24,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Model selection (clarity upscaler or magic refiner)
-  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr'>('philz1337x/clarity-upscaler');
+  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | 'wildmind/crystal-upscaler'>('philz1337x/clarity-upscaler');
 
   // Shared/basic
   const [scaleFactor, setScaleFactor] = useState<number>(2); // clarity only
@@ -65,6 +65,8 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const [mirResemblance, setMirResemblance] = useState<number>(0.75);
   const [guidanceScale, setGuidanceScale] = useState<number>(7);
   const [mirNegative, setMirNegative] = useState<string>('');
+  // Crystal Upscaler
+  const [crystalResolution, setCrystalResolution] = useState<'1080p'|'1440p'|'2160p'|'6K'|'8K'|'12K'>('1080p');
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -92,7 +94,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
     setIsUpscaling(true);
     try {
       const isPublic = await getIsPublic();
-      let payload: any = { image: uploadedImage, prompt: prompt || undefined, isPublic, model };
+  let payload: any = { image: uploadedImage, prompt: prompt || undefined, isPublic, model };
       if (model === 'philz1337x/clarity-upscaler') {
         payload = {
           ...payload,
@@ -116,7 +118,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           num_inference_steps: numInferenceSteps,
           downscaling_resolution: downscalingResolution,
         };
-      } else if (model === 'fermatresearch/magic-image-refiner') {
+  } else if (model === 'fermatresearch/magic-image-refiner') {
         // magic-image-refiner
         payload = {
           ...payload,
@@ -142,6 +144,11 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
         payload = {
           ...payload,
           task: swinTask,
+        };
+      } else if (model === 'wildmind/crystal-upscaler') {
+        payload = {
+          ...payload,
+          resolution: crystalResolution,
         };
       }
       const res = await axiosInstance.post('/api/replicate/upscale', payload);
@@ -214,10 +221,11 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-white">Model</label>
                     <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
-                      <option className='bg-black/80' value="philz1337x/clarity-upscaler ">Clarity Upscaler</option>
+                      <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
                       <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
                       <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
                       <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
+                      <option className='bg-black/80' value="wildmind/crystal-upscaler">Crystal Upscaler</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -320,7 +328,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
         <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/20 max-w-4xl w-full max-h-auto overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-2 border-b border-white/10 ">
-            <h2 className="text-xl font-semibold text-white">Upscale (Clarity)</h2>
+            <h2 className="text-xl font-semibold text-white">Upscale</h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -370,10 +378,10 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       <label className="text-xs font-medium text-white">Model</label>
                         <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
                         <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
-                        <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
                         <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
                         <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
                         <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
+                        <option className='bg-black/80' value="wildmind/crystal-upscaler">Crystal Upscaler</option>
                       </select>
                     </div>
                     {/* Optional Prompt */}
@@ -472,7 +480,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         <label htmlFor="fe" className="text-xs text-white/80">Face enhance</label>
                       </div>
                     </div>
-                    ) : (
+                    ) : model === 'mv-lab/swin2sr' ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-white/80">Task</label>
@@ -480,6 +488,20 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                           <option value="classical_sr">classical_sr</option>
                           <option value="real_sr">real_sr</option>
                           <option value="compressed_sr">compressed_sr</option>
+                        </select>
+                      </div>
+                    </div>
+                    ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-white/80">Resolution</label>
+                        <select value={crystalResolution} onChange={(e)=>setCrystalResolution(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                          <option value="1080p">1080p</option>
+                          <option value="1440p">1440p</option>
+                          <option value="2160p">2160p (4K)</option>
+                          <option value="6K">6K</option>
+                          <option value="8K">8K</option>
+                          <option value="12K">12K</option>
                         </select>
                       </div>
                     </div>
