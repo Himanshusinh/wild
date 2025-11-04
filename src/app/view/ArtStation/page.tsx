@@ -821,13 +821,19 @@ export default function ArtStationPage() {
                       <div className="rounded-lg px-2 py-2 md:px-3 md:py-2 flex items-center justify-between gap-2 pointer-events-auto">
                         {/* User */}
                         <div className="flex items-center gap-2 min-w-0">
-                          {item.createdBy?.photoURL ? (
-                            <img src={item.createdBy.photoURL} alt="" className="w-7 h-7 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[11px] text-white/90">
-                              {(item.createdBy?.username || item.createdBy?.displayName || 'U').slice(0,1).toUpperCase()}
-                            </div>
-                          )}
+                          {(() => {
+                            const cb = item.createdBy || ({} as any)
+                            const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
+                            if (photo) {
+                              const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
+                              return <img src={proxied} alt={cb.username || cb.displayName || ''} className="w-7 h-7 rounded-full object-cover" />
+                            }
+                            return (
+                              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[11px] text-white/90">
+                                {(cb.username || cb.displayName || 'U').slice(0,1).toUpperCase()}
+                              </div>
+                            )
+                          })()}
                           <div className="flex-1 min-w-0">
                             <div className="text-white/90 text-[12px] truncate">
                               {item.createdBy?.username || item.createdBy?.displayName || 'User'}
