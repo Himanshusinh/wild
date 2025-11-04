@@ -990,7 +990,7 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className=" bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-50 px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:px-5 pt-10">
+      <div className="w-full fixed top-0 z-50 px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:px-5 pt-20">
         <div className="flex items-center gap-4">
           <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14 ">
             <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
@@ -1603,7 +1603,7 @@ const EditImageInterface: React.FC = () => {
         </div>
 
         {/* Right Main Area - Image Display */}
-        <div className="w-1/2 md:flex-1 flex flex-col bg-[#07070B] overflow-hidden">
+        <div className="w-1/2 md:flex-1 flex flex-col bg-[#07070B] overflow-hidden pt-14">
 
 
           {/* Right Main Area - Output preview parallel to input image */}

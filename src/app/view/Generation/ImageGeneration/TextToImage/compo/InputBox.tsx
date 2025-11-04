@@ -18,7 +18,6 @@ import {
   setUploadedImages,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
-import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
@@ -46,7 +45,6 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
 import UploadModal from "./UploadModal";
-import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";

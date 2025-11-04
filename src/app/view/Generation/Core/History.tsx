@@ -18,7 +18,7 @@
   import { Download, Trash2 } from 'lucide-react';
   import toast from 'react-hot-toast';
   // Replaced custom loader with Logo.gif
-  import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
   import { getCreditsForModel } from '@/utils/modelCredits';
   import { toThumbUrl } from '@/lib/thumb';
 
@@ -578,55 +578,7 @@
       return totalCredits;
     };
 
-    // Derive original extension from a URL or data URI
-    const getExtensionFromUrl = (url: string): string | null => {
-      try {
-        // Handle data URIs like: data:audio/mpeg;base64,...
-        if (url.startsWith('data:')) {
-          const match = url.match(/^data:([^;]+);/);
-          if (match && match[1]) {
-            const mime = match[1];
-            const ext = getExtensionFromMime(mime);
-            if (ext) return ext;
-          }
-          return null;
-        }
-
-        // Strip query/hash
-        const clean = url.split('?')[0].split('#')[0];
-        const last = clean.split('/').pop() || '';
-        const dotIdx = last.lastIndexOf('.');
-        if (dotIdx > 0 && dotIdx < last.length - 1) {
-          const rawExt = last.substring(dotIdx + 1).toLowerCase();
-          // Whitelist known extensions
-          const allowed = new Set(['mp3','wav','m4a','ogg','aac','flac','mp4','webm','mov','mkv','png','jpg','jpeg','webp','gif']);
-          if (allowed.has(rawExt)) return rawExt;
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    };
-
-    const getExtensionFromMime = (mime: string): string | null => {
-      const map: Record<string, string> = {
-        'audio/mpeg': 'mp3',
-        'audio/mp3': 'mp3',
-        'audio/wav': 'wav',
-        'audio/x-wav': 'wav',
-        'audio/aac': 'aac',
-        'audio/mp4': 'm4a',
-        'audio/ogg': 'ogg',
-        'audio/flac': 'flac',
-        'video/mp4': 'mp4',
-        'video/webm': 'webm',
-        'image/png': 'png',
-        'image/jpeg': 'jpg',
-        'image/webp': 'webp',
-        'image/gif': 'gif',
-      };
-      return map[mime] || null;
-    };
+    // (removed duplicate local extension helpers; using centralized download utils)
 
     // Helper functions to convert URLs to proxy URLs (like preview modals)
     const toProxyPath = (urlOrPath: string | undefined) => {
