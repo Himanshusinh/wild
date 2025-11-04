@@ -426,18 +426,18 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${styleOpen ? 'rotate-180' : ''}`} />
       </button>
       {styleOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+        <div className="absolute bottom-full left-0 mb-2 w-44 md:w-48 bg-black/85 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide z-50">
           {MUSIC_STYLES.map((style) => (
             <button
               key={style}
               onClick={() => { setSelectedStyle(style); setStyleOpen(false); }}
-              className={`w-full px-2 py-1.5 md:px-3 md:py-2 text-left text-[10px] md:text-sm hover:bg-white/10 flex items-center justify-between ${
-                selectedStyle === style ? "bg-white text-black" : "text-white/90"
+              className={`w-full px-2 py-1.5 md:px-3 md:py-2 text-left text-[10px] md:text-sm hover:bg-white/10 flex items-center justify-between whitespace-nowrap ${
+                selectedStyle === style ? "bg-black text-white" : "text-white/90"
               }`}
             >
               <span>{style}</span>
               {selectedStyle === style && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-black rounded-full"></div>
               )}
             </button>
           ))}
@@ -472,18 +472,18 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${instrumentsOpen ? 'rotate-180' : ''}`} />
       </button>
       {instrumentsOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+        <div className="absolute bottom-full left-0 mb-2 w-44 md:w-48 bg-black/85 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide z-50">
           {INSTRUMENTS.map((instrument) => (
             <button
               key={instrument}
               onClick={() => { toggleInstrument(instrument); setInstrumentsOpen(false); }}
-              className={`w-full px-2 py-1.5 md:px-3 md:py-2 text-left text-[10px] md:text-sm hover:bg-white/10 flex items-center justify-between ${
-                selectedInstruments.includes(instrument) ? "bg-white text-black" : "text-white/90"
+              className={`w-full px-2 py-1.5 md:px-3 md:py-2 text-left text-[10px] md:text-sm hover:bg-white/10 flex items-center justify-between whitespace-nowrap ${
+                selectedInstruments.includes(instrument) ? "bg-black text-white" : "text-white/90"
               }`}
             >
               <span>{instrument}</span>
               {selectedInstruments.includes(instrument) && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-black rounded-full"></div>
               )}
             </button>
           ))}
@@ -524,7 +524,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               key={sr}
               onClick={() => { setAudio({ ...audio, sample_rate: sr as any }); setSrOpen(false); }}
               className={`w-full px-2 py-1.5 md:px-3 md:py-2 text-left text-[10px] md:text-sm hover:bg-white/10 flex items-center justify-between ${
-                audio.sample_rate === sr ? "bg-white text-black" : "text-white/90"
+                audio.sample_rate === sr ? "bg-black  text-white" : "text-white/90"
               }`}
             >
               <span>{sr}</span>

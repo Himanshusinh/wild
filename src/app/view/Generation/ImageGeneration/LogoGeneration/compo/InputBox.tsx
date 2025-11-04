@@ -456,13 +456,13 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       <div className="inset-0 pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
         <div className="md:py-6 py-0 md:pl-4 pl-0">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
-              <h2 className="md:text-xl text-md font-semibold text-white pl-0">
+            <div className="relative md:fixed left-0 right-0 z-30 py-3 md:py-5 md:top-0 md:ml-18 px-4 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+              <h2 className="md:text-xl text-md font-semibold text-white">
                 Logo Generation History
               </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
-            <div className="h-[32px] md:h-0"></div>
+            <div className="hidden md:block h-0"></div>
 
             {/* Scoped overlay loader while first page loads */}
           {(initialLoading || (loading && logoHistoryEntries.length === 0)) && (

@@ -259,7 +259,7 @@ const SidePannelFeatures = ({
       )}
 
       {/* Mobile bordered container starting from Home */}
-      <div className={`${isMobileMenuOpen ? 'mt-1 mx-2 p-3 bg-transparent md:bg-black/90 rounded-2xl' : ''}`}>
+      <div className={`${isMobileMenuOpen ? '-mt-5 md:mt-1 mx-2 p-3 bg-transparent md:bg-black/90 rounded-2xl' : ''}`}>
         <div>
           <div
             onClick={async () => {

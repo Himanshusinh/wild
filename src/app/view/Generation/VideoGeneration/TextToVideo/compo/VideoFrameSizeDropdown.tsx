@@ -240,14 +240,14 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white md:bg-white md:text-black`}
       >
         <Crop className="w-3 h-3 md:w-4 md:h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-[70vw] md:w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 w-[140px] md:w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
           {availableFrameSizes.map((size) => (
             <button
               key={size.value}

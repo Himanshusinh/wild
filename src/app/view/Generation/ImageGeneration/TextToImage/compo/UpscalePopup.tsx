@@ -312,7 +312,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
     <>
       {/* Backdrop (no outside click to close) */}
       <div 
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 "
+        className="fixed inset-0 bg-black/90 md:bg-black/70 backdrop-blur-sm z-60 "
       />
       
       {/* Main Popup */}

@@ -261,7 +261,7 @@ const Nav = () => {
 
           {/* Profile Dropdown */}
           {showDropdown && (
-            <div className='absolute right-0 top-full mt-2 w-72 md:w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden z-[80] transform translate-x-0 translate-y-0'>
+            <div className='absolute right-0 top-full mt-2 w-72 md:w-80 rounded-2xl bg-black/95 md:bg-white/10 backdrop-blur-xl md:backdrop-blur-3xl shadow-xl border border-white/10 overflow-hidden z-[80] transform translate-x-0 translate-y-0'>
               <div className='p-3 md:p-4'>
                 {/* User Info Header */}
                 <div className='flex items-center gap-2 md:gap-3 mb-3 md:mb-4 pb-3 md:pb-4 border-b border-white/10'>

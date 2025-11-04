@@ -149,7 +149,7 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60" />
+      <div className="fixed inset-0 bg-black/90 md:bg-black/70 backdrop-blur-sm z-60" />
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full">
           <div className="flex items-center justify-between p-4 border-b border-white/10">

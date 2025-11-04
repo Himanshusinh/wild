@@ -209,7 +209,7 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-[70vw] md:w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 w-[56vw] md:w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-50">
           {availableDurations.map((duration) => (
             <button
               key={duration.value}

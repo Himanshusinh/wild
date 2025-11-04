@@ -380,11 +380,11 @@ const InputBox = () => {
       <div className="inset-0 pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 scrollbar-hide">
           <div className="md:py-6 py-0 md:pl-4 pl-0">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
-            <h2 className="md:text-xl text-md font-semibold text-white pl-0">Music Generation</h2>
+          <div className="relative md:fixed left-0 right-0 z-30 py-3 md:py-5 md:top-0 md:ml-18 px-4 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+            <h2 className="md:text-xl text-md font-semibold text-white">Music Generation</h2>
           </div>
           {/* Spacer to keep content below fixed header */}
-          <div className="h-[32px] md:h-0"></div>
+          <div className="hidden md:block h-0"></div>
 
           {/* Main Loader */}
           {storeLoading && historyEntries.length === 0 && (
@@ -591,7 +591,7 @@ const InputBox = () => {
 
       {/* Audio Player Modal */}
       {selectedAudio && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-black/90 md:bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
           <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white text-lg font-semibold">Music Track</h3>

@@ -151,9 +151,8 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
             })()
           ) : (
             // Use compressed thumbnail for fast grid load; full-res shown in modal on click
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 400, q: 70 }) || src) : src } catch { return src } })()}
+            <SmartImage
+              src={src}
               alt={item.prompt ?? 'creation'}
               className="absolute inset-0 object-cover"
               fill

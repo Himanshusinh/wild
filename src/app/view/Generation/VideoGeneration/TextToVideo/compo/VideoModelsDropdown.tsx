@@ -267,14 +267,14 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         } catch {}
         setIsOpen(!isOpen);
       }}
-        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
+        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white md:bg-white md:text-black`}
       >
         <Cpu className="w-3 h-3 md:w-4 md:h-4 mr-1" />
         {selectedModelInfo?.label || selectedModel}
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-[50vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 mb-2 w-[min(85vw,340px)] md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-[50vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {(() => {
             // Filter models based on current mode (text-to-video or image-to-video)
             const filteredModels = modelsWithCredits.filter(model => {
@@ -298,7 +298,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
               const left = filteredModels.slice(0, Math.ceil(filteredModels.length / 2));
               const right = filteredModels.slice(Math.ceil(filteredModels.length / 2));
               return (
-                <div className="grid grid-cols-2 gap-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                   <div className="divide-y divide-white/10">
                     {left.map((model) => (
                       <button
@@ -308,25 +308,25 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           try { onModelChange(model.value); } catch {}
                           setIsOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-xs md:text-[13px] flex items-center justify-between ${selectedModel === model.value
                           ? 'bg-white text-black'
                           : 'text-white/90 hover:bg-white/10'
                           }`}
                       >
                         <div className="flex flex-col mb-0">
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 md:gap-2">
                             {model.label}
-                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                            <img src="/icons/crown.svg" alt="pro" className="w-3 h-3 md:w-4 md:h-4" />
                           </span>
                           <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                         </div>
                         {selectedModel === model.value && (
-                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                          <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>
                         )}
                       </button>
                     ))}
                   </div>
-                  <div className="border-l border-white/10 divide-y divide-white/10">
+                  <div className="border-l-0 md:border-l md:border-white/10 divide-y divide-white/10">
                     {right.map((model) => (
                       <button
                         key={`t2v-right-${model.value}`}
@@ -335,20 +335,20 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           try { onModelChange(model.value); } catch {}
                           setIsOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                        className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-xs md:text-[13px] flex items-center justify-between ${selectedModel === model.value
                           ? 'bg-white text-black'
                           : 'text-white/90 hover:bg-white/10'
                           }`}
                       >
                         <div className="flex flex-col -mb-0">
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 md:gap-2">
                             {model.label}
-                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                            <img src="/icons/crown.svg" alt="pro" className="w-3 h-3 md:w-4 md:h-4" />
                           </span>
                           <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                         </div>
                         {selectedModel === model.value && (
-                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                          <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>
                         )}
                       </button>
                     ))}

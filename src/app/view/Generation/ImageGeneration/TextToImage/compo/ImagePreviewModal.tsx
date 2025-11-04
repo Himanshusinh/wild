@@ -595,7 +595,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   return (
     <div 
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20"
+      className="fixed inset-0 mt-15 bg-black/90 md:bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -629,10 +629,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
                   src={objectUrl || toMediaProxyUrl(selectedImage.url)}
-                  alt=""
-                  aria-hidden="true"
-                  decoding="async"
-                  fetchPriority="high"
+                  alt={selectedEntry?.prompt}
                   className="object-contain w-auto h-auto max-w-full max-h-full mx-auto"
                 />
                 {isUserUploadSelected && (
@@ -661,7 +658,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="flex gap-2">
               <div className="relative group flex-1">
                 <button
-                  onClick={() => downloadImage(selectedImage?.url || preview?.image?.url || '')}
+                  onClick={() => downloadImage(selectedImage?.url || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -675,7 +672,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
               <div className="relative group flex-1">
                 <button
-                  onClick={() => shareImage(selectedImage?.url || preview?.image?.url || '')}
+                  onClick={() => shareImage(selectedImage?.url || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <Share className="h-4 w-4" />
@@ -714,7 +711,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             </div>
 
             {/* Scrollable Content */}
-            <div className="p-4 md:p-0 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 md:p-0 flex-1 overflow-y-auto custom-scrollbar pb-28 md:pb-0">
              {/* Date */}
              <div className="mb-1 ">
               <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
@@ -801,7 +798,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
-                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt="" aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
+                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -888,6 +885,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               </div>
               
             </div>
+            </div>
           </div>
         </div>
       </div>
@@ -939,10 +937,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             >
               <img
                 src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
-                alt=""
-                aria-hidden="true"
-                decoding="async"
-                fetchPriority="high"
+                alt={selectedEntry?.prompt}
                 onLoad={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
                   setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
@@ -963,5 +958,3 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 };
 
 export default ImagePreviewModal;
-
-

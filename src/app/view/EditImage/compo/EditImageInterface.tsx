@@ -946,7 +946,7 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#07070B] overflow-auto">
       {/* Header - Fixed on mobile */}
-      <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl md:w-screen md:px-6 md:pt-20 md:pb-3">
+      <div className="relative md:fixed left-0 right-0 z-30 py-3 md:py-5 md:top-0 md:ml-18 px-4 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl md:w-screen md:px-6 md:pt-20 md:pb-3">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="shrink-0 px-1 ml-0 md:ml-14 lg:ml-14">
             <h1 className="text-white text-md md:text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
@@ -990,7 +990,7 @@ const EditImageInterface: React.FC = () => {
         </div>
       </div>
       {/* Spacer to keep content below fixed header */}
-      <div className="h-[32px] md:h-0"></div>
+      <div className="hidden md:block h-0"></div>
       {/* Feature cards - fixed below header on mobile */}
       <div className="fixed left-0 right-0 z-20 px-3 py-2 top-[76px] md:relative md:top-auto md:z-auto md:hidden bg-[#07070B]">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
