@@ -13,7 +13,7 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill';
+type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize';
 
 const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
@@ -24,6 +24,7 @@ const EditImageInterface: React.FC = () => {
     'remove-bg': null,
     'resize': null,
     'fill': null,
+    'vectorize': null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
@@ -31,12 +32,14 @@ const EditImageInterface: React.FC = () => {
     'remove-bg': null,
     'resize': null,
     'fill': null,
+    'vectorize': null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
     'upscale': false,
     'remove-bg': false,
     'resize': false,
     'fill': false,
+    'vectorize': false,
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
@@ -112,7 +115,7 @@ const EditImageInterface: React.FC = () => {
       const featureParam = (searchParams?.get('feature') || '').toLowerCase() || (typeof window !== 'undefined' && window.location.pathname.includes('/edit-image/fill') ? 'fill' : '');
       const imageParam = searchParams?.get('image') || '';
       const storagePathParam = searchParams?.get('sp') || '';
-      const validFeature = ['upscale', 'remove-bg', 'resize', 'fill'].includes(featureParam)
+      const validFeature = ['upscale', 'remove-bg', 'resize', 'fill', 'vectorize'].includes(featureParam)
         ? (featureParam as EditFeature)
         : null;
       if (validFeature) {
@@ -122,6 +125,8 @@ const EditImageInterface: React.FC = () => {
           setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
           setModel('nightmareai/real-esrgan');
+        } else if (validFeature === 'vectorize') {
+          setModel('fal-ai/recraft/vectorize' as any);
         }
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
@@ -357,13 +362,8 @@ const EditImageInterface: React.FC = () => {
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
     { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your image' },
     { id: 'fill', label: 'Replace', description: 'Mask areas to regenerate with a prompt' },
-    { id: 'fill', label: 'Erase', description: 'Mask areas to regenerate with a prompt' },
-
     { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
-    { id: 'fill', label: 'Vectorize', description: 'Mask areas to regenerate with a prompt' },
-    { id: 'fill', label: 'Enhance +', description: 'Mask areas to regenerate with a prompt' },
-
-    
+    { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
   ] as const;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -491,6 +491,17 @@ const EditImageInterface: React.FC = () => {
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
       const isPublic = await getIsPublic();
+      if (selectedFeature === 'vectorize') {
+        const img = inputs[selectedFeature];
+        if (!img) throw new Error('Please upload an image to vectorize');
+        const body: any = { isPublic };
+        if (String(currentInputRaw).startsWith('data:')) body.image = currentInput;
+        else body.image_url = currentInput;
+        const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
+        const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
+        if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+        return;
+      }
       if (selectedFeature === 'fill') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error('Please upload an image for fill');
@@ -784,13 +795,15 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null });
+    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null });
+    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
       setModel('nightmareai/real-esrgan');
+    } else if (selectedFeature === 'vectorize') {
+      setModel('fal-ai/recraft/vectorize' as any);
     }
     setPrompt('');
     setScaleFactor('');
@@ -944,12 +957,14 @@ const EditImageInterface: React.FC = () => {
             <div
                   key={feature.id}
                   onClick={() => { 
-                    setSelectedFeature(feature.id); 
+                    setSelectedFeature(feature.id as EditFeature); 
                     // Ensure sensible default model per feature when switching tabs
                     if (feature.id === 'remove-bg') {
                       setModel('851-labs/background-remover');
                     } else if (feature.id === 'upscale') {
                       setModel('nightmareai/real-esrgan');
+                    } else if (feature.id === 'vectorize') {
+                      setModel('fal-ai/recraft/vectorize' as any);
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
@@ -1068,6 +1083,8 @@ const EditImageInterface: React.FC = () => {
  
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
           <div className="flex-1 min-h-0 p-3 overflow-hidden md:p-4">
+            {selectedFeature !== 'vectorize' && (
+            <>
             <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
 
             <div className="space-y-1">
@@ -1378,6 +1395,8 @@ const EditImageInterface: React.FC = () => {
                 </>
               )}
             </div>
+            </>
+            )}
 
             {/* Bottom action buttons under parameters */}
             <div className="mt-3 pt-2 border-t border-white/10">
