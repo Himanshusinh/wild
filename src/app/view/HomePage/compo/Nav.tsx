@@ -206,7 +206,7 @@ const Nav = () => {
 
   return (
     <div className='fixed top-0 left-0 right-0 z-[70] w-full'>
-      <div className='w-full bg-blue-500/10 backdrop-blur-xl border-b border-white/10 px-2 md:px-4 py-2 md:py-3'>
+      <div className='w-full bg-blue-500/10 backdrop-blur-xl border-b border-white/10 px-2 md:px-4 py-2 md:py-3 wm-nav-bg'>
         <div className='flex items-center justify-end gap-2 md:gap-3 relative'>
           {/* Group 1: search + credits inside shared background */}
           <div className='flex items-center gap-2 md:gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-1.5 py-0.5 md:px-2 md:py-1'>

@@ -350,6 +350,54 @@ export async function updateLiveChatSession(id: string, updates: Partial<LiveCha
 }
 
 /**
+ * Find existing live chat session by sessionId, or create a new one
+ * Returns the Firestore document ID
+ */
+export async function findOrCreateLiveChatSession(sessionId: string, initialData: {
+  model: string;
+  frameSize?: string;
+  style?: string;
+  startedAt: string;
+}): Promise<string> {
+  try {
+    // Try to find existing session by sessionId
+    const q = query(
+      collection(db, LIVECHAT_COLLECTION),
+      where('sessionId', '==', sessionId)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // Session exists, return its ID (get the most recent one if multiple)
+      const docs = querySnapshot.docs.sort((a, b) => {
+        const aTime = a.data().startedAt?.toDate?.()?.getTime() || 0;
+        const bTime = b.data().startedAt?.toDate?.()?.getTime() || 0;
+        return bTime - aTime; // Descending
+      });
+      return docs[0].id;
+    }
+    
+    // Session doesn't exist, create new one
+    const newSession: Omit<LiveChatSession, 'id'> = {
+      sessionId,
+      model: initialData.model,
+      frameSize: initialData.frameSize,
+      style: initialData.style,
+      startedAt: initialData.startedAt,
+      status: 'active',
+      messages: [],
+      totalImages: 0,
+    };
+    
+    const docRef = await addDoc(collection(db, LIVECHAT_COLLECTION), convertLiveChatSessionToFirestore(newSession));
+    return docRef.id;
+  } catch (e) {
+    console.error('Failed to find or create live chat session:', e);
+    throw e;
+  }
+}
+
+/**
  * Returns sample history data for demonstration
  */
 function getSampleHistoryData(): HistoryEntry[] {
