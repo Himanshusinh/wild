@@ -326,7 +326,7 @@ export default function ArtStationPage() {
     // reset concurrency guards
     loadingMoreRef.current = false
     // scroll to top for a clean start of the new category
-    try { scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+    try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
     // block infinite scroll until first page for this tab finishes
     initialLoadDoneRef.current = false
     setItems([])
@@ -360,7 +360,7 @@ export default function ArtStationPage() {
         loadingMoreRef.current = false
       }
     }, {
-      root: scrollContainerRef.current || null,
+      root: null,
       rootMargin: '600px',
       threshold: 0.01
     })
@@ -652,10 +652,10 @@ export default function ArtStationPage() {
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-0">
-        <div className="w-0 md:w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} showMobileHeader={true} /></div>
-        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
-          {/* Sticky header + filters */}
-          <div className="sticky top-4 z-20 bg-[#07070B] pt-2">
+        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
+        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
+          {/* Sticky header + filters (pinned under navbar) */}
+          <div className="sticky top-0 z-20 bg-[#07070B] pt-10">
             <div className=" mb-2 md:mb-3">
               <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
                 Art Station
@@ -687,8 +687,8 @@ export default function ArtStationPage() {
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
-          {/* Scrollable feed container */}
-          <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
+          {/* Feed container uses main page scrollbar */}
+          <div ref={scrollContainerRef}>
           {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
           <div
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
@@ -709,7 +709,7 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className={`mb-3 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  className={`mb-0 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
@@ -815,7 +815,49 @@ export default function ArtStationPage() {
                         </div>
                       )}
                     </div>
-                    {/* Minimal design: no hover overlay controls, only subtle media badges (above) */}
+                    {/* Hover overlay: user profile + actions */}
+                    <div className="absolute inset-x-0 bottom-0 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                      <div className="rounded-lg px-2 py-2 md:px-3 md:py-2 flex items-center justify-between gap-2 pointer-events-auto">
+                        {/* User */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {item.createdBy?.photoURL ? (
+                            <img src={item.createdBy.photoURL} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[11px] text-white/90">
+                              {(item.createdBy?.username || item.createdBy?.displayName || 'U').slice(0,1).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white/90 text-[12px] truncate">
+                              {item.createdBy?.username || item.createdBy?.displayName || 'User'}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLike(cardId) }}
+                            className={`p-1.5 rounded-md transition-colors ${isLiked ? 'bg-white text-black' : 'bg-white/5 backdrop-blur-3xl hover:bg-white/20 text-white'}`}
+                            aria-label={isLiked ? 'Unlike' : 'Like'}
+                            title={isLiked ? 'Unlike' : 'Like'}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                          </button>
+                          {currentUid && item.createdBy?.uid === currentUid && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
+                              className="p-1.5 rounded-md bg-white/5 backdrop-blur-3xl hover:bg-white/20 text-red transition-colors"
+                              aria-label="Delete"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
                     <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
                   </div>

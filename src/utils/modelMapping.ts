@@ -106,7 +106,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'seedream-v4',
-    creditModelName: 'Seedream v4 (T2I)',
+    creditModelName: 'replicate/bytedance/seedream-4',
     generationType: 'image',
     provider: 'fal'
   },
@@ -529,6 +529,20 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'ChatGPT Prompt Enhancer (4o)',
     generationType: 'image', // Assuming it's used for image prompts
     provider: 'openai'
+  }
+  ,
+  // IMAGE UTILITIES (FAL)
+  {
+    frontendValue: 'fal-image2svg',
+    creditModelName: 'fal-ai/image2svg',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-recraft-vectorize',
+    creditModelName: 'fal-ai/recraft/vectorize',
+    generationType: 'image',
+    provider: 'fal'
   }
 ];
 

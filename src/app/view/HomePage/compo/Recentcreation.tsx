@@ -471,15 +471,7 @@ const Recentcreation: React.FC = () => {
               <span className="block w-2.5 h-2.5 rounded-full bg-current"></span>
             </button>
           </div>
-          <button 
-            onClick={handleMyCreationsClick}
-            className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 mr-4 transition-colors"
-          >
-            <span>My Creations</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </button>
+          
         </div>
       </div>
 
@@ -487,10 +479,10 @@ const Recentcreation: React.FC = () => {
       {loading || isInitialLoad || !hasCheckedForGenerations ? (
         <div className={gridColsClass('grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2')}>
           {[...Array(cols)].map((_, i) => (
-            <div key={i} className="rounded-lg bg-white/5 ring-1 ring-white/10 p-4 animate-pulse">
-              <div className="bg-white/10 rounded-xl mb-3" style={{height: cardHeight}}></div>
-              <div className="h-4 bg-white/10 rounded mb-2"></div>
-              <div className="h-3 bg-white/10 rounded w-2/3"></div>
+            <div key={i} className="rounded-lg bg-white/5 ring-1 ring-white/10 p-0.5 animate-pulse">
+              <div className="bg-white/10 rounded-xl mb-0" style={{height: cardHeight}}></div>
+              {/* <div className="h-4 bg-white/10 rounded mb-2"></div>
+              <div className="h-3 bg-white/10 rounded w-2/3"></div> */}
             </div>
           ))}
         </div>
@@ -753,6 +745,7 @@ const Recentcreation: React.FC = () => {
                   </div>
                 )}
               </div>
+              
               {/* Title and aspect ratio in one row */}
               {/* <div className="flex items-baseline justify-between gap-1 p-0.5">
                 <div className="text-white text-xs truncate">{item.title}</div>
@@ -760,9 +753,26 @@ const Recentcreation: React.FC = () => {
               </div>
               <div className="text-white/60 text-xs p-0.5">{item.date}</div> */}
             </article>
+            
           ))}
+          
         </div>
+        
       )}
+        <div className="flex items-center justify-between">
+
+          <div></div>
+          <div><button 
+            onClick={handleMyCreationsClick}
+            className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 pt-4 mr-0 transition-colors"
+          >
+            <span>More Creations</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </button></div>
+        </div>
+        
 
       {/* Preview Modals */}
       {preview && (

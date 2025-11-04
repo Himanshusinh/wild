@@ -88,8 +88,8 @@ export default function WorkflowCarousel({
             <section key={item.id} className="min-w-full pt-2 px-3 md:pl-0 md:pr-12 md:pt-6 md:pb-12 lg:pl-0 lg:pr-12 lg:pt-6 lg:pb-12">
               <article className="relative rounded-2xl md:rounded-3xl ring-white/10 bg-white/5 px-3 md:pl-8 py-6 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-4 md:gap-8 items-stretch">
                 {/* Left: text */}
-                <div className="flex-1 md:max-w-[calc(100%-650px)] lg:max-w-[calc(100%-720px)] -mt-2 md:-mt-8 lg:-mt-16">
-                  <h3 className="text-white text-2xl md:text-[35px] font-medium mb-4 md:mb-6 mt-2 md:mt-4">
+                <div className="flex-1 md:max-w-[calc(100%-650px)] lg:max-w-[calc(100%-720px)] -mt-4 md:-mt-8 lg:-mt-16 pr-6">
+                  <h3 className="text-white text-4xl md:text-[35px] font-medium mb-6 mt-4">
                     {item.title}
                   </h3>
                   {item.subtitle && (
@@ -154,7 +154,7 @@ export default function WorkflowCarousel({
         </div>
 
         {/* Right-edge mask to hide peeking outline of next card */}
-        <div className="pointer-events-none absolute  top-0 right-0 bottom-0 w-2 md:w-3 bg-white/5" />
+        {/* <div className="pointer-events-none absolute  top-0 right-0 bottom-0 w-2 md:w-3 bg-white/5" /> */}
  
         {/* Arrows */}
         <div className="absolute bottom-12 right-4 md:bottom-14 md:right-16 z-10 flex items-center justify-end gap-3 md:gap-6">

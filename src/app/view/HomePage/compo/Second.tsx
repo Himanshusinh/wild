@@ -36,8 +36,8 @@ export default function HowToGuidesShared() {
 
   return (
     <MotionConfig transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-      <div className="w-full px-4 md:px-8 lg:px-12 py-6 md:py-8 mt-5 md:mt-32">
-        <h2 className="text-white text-2xl md:text-4xl font-medium mb-6 md:mb-6 ml-0 md:ml-6">
+      <div className="w-full px-4 md:px-8 lg:px-12 py-8 mt-10">
+        <h2 className="text-white text-4xl md:text-4xl font-medium mb-6 ml-0">
           How To Use & Guides
         </h2>
 
