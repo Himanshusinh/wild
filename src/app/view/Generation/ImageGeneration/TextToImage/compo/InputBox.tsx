@@ -2024,35 +2024,39 @@ const InputBox = () => {
                 )}
                 {/* Previews just to the left of upload */}
                 {uploadedImages.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    {uploadedImages.map((u: string, i: number) => (
-                      <div
-                        key={i}
-                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={u}
-                          alt=""
-                          aria-hidden="true"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <button
-                          aria-label="Remove reference"
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const next = uploadedImages.filter(
-                              (_: string, idx: number) => idx !== i
-                            );
-                            dispatch(setUploadedImages(next));
-                          }}
+                  <div className="flex items-center gap-1.5 overflow-x-auto max-w-[55vw] md:max-w-none pr-1 custom-scrollbar">
+                    {uploadedImages.map((u: string, i: number) => {
+                      const count = uploadedImages.length;
+                      const sizeClass = count >= 9 ? 'w-8 h-8' : count >= 6 ? 'w-10 h-10' : 'w-12 h-12';
+                      return (
+                        <div
+                          key={i}
+                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={u}
+                            alt=""
+                            aria-hidden="true"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                          />
+                          <button
+                            aria-label="Remove reference"
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = uploadedImages.filter(
+                                (_: string, idx: number) => idx !== i
+                              );
+                              dispatch(setUploadedImages(next));
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 <div className="relative group">
@@ -2200,7 +2204,7 @@ const InputBox = () => {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         historyEntries={historyEntries as any}
-        remainingSlots={Math.max(0, 4 - (uploadedImages?.length || 0))}
+        remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
         hasMore={hasMore}
         loading={loading}
         onLoadMore={async () => {
@@ -2213,7 +2217,7 @@ const InputBox = () => {
           } catch {}
         }}
         onAdd={(urls: string[]) => {
-          const next = [...uploadedImages, ...urls].slice(0, 4);
+          const next = [...uploadedImages, ...urls].slice(0, 10);
           dispatch(setUploadedImages(next));
         }}
       />
