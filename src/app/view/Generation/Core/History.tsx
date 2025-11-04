@@ -20,6 +20,7 @@
   // Replaced custom loader with Logo.gif
   import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
   import { getCreditsForModel } from '@/utils/modelCredits';
+  import { toThumbUrl } from '@/lib/thumb';
 
   const History = () => {
     const dispatch = useAppDispatch();
@@ -1444,6 +1445,7 @@
                                       playsInline 
                                       loop 
                                       preload="metadata"
+                                      poster={toThumbUrl(mediaUrl, { w: 640, q: 60 }) || undefined}
                                       onMouseEnter={async (e) => { 
                                         try { 
                                           await (e.currentTarget as HTMLVideoElement).play();
@@ -1543,7 +1545,7 @@
                                 </div>
                               )}
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
                                 {/* <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-xs text-white flex-1 leading-snug"
@@ -1629,6 +1631,7 @@
                                       sizes="192px"
                                       thumbWidth={480}
                                       thumbQuality={60}
+                                      decorative
                                       onLoadingComplete={() => {
                                         try {
                                           setTimeout(() => {
@@ -1652,7 +1655,7 @@
                               )}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
                                 <button
                                   aria-label="Copy prompt"
                                   className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"

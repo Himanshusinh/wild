@@ -7,7 +7,7 @@ import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
-import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
+import { toThumbUrl, toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -70,6 +70,7 @@ export default function ArtStationPage() {
   const [tileSpans, setTileSpans] = useState<Record<string, number>>({})
   const tileRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const prefetchedRef = useRef<Set<string>>(new Set())
   // (deduped) measuredRatios declared above
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -461,11 +462,15 @@ export default function ArtStationPage() {
     const seenItem = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
-    console.log('[ArtStation] Building cards from filteredItems:', filteredItems.length)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[ArtStation] Building cards from filteredItems:', filteredItems.length)
+    }
 
     for (const it of filteredItems) {
       if (seenItem.has(it.id)) {
-        console.log('[ArtStation] Skipping duplicate item:', it.id)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ArtStation] Skipping duplicate item:', it.id)
+        }
         continue
       }
 
@@ -475,19 +480,23 @@ export default function ArtStationPage() {
       const candidateUrl = resolveMediaUrl(candidate)
 
       if (!candidateUrl) {
-        console.log('[ArtStation] Item has no media URL:', {
-          id: it.id,
-          hasVideos: !!it.videos?.length,
-          hasImages: !!it.images?.length,
-          hasAudios: !!it.audios?.length,
-          candidate
-        })
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ArtStation] Item has no media URL:', {
+            id: it.id,
+            hasVideos: !!it.videos?.length,
+            hasImages: !!it.images?.length,
+            hasAudios: !!(it as any).audios?.length,
+            candidate
+          })
+        }
         continue
       }
 
       const key = (candidate && candidate.storagePath) || candidateUrl
       if (seenMedia.has(key)) {
-        console.log('[ArtStation] Skipping duplicate media:', key)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ArtStation] Skipping duplicate media:', key)
+        }
         continue
       }
 
@@ -496,7 +505,9 @@ export default function ArtStationPage() {
       out.push({ item: it, media: { ...candidate, url: candidateUrl }, kind })
     }
 
-    console.log('[ArtStation] Final cards count:', out.length)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[ArtStation] Final cards count:', out.length)
+    }
     return out
   }, [filteredItems])
 
@@ -543,6 +554,53 @@ export default function ArtStationPage() {
     })
     return () => io.disconnect()
   }, [cards])
+  // Preconnect to media hosts on mount for faster TLS handshakes
+  useEffect(() => {
+    try {
+      const head = document.head
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '')
+      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+      const hosts = [apiBase, new URL(zata).origin]
+      hosts.forEach(href => {
+        if (!head.querySelector(`link[data-preconnect='${href}']`)) {
+          const l = document.createElement('link')
+          l.rel = 'preconnect'
+          l.href = href
+          l.setAttribute('data-preconnect', href)
+          head.appendChild(l)
+        }
+      })
+    } catch {}
+  }, [])
+
+  const prefetchMedia = (kind: 'image'|'video'|'audio', url: string) => {
+    try {
+      const key = `${kind}:${url}`
+      if (prefetchedRef.current.has(key)) return
+      prefetchedRef.current.add(key)
+      if (kind === 'image') {
+        const img = document.createElement('img')
+        const src = toDirectUrl(url) || url
+        img.decoding = 'async'
+        ;(img as any).loading = 'eager'
+        img.src = src
+      } else if (kind === 'video') {
+        const href = toDirectUrl(url) || url
+        const l = document.createElement('link')
+        l.rel = 'preload'
+        l.as = 'video'
+        l.href = href
+        document.head.appendChild(l)
+      } else if (kind === 'audio') {
+        const href = toDirectUrl(url) || url
+        const l = document.createElement('link')
+        l.rel = 'preload'
+        l.as = 'audio'
+        l.href = href
+        document.head.appendChild(l)
+      }
+    } catch {}
+  }
 
   // (columns masonry) no measurement needed
 
@@ -555,9 +613,9 @@ export default function ArtStationPage() {
       const inner = el.querySelector('.masonry-item-inner') as HTMLElement | null
       const rect = (inner || el).getBoundingClientRect()
       const height = rect.height
-      // Keep rowHeight small; gap must match grid gap (Tailwind gap-3 = 12px)
-      const rowHeight = 8 // px
-      const rowGap = 12 // px
+      // Keep rowHeight small; gap must match grid gap (Tailwind gap-2 = 8px)
+      const rowHeight = 6 // px
+      const rowGap = 8 // px
       const span = Math.max(10, Math.ceil((height + rowGap) / (rowHeight + rowGap)))
       setTileSpans(prev => (prev[tileId] === span ? prev : { ...prev, [tileId]: span }))
     } catch { }
@@ -631,7 +689,11 @@ export default function ArtStationPage() {
 
           {/* Scrollable feed container */}
           <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
-          <div className="columns-2 max-[360px]:columns-1 sm:columns-2 md:columns-5 gap-2 [overflow-anchor:none]">
+          {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
+            style={{ gridAutoRows: '6px' }}
+          >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
@@ -648,7 +710,7 @@ export default function ArtStationPage() {
                 <div
                   key={cardId}
                   className={`mb-3 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
-                  onMouseEnter={() => setHoveredCard(cardId)}
+                  onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
                     setSelectedImageIndex(0)
@@ -662,16 +724,16 @@ export default function ArtStationPage() {
                     gridRowEnd: `span ${tileSpans[cardId] || 30}`
                   }}
                 >
-                  <div className="masonry-item-inner relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group" style={{ contain: 'paint' }}>
+                  <div className="masonry-item-inner relative w-full rounded-lg overflow-hidden bg-transparent group" style={{ contain: 'paint' }}>
                     <div
-                      style={{ aspectRatio: tileRatio, minHeight: 200 }}
+                      style={{ aspectRatio: tileRatio, minHeight: 160 }}
                       className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
                     >
                       {kind !== 'audio' && !loadedTiles.has(cardId) && (
-                        <div className="absolute inset-0 bg-white/10" />
+                        <div className="absolute inset-0 bg-white/5" />
                       )}
                       {(() => {
-                        const isPriority = idx < 8
+                        const isPriority = idx < 4
                         const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
                         const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
                         return kind === 'video' ? (
@@ -680,10 +742,11 @@ export default function ArtStationPage() {
                             return (
                               <video
                                 src={proxied}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                                 muted
                                 playsInline
                                 preload="metadata"
+                                poster={toThumbUrl(media.url, { w: 640, q: 60 }) || undefined}
                                 // play on hover
                                 onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
                                 onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
@@ -704,7 +767,7 @@ export default function ArtStationPage() {
                               alt=""
                               fill
                               sizes={sizes}
-                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827]"
+                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                               priority={isPriority}
                               fetchPriority={isPriority ? 'high' : 'auto'}
                               onLoadingComplete={() => { markTileLoaded(cardId) }}
@@ -716,7 +779,7 @@ export default function ArtStationPage() {
                             alt={item.prompt || ''}
                             fill
                             sizes={sizes}
-                            className="object-cover"
+                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             placeholder="blur"
                             blurDataURL={blur}
                             priority={isPriority}
@@ -732,18 +795,18 @@ export default function ArtStationPage() {
                         )
                       })()}
                       {kind === 'video' && (
-                        <div className={`absolute bottom-2 right-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
-                          <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
-                            <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-6 h-6 opacity-90" />
+                        <div className="absolute bottom-2 right-2 opacity-80">
+                          <div className="bg-black/40 rounded-md p-1">
+                            <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
                           </div>
                         </div>
                       )}
 
                       {/* Music overlay if the item contains audio tracks (show even when tile is an image/video) */}
                       {(item as any).audios && (item as any).audios.length > 0 && (
-                        <div className={`absolute bottom-2 left-6 transition-opacity ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
-                          <div className="bg-white/10 backdrop-blur-3xl shadow-2xl rounded-md p-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white opacity-90">
+                        <div className="absolute bottom-2 left-2 opacity-80">
+                          <div className="bg-black/40 rounded-md p-1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white">
                               <path d="M9 17a4 4 0 1 0 0-8v8z" />
                               <path d="M9 9v8" />
                               <path d="M9 9l10-3v8" />
@@ -752,59 +815,7 @@ export default function ArtStationPage() {
                         </div>
                       )}
                     </div>
-
-                    {/* Hover Overlay - Profile and Like Button */}
-                    <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                      <div className="flex items-center justify-between">
-                        {/* Profile Section */}
-                        <div className="flex items-center gap-2">
-                          {(() => {
-                            const isSelf = item.createdBy?.uid && currentUid && item.createdBy.uid === currentUid
-                            const photo = item.createdBy?.photoURL || (isSelf ? currentUser?.photoURL : '')
-                            if (photo) {
-                              return <img src={`/api/proxy/external?url=${encodeURIComponent(photo)}`} alt={item.createdBy?.username || currentUser?.username || ''} className="w-8 h-8 rounded-full" />
-                            }
-                            return <div className="w-8 h-8 rounded-full bg-white/20" />
-                          })()}
-                          <div className="text-white text-sm font-medium">
-                            {item.createdBy?.username || item.createdBy?.displayName || (item.createdBy?.uid === currentUid ? (currentUser?.username || currentUser?.displayName || 'User') : 'User')}
-                          </div>
-                        </div>
-
-                        {/* Like + Delete action group (tight spacing) */}
-                        <div className="flex items-center gap-2">
-                          <div className="relative">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleLike(cardId); }}
-                              className="peer p-2 rounded-lg backdrop-blur-3xl shadow-2xl bg-white/10 text-white/80 hover:bg-white/30 transition-colors"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} strokeWidth="2">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                              </svg>
-                            </button>
-                            <div className="pointer-events-none absolute -top-5 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 peer-hover:opacity-100 whitespace-nowrap">Like</div>
-                          </div>
-                          {currentUid && item.createdBy?.uid === currentUid && (
-                            <div className="relative">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); confirmDelete(item); }}
-                                className="peer p-2 rounded-lg bg-red-500/70 hover:bg-red-500 text-white transition-colors"
-                              // title="Delete"
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                  <path d="M10 11v6" />
-                                  <path d="M14 11v6" />
-                                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-                                </svg>
-                              </button>
-                              <div className="pointer-events-none absolute -top-5 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 peer-hover:opacity-100 whitespace-nowrap">Delete</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    {/* Minimal design: no hover overlay controls, only subtle media badges (above) */}
 
                     <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
                   </div>
@@ -966,24 +977,28 @@ export default function ArtStationPage() {
                       const audios = (preview.item as any).audios || []
                       if (preview.kind === 'image') {
                         const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                        const src = toDirectUrl(img.url) || img.url
                         return (
                           <div className="relative w-full h-full">
-                            <Image src={img.url} alt={preview.item.prompt || ''} fill className="object-contain" />
+                            <Image src={src} alt={preview.item.prompt || ''} fill className="object-contain" priority fetchPriority="high" />
                           </div>
                         )
                       }
                       if (preview.kind === 'video') {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
+                        const proxied = toDirectUrl(vid.url) || vid.url
+                        const poster = toThumbUrl(vid.url, { w: 1280, q: 60 }) || undefined
                         return (
                           <div className="relative w-full h-full">
-                            <video src={toMediaProxy(vid.url)} className="w-full h-full" controls autoPlay />
+                            <video src={proxied} className="w-full h-full" controls autoPlay playsInline preload="auto" poster={poster} />
                           </div>
                         )
                       }
                       const au = audios[selectedAudioIndex] || audios[0] || { url: preview.url }
+                      const audioUrl = toDirectUrl(au.url) || au.url
                       return (
                         <div className="p-6">
-                          <CustomAudioPlayer audioUrl={au.url} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
+                          <CustomAudioPlayer audioUrl={audioUrl} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
                         </div>
                       )
                     })()}
@@ -1094,7 +1109,7 @@ export default function ArtStationPage() {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
                                 const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
                                 const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" />
+                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={toThumbUrl(vd.url, { w: 320, q: 60 }) || undefined} />
                               })()}
                             </button>
                           ))}

@@ -139,6 +139,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
                   muted
                   playsInline
                   preload="metadata"
+                  poster={toThumbUrl(src, { w: 640, q: 60 }) || undefined}
                   onMouseEnter={async (e) => {
                     try { await (e.currentTarget as HTMLVideoElement).play() } catch {}
                   }}
@@ -154,9 +155,13 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
             <img
               src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 400, q: 70 }) || src) : src } catch { return src } })()}
               alt={item.prompt ?? 'creation'}
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="absolute inset-0 object-cover"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              thumbWidth={640}
+              thumbQuality={60}
+              decorative
+              priority={false}
             />
           )}
         </div>
@@ -334,19 +339,19 @@ export default function CommunityCreations({
                   return (
                     <div className="bg-[#0a0f1a] p-6 rounded-2xl text-white/90">
                       <div className="mb-3">Audio Preview</div>
-                      <audio src={toMediaProxy(src)} controls autoPlay className="w-[80vw] max-w-[720px]" />
+                      <audio src={toMediaProxy(src)} controls autoPlay preload="metadata" className="w-[80vw] max-w-[720px]" />
                     </div>
                   )
                 }
                 if (isVideo) {
                   return (
-                    <video src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} controls autoPlay className="max-w-[92vw] max-h-[88vh] rounded-2xl" />
+                    <video src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} controls autoPlay className="max-w-[92vw] max-h-[88vh] rounded-2xl" poster={toThumbUrl(src, { w: 1280, q: 60 }) || undefined} />
                   )
                 }
                 return (
                   // Full resolution via media proxy for images
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt={preview.prompt || 'preview'} className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
+                  <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt="" aria-hidden="true" decoding="async" fetchPriority="high" className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
                 )
               })()}
             </div>
