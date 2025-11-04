@@ -1,3 +1,4 @@
+
 export function toZataPath(urlOrPath: string): string {
   if (!urlOrPath) return ''
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
@@ -28,4 +29,31 @@ export function toMediaProxy(urlOrPath: string): string {
   const path = toZataPath(urlOrPath)
   if (!path) return ''
   return `/api/proxy/media/${encodeURIComponent(path)}`
+}
+
+export function toResourceProxy(urlOrPath: string): string {
+  const path = toZataPath(urlOrPath)
+  if (!path) return urlOrPath
+  return `/api/proxy/resource/${encodeURIComponent(path)}`
+}
+
+/**
+ * Prefer direct CDN URL for full-resolution preview to avoid the extra proxy hop.
+ * - If given a Zata path, build a direct URL using NEXT_PUBLIC_ZATA_PREFIX
+ * - If given a Zata absolute URL, return it as-is
+ * - Otherwise, return the original urlOrPath
+ */
+export function toDirectUrl(urlOrPath: string): string {
+  if (!urlOrPath) return ''
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+  try {
+    const u = new URL(urlOrPath)
+    // If it's already our Zata CDN, just return it
+    if (u.href.startsWith(ZATA_PREFIX)) return u.href
+    // Not our CDN; just return the original
+    return urlOrPath
+  } catch {
+    // It's likely a Zata-style relative path; construct a direct URL
+    return ZATA_PREFIX + urlOrPath.replace(/^\//, '')
+  }
 }

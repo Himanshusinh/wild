@@ -629,7 +629,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
                   src={objectUrl || toMediaProxyUrl(selectedImage.url)}
-                  alt={selectedEntry?.prompt}
+                  alt=""
+                  aria-hidden="true"
+                  decoding="async"
+                  fetchPriority="high"
                   className="object-contain w-auto h-auto max-w-full max-h-full mx-auto"
                 />
                 {isUserUploadSelected && (
@@ -798,7 +801,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
-                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt="" aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -885,74 +888,76 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               </div>
               
             </div>
-            </div>
           </div>
         </div>
-        {/* Fullscreen viewer overlay */}
-        {isFsOpen && (
-          <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
-            <div className="absolute top-3 right-4 z-[90]">
-              <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
-                ✕
-              </button>
-            </div>
-            {/* Navigation arrows (only when multiple images in this run) */}
-            {(sameDateGallery.length > 1) && <button
-              aria-label="Previous image"
-              onClick={(e) => { e.stopPropagation(); goPrev(e); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              type="button"
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-            </button>}
-            {(sameDateGallery.length > 1) && <button
-              aria-label="Next image"
-              onClick={(e) => { e.stopPropagation(); goNext(e); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              type="button"
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
-            </button>}
+      </div>
+      {/* Fullscreen viewer overlay */}
+      {isFsOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute top-3 right-4 z-[90]">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
+              ✕
+            </button>
+          </div>
+          {/* Navigation arrows (only when multiple images in this run) */}
+          {(sameDateGallery.length > 1) && <button
+            aria-label="Previous image"
+            onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          </button>}
+          {(sameDateGallery.length > 1) && <button
+            aria-label="Next image"
+            onClick={(e) => { e.stopPropagation(); goNext(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+          </button>}
+          <div
+            ref={fsContainerRef}
+            className="relative w-full h-full cursor-zoom-in"
+            onWheel={fsOnWheel}
+            onMouseDown={fsOnMouseDown}
+            onMouseMove={fsOnMouseMove}
+            onMouseUp={fsOnMouseUp}
+            onMouseLeave={fsOnMouseUp}
+            onContextMenu={(e) => { e.preventDefault(); }}
+            style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+          >
             <div
-              ref={fsContainerRef}
-              className="relative w-full h-full cursor-zoom-in"
-              onWheel={fsOnWheel}
-              onMouseDown={fsOnMouseDown}
-              onMouseMove={fsOnMouseMove}
-              onMouseUp={fsOnMouseUp}
-              onMouseLeave={fsOnMouseUp}
-              onContextMenu={(e) => { e.preventDefault(); }}
-              style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`,
+                transformOrigin: 'center center',
+                transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out'
+              }}
             >
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{
-                  transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`,
-                  transformOrigin: 'center center',
-                  transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out'
+              <img
+                src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
+                alt=""
+                aria-hidden="true"
+                decoding="async"
+                fetchPriority="high"
+                onLoad={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
                 }}
-              >
-                <img
-                  src={objectUrl || toMediaProxyUrl(selectedImage?.url) || (preview ? toMediaProxyUrl(preview.image.url) : '')}
-                  alt={selectedEntry?.prompt}
-                  onLoad={(e) => {
-                    const img = e.currentTarget as HTMLImageElement;
-                    setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                  }}
-                  className="max-w-full max-h-full object-contain select-none"
-                  draggable={false}
-                />
-              </div>
-            </div>
-            {/* Instructions */}
-            <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
-              Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
+                className="max-w-full max-h-full object-contain select-none"
+                draggable={false}
+              />
             </div>
           </div>
-        )}
-      </div>
+          {/* Instructions */}
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
+            Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
+          </div>
+        </div>
+      )}
     </div>
   );
 };

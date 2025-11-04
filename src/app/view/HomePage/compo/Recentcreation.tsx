@@ -11,7 +11,7 @@ import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic
 import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview'
 import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGeneration/compo/LogoImagePreview'
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
-import { toMediaProxy } from '@/lib/thumb'
+import { toMediaProxy, toThumbUrl } from '@/lib/thumb'
 import SmartImage from '@/components/media/SmartImage'
 import { isUserAuthenticated } from '@/lib/axiosInstance'
 
@@ -664,6 +664,8 @@ const Recentcreation: React.FC = () => {
                           muted
                           loop
                           playsInline
+                          preload="metadata"
+                          poster={toThumbUrl(item.src, { w: 640, q: 60 }) || undefined}
                           onLoadedMetadata={(e) => {
                             const video = e.target as HTMLVideoElement
                             const w = video.videoWidth || 1
@@ -722,6 +724,7 @@ const Recentcreation: React.FC = () => {
                       sizes="250px"
                       thumbWidth={480}
                       thumbQuality={60}
+                      decorative
                       onLoadingComplete={(img) => {
                         try {
                           const w = img.naturalWidth || 1;

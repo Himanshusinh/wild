@@ -1771,16 +1771,16 @@ const InputBox = () => {
                         <div className="relative w-full h-full group">
                           <SmartImage 
                             src={image.url} 
-                            alt={`Generated image ${idx + 1}`} 
+                            alt="" 
                             fill 
                             className="object-cover transition-opacity duration-300" 
                             sizes="192px"
-                            onLoadingComplete={() => {
+                            thumbWidth={384}
+                            thumbQuality={60}
+                            decorative
+                            onLoadingComplete={(imgEl) => {
                               // Smooth fade-in effect
-                              const img = document.querySelector(`[alt="Generated image ${idx + 1}"]`) as HTMLElement;
-                              if (img) {
-                                img.style.opacity = '1';
-                              }
+                              try { (imgEl as HTMLElement).style.opacity = '1'; } catch {}
                             }}
                           />
                           {/* Shimmer loading effect */}
@@ -1851,16 +1851,16 @@ const InputBox = () => {
                         <div className="relative w-full h-full group">
                           <SmartImage 
                             src={image.url} 
-                            alt={`Generated image ${idx + 1}`} 
+                            alt="" 
                             fill 
                             className="object-contain transition-opacity duration-300" 
                             sizes="192px"
-                            onLoadingComplete={() => {
+                            thumbWidth={384}
+                            thumbQuality={60}
+                            decorative
+                            onLoadingComplete={(imgEl) => {
                               // Smooth fade-in effect
-                              const img = document.querySelector(`[alt="Generated image ${idx + 1}"]`) as HTMLElement;
-                              if (img) {
-                                img.style.opacity = '1';
-                              }
+                              try { (imgEl as HTMLElement).style.opacity = '1'; } catch {}
                             }}
                           />
                           {/* Hover copy button overlay */}
@@ -1924,10 +1924,13 @@ const InputBox = () => {
                             <div className="relative w-full h-full group">
                               <SmartImage
                                 src={image.url}
-                                alt={entry.prompt}
+                                alt=""
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200 "
                                 sizes="192px"
+                                thumbWidth={384}
+                                thumbQuality={60}
+                                decorative
                                 onLoadingComplete={() => {
                                   // Remove shimmer when image loads
                                   setTimeout(() => {
@@ -2047,7 +2050,9 @@ const InputBox = () => {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={u}
-                          alt={`ref-${i}`}
+                          alt=""
+                          aria-hidden="true"
+                          decoding="async"
                           className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
                         />
                         <button
