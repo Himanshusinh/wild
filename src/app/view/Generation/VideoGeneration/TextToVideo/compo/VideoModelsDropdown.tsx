@@ -274,7 +274,12 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 mb-2 w-[min(85vw,340px)] md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-[50vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-[28rem]
+          mb-2 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30
+          pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar
+        ">
           {(() => {
             // Filter models based on current mode (text-to-video or image-to-video)
             const filteredModels = modelsWithCredits.filter(model => {

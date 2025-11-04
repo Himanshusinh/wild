@@ -384,7 +384,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${modelOpen ? 'rotate-180' : ''}`} />
         </button>
         {modelOpen && (
-          <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+          <div className="
+            fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+            md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-48
+            mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20
+            py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
             <button 
               onClick={() => { setModel("music-1.5"); setModelOpen(false); }} 
               className="w-full px-2 py-1.5 md:px-3 md:py-2 text-left text-[10px] md:text-sm hover:bg-white/10 text-white/90 flex items-center justify-between"
@@ -426,7 +430,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${styleOpen ? 'rotate-180' : ''}`} />
       </button>
       {styleOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-44 md:w-48 bg-black/85 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide z-50">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-48
+          mb-2 bg-black/90 backdrop-blur-3xl rounded-lg ring-1 ring-white/20 py-1
+          max-h-[40vh] md:max-h-150 overflow-y-auto scrollbar-hide z-80">
           {MUSIC_STYLES.map((style) => (
             <button
               key={style}
@@ -472,7 +480,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${instrumentsOpen ? 'rotate-180' : ''}`} />
       </button>
       {instrumentsOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-44 md:w-48 bg-black/85 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide z-50">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-48
+          mb-2 bg-black/90 backdrop-blur-3xl rounded-lg ring-1 ring-white/20 py-1
+          max-h-[40vh] md:max-h-150 overflow-y-auto scrollbar-hide z-80">
           {INSTRUMENTS.map((instrument) => (
             <button
               key={instrument}
@@ -518,7 +530,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${srOpen ? 'rotate-180' : ''}`} />
       </button>
       {srOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-32
+          mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {[44100, 32000, 24000, 16000].map((sr) => (
             <button
               key={sr}
@@ -564,7 +579,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${brOpen ? 'rotate-180' : ''}`} />
       </button>
       {brOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-32
+          mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {[256000, 128000, 64000, 32000].map((br) => (
             <button
               key={br}
@@ -610,7 +628,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${formatOpen ? 'rotate-180' : ''}`} />
       </button>
       {formatOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-24 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-24
+          mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {['mp3', 'wav', 'pcm'].map((format) => (
             <button
               key={format}
@@ -656,7 +677,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3 h-3 md:w-3.5 md:h-3.5 ml-1 transition-transform duration-200 ${outputFormatOpen ? 'rotate-180' : ''}`} />
       </button>
       {outputFormatOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-24 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+        <div className="
+          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[40vw]
+          md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-24
+          mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {['hex', 'url'].map((format) => (
             <button
               key={format}
