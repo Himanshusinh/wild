@@ -544,6 +544,14 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'image',
     provider: 'fal'
   }
+  ,
+  // Topaz Image Upscaler (dynamic per-MP pricing; display handled as dynamic)
+  {
+    frontendValue: 'fal-topaz-upscale-image',
+    creditModelName: 'fal-ai/topaz/upscale/image',
+    generationType: 'image',
+    provider: 'fal'
+  }
 ];
 
 /**
