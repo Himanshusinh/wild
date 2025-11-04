@@ -935,26 +935,14 @@
     }
 
     return (
-      <div className="min-h-screen bg-[#07070B] text-white p-2 select-none">
-        {/* Fixed Header to match TextToImage style */}
-        <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1 mt-4 backdrop-blur-xl shadow-xl pl-6 ">
-          <h2 className="text-2xl font-semibold text-white">{headerTitle}</h2>
-        </div>
-        {/* Spacer below fixed header */}
-        <div className="h-0"></div>
-        {/* Scrollable content area */}
-        <div 
-          ref={scrollContainerRef}
-          className="relative mt-0 overflow-y-auto no-scrollbar"
-          style={{ maxHeight: 'calc(100vh - 140px)' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-
-          {/* Controls row (back, count, filters, toggle) */}
-          <div className="sticky top-0 z-10 bg-[#07070B] pb-2">
+      <div className="min-h-full bg-[#07070B] text-white p-2 select-none">
+        {/* Fixed Header with title and controls */}
+        <div className="fixed top-0 left-0 right-0 z-30 bg-[#07070B] backdrop-blur-xl shadow-xl">
+          <div className="py-5 ml-18 mr-1 pl-6">
+            <h2 className="text-2xl font-semibold text-white mb-4">{headerTitle}</h2>
+          </div>
+          {/* Controls section */}
+          <div className="bg-[#07070B] pb-4 px-6 ml-18 mr-1">
           <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             {/* Drag Selection Hint */}
@@ -1204,11 +1192,23 @@
              </div>
             </div>
           </div>
-          </div>
+          {/* End of fixed controls section */}
+        </div>
+        {/* End of fixed header */}
 
-          {/* Filter Popover removed in favor of quick filter pills */}
+        {/* Spacer for fixed header */}
+        <div className="h-auto"></div>
 
-
+        {/* Scrollable content area */}
+        <div 
+          ref={scrollContainerRef}
+          className="relative mt-0 overflow-y-auto no-scrollbar ml-14"
+          style={{ maxHeight: 'calc(100vh - 200px)' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
 
         {/* Active Filters Summary */}
         {/* {(filters.generationType || filters.model || filters.status || dateRange.start || dateRange.end) && (
@@ -1334,7 +1334,7 @@
               return (
                 <div key={dateKey} className="space-y-4">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 ml-9">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
                         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
@@ -1778,6 +1778,8 @@
             </div>
           </div>
         )}
+        </div>
+        {/* End of scrollable content area */}
 
         <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
         <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />

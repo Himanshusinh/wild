@@ -106,7 +106,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'seedream-v4',
-    creditModelName: 'Seedream v4 (T2I)',
+    creditModelName: 'replicate/bytedance/seedream-4',
     generationType: 'image',
     provider: 'fal'
   },

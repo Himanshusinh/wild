@@ -816,7 +816,49 @@ export default function ArtStationPage() {
                         </div>
                       )}
                     </div>
-                    {/* Minimal design: no hover overlay controls, only subtle media badges (above) */}
+                    {/* Hover overlay: user profile + actions */}
+                    <div className="absolute inset-x-0 bottom-0 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                      <div className="bg-white/5 backdrop-blur-3xl rounded-lg px-2 py-2 md:px-3 md:py-2 flex items-center justify-between gap-2 pointer-events-auto">
+                        {/* User */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {item.createdBy?.photoURL ? (
+                            <img src={item.createdBy.photoURL} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[11px] text-white/90">
+                              {(item.createdBy?.username || item.createdBy?.displayName || 'U').slice(0,1).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white/90 text-[12px] truncate">
+                              {item.createdBy?.username || item.createdBy?.displayName || 'User'}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLike(cardId) }}
+                            className={`p-1.5 rounded-md transition-colors ${isLiked ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                            aria-label={isLiked ? 'Unlike' : 'Like'}
+                            title={isLiked ? 'Unlike' : 'Like'}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                          </button>
+                          {currentUid && item.createdBy?.uid === currentUid && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
+                              className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white transition-colors"
+                              aria-label="Delete"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
                     <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
                   </div>
