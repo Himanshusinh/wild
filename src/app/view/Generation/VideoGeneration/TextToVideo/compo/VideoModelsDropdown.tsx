@@ -298,35 +298,61 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
               const left = filteredModels.slice(0, Math.ceil(filteredModels.length / 2));
               const right = filteredModels.slice(Math.ceil(filteredModels.length / 2));
               return (
-                <div className="divide-y divide-white/10">
-                  {filteredModels.map((model) => (
-                    <button
-                      key={model.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        try { onModelChange(model.value); } catch {}
-                        setIsOpen(false);
-                      }}
-                      className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-xs md:text-[13px] flex items-center justify-between ${selectedModel === model.value
-                        ? 'bg-white text-black'
-                        : 'text-white/90 hover:bg-white/10'
-                        }`}
-                    >
-                      <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-1 md:gap-2">
-                          {model.label}
-                          <img src="/icons/crown.svg" alt="pro" className="w-3 h-3 md:w-4 md:h-4" />
-                        </span>
-                        <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                <div className="grid grid-cols-2 gap-0">
+                  <div className="divide-y divide-white/10">
+                    {left.map((model) => (
+                      <button
+                        key={`t2v-left-${model.value}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { onModelChange(model.value); } catch {}
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                          ? 'bg-white text-black'
+                          : 'text-white/90 hover:bg-white/10'
+                          }`}
+                      >
+                        <div className="flex flex-col mb-0">
+                          <span className="flex items-center gap-2">
+                            {model.label}
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          </span>
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
+                        </div>
+                        {selectedModel === model.value && (
+                          <div className="w-2 h-2 bg-black rounded-full"></div>
                         )}
-                      </div>
-                      {selectedModel === model.value && (
-                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-l border-white/10 divide-y divide-white/10">
+                    {right.map((model) => (
+                      <button
+                        key={`t2v-right-${model.value}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { onModelChange(model.value); } catch {}
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                          ? 'bg-white text-black'
+                          : 'text-white/90 hover:bg-white/10'
+                          }`}
+                      >
+                        <div className="flex flex-col -mb-0">
+                          <span className="flex items-center gap-2">
+                            {model.label}
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          </span>
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
+                        </div>
+                        {selectedModel === model.value && (
+                          <div className="w-2 h-2 bg-black rounded-full"></div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               );
             }
@@ -357,10 +383,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.label}
                           <img src="/icons/crown.svg" alt="pro" className="w-3 h-3 md:w-4 md:h-4" />
                         </span>
-                        <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
-                        )}
+                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>
@@ -388,10 +412,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.label}
                           <img src="/icons/crown.svg" alt="pro" className="w-3 h-3 md:w-4 md:h-4" />
                         </span>
-                        <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span>
-                        {model.credits && (
-                          <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
-                        )}
+                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
+                        <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}</span>
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></div>

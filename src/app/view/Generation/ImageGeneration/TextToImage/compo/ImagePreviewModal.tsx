@@ -661,7 +661,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="flex gap-2">
               <div className="relative group flex-1">
                 <button
-                  onClick={() => downloadImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => downloadImage(selectedImage?.url || preview?.image?.url || '')}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -675,7 +675,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
               <div className="relative group flex-1">
                 <button
-                  onClick={() => shareImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => shareImage(selectedImage?.url || preview?.image?.url || '')}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <Share className="h-4 w-4" />
@@ -887,7 +887,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </button>
               </div>
               
-            </div>
             </div>
           </div>
         </div>

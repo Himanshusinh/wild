@@ -594,50 +594,51 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             </div>
           </div>
         </div>
-      </div>
-      {isFsOpen && (
-        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <div className="absolute top-3 right-4 z-[90]">
-            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
-          </div>
-          <div
-            ref={fsContainerRef}
-            className="relative w-full h-full cursor-zoom-in"
-            onWheel={fsOnWheel}
-            onMouseDown={fsOnMouseDown}
-            onMouseMove={fsOnMouseMove}
-            onMouseUp={fsOnMouseUp}
-            onMouseLeave={fsOnMouseUp}
-            onContextMenu={(e)=>{e.preventDefault();}}
-            style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
-          >
+        {/* Fullscreen viewer overlay */}
+        {isFsOpen && (
+          <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute top-3 right-4 z-[90]">
+              <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
+            </div>
             <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}
+              ref={fsContainerRef}
+              className="relative w-full h-full cursor-zoom-in"
+              onWheel={fsOnWheel}
+              onMouseDown={fsOnMouseDown}
+              onMouseMove={fsOnMouseMove}
+              onMouseUp={fsOnMouseUp}
+              onMouseLeave={fsOnMouseUp}
+              onContextMenu={(e)=>{e.preventDefault();}}
+              style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
             >
-              <video
-                key={videoUrl}
-                src={videoUrl}
-                controls
-                autoPlay={true}
-                muted={false}
-                className="max-w-full max-h-full object-contain select-none"
-                onLoadedMetadata={(e) => {
-                  const v = e.currentTarget as HTMLVideoElement;
-                  setFsNaturalSize({ width: v.videoWidth || 1280, height: v.videoHeight || 720 });
-                  if (v.duration && !isNaN(v.duration)) {
-                    setVideoDuration(v.duration);
-                    console.log('Fullscreen video duration captured:', v.duration);
-                  }
-                }}
-              />
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}
+              >
+                <video
+                  key={videoUrl}
+                  src={videoUrl}
+                  controls
+                  autoPlay={true}
+                  muted={false}
+                  className="max-w-full max-h-full object-contain select-none"
+                  onLoadedMetadata={(e) => {
+                    const v = e.currentTarget as HTMLVideoElement;
+                    setFsNaturalSize({ width: v.videoWidth || 1280, height: v.videoHeight || 720 });
+                    if (v.duration && !isNaN(v.duration)) {
+                      setVideoDuration(v.duration);
+                      console.log('Fullscreen video duration captured:', v.duration);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
+              Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
             </div>
           </div>
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
-            Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

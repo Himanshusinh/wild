@@ -687,8 +687,8 @@ export default function ArtStationPage() {
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
-          {/* Feed container uses main page scrollbar */}
-          <div ref={scrollContainerRef}>
+          {/* Scrollable feed container */}
+          <div ref={scrollContainerRef} className="overflow-y-auto custom-scrollbar " style={{maxHeight: 'calc(100vh - 210px)'}}>
           {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
           <div
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
