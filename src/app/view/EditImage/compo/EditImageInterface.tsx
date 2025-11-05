@@ -159,13 +159,32 @@ const EditImageInterface: React.FC = () => {
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
           const frontendProxied = `/api/proxy/resource/${encodeURIComponent(storagePathParam)}`;
-          setInputs((prev) => ({ ...prev, [validFeature]: frontendProxied }));
+          // Apply to all features so switching tabs preserves the same input
+          setInputs({
+            'upscale': frontendProxied,
+            'remove-bg': frontendProxied,
+            'resize': frontendProxied,
+            'fill': frontendProxied,
+            'vectorize': frontendProxied,
+          });
         } else if (imageParam && imageParam.trim() !== '') {
-          setInputs((prev) => ({ ...prev, [validFeature]: imageParam }));
+          setInputs({
+            'upscale': imageParam,
+            'remove-bg': imageParam,
+            'resize': imageParam,
+            'fill': imageParam,
+            'vectorize': imageParam,
+          });
         }
       } else if (imageParam && imageParam.trim() !== '') {
         // Fallback: if only image provided, attach to current feature
-        setInputs((prev) => ({ ...prev, [selectedFeature]: imageParam }));
+        setInputs({
+          'upscale': imageParam,
+          'remove-bg': imageParam,
+          'resize': imageParam,
+          'fill': imageParam,
+          'vectorize': imageParam,
+        });
       }
     } catch { }
     // Only run once on mount for initial hydration from URL
@@ -416,7 +435,14 @@ const EditImageInterface: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = e.target?.result as string;
-        setInputs((prev) => ({ ...prev, [selectedFeature]: img }));
+        // Apply selected image to all features
+        setInputs({
+          'upscale': img,
+          'remove-bg': img,
+          'resize': img,
+          'fill': img,
+          'vectorize': img,
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -1084,7 +1110,14 @@ const EditImageInterface: React.FC = () => {
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {
-            setInputs((prev) => ({ ...prev, [selectedFeature]: first }));
+            // Apply selected image from modal to all features
+            setInputs({
+              'upscale': first,
+              'remove-bg': first,
+              'resize': first,
+              'fill': first,
+              'vectorize': first,
+            });
           }
         }}
       />
@@ -1100,8 +1133,8 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Feature tabs (two rows) */}
-          <div className="px-3 md:px-4 pt-3">
-            <div className="grid grid-cols-3 gap-2">
+          <div className="px-3 md:px-4 pt-3 w-auto">
+            <div className="grid grid-cols-4 gap-2">
               {features.map((feature) => (
                 <button
                   key={feature.id}
@@ -1116,18 +1149,22 @@ const EditImageInterface: React.FC = () => {
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
-                  className={`text-left bg-white/5 rounded-lg p-2 border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                  className={`text-left bg-white/5 items-center justify-center rounded-lg p-1 h-18 w-auto border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 rounded flex items-center justify-center ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'}`}>
-                      {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4" />)}
-                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4" />)}
-                      {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4" />)}
-                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4" />)}
-                      {feature.id === 'vectorize' && (<img src="/icons/vector-square.svg" alt="Vectorize" className="w-4 h-4" />)}
+                  <div className="flex items-center gap-0 justify-center">
+                    <div className={`w-6 h-6 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
+                      {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="w-6 h-6" />)}
+                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-6 h-6" />)}
+                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="w-5 h-5" />)}
+                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-6 h-6" />)}
+                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="w-7 h-7" />)}
                     </div>
-                    <span className="text-white text-xs md:text-sm">{feature.label}</span>
+                    
                   </div>
+                  <div className="flex items-center justify-center pt-1">                  
+                    <span className="text-white text-xs md:text-sm text-center">{feature.label}</span>
+                  </div>
+
                 </button>
               ))}
             </div>
@@ -1719,11 +1756,18 @@ const EditImageInterface: React.FC = () => {
                   e.preventDefault();
                   const file = e.dataTransfer?.files?.[0];
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    const img = ev.target?.result as string;
-                    setInputs((prev) => ({ ...prev, [selectedFeature]: img }));
-                  };
+                 const reader = new FileReader();
+                 reader.onload = (ev) => {
+                   const img = ev.target?.result as string;
+                   // Apply dropped image to all features so switching tabs preserves the same input
+                   setInputs({
+                     'upscale': img,
+                     'remove-bg': img,
+                     'resize': img,
+                     'fill': img,
+                     'vectorize': img,
+                   });
+                 };
                   reader.readAsDataURL(file);
                 } catch {}
               }}
@@ -1760,13 +1804,8 @@ const EditImageInterface: React.FC = () => {
                   {/* Upload other button next to menu */}
                   <button
                     onClick={() => {
-                      try {
-                        setInputs((prev) => ({ ...prev, [selectedFeature]: null }));
-                        setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
-                        setProcessing((prev) => ({ ...prev, [selectedFeature]: false }));
-                        setSliderPosition(50);
-                        setUpscaleViewMode('comparison');
-                      } catch {}
+                      // Do not clear existing image/output here. Only open the modal.
+                      // If user picks a new image, onAdd will replace the input.
                       try { handleOpenUploadModal(); } catch {}
                     }}
                     className="p-2 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30"
@@ -1774,6 +1813,8 @@ const EditImageInterface: React.FC = () => {
                   >
                     <Image src="/icons/fileupload.svg" alt="Upload" width={18} height={18} />
                   </button>
+
+                  
 
                   {/* Themed dropdown menu */}
                   {outputs[selectedFeature] && showImageMenu && (
