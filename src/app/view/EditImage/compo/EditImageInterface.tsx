@@ -1124,7 +1124,7 @@ const EditImageInterface: React.FC = () => {
                       {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4" />)}
                       {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4" />)}
                       {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4" />)}
-                      {feature.id === 'vectorize' && (<img src="/icons/pen-tool.svg" alt="Vectorize" className="w-4 h-4" />)}
+                      {feature.id === 'vectorize' && (<img src="/icons/vector-square.svg" alt="Vectorize" className="w-4 h-4" />)}
                     </div>
                     <span className="text-white text-xs md:text-sm">{feature.label}</span>
                   </div>
@@ -1737,24 +1737,26 @@ const EditImageInterface: React.FC = () => {
               )}
 
 
-              {/* Themed three dots menu - only show when there's an output */}
-              {outputs[selectedFeature] && (
+              {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
+              {(outputs[selectedFeature] || inputs[selectedFeature]) && (
                 <div className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4 flex items-center gap-2">
-                  <div className="relative">
-                    <button
-                      ref={menuButtonRef}
-                      className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30 md:p-2"
-                      aria-haspopup="menu"
-                      aria-expanded={showImageMenu}
-                      onClick={() => setShowImageMenu(v => !v)}
-                    >
-                      <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="5" cy="12" r="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <circle cx="19" cy="12" r="2" />
-                      </svg>
-                    </button>
-                  </div>
+                  {outputs[selectedFeature] && (
+                    <div className="relative">
+                      <button
+                        ref={menuButtonRef}
+                        className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30 md:p-2"
+                        aria-haspopup="menu"
+                        aria-expanded={showImageMenu}
+                        onClick={() => setShowImageMenu(v => !v)}
+                      >
+                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="5" cy="12" r="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <circle cx="19" cy="12" r="2" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                   {/* Upload other button next to menu */}
                   <button
                     onClick={() => {
@@ -1774,7 +1776,7 @@ const EditImageInterface: React.FC = () => {
                   </button>
 
                   {/* Themed dropdown menu */}
-                  {showImageMenu && (
+                  {outputs[selectedFeature] && showImageMenu && (
                     <div ref={menuRef} className="absolute bottom-10 left-0 bg-black/80 border border-white/30 rounded-lg shadow-2xl min-w-[100px] overflow-hidden md:min-w-[150px]">
                       <button
                         onClick={async () => {
