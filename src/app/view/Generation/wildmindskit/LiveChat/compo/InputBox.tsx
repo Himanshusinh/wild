@@ -530,9 +530,7 @@ const LiveChatInputBox: React.FC = () => {
                 dispatch(setPrompt(e.target.value));
                 adjustTextareaHeight(e.target);
               }}
-              className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[14px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
-                prompt ? 'text-white' : 'text-white/70'
-              }`}
+              className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[14px] leading-relaxed resize-none overflow-y-auto transition-all duration-200"
               rows={1}
               style={{ minHeight: '22px', maxHeight: '64px', lineHeight: '1.2' }}
               spellCheck={true}
@@ -663,8 +661,10 @@ const LiveChatInputBox: React.FC = () => {
                   if (!currentSessionId) setCurrentSessionId(sessionId);
                   if (!overlayOpen) setOverlayOpen(true);
                   
-                  // Find or create session in backend
-                  if (!sessionDocId) {
+                  // Find or create session in backend BEFORE generation
+                  // This ensures sessionDocId is available when adding images
+                  let docId = sessionDocId;
+                  if (!docId) {
                     try {
                       const { sessionDocId: newDocId } = await findOrCreateSession({
                         sessionId,
@@ -673,9 +673,11 @@ const LiveChatInputBox: React.FC = () => {
                         style,
                         startedAt: messages.length > 0 ? messages[messages.length - 1]?.timestamp || new Date().toISOString() : new Date().toISOString(),
                       });
+                      docId = newDocId;
                       setSessionDocId(newDocId);
                     } catch (e) {
                       console.error('[LiveChat] Failed to find or create session:', e);
+                      // Continue anyway, but images won't be saved to backend
                     }
                   }
                   
@@ -728,10 +730,11 @@ const LiveChatInputBox: React.FC = () => {
                     // Use the resulting image URL as the next reference
                     dispatch(setUploadedImages([latest.url]));
                     
-                    // Add message to backend session
-                    if (sessionDocId) {
+                    // Add message to backend session (use docId from above, or sessionDocId state)
+                    const currentDocId = docId || sessionDocId;
+                    if (currentDocId) {
                       try {
-                        await addMessageToSession(sessionDocId, {
+                        await addMessageToSession(currentDocId, {
                           prompt: prompt,
                           images: result.images.map((img: any) => ({
                             id: img.id || `img-${Date.now()}-${Math.random()}`,
@@ -742,9 +745,12 @@ const LiveChatInputBox: React.FC = () => {
                           })),
                           timestamp: new Date().toISOString(),
                         });
+                        console.log('[LiveChat] Successfully added', result.images.length, 'image(s) to session', currentDocId);
                       } catch (e) {
                         console.error('[LiveChat] Failed to add message to session:', e);
                       }
+                    } else {
+                      console.warn('[LiveChat] No sessionDocId available, images not saved to backend session');
                     }
                     
                     // Note: Image shifting to left already happened before generation started
@@ -921,15 +927,62 @@ const LiveChatInputBox: React.FC = () => {
                     })();
                     
                     // Finalize session in backend (async, don't block UI)
-                    if (sessionDocId) {
-                      (async () => {
-                        try {
+                    (async () => {
+                      try {
+                        if (sessionDocId) {
+                          // Wait for session to be completed in backend
                           await completeSession(sessionDocId, now);
-                        } catch (e) {
-                          console.error('[LiveChat] Failed to complete session:', e);
+                          console.log('[LiveChat] Session completed successfully');
                         }
-                      })();
-                    }
+                        
+                        // Dispatch event immediately and multiple times to ensure refresh
+                        console.log('[LiveChat] Dispatching refresh events');
+                        
+                        // Immediate event
+                        window.dispatchEvent(new CustomEvent('livechat-session-completed', {
+                          detail: { sessionDocId, timestamp: now }
+                        }));
+                        
+                        // Also trigger direct refresh if available
+                        if ((window as any).__refreshLiveChatHistory) {
+                          (window as any).__refreshLiveChatHistory();
+                        }
+                        
+                        // Multiple refresh attempts at different intervals
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('livechat-session-completed', {
+                            detail: { sessionDocId, timestamp: now }
+                          }));
+                        }, 500);
+                        
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('livechat-session-completed', {
+                            detail: { sessionDocId, timestamp: now }
+                          }));
+                          if ((window as any).__refreshLiveChatHistory) {
+                            (window as any).__refreshLiveChatHistory();
+                          }
+                        }, 1500);
+                        
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('livechat-session-completed', {
+                            detail: { sessionDocId, timestamp: now }
+                          }));
+                        }, 3000);
+                      } catch (e) {
+                        console.error('[LiveChat] Failed to complete session:', e);
+                        // Still dispatch events even if there's an error, in case session was saved
+                        window.dispatchEvent(new CustomEvent('livechat-session-completed'));
+                        if ((window as any).__refreshLiveChatHistory) {
+                          setTimeout(() => {
+                            (window as any).__refreshLiveChatHistory();
+                          }, 1000);
+                        }
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('livechat-session-completed'));
+                        }, 2000);
+                      }
+                    })();
                     
                     // Close overlay and clear all state
                     setOverlayOpen(false);

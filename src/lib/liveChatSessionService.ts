@@ -108,3 +108,24 @@ export async function updateSession(
   await axiosInstance.patch(`/api/live-chat-sessions/${sessionDocId}`, updates);
 }
 
+/**
+ * List all sessions for the current user
+ */
+export async function listUserSessions(params?: {
+  limit?: number;
+  cursor?: string;
+  status?: 'active' | 'completed' | 'failed';
+}): Promise<{ sessions: LiveChatSession[]; nextCursor?: string }> {
+  const response = await axiosInstance.get('/api/live-chat-sessions', {
+    params: {
+      limit: params?.limit,
+      cursor: params?.cursor,
+      status: params?.status,
+    }
+  });
+  return {
+    sessions: response.data.data.sessions || [],
+    nextCursor: response.data.data.nextCursor,
+  };
+}
+

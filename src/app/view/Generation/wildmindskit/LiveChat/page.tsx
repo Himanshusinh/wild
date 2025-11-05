@@ -14,12 +14,26 @@ import { loadHistory } from '@/store/slices/historySlice';
 import { useSearchParams } from 'next/navigation';
 import { setUploadedImages } from '@/store/slices/generationSlice';
 import { ensureSessionReady } from '@/lib/axiosInstance';
+import dynamic from 'next/dynamic';
+
+const DynamicLiveChatInputBox = dynamic(() => import('./compo/InputBox'), { ssr: false });
 
 const LiveChatPage = () => {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'generation');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
+  
+  // Log after mount (not during render) to avoid hydration issues
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[LiveChat] 🎬 LiveChatPage component rendered and mounted', { 
+        currentView, 
+        currentGenerationType,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [currentView, currentGenerationType]);
   // Controls whether the big centered preview is shown
   const [showCenterView, setShowCenterView] = React.useState(false);
   const [selectedUrl, setSelectedUrl] = React.useState<string | null>(null);
@@ -79,16 +93,24 @@ const LiveChatPage = () => {
       
       console.log('[LiveChat] Restoring session from backend:', {
         sessionId: session.sessionId,
+        sessionDocId: session.id,
         totalImages: session.totalImages,
         imageUrls: session.imageUrls.length,
+        imagesCount: session.images.length,
         messages: session.messages.length,
+        images: session.images.map(img => ({ url: img.url, order: img.order })),
       });
       
       // Extract all images from session in order (images are already in a single array)
       const allImages = session.images || [];
       
+      console.log('[LiveChat] All images from session:', allImages.length, 'images');
+      console.log('[LiveChat] Image URLs:', allImages.map(img => img.url));
+      
       // Sort by order to maintain sequence (should already be sorted, but ensure it)
       allImages.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      console.log('[LiveChat] Sorted images by order:', allImages.map(img => ({ order: img.order, url: img.url })));
       
       // Store session metadata in localStorage for InputBox to restore
       try {
@@ -240,6 +262,13 @@ const LiveChatPage = () => {
         @media (min-width: 768px){
           .wm-nav-bg{ background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-bottom-color: transparent !important; }
         }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
       `}</style>
       {/* Done button at top-right parallel to header - only show when in active live session */}
       {isInLiveSession && (
@@ -262,7 +291,7 @@ const LiveChatPage = () => {
         currentGenerationType={currentGenerationType}
       />
       {/* Override input for live chat - only show when overlay is open */}
-      <LiveChatInputBox />
+      <DynamicLiveChatInputBox />
       {/* Live Chat history (interactive, scrollable) - matching image generation page style */}
       {(liveChatEntries.length > 0) && (
         <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
@@ -289,41 +318,343 @@ const LiveChatPage = () => {
 
 const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | null; onSelect: (url: string) => void; onImageClick?: (url: string) => void; }> = ({ showCenterView, selectedUrl, onSelect, onImageClick }) => {
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
-  const entries = useAppSelector((s:any)=> (s.history?.entries || []).filter((e:any)=> e.generationType === 'live-chat'));
+  const [backendSessions, setBackendSessions] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [hasMore, setHasMore] = React.useState(true);
+  const [nextCursor, setNextCursor] = React.useState<string | undefined>(undefined);
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
   
-  // Group entries by date (like image generation history)
-  const groupedByDate = useMemo(() => {
-    const map = new Map<string, Array<{ img: any; entry: any }>>();
-    
-    // Flatten all images from all entries
-    for (const entry of entries) {
-      const images = entry.images || [];
-      const entryDate = new Date(entry.timestamp || entry.createdAt).toISOString().split('T')[0];
-      
-      if (!map.has(entryDate)) {
-        map.set(entryDate, []);
+  // Refs for pagination (same pattern as image generation)
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const hasUserScrolledRef = React.useRef(false);
+  const loadingMoreRef = React.useRef(false);
+  const nextCursorRef = React.useRef<string | undefined>(undefined);
+  
+  // Sync ref with state
+  React.useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
+  
+  // Manual load more (fallback button) - MUST be before early returns
+  const manualLoadMore = React.useCallback(async () => {
+    if (!hasMore || loading || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    try {
+      setLoadingMore(true);
+      const { listUserSessions } = await import('@/lib/liveChatSessionService');
+      const result = await listUserSessions({ limit: 10, cursor: nextCursorRef.current });
+      const sorted = [...result.sessions].sort((a, b) => {
+        const aT = new Date(a.updatedAt || a.completedAt || a.startedAt || a.createdAt).getTime();
+        const bT = new Date(b.updatedAt || b.completedAt || b.startedAt || b.createdAt).getTime();
+        return bT - aT;
+      });
+      setBackendSessions(prev => [...prev, ...sorted]);
+      setNextCursor(result.nextCursor);
+      nextCursorRef.current = result.nextCursor;
+      setHasMore(!!result.nextCursor);
+    } catch (err) {
+      console.error('[LiveChat] manualLoadMore error', err);
+      setHasMore(false);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [hasMore, loading]);
+
+  // Load all remaining pages - MUST be before early returns
+  const loadAllRemaining = React.useCallback(async () => {
+    if (loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    try {
+      setLoadingMore(true);
+      let cursor = nextCursorRef.current;
+      for (let i = 0; i < 50; i++) { // hard cap to avoid infinite loops
+        if (!cursor) break;
+        const { listUserSessions } = await import('@/lib/liveChatSessionService');
+        const result = await listUserSessions({ limit: 10, cursor });
+        const sorted = [...result.sessions].sort((a, b) => {
+          const aT = new Date(a.updatedAt || a.completedAt || a.startedAt || a.createdAt).getTime();
+          const bT = new Date(b.updatedAt || b.completedAt || b.startedAt || b.createdAt).getTime();
+          return bT - aT;
+        });
+        setBackendSessions(prev => [...prev, ...sorted]);
+        cursor = result.nextCursor;
+        setNextCursor(cursor);
+        nextCursorRef.current = cursor;
+        setHasMore(!!cursor);
+        if (!cursor) break;
+      }
+    } catch (err) {
+      console.error('[LiveChat] loadAllRemaining error', err);
+      setHasMore(false);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, []);
+  
+  // Load sessions from backend API (initial load)
+  const loadSessions = React.useCallback(async (reset = false) => {
+    try {
+      if (reset) {
+        setLoading(true);
+        setBackendSessions([]);
+        setNextCursor(undefined);
+        nextCursorRef.current = undefined;
+        setHasMore(true);
       }
       
-      // Add all images from this entry
+      const { listUserSessions } = await import('@/lib/liveChatSessionService');
+      const result = await listUserSessions({
+        limit: reset ? 50 : 10,
+        cursor: reset ? undefined : nextCursorRef.current,
+      });
+      
+      const sortedSessions = [...result.sessions].sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.completedAt || a.startedAt || a.createdAt).getTime();
+        const timeB = new Date(b.updatedAt || b.completedAt || b.startedAt || b.createdAt).getTime();
+        return timeB - timeA;
+      });
+      
+      if (reset) {
+        setBackendSessions(sortedSessions);
+      } else {
+        setBackendSessions(prev => [...prev, ...sortedSessions]);
+      }
+      
+      setNextCursor(result.nextCursor);
+      nextCursorRef.current = result.nextCursor;
+      setHasMore(!!result.nextCursor);
+    } catch (error) {
+      console.error('[LiveChat] Failed to load sessions:', error);
+      if (reset) {
+        setBackendSessions([]);
+      }
+      setHasMore(false);
+    } finally {
+      if (reset) {
+        setLoading(false);
+      }
+    }
+  }, []);
+  
+  
+  // Mark when the user has actually scrolled (to avoid auto-draining pages on initial mount)
+  React.useEffect(() => {
+    const onAnyScroll = () => {
+      hasUserScrolledRef.current = true;
+    };
+    const historyContainer = document.querySelector('.overflow-y-auto');
+    window.addEventListener('scroll', onAnyScroll, { passive: true });
+    if (historyContainer) historyContainer.addEventListener('scroll', onAnyScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onAnyScroll as any);
+      if (historyContainer) historyContainer.removeEventListener('scroll', onAnyScroll as any);
+    };
+  }, []);
+
+  // IntersectionObserver-based infinite scroll (same pattern as image generation)
+  React.useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      // Require a user scroll before we begin auto-paginating
+      if (!hasUserScrolledRef.current) {
+        console.log('[LiveChat] IO: skip loadMore until user scrolls');
+        return;
+      }
+      if (!hasMore || loading || loadingMoreRef.current) {
+        console.log('[LiveChat] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+        return;
+      }
+      loadingMoreRef.current = true;
+      console.log('[LiveChat] IO: loadMore start', { cursor: nextCursorRef.current });
+      try {
+        setLoadingMore(true);
+        const { listUserSessions } = await import('@/lib/liveChatSessionService');
+        const result = await listUserSessions({
+          limit: 10,
+          cursor: nextCursorRef.current,
+        });
+        
+        const sortedSessions = [...result.sessions].sort((a, b) => {
+          const timeA = new Date(a.updatedAt || a.completedAt || a.startedAt || a.createdAt).getTime();
+          const timeB = new Date(b.updatedAt || b.completedAt || b.startedAt || b.createdAt).getTime();
+          return timeB - timeA;
+        });
+        
+        setBackendSessions(prev => [...prev, ...sortedSessions]);
+        setNextCursor(result.nextCursor);
+        nextCursorRef.current = result.nextCursor;
+        setHasMore(!!result.nextCursor);
+      } catch (e) {
+        console.error('[LiveChat] IO: loadMore error', e);
+        setHasMore(false);
+      } finally {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }, { root: null, rootMargin: '0px', threshold: 0.1 });
+    observer.observe(el);
+    console.log('[LiveChat] IO: observer attached');
+    return () => {
+      observer.disconnect();
+      console.log('[LiveChat] IO: observer disconnected');
+    };
+  }, [hasMore, loading]);
+  
+  // Expose loadSessions globally for direct access
+  React.useEffect(() => {
+    (window as any).__refreshLiveChatHistory = () => {
+      loadSessions(true);
+    };
+    return () => {
+      delete (window as any).__refreshLiveChatHistory;
+    };
+  }, [loadSessions]);
+
+  // Initial load
+  React.useEffect(() => {
+    loadSessions(true);
+  }, [loadSessions]);
+
+  // Trigger refresh when refreshTrigger changes
+  React.useEffect(() => {
+    if (refreshTrigger > 0) {
+      loadSessions(true);
+    }
+  }, [refreshTrigger, loadSessions]);
+
+  // Listen for session completion events to refresh
+  React.useEffect(() => {
+    const handleSessionCompleted = () => {
+      setRefreshTrigger(prev => prev + 1);
+    };
+    window.addEventListener('livechat-session-completed', handleSessionCompleted as EventListener);
+    return () => {
+      window.removeEventListener('livechat-session-completed', handleSessionCompleted as EventListener);
+    };
+  }, []);
+  
+  // Fallback to local history entries if backend sessions are empty
+  const entries = useAppSelector((s:any)=> (s.history?.entries || []).filter((e:any)=> e.generationType === 'live-chat'));
+  
+  // Group images by date (flatten all sessions into a single list of images, like image generation history)
+  // MUST be before early return to ensure hooks are called consistently
+  const groupedByDate = useMemo(() => {
+    // Use backend sessions if available
+    if (backendSessions.length > 0) {
+      // Flatten all sessions into a single list of images
+      const allImages: Array<{ img: any; entry: any; timestamp: string }> = [];
+      
+      for (const session of backendSessions) {
+        // Sort images by order
+        const sortedImages = [...(session.images || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Add each image with its timestamp
+        for (const img of sortedImages) {
+          allImages.push({
+            img: {
+              id: img.id,
+              url: img.url,
+              originalUrl: img.originalUrl || img.url,
+              firebaseUrl: img.firebaseUrl,
+            },
+            entry: {
+              id: session.id,
+              prompt: img.prompt || session.messages?.[0]?.prompt || '',
+              status: 'completed' as const,
+              timestamp: img.timestamp || session.startedAt,
+            },
+            timestamp: img.timestamp || session.startedAt,
+          });
+        }
+      }
+      
+      // Sort all images by timestamp (newest first) - latest at top-left
+      allImages.sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return timeB - timeA; // Newest first
+      });
+      
+      // Group by date
+      const dateMap = new Map<string, Array<{ img: any; entry: any }>>();
+      
+      for (const { img, entry, timestamp } of allImages) {
+        const imageDate = new Date(timestamp).toISOString().split('T')[0];
+        if (!dateMap.has(imageDate)) {
+          dateMap.set(imageDate, []);
+        }
+        dateMap.get(imageDate)!.push({ img, entry });
+      }
+      
+      // Convert to array format
+      const result = Array.from(dateMap.entries()).map(([date, images]) => ({
+        date,
+        images,
+      }));
+      
+      // Sort dates DESCENDING (newest first)
+      return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    
+    // Fallback: flatten local history entries into a single list of images
+    const allImages: Array<{ img: any; entry: any; timestamp: string }> = [];
+    
+    for (const entry of entries) {
+      const images = entry.images || [];
       for (const img of images) {
-        map.get(entryDate)!.push({ img, entry });
+        allImages.push({
+          img,
+          entry,
+          timestamp: entry.timestamp || entry.createdAt,
+        });
       }
     }
     
-    // Sort entries within each date by timestamp (newest first) so latest image appears at top-left
-    const result = Array.from(map.entries()).map(([date, items]) => {
-      const sorted = [...items].sort((a, b) => {
-        const timeA = new Date(a.entry.timestamp || a.entry.createdAt).getTime();
-        const timeB = new Date(b.entry.timestamp || b.entry.createdAt).getTime();
-        return timeB - timeA; // Reverse order: newest first
-      });
-      
-      return { date, images: sorted };
+    // Sort all images by timestamp (newest first) - latest at top-left
+    allImages.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return timeB - timeA; // Newest first
     });
+    
+    // Group by date
+    const dateMap = new Map<string, Array<{ img: any; entry: any }>>();
+    
+    for (const { img, entry, timestamp } of allImages) {
+      const imageDate = new Date(timestamp).toISOString().split('T')[0];
+      if (!dateMap.has(imageDate)) {
+        dateMap.set(imageDate, []);
+      }
+      dateMap.get(imageDate)!.push({ img, entry });
+    }
+    
+    // Convert to array format
+    const result = Array.from(dateMap.entries()).map(([date, images]) => ({
+      date,
+      images,
+    }));
     
     // Sort dates DESCENDING (newest first)
     return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [entries]);
+  }, [backendSessions, entries]);
+
+  // Show loading state (early return AFTER all hooks)
+  if (loading && backendSessions.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+          <div className="text-sm text-white/60">Loading history...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -361,11 +692,11 @@ const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | nu
               </h3>
             </div>
 
-            {/* Images Grid - matching image generation page style */}
-            <div className="flex flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
+            {/* All Images for this Date - Horizontal Layout (like image generation history) */}
+            <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
               {images.map(({ img, entry }, idx: number) => (
                 <div
-                  key={`${date}-${entry.id}-${img.id || idx}`}
+                  key={`${entry.id}-${img.id || idx}`}
                   onClick={(e) => {
                     // On double click or with modifier, open preview modal
                     // On single click, start modifying (open live chat input)
@@ -376,7 +707,7 @@ const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | nu
                     }
                   }}
                   onDoubleClick={() => setPreviewUrl(img.url)}
-                  className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
+                  className="relative md:w-48 md:h-48 w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
                 >
                   {entry.status === 'generating' ? (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
@@ -395,13 +726,13 @@ const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | nu
                       </div>
                     </div>
                   ) : img.url ? (
-                    <div className="relative w-full h-full group">
+                    <div className="relative w-full h-full">
                       <Image 
                         src={img.url} 
                         alt={entry.prompt || 'Generated image'} 
                         fill 
                         className="object-cover group-hover:scale-105 transition-transform duration-200" 
-                        sizes="(max-width: 768px) 50vw, 192px"
+                        sizes="192px"
                       />
                       {/* Hover overlay */}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -417,6 +748,75 @@ const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | nu
           </div>
         );
       })}
+      
+      {/* Sentinel element for infinite scroll (same as image generation history) */}
+      {hasMore && !loading && (
+        <div 
+          ref={sentinelRef}
+          style={{ height: 1, width: '100%' }} 
+        />
+      )}
+
+      {/* Floating controls just above the input box so they are not hidden */}
+      {hasMore && !loading && (
+        <div className="fixed bottom-24 right-6 z-40 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={manualLoadMore}
+            className="px-3 py-1.5 text-xs rounded-full bg-white text-black hover:bg-gray-200 transition shadow-md"
+          >
+            Load more
+          </button>
+          <button
+            type="button"
+            onClick={loadAllRemaining}
+            className="px-3 py-1.5 text-xs rounded-full bg-white/90 text-black hover:bg-white transition shadow-md"
+          >
+            Load all
+          </button>
+        </div>
+      )}
+
+      {/* Fallback controls */}
+      {!loading && (
+        <div className="flex items-center justify-center gap-3 py-4">
+          {hasMore && (
+            <button
+              type="button"
+              onClick={manualLoadMore}
+              className="px-3 py-1.5 text-xs rounded-full bg-white text-black hover:bg-gray-200 transition"
+            >
+              Load more
+            </button>
+          )}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={loadAllRemaining}
+              className="px-3 py-1.5 text-xs rounded-full bg-white/90 text-black hover:bg-white transition"
+            >
+              Load all
+            </button>
+          )}
+        </div>
+      )}
+      
+      {/* Loading indicator for pagination */}
+      {hasMore && loadingMore && (
+        <div className="flex items-center justify-center py-8">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+            <div className="text-xs text-white/60">Loading more sessions...</div>
+          </div>
+        </div>
+      )}
+      
+      {/* End of list indicator */}
+      {!hasMore && backendSessions.length > 0 && (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-xs text-white/40">No more sessions to load</div>
+        </div>
+      )}
       
       {/* Image preview modal */}
       {previewUrl && (
@@ -434,6 +834,16 @@ const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | nu
 }
 
 export default function Page() {
+  // Log after mount (not during render) to avoid hydration issues
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[LiveChat] 🎯 Page component rendered (export default)', {
+        isClient: typeof window !== 'undefined',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, []);
+  
   return (
     <Suspense fallback={<div className="text-white/70 p-6">Loading…</div>}>
       <LiveChatPage />
