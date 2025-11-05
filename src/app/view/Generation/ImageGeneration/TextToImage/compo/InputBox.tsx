@@ -174,6 +174,18 @@ const InputBox = () => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
   };
 
+  // Adjust natural language references like "image 4" -> "image 3" (zero-based)
+  const adjustPromptImageNumbers = (text: string): string => {
+    try {
+      return text.replace(/\b(image|img)\s*([1-9]\d*)\b/gi, (_m, word, num) => {
+        const n = Math.max(0, parseInt(String(num), 10) - 1);
+        return `${word} ${n}`;
+      });
+    } catch {
+      return text;
+    }
+  };
+
   // Helper function to convert frameSize to Runway ratio format
   const convertFrameSizeToRunwayRatio = (frameSize: string): string => {
     const ratioMap: { [key: string]: string } = {
@@ -696,8 +708,9 @@ const InputBox = () => {
 
             // Make direct API call to avoid creating multiple history entries
             console.log(`=== MAKING RUNWAY API CALL FOR IMAGE ${index + 1} ===`);
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             console.log('API payload:', {
-              promptText: `${prompt} [Style: ${style}]`,
+              promptText: `${promptAdjusted} [Style: ${style}]`,
               model: selectedModel,
               ratio,
               generationType: "text-to-image",
@@ -707,7 +720,7 @@ const InputBox = () => {
             });
 
             const result = await dispatch(runwayGenerate({
-              promptText: `${prompt} [Style: ${style}]`,
+              promptText: `${promptAdjusted} [Style: ${style}]`,
               model: selectedModel,
               ratio,
               generationType: "text-to-image",
@@ -998,9 +1011,10 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(
             generateMiniMaxImages({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize,
             imageCount,
@@ -1054,8 +1068,9 @@ const InputBox = () => {
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(falGenerate({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
@@ -1103,8 +1118,9 @@ const InputBox = () => {
       } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
         // Imagen 4 models via FAL generate endpoint
         try {
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(falGenerate({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize as any,
             num_images: imageCount,
@@ -1153,11 +1169,15 @@ const InputBox = () => {
         // Replicate Seedream v4 (supports T2I and I2I with multi-image input)
         try {
           // Build Seedream payload per new schema
+          const seedreamAllowedAspect = new Set([
+            'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
+          ]);
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const payload: any = {
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: 'bytedance/seedream-4',
             size: seedreamSize,
-            aspect_ratio: frameSize,
+            aspect_ratio: seedreamAllowedAspect.has(frameSize) ? frameSize : 'match_input_image',
             sequential_image_generation: 'disabled',
             max_images: Math.min(imageCount, 4),
             isPublic,
@@ -1215,8 +1235,9 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             const payload: any = {
-              prompt: `${prompt} [Style: ${style}]`,
+              prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-turbo',
               aspect_ratio: aspect,
               // Provide safe defaults accepted by backend validator/model
@@ -1290,8 +1311,9 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             const payload: any = {
-              prompt: `${prompt} [Style: ${style}]`,
+              prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-quality',
               aspect_ratio: aspect,
               // Provide safe defaults accepted by backend validator/model
@@ -1364,8 +1386,9 @@ const InputBox = () => {
           // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             const payload: any = {
-              prompt: `${prompt} [Style: ${style}]`,
+              prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'leonardoai/lucid-origin',
               aspect_ratio: aspect,
               // Use Redux state values for Lucid Origin
@@ -1531,8 +1554,9 @@ const InputBox = () => {
           }
 
           // Call local image generation proxy (server uploads to Firebase)
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(bflGenerate({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             n: imageCount,
             frameSize,
@@ -1568,8 +1592,9 @@ const InputBox = () => {
           // flux-dev uses frameSize conversion (handled in API route)
           const isFluxProModel = selectedModel === "flux-pro-1.1" || selectedModel === "flux-pro-1.1-ultra" || selectedModel === "flux-pro";
 
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           let generationPayload: any = {
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             imageCount,
             frameSize,
@@ -1865,7 +1890,7 @@ const InputBox = () => {
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
                               onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
@@ -1980,8 +2005,8 @@ const InputBox = () => {
 
         <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
-          <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
-            <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4 pl-1.5 md:pl-2 py-1.5 md:py-2.5 w-full relative">
+          <div className="flex items-start gap-0 px-3  pr-0">
+            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-4 w-full relative">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -2041,78 +2066,80 @@ const InputBox = () => {
                 )}
                 {/* Previews just to the left of upload */}
                 {uploadedImages.length > 0 && (
-                  <div className="flex items-center gap-1 md:gap-1.5">
-                    {uploadedImages.map((u: string, i: number) => (
-                      <div
-                        key={i}
-                        className="relative w-8 h-8 md:w-12 md:h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={u}
-                          alt=""
-                          aria-hidden="true"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <button
-                          aria-label="Remove reference"
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const next = uploadedImages.filter(
-                              (_: string, idx: number) => idx !== i
-                            );
-                            dispatch(setUploadedImages(next));
-                          }}
+                  <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
+                    {uploadedImages.map((u: string, i: number) => {
+                      const count = uploadedImages.length;
+                      const sizeClass = count >= 9 ? 'w-8 h-8' : count >= 6 ? 'w-10 h-10' : 'w-12 h-12';
+                      return (
+                        <div
+                          key={i}
+                          data-image-index={i}
+                          title={`Image ${i + 1} (index ${i})`}
+                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={u}
+                            alt=""
+                            aria-hidden="true"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                          />
+                          {/* Number badge (1-based display, zero-based in payload order) */}
+                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                              {i + 1}
+                            </div>
+                          </div>
+                          <button
+                            aria-label="Remove reference"
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = uploadedImages.filter(
+                                (_: string, idx: number) => idx !== i
+                              );
+                              dispatch(setUploadedImages(next));
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-                <div className="relative group">
-                  <button
-                    className="p-1 md:p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
-                    onClick={() => setIsUploadOpen(true)}
-                    type="button"
-                    aria-label="Upload"
-                  >
-                    <Image src="/icons/fileupload.svg" alt="Attach" width={16} height={16} className="opacity-90 md:w-[18px] md:h-[18px]" />
-                    <span className="text-white text-sm"> </span>
-                  </button>
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
+               <div className="relative flex items-center gap-1.5 -mr-1 -mt-1.5">
+                  <div className="relative">
+                    <button
+                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      onClick={() => setIsUploadOpen(true)}
+                      type="button"
+                      aria-label="Upload character"
+                    >
+                      <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                      <span className="text-white text-sm"> </span>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                  </div>
+                  <div className="relative">
+                    <button
+                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      onClick={() => setIsUploadOpen(true)}
+                      type="button"
+                      aria-label="Upload image"
+                    >
+                      <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                      <span className="text-white text-sm"> </span>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Fixed position Generate button */}
-            <div className="flex flex-col items-end gap-1 md:gap-2 flex-shrink-0">
-              {error && <div className="text-red-500 text-xs md:text-sm">{error}</div>}
-              <button
-                onClick={handleGenerate}
-                disabled={isGeneratingLocally || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2.5 rounded-lg text-xs md:text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
-              >
-                {isGeneratingLocally ? (
-                  <>
-                    <svg className="w-5 h-5 md:hidden animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 6v6l4 2" />
-                    </svg>
-                    <span className="hidden md:inline">Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 19V5M5 12l7-7 7 7" />
-                    </svg>
-                    <span className="hidden md:inline">Generate</span>
-                  </>
-                )}
-              </button>
-            </div>
+            
           </div>
 
           {/* Bottom row: pill options */}
@@ -2147,8 +2174,8 @@ const InputBox = () => {
             </span>
           </div> */}
 
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-3 flex-1 min-w-0">
-              <ModelsDropdown />
+            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
+              <div className="flex items-center gap-3 -mb-2"><ModelsDropdown />
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
@@ -2206,6 +2233,18 @@ const InputBox = () => {
                   )}
                 </div>
               )}
+</div>
+              
+              <div><div className="flex flex-col items-end gap-2 flex-shrink-0 justify-end">
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={isGeneratingLocally || !prompt.trim()}
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+              >
+                {isGeneratingLocally ? "Generating..." : "Generate"}
+              </button>
+            </div></div>
             </div>
           </div>
         </div>
@@ -2232,7 +2271,7 @@ const InputBox = () => {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         historyEntries={historyEntries as any}
-        remainingSlots={Math.max(0, 4 - (uploadedImages?.length || 0))}
+        remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
         hasMore={hasMore}
         loading={loading}
         onLoadMore={async () => {
@@ -2245,7 +2284,7 @@ const InputBox = () => {
           } catch {}
         }}
         onAdd={(urls: string[]) => {
-          const next = [...uploadedImages, ...urls].slice(0, 4);
+          const next = [...uploadedImages, ...urls].slice(0, 10);
           dispatch(setUploadedImages(next));
         }}
       />

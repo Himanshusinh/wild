@@ -74,8 +74,24 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isLucidOrigin = selectedModel === 'leonardoai/lucid-origin';
   const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
+  const isSeedream = selectedModel === 'seedream-v4';
 
   const frameSizes = (() => {
+    if (isSeedream) {
+      // Seedream v4: follow schema exactly, include match_input_image
+      const allowed = [
+        { name: 'Match Input Image ', value: 'match_input_image', icon: 'square' },
+        { name: 'Square', value: '1:1', icon: 'square' },
+        { name: 'Landscape', value: '4:3', icon: 'landscape' },
+        { name: 'Portrait', value: '3:4', icon: 'portrait' },
+        { name: 'Wide', value: '16:9', icon: 'landscape' },
+        { name: 'Vertical', value: '9:16', icon: 'portrait' },
+        { name: 'Landscape Wide', value: '3:2', icon: 'landscape' },
+        { name: 'Portrait Tall', value: '2:3', icon: 'portrait' },
+        { name: 'Ultra Wide', value: '21:9', icon: 'ultrawide' },
+      ];
+      return allowed;
+    }
     if (isMiniMax) {
       // MiniMax: 1:1,16:9,4:3,3:2,2:3,3:4,9:16,21:9
       const allowed = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
@@ -173,8 +189,9 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
                     }`}></span>
                 )}
                 <span>{size.name}</span>
-                <span className={`text-[10px] md:text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'
-                  }`}>{size.value}</span>
+              {size.value !== 'match_input_image' && (
+                <span className={`text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'}`}>{size.value}</span>
+              )}
               </span>
               {frameSize === size.value && <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full" />}
             </button>

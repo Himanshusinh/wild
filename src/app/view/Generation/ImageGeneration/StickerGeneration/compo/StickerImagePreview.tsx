@@ -241,6 +241,49 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     }
   };
 
+  // Share selected sticker to WhatsApp: auto-export single WebP and invoke Web Share API when available
+  const shareToWhatsApp = async () => {
+    try {
+      const imgs = (entry.images || []).map((im: any) => ({ url: im?.url || im?.originalUrl })).filter((i: any) => i.url);
+      if (imgs.length === 0) return;
+      const body: any = {
+        name: 'WildMind Stickers',
+        author: (entry as any)?.createdBy?.username || 'WildMind AI',
+        images: [imgs[selectedImageIndex] || imgs[0]],
+        single: true,
+        coverIndex: 0,
+      };
+      // Get a WhatsApp-ready WebP sticker from backend
+      const res = await (await import('@/lib/axiosInstance')).default.post('/api/stickers/export', body, { responseType: 'blob' } as any);
+      const blob = res.data as Blob;
+      const file = new File([blob], 'sticker.webp', { type: 'image/webp' });
+
+      // Prefer native Web Share with files (best experience on Android/iOS/desktop where supported)
+      const canShareFiles = typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [file] });
+      if (canShareFiles && (navigator as any).share) {
+        try {
+          await (navigator as any).share({
+            files: [file],
+            title: 'Sticker',
+            text: cleanPrompt,
+          });
+          return;
+        } catch (e) {
+          // If user cancels or share fails, fall through to WhatsApp Web link only (no download)
+        }
+      }
+
+      // Fallback: open WhatsApp (Web) chat composer with prefilled text only (attachments must be added manually)
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const shareUrl = `${origin}/view/ArtStation?gen=${entry.id}`;
+      const text = `${cleanPrompt}\n${shareUrl}`;
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(waUrl, '_blank');
+    } catch (e) {
+      console.error('WhatsApp share failed:', e);
+    }
+  };
+
   const exportForWhatsApp = async (single?: boolean) => {
     try {
       const imgs = (entry.images || []).map((im: any) => ({ url: im?.url || im?.originalUrl })).filter((i: any) => i.url);
@@ -334,7 +377,8 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
-      <div className="relative h-full md:w-full md:max-w-6xl w-[95%] max-w-[95%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
+      <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+      <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
           <div className="text-white/70 text-sm"></div>
@@ -346,7 +390,6 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             >
               <Trash2 className="w-5 h-5" />
             </button> */}
-            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
           </div>
         </div>
 
@@ -417,6 +460,25 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                 <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
               </div>
             </div>
+
+            {/* WhatsApp export/share */}
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <div className="relative group">
+                <button onClick={shareToWhatsApp} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-emerald-600/30 hover:bg-emerald-600/40 text-sm">
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Share to WhatsApp</span>
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share sticker to WhatsApp (no download)</div>
+              </div>
+              <div className="relative group">
+                <button onClick={() => exportForWhatsApp(false)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export Pack</span>
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download WhatsApp ZIP</div>
+              </div>
+            </div>
+
 
             {/* Prompt */}
             <div className="mb-2">
