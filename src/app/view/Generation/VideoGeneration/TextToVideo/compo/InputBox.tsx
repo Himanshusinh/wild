@@ -2729,101 +2729,44 @@ const InputBox = () => {
                                       <video
                                         src={proxied}
                                         className="w-full h-full object-cover transition-opacity duration-200"
+                                        crossOrigin="anonymous"
                                         muted
                                         playsInline
                                         loop
                                         preload="metadata"
                                         poster={toThumbUrl(raw, { w: 640, q: 60 }) || undefined}
-                                        onMouseEnter={async (e) => {
-                                          const video = e.currentTarget;
-                                          const videoId = `${entry.id}-${video.id}`;
-                                          console.log('🎥 VIDEO HOVER ENTER (InputBox):', {
-                                            videoId,
-                                            videoSrc: video.src,
-                                            videoReadyState: video.readyState,
-                                            videoPaused: video.paused,
-                                            videoDuration: video.duration
-                                          });
-                                          
-                                          try {
-                                            // Force video to load if not ready
-                                            if (video.readyState < 2) {
-                                              console.log('⏳ Video not ready, loading...');
-                                              video.load();
-                                              await new Promise((resolve) => {
-                                                video.addEventListener('loadeddata', resolve, { once: true });
-                                                video.addEventListener('error', resolve, { once: true });
-                                              });
-                                            }
-                                            
-                                            console.log('🎥 Video ready, attempting to play...');
-                                            video.currentTime = 0; // Start from beginning
-                                            await video.play();
-                                            console.log('✅ Video started playing successfully on hover!');
-                                          } catch (error: any) {
-                                            console.error('❌ Video play failed on hover:', error);
-                                            console.log('Video error details:', {
-                                              code: error.code,
-                                              message: error.message,
-                                              name: error.name,
-                                              readyState: video.readyState,
-                                              networkState: video.networkState
-                                            });
-                                            
-                                            // Try alternative approach - muted autoplay
-                                            console.log('🔄 Trying alternative play method...');
-                                            video.muted = true; // Ensure muted for autoplay
-                                            try {
-                                              await video.play();
-                                              console.log('✅ Video started playing with muted autoplay!');
-                                            } catch (retryError) {
-                                              console.error('❌ Retry also failed:', retryError);
-                                            }
-                                          }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          const video = e.currentTarget;
-                                          const videoId = `${entry.id}-${video.id}`;
-                                          console.log('🎥 VIDEO HOVER LEAVE (InputBox):', {
-                                            videoId,
-                                            videoPaused: video.paused,
-                                            videoCurrentTime: video.currentTime,
-                                            videoDuration: video.duration
-                                          });
-                                          video.pause();
-                                          video.currentTime = 0;
-                                        }}
-                                        onClick={async (e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          const video = e.currentTarget;
-                                          const videoId = `${entry.id}-${video.id}`;
-                                          console.log('🎥 VIDEO CLICKED (InputBox):', { videoId });
-                                          
-                                          if (video.paused) {
-                                            try {
-                                              await video.play();
-                                              console.log('✅ Video started playing on click!');
-                                            } catch (error) {
-                                              console.error('❌ Video play failed on click:', error);
-                                            }
-                                          } else {
-                                            video.pause();
-                                            video.currentTime = 0;
-                                            console.log('🎥 Video paused on click');
-                                          }
-                                        }}
                                         onLoadedData={(e) => {
-                                          // Create thumbnail from video
+                                          // Create a thumbnail poster if none available (non-Zata sources)
                                           const videoElement = e.target as HTMLVideoElement;
-                                          const canvas = document.createElement('canvas');
-                                          canvas.width = videoElement.videoWidth;
-                                          canvas.height = videoElement.videoHeight;
-                                          const ctx = canvas.getContext('2d');
-                                          if (ctx) {
-                                            ctx.drawImage(videoElement, 0, 0);
-                                            // You could use this canvas as thumbnail if needed
-                                          }
+                                          try {
+                                            const needsPoster = !videoElement.poster || videoElement.poster.trim() === '';
+                                            if (needsPoster) {
+                                              const capture = () => {
+                                                if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+                                                const canvas = document.createElement('canvas');
+                                                canvas.width = videoElement.videoWidth;
+                                                canvas.height = videoElement.videoHeight;
+                                                const ctx = canvas.getContext('2d');
+                                                if (ctx) {
+                                                  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                                                  try {
+                                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                                                    if (dataUrl) videoElement.poster = dataUrl;
+                                                  } catch {}
+                                                }
+                                              };
+                                              if (videoElement.readyState >= 2) {
+                                                // Seek a tiny offset to ensure frame is decodable on some browsers
+                                                const target = Math.min(0.1, Math.max(0.01, (videoElement.duration || 0.2) / 20));
+                                                const onSeeked = () => { videoElement.removeEventListener('seeked', onSeeked); capture(); };
+                                                videoElement.addEventListener('seeked', onSeeked, { once: true });
+                                                try { videoElement.currentTime = target; } catch { capture(); }
+                                              } else {
+                                                const onLoaded = () => { videoElement.removeEventListener('loadedmetadata', onLoaded); capture(); };
+                                                videoElement.addEventListener('loadedmetadata', onLoaded, { once: true });
+                                              }
+                                            }
+                                          } catch {}
 
                                           // Remove shimmer when video loads
                                           setTimeout(() => {
@@ -2837,12 +2780,6 @@ const InputBox = () => {
                                             videoId: `${entry.id}-${video.id}`,
                                             videoDuration: videoElement.duration,
                                             videoReadyState: videoElement.readyState
-                                          });
-                                        }}
-                                        onCanPlay={(e) => {
-                                          console.log('🎥 VIDEO CAN PLAY (InputBox):', {
-                                            videoId: `${entry.id}-${video.id}`,
-                                            videoReadyState: e.currentTarget.readyState
                                           });
                                         }}
                                       />

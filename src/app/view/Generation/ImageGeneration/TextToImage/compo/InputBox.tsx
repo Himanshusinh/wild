@@ -176,6 +176,18 @@ const InputBox = () => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
   };
 
+  // Adjust natural language references like "image 4" -> "image 3" (zero-based)
+  const adjustPromptImageNumbers = (text: string): string => {
+    try {
+      return text.replace(/\b(image|img)\s*([1-9]\d*)\b/gi, (_m, word, num) => {
+        const n = Math.max(0, parseInt(String(num), 10) - 1);
+        return `${word} ${n}`;
+      });
+    } catch {
+      return text;
+    }
+  };
+
   // Helper function to convert frameSize to Runway ratio format
   const convertFrameSizeToRunwayRatio = (frameSize: string): string => {
     const ratioMap: { [key: string]: string } = {
@@ -698,8 +710,9 @@ const InputBox = () => {
 
             // Make direct API call to avoid creating multiple history entries
             console.log(`=== MAKING RUNWAY API CALL FOR IMAGE ${index + 1} ===`);
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             console.log('API payload:', {
-              promptText: `${prompt} [Style: ${style}]`,
+              promptText: `${promptAdjusted} [Style: ${style}]`,
               model: selectedModel,
               ratio,
               generationType: "text-to-image",
@@ -709,7 +722,7 @@ const InputBox = () => {
             });
 
             const result = await dispatch(runwayGenerate({
-              promptText: `${prompt} [Style: ${style}]`,
+              promptText: `${promptAdjusted} [Style: ${style}]`,
               model: selectedModel,
               ratio,
               generationType: "text-to-image",
@@ -1000,9 +1013,10 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(
             generateMiniMaxImages({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize,
             imageCount,
@@ -1056,8 +1070,9 @@ const InputBox = () => {
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(falGenerate({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
@@ -1105,8 +1120,9 @@ const InputBox = () => {
       } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
         // Imagen 4 models via FAL generate endpoint
         try {
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(falGenerate({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize as any,
             num_images: imageCount,
@@ -1155,11 +1171,15 @@ const InputBox = () => {
         // Replicate Seedream v4 (supports T2I and I2I with multi-image input)
         try {
           // Build Seedream payload per new schema
+          const seedreamAllowedAspect = new Set([
+            'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
+          ]);
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const payload: any = {
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: 'bytedance/seedream-4',
             size: seedreamSize,
-            aspect_ratio: frameSize,
+            aspect_ratio: seedreamAllowedAspect.has(frameSize) ? frameSize : 'match_input_image',
             sequential_image_generation: 'disabled',
             max_images: Math.min(imageCount, 4),
             isPublic,
@@ -1217,8 +1237,9 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             const payload: any = {
-              prompt: `${prompt} [Style: ${style}]`,
+              prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-turbo',
               aspect_ratio: aspect,
               // Provide safe defaults accepted by backend validator/model
@@ -1292,8 +1313,9 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             const payload: any = {
-              prompt: `${prompt} [Style: ${style}]`,
+              prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-quality',
               aspect_ratio: aspect,
               // Provide safe defaults accepted by backend validator/model
@@ -1366,8 +1388,9 @@ const InputBox = () => {
           // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
+            const promptAdjusted = adjustPromptImageNumbers(prompt);
             const payload: any = {
-              prompt: `${prompt} [Style: ${style}]`,
+              prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'leonardoai/lucid-origin',
               aspect_ratio: aspect,
               // Use Redux state values for Lucid Origin
@@ -1533,8 +1556,9 @@ const InputBox = () => {
           }
 
           // Call local image generation proxy (server uploads to Firebase)
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           const result = await dispatch(bflGenerate({
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             n: imageCount,
             frameSize,
@@ -1570,8 +1594,9 @@ const InputBox = () => {
           // flux-dev uses frameSize conversion (handled in API route)
           const isFluxProModel = selectedModel === "flux-pro-1.1" || selectedModel === "flux-pro-1.1-ultra" || selectedModel === "flux-pro";
 
+          const promptAdjusted = adjustPromptImageNumbers(prompt);
           let generationPayload: any = {
-            prompt: `${prompt} [Style: ${style}]`,
+            prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             imageCount,
             frameSize,
@@ -1857,7 +1882,7 @@ const InputBox = () => {
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
                               onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
@@ -2024,14 +2049,16 @@ const InputBox = () => {
                 )}
                 {/* Previews just to the left of upload */}
                 {uploadedImages.length > 0 && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto max-w-[55vw] md:max-w-none pr-1 custom-scrollbar">
+                  <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
                     {uploadedImages.map((u: string, i: number) => {
                       const count = uploadedImages.length;
                       const sizeClass = count >= 9 ? 'w-8 h-8' : count >= 6 ? 'w-10 h-10' : 'w-12 h-12';
                       return (
                         <div
                           key={i}
-                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0`}
+                          data-image-index={i}
+                          title={`Image ${i + 1} (index ${i})`}
+                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -2041,6 +2068,12 @@ const InputBox = () => {
                             decoding="async"
                             className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
                           />
+                          {/* Number badge (1-based display, zero-based in payload order) */}
+                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                              {i + 1}
+                            </div>
+                          </div>
                           <button
                             aria-label="Remove reference"
                             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
