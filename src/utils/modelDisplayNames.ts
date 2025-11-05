@@ -46,6 +46,8 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'kling-v2.1-t2v': 'Kling 2.1',
   'wan-2.5-t2v': 'WAN 2.5 T2V',
   'wan-2.5-t2v-fast': 'WAN 2.5 T2V Fast',
+  'MiniMax-Hailuo-2.3': 'MiniMax-Hailuo-2.3',
+  'MiniMax-Hailuo-2.3-Fast': 'MiniMax-Hailuo-2.3 Fast',
   'MiniMax-Hailuo-02': 'MiniMax-Hailuo-02',
   'T2V-01-Director': 'T2V-01-Director',
   'kling-v2.5-turbo-pro-i2v': 'Kling 2.5 Turbo Pro',

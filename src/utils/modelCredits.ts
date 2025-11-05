@@ -50,6 +50,16 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'MiniMax-Hailuo-02-768P-10s': 1140,
   'MiniMax-Hailuo-02-1080P-6s': 1000,
 
+  // Minimax-Hailuo-2.3 Fast variants
+  'MiniMax-Hailuo-2.3-Fast-768P-6s': 460,
+  'MiniMax-Hailuo-2.3-Fast-768P-10s': 720,
+  'MiniMax-Hailuo-2.3-Fast-1080P-6s': 740,
+
+  // Minimax-Hailuo-2.3 Standard variants
+  'MiniMax-Hailuo-2.3-768P-6s': 640,
+  'MiniMax-Hailuo-2.3-768P-10s': 1200,
+  'MiniMax-Hailuo-2.3-1080P-6s': 1060,
+
   // Gen-4 Turbo variants
   'gen4_turbo-5s': 520,
   'gen4_turbo-10s': 1020,
@@ -205,6 +215,15 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const key = `MiniMax-Hailuo-02-${resolutionP}-${durationNum}s`;
     return MODEL_CREDITS_MAPPING[key] || null;
   } 
+  
+  // MiniMax-Hailuo-2.3 Standard and Fast
+  if ((modelValue === 'MiniMax-Hailuo-2.3' || modelValue === 'MiniMax-Hailuo-2.3-Fast') && duration && resolution) {
+    const durationNum = parseInt(duration.replace('s', ''));
+    const resolutionP = resolution.replace('P', 'P');
+    const fastPart = modelValue === 'MiniMax-Hailuo-2.3-Fast' ? 'Fast-' : '';
+    const key = `MiniMax-Hailuo-2.3-${fastPart}${resolutionP}-${durationNum}s`;
+    return MODEL_CREDITS_MAPPING[key] || null;
+  }
   
   if (modelValue === 'gen4_turbo' && duration) {
     const durationNum = parseInt(duration.replace('s', ''));
