@@ -14,11 +14,11 @@ import Squares from './Squares'
 
 const FooterNew: React.FC = () => {
   const legalLinks = [
-    { name: "Terms of use", href: "" },
-    { name: "Privacy Policy", href: "" },
-    { name: "Cookies", href: "" },
-    { name: "Legal Notice", href: "" },
-    { name: "DMCA", href: "" },
+    { name: "Terms of use", href: "/view/policy?page=tos" },
+    { name: "Privacy Policy", href: "/view/policy?page=privacy" },
+    { name: "Cookies", href: "/view/policy?page=cookie" },
+    { name: "Legal Notice", href: "/view/policy?page=aup" },
+    { name: "DMCA", href: "/view/policy?page=dmca" },
   ];
 
   // const socialLinks = [
@@ -161,17 +161,17 @@ const FooterNew: React.FC = () => {
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="/view/policy?page=tos" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Terms for Use
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="/view/policy?page=privacy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Privacy Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="/view/policy?page=cookie" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Cookie Policy
                       </Link>
                     </li>
