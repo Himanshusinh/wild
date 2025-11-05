@@ -238,8 +238,8 @@ const LiveChatInputBox: React.FC = () => {
             localStorage.removeItem('livechat-restored-session');
           } else {
             // Stale data, create new session
-            const sessionId = `session-${Date.now()}`;
-            setCurrentSessionId(sessionId);
+      const sessionId = `session-${Date.now()}`;
+      setCurrentSessionId(sessionId);
             localStorage.removeItem('livechat-restored-session');
           }
         } else {
@@ -827,9 +827,9 @@ const LiveChatInputBox: React.FC = () => {
                     dispatch(addNotification({ type: 'success', message: 'Image generated. Continuing Live Chat with latest image.' }));
                     
                     // Set centered image URL - the useEffect will handle centering
-                    const latestImageUrl = result.images[0].url;
-                    if (latestImageUrl) {
-                      setCenteredImageUrl(latestImageUrl);
+                          const latestImageUrl = result.images[0].url;
+                          if (latestImageUrl) {
+                            setCenteredImageUrl(latestImageUrl);
                     }
                   }
                 } catch (e) {
@@ -886,21 +886,21 @@ const LiveChatInputBox: React.FC = () => {
                     
                     // Save all images as a history entry if there are any
                     if (allSessionImages.length > 0) {
-                      const entry: HistoryEntry = {
-                        id: `livechat-${Date.now()}`,
+                    const entry: HistoryEntry = {
+                      id: `livechat-${Date.now()}`,
                         prompt: currentGeneration?.prompt || prompt || '',
-                        model: selectedModel,
-                        generationType: 'live-chat',
+                      model: selectedModel,
+                      generationType: 'live-chat',
                         images: allSessionImages,
-                        timestamp: now,
-                        createdAt: now,
+                      timestamp: now,
+                      createdAt: now,
                         imageCount: allSessionImages.length,
-                        status: 'completed',
-                        frameSize,
-                        style,
-                        sessionId: currentSessionId || `session-${Date.now()}`,
-                      };
-                      dispatch(addAndSaveHistoryEntry(entry));
+                      status: 'completed',
+                      frameSize,
+                      style,
+                      sessionId: currentSessionId || `session-${Date.now()}`,
+                    };
+                    dispatch(addAndSaveHistoryEntry(entry));
                     }
                     
                     // Persist a consolidated Live Chat session document
