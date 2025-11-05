@@ -652,15 +652,15 @@ export default function ArtStationPage() {
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-0">
-        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
-        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
-          {/* Sticky header + filters (pinned under navbar) */}
-          <div className="sticky top-0 z-20 bg-[#07070B] pt-10">
+        <div className="w-0 sm:w-[68px] flex-shrink-0 overflow-hidden sm:overflow-visible"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
+        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 mt-5 ">
+          {/* Sticky header + filters (mobile: fixed under navbar) */}
+          <div className="fixed sm:sticky top-14 sm:top-0 left-0 right-0 z-20 bg-[#07070B] pt-10 px-4 sm:px-0">
             <div className=" mb-2 md:mb-3">
-              <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+              <h3 className="text-white text-md sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
                 Art Station
               </h3>
-              <p className="text-white/80 text-base sm:text-lg md:text-xl">
+              <p className="text-white/80 text-sm sm:text-lg md:text-xl">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
@@ -672,7 +672,7 @@ export default function ArtStationPage() {
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
                         ? 'bg-white border-white/5 text-black shadow-sm'
                         : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                       }`}
@@ -684,6 +684,9 @@ export default function ArtStationPage() {
               </div>
             </div>
           </div>
+
+          {/* Mobile-only spacer to offset fixed header height */}
+          <div className="sm:hidden h-[120px]" />
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 

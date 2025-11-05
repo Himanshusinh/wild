@@ -206,7 +206,7 @@ const Nav = () => {
 
   return (
     <div className='fixed top-0 left-0 right-0 z-[70] w-full'>
-      <div className='w-full bg-black/10 backdrop-blur-3xl border-b border-white/10 px-2 md:px-4 py-2 md:py-3'>
+      <div className='w-full bg-blue-500/10 lg:bg-none md:bg-transparent lg:backdrop-blur-none md:backdrop-blur-none border-b border-white/10 lg:border-0 px-2 md:px-4 py-2 md:py-3'>
         <div className='flex items-center justify-end gap-2 md:gap-3 relative'>
           {/* Group 1: search + credits inside shared background */}
           <div className='flex items-center gap-2 md:gap-3 rounded-full backdrop-blur-3xl bg-white/5 shadow-lg border border-white/10 px-1.5 py-0.5 md:px-2 md:py-1'>
@@ -261,7 +261,7 @@ const Nav = () => {
 
           {/* Profile Dropdown */}
           {showDropdown && (
-            <div className='absolute right-0 top-full mt-2 w-72 md:w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden z-[80] transform translate-x-0 translate-y-0'>
+            <div className='absolute right-0 top-full mt-2 w-72 md:w-80 rounded-2xl bg-black/95 md:bg-white/10 backdrop-blur-xl md:backdrop-blur-3xl shadow-xl border border-white/10 overflow-hidden z-[80] transform translate-x-0 translate-y-0'>
               <div className='p-3 md:p-4'>
                 {/* User Info Header */}
                 <div className='flex items-center gap-2 md:gap-3 mb-3 md:mb-4 pb-3 md:pb-4 border-b border-white/10'>

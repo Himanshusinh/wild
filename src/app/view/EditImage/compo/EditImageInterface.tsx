@@ -1169,24 +1169,6 @@ const EditImageInterface: React.FC = () => {
                     <span className="text-white text-xs md:text-sm text-center">{feature.label}</span>
                   </div>
 
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Feature Preview (GIF banner) */}
-          <div className="px-3 md:px-4 mb-2 pt-4">
-            <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
-              <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
-                {featureDisplayName[selectedFeature]}
-              </div>
-            </div>
-          </div>
-
-          {/* Input Image section removed: unified canvas lives on the right */}
-
           {/* Vectorize model & parameters */}
           {selectedFeature === 'vectorize' && (
             <div className="px-3 md:px-4">
@@ -1751,33 +1733,10 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="p-4 flex items-start justify-center pt-3  ">
-            <div
-              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] w-full max-w-6xl md:max-w-7xl"
-              onDragOver={(e) => { try { e.preventDefault(); } catch {} }}
-              onDrop={(e) => {
-                try {
-                  e.preventDefault();
-                  const file = e.dataTransfer?.files?.[0];
-                  if (!file) return;
-                 const reader = new FileReader();
-                 reader.onload = (ev) => {
-                   const img = ev.target?.result as string;
-                   // Apply dropped image to all features so switching tabs preserves the same input
-                   setInputs({
-                     'upscale': img,
-                     'remove-bg': img,
-                     'resize': img,
-                     'fill': img,
-                     'vectorize': img,
-                   });
-                 };
-                  reader.readAsDataURL(file);
-                } catch {}
-              }}
-            >
+          <div className="p-4 flex items-start justify-center pt-7  ">
+            <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
               {/* Dotted grid background overlay */}
-              <div className="absolute inset-0 z-0  pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               {outputs[selectedFeature] && (
                 <div className="absolute top-5 left-4 z-10 ">
                   <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>

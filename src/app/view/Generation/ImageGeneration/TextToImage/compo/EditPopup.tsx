@@ -31,7 +31,7 @@ const EditPopup: React.FC<Props> = ({ isOpen, onClose, onUpscale, onRemoveBg, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60 flex items-center justify-center p-2  " onClick={onClose}>
+    <div className="fixed inset-0 bg-black/90 md:bg-black/60 backdrop-blur-sm z-60 flex items-center justify-center p-2  " onClick={onClose}>
       <div className="relative w-[100%] max-w-3xl bg-white/5 backdrop-blur-3xl  ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl " onClick={(e)=>e.stopPropagation()}>
         {/* Header tabs */}
         <div className="px-4 pt-4">

@@ -40,6 +40,23 @@ body {
   color: #ffffff;
 }
 
+/* Mobile-wide defaults for any dropdown anchored with class dropdown-container */
+@media (max-width: 767px) {
+  .dropdown-container > .absolute {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(88vw, 28rem) !important;
+  }
+  /* Prefer opening upwards on mobile when author used top-full */
+  .dropdown-container > .absolute.top-full {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.5rem !important; /* mb-2 */
+  }
+}
+
 /* Hide scrollbars utility */
 .no-scrollbar {
   -ms-overflow-style: none; /* IE and Edge */

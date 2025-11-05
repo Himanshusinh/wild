@@ -1747,11 +1747,11 @@ const InputBox = () => {
         <div className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-0 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
-              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Image Generation </h2>
+            <div className="relative md:fixed left-0 right-0 z-30 py-3 md:py-5 md:top-0 md:ml-18 px-4 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+              <h2 className="md:text-xl text-md font-semibold text-white">Image Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
-            <div className="h-0"></div>
+            <div className="hidden md:block h-0"></div>
 
             {/* Main Loader */}
             {loading && historyEntries.length === 0 && (
@@ -1821,7 +1821,7 @@ const InputBox = () => {
             )}
 
             {/* History Entries - Grouped by Date */}
-            <div className=" space-y-8  ">
+            <div className="mt-0 md:mt-0 space-y-8">
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
@@ -2000,9 +2000,7 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] lg:w-[90%] w-[94%] md:max-w-[900px] z-[60] h-auto">
-      {/* <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto"> */}
-
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] lg:max-w-[840px] z-[60] h-auto">
         <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
           <div className="flex items-start gap-0 px-3  pr-0">
@@ -2174,11 +2172,11 @@ const InputBox = () => {
             </span>
           </div> */}
 
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
-              <div className="flex items-center gap-3 -mb-2"><ModelsDropdown />
-              <ImageCountDropdown />
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-3 flex-1 min-w-0">
+              <ModelsDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
+              <ImageCountDropdown />
               <LucidOriginOptions />
               <PhoenixOptions />
               <FileTypeDropdown />

@@ -191,7 +191,7 @@ const FooterNew: React.FC = () => {
                   <ul className="space-y-3">
                     <li>
                       <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        Blog
+                        Blog 
                       </Link>
                     </li>
                     <li>

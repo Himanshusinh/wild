@@ -2526,11 +2526,11 @@ const InputBox = () => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="md:py-6 py-0 md:pl-4 pl-0 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed left-0 right-0 z-30 py-2 md:py-5 top-[44px] md:top-0 md:ml-18 px-3 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
-              <h2 className="md:text-xl text-md font-semibold text-white pl-0 ">Video Generation </h2>
+            <div className="relative md:fixed left-0 right-0 z-30 py-3 md:py-5 md:top-0 md:ml-18 px-4 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
+              <h2 className="md:text-xl text-md font-semibold text-white">Video Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
-            <div className="h-[32px] md:h-0"></div>
+            <div className="hidden md:block h-0"></div>
 
             {/* Main Loader */}
             {loading && historyEntries.length === 0 && (
@@ -2844,14 +2844,14 @@ const InputBox = () => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 w-[94%] md:w-[90%] max-w-[840px] z-[0]">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 w-[94%] md:w-[90%] max-w-[840px] z-[0]" suppressHydrationWarning>
         {/* Tabs row - right aligned */}
-        <div className="mb-0.5 md:mb-1 flex justify-end">
+        <div className="mb-0.5 md:mb-1 flex justify-end" suppressHydrationWarning>
           {/* Mobile: dropdown */}
-          <div className="relative md:hidden">
+          <div className="relative md:hidden" suppressHydrationWarning>
             <button
               onClick={() => setShowModeDropdown(v => !v)}
-              className="flex items-center gap-2 bg-transparent backdrop-blur-3xl rounded-lg px-2 py-1.5 ring-1 ring-white/20 shadow-2xl text-[10px] text-white"
+              className="flex items-center  gap-2 bg-transparent backdrop-blur-3xl rounded-lg px-2 py-1.5 ring-1 ring-white/20 shadow-2xl text-[10px] text-white mb-1 md:mb-0"
             >
               <span className="font-medium">
                 {generationMode === 'text_to_video' ? 'Text→Video' : generationMode === 'image_to_video' ? 'Image→Video' : 'Video→Video'}
@@ -2859,7 +2859,7 @@ const InputBox = () => {
               <svg className={`w-3 h-3 transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
             </button>
             {showModeDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-[60vw] bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50">
+              <div className="absolute right-0 bottom-full mb-2 w-32 md:w-auto bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50 md:bottom-auto md:top-full md:mt-2">
                 <button onClick={() => { setGenerationMode('text_to_video'); setShowModeDropdown(false); }} className={`w-full text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='text_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Text→Video</button>
                 <button onClick={() => { setGenerationMode('image_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='image_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Image→Video</button>
                 <button onClick={() => { setGenerationMode('video_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='video_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Video→Video</button>
@@ -3288,7 +3288,57 @@ const InputBox = () => {
 
             </div>
 
+            <div className="flex flex-col items-end gap-1 md:gap-2">
+              {error && <div className="text-red-500 text-xs md:text-sm">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={(() => {
+                  const disabled = isGenerating || !prompt.trim() ||
+                    // Mode-specific validations
+                    (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && uploadedImages.length === 0) ||
+                    (generationMode === "video_to_video" && !uploadedVideo) ||
+                    // Model-specific validations (only for image-to-video)
+                    (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" && selectedModel.includes("wan-2.5") && uploadedImages.length === 0);
 
+                  // Debug logging for S2V-01
+                  if (selectedModel === "S2V-01") {
+                    console.log('🔍 S2V-01 Validation Debug:', {
+                      isGenerating,
+                      hasPrompt: !!prompt.trim(),
+                      referencesLength: references.length,
+                      generationMode,
+                      disabled
+                    });
+                  }
+
+                  return disabled;
+                })()}
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2.5 rounded-lg text-xs md:text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
+              >
+                {isGenerating ? (
+                  <>
+                    <svg className="w-5 h-5 md:hidden animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    <span className="hidden md:inline">Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                    <span className="hidden md:inline">Generate</span>
+                  </>
+                )}
+              </button>
+              <div className="text-white/80 text-sm pr-1">
+                Total credits: <span className="font-semibold">{liveCreditCost}</span>
+              </div>
+            </div>
           </div>
 
           {/* Uploaded Content Display */}
@@ -3395,10 +3445,59 @@ const InputBox = () => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex justify-between items-center gap-2 px-3 pb-3">
-
-              <div className="flex flex-col gap-3 flex-wrap">
-                {/* Model selector */}
+          <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-1.5 md:gap-2 px-2 md:px-3 pb-1.5 md:pb-3">
+            {/* Mobile: Top row (FPS and Audio) - Desktop: Same row */}
+            <div className="flex flex-row gap-1.5 md:gap-3 flex-wrap md:order-2 w-full md:w-auto justify-end md:justify-start">
+              {/* FPS and Audio - Rendered by dynamic controls */}
+              {(() => {
+                // Extract FPS and Audio for each model
+                if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
+                  return (
+                    <button
+                      onClick={() => setGenerateAudio(v => !v)}
+                      className={`inline-flex items-center justify-center md:justify-start h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white/10 text-white md:bg-white md:text-black' : 'bg-white/10 text-white/80 md:bg-white/10 md:text-white/80'}`}
+                    >
+                      {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                    </button>
+                  );
+                }
+                if (selectedModel.includes('ltx2')) {
+                  return (
+                    <>
+                      <div className="relative">
+                        <button
+                          onClick={() => setFps(prev => prev === 25 ? 50 : 25)}
+                          className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white md:bg-white md:text-black"
+                        >
+                          FPS: {fps}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setGenerateAudio(v => !v)}
+                        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white/10 text-white md:bg-white md:text-black' : 'bg-white/10 text-white/80 md:bg-white/10 md:text-white/80'}`}
+                      >
+                        {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                      </button>
+                    </>
+                  );
+                }
+                if (selectedModel.includes("veo3.1") || (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1"))) {
+                  return (
+                    <button
+                      onClick={() => setGenerateAudio(v => !v)}
+                      className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white/10 text-white md:bg-white md:text-black' : 'bg-white/10 text-white/80 md:bg-white/10 md:text-white/80'}`}
+                    >
+                      {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+            {/* Mobile: Bottom row (Model, Frame Size, Resolution, Timing) - Desktop: Same row */}
+            <div className="flex flex-row gap-1.5 md:gap-3 flex-wrap md:order-1 w-full md:w-auto justify-start items-center">
+              {/* Model selector - First in the row, at bottom left on mobile */}
+              <div className="flex-shrink-0">
                 <VideoModelsDropdown
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
@@ -3415,292 +3514,148 @@ const InputBox = () => {
                   }}
                   onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
                 />
+              </div>
 
-
-                {/* Dynamic Controls Based on Model Capabilities */}
-                {(() => {
-                  // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
-                  if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-                    return (
-                      <div className="flex flex-row gap-2">
-                        {/* Fixed Resolution Display */}
-                        <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
-                          <TvMinimalPlay className="w-4 h-4 mr-1" />
-                          720P (Fixed)
-                        </div>
-                        {/* Fixed Duration Display */}
-                        <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
-                          <Clock className="w-4 h-4 mr-1" />
-                          6s (Fixed)
-                        </div>
+              {/* Dynamic Controls Based on Model Capabilities - Frame Size, Resolution, Timing */}
+              {(() => {
+                // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
+                if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                  return (
+                    <div className="flex flex-row gap-2">
+                      {/* Fixed Resolution Display */}
+                      <div className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                        <TvMinimalPlay className="w-4 h-4 mr-1" />
+                        720P (Fixed)
                       </div>
-                    );
-                  }
+                      {/* Fixed Duration Display */}
+                      <div className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                        <Clock className="w-4 h-4 mr-1" />
+                        6s (Fixed)
+                      </div>
+                    </div>
+                  );
+                }
 
-                  // Sora 2 Models: Full customization (check before Veo 3.1)
-                  if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Sora 2 models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
+                // Sora 2 Models: Full customization (check before Veo 3.1)
+                if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for Sora 2 models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Use unified ResolutionDropdown for Sora 2 */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {/* Timing (Duration) - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                        <VideoDurationDropdown
+                          selectedDuration={duration}
+                          onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                        {/* Resolution - Use unified ResolutionDropdown for Sora 2 */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={selectedQuality}
-                          onResolutionChange={setSelectedQuality}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Audio toggle for Sora 2 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </button>
-                      </div>
-                    );
-                  }
+                      )}
+                    </div>
+                  );
+                }
 
-                  // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
-                  if (selectedModel.includes('ltx2')) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
-                        {generationMode === 'image_to_video' ? (
-                          <VideoFrameSizeDropdown
-                            selectedFrameSize={frameSize}
-                            onFrameSizeChange={setFrameSize}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                              setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                          />
-                        ) : (
-                          <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
-                            16:9 (Fixed)
-                          </div>
-                        )}
-                        {/* Resolution - LTX V2 supports 1080p/1440p/2160p */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
-                          onResolutionChange={setSelectedResolution as any}
-                        />
-                        {/* Duration - 6/8/10s */}
-                        <VideoDurationDropdown
-                          selectedDuration={duration}
-                          onDurationChange={setDuration}
+                // LTX V2 Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes('ltx2')) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - For I2V allow user selection; for T2V, fixed 16:9 */}
+                      {generationMode === 'image_to_video' ? (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                            setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                         />
-                        {/* FPS selector for LTX V2 */}
-                        <div className="relative">
-                          <button
-                            onClick={() => {/* simple toggle between 25 and 50 */ setFps(prev => prev === 25 ? 50 : 25); }}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black"
-                          >
-                            FPS: {fps}
-                          </button>
+                      ) : (
+                        <div className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                          16:9 (Fixed)
                         </div>
-                        {/* Audio toggle for LTX V2 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </button>
-                      </div>
-                    );
-                  }
+                      )}
+                      {/* Resolution - LTX V2 supports 1080p/1440p/2160p */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
+                        onResolutionChange={setSelectedResolution as any}
+                      />
+                      {/* Timing (Duration) - 6/8/10s */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
 
-                  // Veo 3.1 Models: Full customization (check before Veo3)
-                  if (selectedModel.includes("veo3.1")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Veo 3.1 models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Resolution - Veo 3.1 uses 720p/1080p */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={selectedQuality}
-                          onResolutionChange={setSelectedQuality}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Audio toggle for Veo 3.1 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  // Veo3 Models: Full customization (check after Veo 3.1)
-                  if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Veo3 models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Resolution - Veo3 uses 720p/1080p */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={selectedQuality}
-                          onResolutionChange={setSelectedQuality}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Audio toggle for Veo 3 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  // Kling Models: Full customization
-                  if (selectedModel.startsWith('kling-')) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Kling models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Mode - Only for Kling v2.1 base (standard/pro), not master variant */}
-                        {selectedModel.includes('kling-v2.1') && !selectedModel.includes('master') && (
-                          <KlingModeDropdown
-                            value={klingMode}
-                            onChange={setKlingMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                              // Close duration dropdown
-                              setCloseDurationDropdown(true);
-                              setTimeout(() => setCloseDurationDropdown(false), 0);
-                            }}
-                          />
-                        )}
-                        {/* Duration - Always shown for Kling models */}
+                // Veo 3.1 Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes("veo3.1")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for Veo 3.1 models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Veo 3.1 uses 720p/1080p */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {/* Timing (Duration) - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -3716,31 +3671,39 @@ const InputBox = () => {
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                      </div>
-                    );
-                  }
+                      )}
+                    </div>
+                  );
+                }
 
-                  // WAN 2.5 Models: Full customization
-                  if (selectedModel.includes("wan-2.5")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for WAN models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Duration - Always shown for WAN models */}
+                // Veo3 Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for Veo3 models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Veo3 uses 720p/1080p */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {/* Timing (Duration) - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -3756,39 +3719,36 @@ const InputBox = () => {
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                      </div>
-                    );
-                  }
+                      )}
+                    </div>
+                  );
+                }
 
-                  // Seedance Models: Full customization
-                  if (selectedModel.includes("seedance")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Only shown for T2V (ignored for I2V) */}
-                        {generationMode === "text_to_video" && (
-                          <VideoFrameSizeDropdown
-                            selectedFrameSize={frameSize}
-                            onFrameSizeChange={setFrameSize}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close duration dropdown
-                              setCloseDurationDropdown(true);
-                              setTimeout(() => setCloseDurationDropdown(false), 0);
-                              // Close quality dropdown (for Seedance)
-                              // QualityDropdown handles its own state
-                            }}
-                            onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Quality - Always shown for Seedance models */}
-                        <QualityDropdown
-                          selectedModel={selectedModel}
-                          selectedQuality={seedanceResolution}
-                          onQualityChange={setSeedanceResolution}
+                // Kling Models: Frame Size → Mode → Timing → FPS → Audio
+                if (selectedModel.startsWith('kling-')) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for Kling models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Mode - Only for Kling v2.1 base (standard/pro), not master variant */}
+                      {selectedModel.includes('kling-v2.1') && !selectedModel.includes('master') && (
+                        <KlingModeDropdown
+                          value={klingMode}
+                          onChange={setKlingMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
@@ -3800,14 +3760,121 @@ const InputBox = () => {
                             setCloseDurationDropdown(true);
                             setTimeout(() => setCloseDurationDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={undefined}
                         />
-                        {/* Duration - Always shown for Seedance models */}
-                        <VideoDurationDropdown
-                          selectedDuration={duration}
-                          onDurationChange={setDuration}
+                      )}
+                      {/* Timing (Duration) - Always shown for Kling models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* FPS - Not applicable for Kling */}
+                      {/* Audio - Not applicable for Kling */}
+                    </div>
+                  );
+                }
+
+                // WAN 2.5 Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes("wan-2.5")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for WAN models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Not applicable for WAN 2.5 */}
+                      {/* Timing (Duration) - Always shown for WAN models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* FPS - Not applicable for WAN 2.5 */}
+                      {/* Audio - Not applicable for WAN 2.5 */}
+                    </div>
+                  );
+                }
+
+                // Seedance Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes("seedance")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Only shown for T2V (ignored for I2V) */}
+                      {generationMode === "text_to_video" && (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            // Close quality dropdown (for Seedance)
+                            // QualityDropdown handles its own state
+                          }}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        />
+                      )}
+                      {/* Resolution (Quality) - Always shown for Seedance models */}
+                      <QualityDropdown
+                        selectedModel={selectedModel}
+                        selectedQuality={seedanceResolution}
+                        onQualityChange={setSeedanceResolution}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={undefined}
+                      />
+                      {/* Timing (Duration) - Always shown for Seedance models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
@@ -3818,53 +3885,101 @@ const InputBox = () => {
                             // Close quality dropdown (for Seedance)
                             // QualityDropdown handles its own state
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                        />
-                      </div>
-                    );
-                  }
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* FPS - Not applicable for Seedance */}
+                      {/* Audio - Not applicable for Seedance */}
+                    </div>
+                  );
+                }
 
-                  // PixVerse Models: Full customization
-                  if (selectedModel.includes("pixverse")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                            // Close quality dropdown
-                            // QualityDropdown handles its own state
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Quality - Always shown for PixVerse models */}
-                        <QualityDropdown
-                          selectedModel={selectedModel}
-                          selectedQuality={pixverseQuality}
-                          onQualityChange={setPixverseQuality}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={undefined}
-                        />
-                        {/* Duration - Always shown for PixVerse models */}
+                // PixVerse Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes("pixverse")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for PixVerse models (both T2V and I2V) */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                          // Close quality dropdown
+                          // QualityDropdown handles its own state
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution (Quality) - Always shown for PixVerse models */}
+                      <QualityDropdown
+                        selectedModel={selectedModel}
+                        selectedQuality={pixverseQuality}
+                        onQualityChange={setPixverseQuality}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={undefined}
+                      />
+                      {/* Timing (Duration) - Always shown for PixVerse models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close quality dropdown
+                          // QualityDropdown handles its own state
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* FPS - Not applicable for PixVerse */}
+                      {/* Audio - Not applicable for PixVerse */}
+                    </div>
+                  );
+                }
+
+                // Runway Models: Frame Size → Resolution → Timing → FPS → Audio
+                if (selectedModel.includes("gen4") || selectedModel.includes("gen3a")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Frame Size - Always shown for Runway models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Not applicable for Runway */}
+                      {/* Timing (Duration) - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -3877,97 +3992,56 @@ const InputBox = () => {
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
                             setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            // Close quality dropdown
-                            // QualityDropdown handles its own state
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                      </div>
-                    );
-                  }
+                      )}
+                      {/* FPS - Not applicable for Runway */}
+                      {/* Audio - Not applicable for Runway */}
+                    </div>
+                  );
+                }
 
-                  // Runway Models: Full customization
-                  if (selectedModel.includes("gen4") || selectedModel.includes("gen3a")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Runway models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                      </div>
-                    );
-                  }
-
-                  // MiniMax & Director Models
-                  if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Resolution - For MiniMax models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={selectedResolution}
-                          onFrameSizeChange={setSelectedResolution}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          miniMaxDuration={selectedMiniMaxDuration}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Duration - For MiniMax models */}
-                        <VideoDurationDropdown
-                          selectedDuration={selectedMiniMaxDuration}
-                          onDurationChange={setSelectedMiniMaxDuration}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                        />
-                      </div>
-                    );
-                  }
+                // MiniMax & Director Models
+                if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap items-center min-h-[30px] md:min-h-0">
+                      {/* Resolution - For MiniMax models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={selectedResolution}
+                        onFrameSizeChange={setSelectedResolution}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        miniMaxDuration={selectedMiniMaxDuration}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Duration - For MiniMax models */}
+                      <VideoDurationDropdown
+                        selectedDuration={selectedMiniMaxDuration}
+                        onDurationChange={setSelectedMiniMaxDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
 
                   return null;
                 })()}

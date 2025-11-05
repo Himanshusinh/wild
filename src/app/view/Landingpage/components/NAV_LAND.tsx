@@ -420,7 +420,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                                 setIsMobileMenuOpen(false)
                               }}
                             >
-                              Mockups Generation
+                              Sticker Generation
                             </div>
                             <div
                               className="py-1.5 text-[14px] text-gray-200 hover:text-white cursor-pointer"

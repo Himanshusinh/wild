@@ -32,7 +32,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     <>
       {/* Backdrop with blur */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] left-[68px]"
+        className="fixed inset-0 bg-black/90 md:bg-black/60 backdrop-blur-sm z-[60] left-[68px]"
         onClick={onClose}
       />
       

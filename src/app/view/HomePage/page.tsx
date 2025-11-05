@@ -349,7 +349,7 @@ const HomePage: React.FC = () => {
         <>
           {/* Overlay */}
           <div
-            className="fixed inset-0 bg-black z-[200] flex items-center justify-center"
+            className="fixed inset-0 bg-black/90 md:bg-black z-[200] flex items-center justify-center"
             onClick={() => setShowWildmindSkitPopup(false)}
           >
             {/* Popup Content */}
