@@ -1155,11 +1155,14 @@ const InputBox = () => {
         // Replicate Seedream v4 (supports T2I and I2I with multi-image input)
         try {
           // Build Seedream payload per new schema
+          const seedreamAllowedAspect = new Set([
+            'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
+          ]);
           const payload: any = {
             prompt: `${prompt} [Style: ${style}]`,
             model: 'bytedance/seedream-4',
             size: seedreamSize,
-            aspect_ratio: frameSize,
+            aspect_ratio: seedreamAllowedAspect.has(frameSize) ? frameSize : 'match_input_image',
             sequential_image_generation: 'disabled',
             max_images: Math.min(imageCount, 4),
             isPublic,

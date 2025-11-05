@@ -1271,7 +1271,7 @@ export const creditDistributionData: ModelCreditInfo[] = [
       planC: 19.80769231,
       planD: 63.38461538,
       free: 1.320512821,
-    },
+  },
   },
   // Wan 2.5 Fast (T2V/I2V) - from sheet
   {
