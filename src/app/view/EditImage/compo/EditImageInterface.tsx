@@ -415,11 +415,11 @@ const EditImageInterface: React.FC = () => {
 
   // Feature preview assets and display labels
   const featurePreviewGif: Record<EditFeature, string> = {
-    'upscale': '/styles/Logo.gif',
-    'remove-bg': '/styles/Logo.gif',
-    'fill': '/styles/Logo.gif',
-    'resize': '/styles/Logo.gif',
-    'vectorize': '/styles/Logo.gif',
+    'upscale': '/editimage/upscale_banner.jpg',
+    'remove-bg': '/editimage/RemoveBG_banner.jpg',
+    'fill': '/editimage/replace_banner.jpg',
+    'resize': '/editimage/resize_banner.jpg',
+    'vectorize': '/editimage/vector_banner.jpg',
   };
   const featureDisplayName: Record<EditFeature, string> = {
     'upscale': 'Upscale',
