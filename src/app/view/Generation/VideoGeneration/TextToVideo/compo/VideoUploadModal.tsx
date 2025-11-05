@@ -138,15 +138,29 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                           onLoadedData={(e) => {
                             const el = e.currentTarget as HTMLVideoElement;
                             try {
-                              if ((!el.poster || el.poster === '') && el.videoWidth && el.videoHeight) {
-                                const c = document.createElement('canvas');
-                                c.width = el.videoWidth;
-                                c.height = el.videoHeight;
-                                const ctx = c.getContext('2d');
-                                if (ctx) {
-                                  ctx.drawImage(el, 0, 0, c.width, c.height);
-                                  const dataUrl = c.toDataURL('image/jpeg', 0.7);
-                                  if (dataUrl) el.poster = dataUrl;
+                              if ((!el.poster || el.poster === '')) {
+                                const capture = () => {
+                                  if (!el.videoWidth || !el.videoHeight) return;
+                                  const c = document.createElement('canvas');
+                                  c.width = el.videoWidth;
+                                  c.height = el.videoHeight;
+                                  const ctx = c.getContext('2d');
+                                  if (ctx) {
+                                    ctx.drawImage(el, 0, 0, c.width, c.height);
+                                    try {
+                                      const dataUrl = c.toDataURL('image/jpeg', 0.7);
+                                      if (dataUrl) el.poster = dataUrl;
+                                    } catch {}
+                                  }
+                                };
+                                if (el.readyState >= 2) {
+                                  const target = Math.min(0.1, Math.max(0.01, (el.duration || 0.2) / 20));
+                                  const onSeeked = () => { el.removeEventListener('seeked', onSeeked); capture(); };
+                                  el.addEventListener('seeked', onSeeked, { once: true });
+                                  try { el.currentTime = target; } catch { capture(); }
+                                } else {
+                                  const onLoaded = () => { el.removeEventListener('loadedmetadata', onLoaded); capture(); };
+                                  el.addEventListener('loadedmetadata', onLoaded, { once: true });
                                 }
                               }
                             } catch {}

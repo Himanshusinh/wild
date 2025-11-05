@@ -2729,6 +2729,7 @@ const InputBox = () => {
                                       <video
                                         src={proxied}
                                         className="w-full h-full object-cover transition-opacity duration-200"
+                                        crossOrigin="anonymous"
                                         muted
                                         playsInline
                                         loop
@@ -2739,17 +2740,30 @@ const InputBox = () => {
                                           const videoElement = e.target as HTMLVideoElement;
                                           try {
                                             const needsPoster = !videoElement.poster || videoElement.poster.trim() === '';
-                                            if (needsPoster && videoElement.videoWidth && videoElement.videoHeight) {
-                                              const canvas = document.createElement('canvas');
-                                              canvas.width = videoElement.videoWidth;
-                                              canvas.height = videoElement.videoHeight;
-                                              const ctx = canvas.getContext('2d');
-                                              if (ctx) {
-                                                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                                                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                                                if (dataUrl) {
-                                                  videoElement.poster = dataUrl;
+                                            if (needsPoster) {
+                                              const capture = () => {
+                                                if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+                                                const canvas = document.createElement('canvas');
+                                                canvas.width = videoElement.videoWidth;
+                                                canvas.height = videoElement.videoHeight;
+                                                const ctx = canvas.getContext('2d');
+                                                if (ctx) {
+                                                  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                                                  try {
+                                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                                                    if (dataUrl) videoElement.poster = dataUrl;
+                                                  } catch {}
                                                 }
+                                              };
+                                              if (videoElement.readyState >= 2) {
+                                                // Seek a tiny offset to ensure frame is decodable on some browsers
+                                                const target = Math.min(0.1, Math.max(0.01, (videoElement.duration || 0.2) / 20));
+                                                const onSeeked = () => { videoElement.removeEventListener('seeked', onSeeked); capture(); };
+                                                videoElement.addEventListener('seeked', onSeeked, { once: true });
+                                                try { videoElement.currentTime = target; } catch { capture(); }
+                                              } else {
+                                                const onLoaded = () => { videoElement.removeEventListener('loadedmetadata', onLoaded); capture(); };
+                                                videoElement.addEventListener('loadedmetadata', onLoaded, { once: true });
                                               }
                                             }
                                           } catch {}
