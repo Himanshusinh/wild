@@ -2814,16 +2814,24 @@ const InputBox = () => {
                                           }
                                         }}
                                         onLoadedData={(e) => {
-                                          // Create thumbnail from video
+                                          // Create a thumbnail poster if none available (non-Zata sources)
                                           const videoElement = e.target as HTMLVideoElement;
-                                          const canvas = document.createElement('canvas');
-                                          canvas.width = videoElement.videoWidth;
-                                          canvas.height = videoElement.videoHeight;
-                                          const ctx = canvas.getContext('2d');
-                                          if (ctx) {
-                                            ctx.drawImage(videoElement, 0, 0);
-                                            // You could use this canvas as thumbnail if needed
-                                          }
+                                          try {
+                                            const needsPoster = !videoElement.poster || videoElement.poster.trim() === '';
+                                            if (needsPoster && videoElement.videoWidth && videoElement.videoHeight) {
+                                              const canvas = document.createElement('canvas');
+                                              canvas.width = videoElement.videoWidth;
+                                              canvas.height = videoElement.videoHeight;
+                                              const ctx = canvas.getContext('2d');
+                                              if (ctx) {
+                                                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                                                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                                                if (dataUrl) {
+                                                  videoElement.poster = dataUrl;
+                                                }
+                                              }
+                                            }
+                                          } catch {}
 
                                           // Remove shimmer when video loads
                                           setTimeout(() => {

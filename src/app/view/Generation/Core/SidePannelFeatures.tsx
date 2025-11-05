@@ -7,6 +7,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Clapperboard } from 'lucide-react';
 import { imageRoutes } from '../../HomePage/routes';
 import { ensureSessionReady } from '@/lib/axiosInstance';
+import { useCredits } from '@/hooks/useCredits';
+import { getMeCached } from '@/lib/me';
 import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
 import { setCurrentView } from '@/store/slices/uiSlice';
 
@@ -38,6 +40,21 @@ const SidePannelFeatures = ({
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
   const videoEditDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const [userData, setUserData] = React.useState<any>(null);
+  const [avatarFailed, setAvatarFailed] = React.useState(false);
+
+  // Credits (shared with top nav)
+  const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits();
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const me = await getMeCached();
+        setUserData(me || null);
+        await refreshCredits();
+      } catch {}
+    })();
+  }, []);
 
 
 
@@ -159,7 +176,7 @@ const SidePannelFeatures = ({
       ref={sidebarRef}
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3  group transition-all text-white duration-200  backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40  shadow-2xl'
+      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl   group transition-all text-white duration-200  backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40  shadow-2xl'
       style={{
         // borderTopLeftRadius: '16px',
         // borderBottomLeftRadius: '16px',
@@ -312,7 +329,7 @@ const SidePannelFeatures = ({
         </div>
       </div>
 
-      
+
 
       {/* Wildmind Skit */}
       {/* <div>
@@ -422,7 +439,7 @@ const SidePannelFeatures = ({
         </div>
       </div>
 
-      
+
 
       <div>
         <div
@@ -442,6 +459,9 @@ const SidePannelFeatures = ({
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
         </div>
       </div>
+
+
+      
 
       {/* Bookmarks - Commented out for now */}
       {/* <div>
@@ -466,6 +486,43 @@ const SidePannelFeatures = ({
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Bookmarks</span>
             </div>
         </div> */}
+
+      {/* Bottom: credits + profile */}
+      <div className='mt-auto pb-3'>
+        <div className='flex items-center gap-2 px-2'>
+          
+          <div
+            onClick={() => router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)}
+            className={`flex items-center gap-2 p-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
+            role='button'
+            aria-label='Profile'
+          >
+            <div className='w-[30px] h-[30px] rounded-full overflow-hidden bg-white/10 flex items-center justify-center'>
+              {userData?.photoURL && !avatarFailed ? (
+                <img
+                  src={userData.photoURL}
+                  alt='profile'
+                  referrerPolicy='no-referrer'
+                  onError={() => setAvatarFailed(true)}
+                  className='w-full h-full object-cover'
+                />
+              ) : (
+                <Image src="/icons/person.svg" alt='profile' width={24} height={24} className='w-5 h-5' />
+              )}
+            </div>
+            {/* <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Profile</span> */}
+          </div>
+
+          <button
+            onClick={() => refreshCredits()}
+            className='text-xs flex items-center gap-2 bg-white/15 border border-white/15 backdrop-blur-3xl rounded-full shadow-xl p-1 px-0 overflow-hidden w-0 opacity-0 pointer-events-none group-hover:w-auto group-hover:px-2 group-hover:opacity-100 group-hover:pointer-events-auto transition-all'
+            title={`Credits: ${creditBalance ?? userData?.credits ?? 0}${creditsError ? ` (Error: ${creditsError})` : ''}`}
+          >
+            {creditsLoading ? '...' : (creditBalance ?? userData?.credits ?? 0)}
+            <Image className='cursor-pointer w-4 h-4' src="/icons/coinswhite.svg" alt='credits' width={16} height={16} />
+          </button>
+        </div>
+      </div>
 
 
     </div>

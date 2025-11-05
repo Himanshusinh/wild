@@ -135,6 +135,22 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                           loop
                           preload="metadata"
                           poster={toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined}
+                          onLoadedData={(e) => {
+                            const el = e.currentTarget as HTMLVideoElement;
+                            try {
+                              if ((!el.poster || el.poster === '') && el.videoWidth && el.videoHeight) {
+                                const c = document.createElement('canvas');
+                                c.width = el.videoWidth;
+                                c.height = el.videoHeight;
+                                const ctx = c.getContext('2d');
+                                if (ctx) {
+                                  ctx.drawImage(el, 0, 0, c.width, c.height);
+                                  const dataUrl = c.toDataURL('image/jpeg', 0.7);
+                                  if (dataUrl) el.poster = dataUrl;
+                                }
+                              }
+                            } catch {}
+                          }}
                           onMouseEnter={async (e) => {
                             const video = e.currentTarget;
                             console.log('🎥 VIDEO HOVER ENTER (UploadModal):', {
@@ -205,14 +221,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                               console.log('🎥 Video paused on click');
                             }
                           }}
-                          onLoadedData={(e) => {
-                            const video = e.target as HTMLVideoElement;
-                            video.currentTime = 1; // Show frame at 1 second
-                            console.log('🎥 VIDEO DATA LOADED (UploadModal):', {
-                              videoDuration: video.duration,
-                              videoReadyState: video.readyState
-                            });
-                          }}
+                          
                         />
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
