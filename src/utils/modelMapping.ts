@@ -147,6 +147,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
     }
   },
   {
+    frontendValue: 'MiniMax-Hailuo-2.3',
+    creditModelName: 'Minimax-Hailuo-2.3', // Base name, resolution/duration appended dynamically
+    generationType: 'video',
+    provider: 'minimax',
+    options: {
+      resolution: ['768P', '1080P'],
+      duration: [6, 10]
+    }
+  },
+  {
+    frontendValue: 'MiniMax-Hailuo-2.3-Fast',
+    creditModelName: 'Minimax-Hailuo-2.3 Fast', // Base name, resolution/duration appended dynamically
+    generationType: 'video',
+    provider: 'minimax',
+    options: {
+      resolution: ['768P', '1080P'],
+      duration: [6, 10]
+    }
+  },
+  {
     frontendValue: 'T2V-01-Director',
     creditModelName: 'T2V-01-Director',
     generationType: 'video',
@@ -588,6 +608,14 @@ export const buildCreditModelName = (
   // Handle MiniMax video models with resolution and duration
   if (mapping.frontendValue === 'MiniMax-Hailuo-02' && options?.resolution && options?.duration) {
     modelName = `Minimax-Hailuo-02 ${options.resolution} ${options.duration}s`;
+  }
+  // Handle MiniMax 2.3 Standard
+  else if (mapping.frontendValue === 'MiniMax-Hailuo-2.3' && options?.resolution && options?.duration) {
+    modelName = `Minimax-Hailuo-2.3 ${options.resolution} ${options.duration}s`;
+  }
+  // Handle MiniMax 2.3 Fast
+  else if (mapping.frontendValue === 'MiniMax-Hailuo-2.3-Fast' && options?.resolution && options?.duration) {
+    modelName = `Minimax-Hailuo-2.3 Fast ${options.resolution} ${options.duration}s`;
   }
   // Handle Runway turbo models with duration
   else if ((mapping.frontendValue === 'gen4_turbo' || mapping.frontendValue === 'gen3a_turbo') && options?.duration) {
