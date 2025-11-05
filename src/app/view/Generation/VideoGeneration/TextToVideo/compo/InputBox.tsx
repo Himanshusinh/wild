@@ -2922,7 +2922,7 @@ const InputBox = () => {
               <svg className={`w-3 h-3 transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
             </button>
             {showModeDropdown && (
-              <div className="absolute right-0 bottom-full mb-2 w-[25vw] bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50 md:bottom-auto md:top-full md:mt-2 md:w-auto">
+              <div className="absolute right-0 bottom-full mb-2 w-32 md:w-auto bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50 md:bottom-auto md:top-full md:mt-2">
                 <button onClick={() => { setGenerationMode('text_to_video'); setShowModeDropdown(false); }} className={`w-full text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='text_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Text→Video</button>
                 <button onClick={() => { setGenerationMode('image_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='image_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Image→Video</button>
                 <button onClick={() => { setGenerationMode('video_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='video_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>Video→Video</button>
@@ -3384,7 +3384,7 @@ const InputBox = () => {
                     <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
-                    <span className="hidden md:inline">Generate Video</span>
+                    <span className="hidden md:inline">Generate</span>
                   </>
                 )}
               </button>

@@ -233,7 +233,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
 
   return (
-    <div className="fixed inset-0 bg-black/90 md:bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
+    <div className="fixed inset-0 mt-15 bg-black/90 md:bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
       <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
@@ -246,7 +246,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
         {/* Content */}
         <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[35vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image 
                 src={selectedImage.url} 
@@ -271,156 +271,161 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar mt-10">
-            {/* Action Buttons */}
-            <div className="mb-4 flex gap-2">
-              <div className="relative group flex-1">
-                <button
-                  onClick={handleDownload}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-                  aria-label="Download"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
-                </button>
-                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
-              </div>
-
-              <div className="relative group flex-1">
-                <button
-                  onClick={() => {
-                    if (navigator.share && selectedImage?.url) {
-                      navigator.share({ title: 'Check out this image', url: selectedImage.url });
-                    } else if (selectedImage?.url) {
-                      window.prompt('Copy and share this image URL:', selectedImage.url);
-                    }
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-                  aria-label="Share"
-                >
-                  <Share className="h-4 w-4" />
-                </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
-              </div>
-
-              <div className="relative group flex-1">
-                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
-              </div>
-
-              <div className="relative group flex-1">
-                <button
-                  onClick={toggleVisibility}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-                  aria-pressed={isPublicFlag}
-                  aria-label="Toggle visibility"
-                  title={isPublicFlag ? 'Public' : 'Private'}
-                >
-                  {isPublicFlag ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
-                  )}
-                </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
-              </div>
-            </div>
-
-            {/* Prompt */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
-                <span>Prompt</span>
-                <button 
-                  onClick={() => copyPrompt(userPrompt, `preview-${entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
-                    copiedButtonId === `preview-${entry.id}` 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                >
-                  {copiedButtonId === `preview-${entry.id}` ? (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 6L9 17l-5-5"/>
-                      </svg>
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {userPrompt}
-              </div>
-              {isLongPrompt && (
-                <button
-                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-                  className="mt-2 text-xs text-white/70 hover:text-white underline"
-                >
-                  Read {isPromptExpanded ? 'less' : 'more'}
-                </button>
-              )}
-            </div>
-            
-            {/* Date */}
-            <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
-            </div>
-
-            {/* Details */}
-            <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Details</div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white text-sm">{getModelDisplayName(entry.model)}</span>
+          <div className="relative md:p-5 text-white white/10 bg-transparent h-[calc(100vh-35vh-60px)] md:h-full md:w-[34%] mt-4 md:mt-10 flex flex-col">
+            {/* Action Buttons - Fixed on mobile to match ImagePreview */}
+            <div className="md:mb-4 sticky md:relative top-0 md:top-auto left-0 right-0 md:left-auto md:right-auto z-40 md:z-auto p-4 md:p-0 bg-transparent md:bg-transparent backdrop-blur-0 md:backdrop-blur-0 border-b-0 md:border-b-0 md:mb-4 flex-shrink-0">
+              <div className="flex gap-2">
+                <div className="relative group flex-1">
+                  <button
+                    onClick={handleDownload}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                    aria-label="Download"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                  </button>
+                  <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Format:</span>
-                  <span className="text-white text-sm">Product</span>
+
+                <div className="relative group flex-1">
+                  <button
+                    onClick={() => {
+                      if (navigator.share && selectedImage?.url) {
+                        navigator.share({ title: 'Check out this image', url: selectedImage.url });
+                      } else if (selectedImage?.url) {
+                        window.prompt('Copy and share this image URL:', selectedImage.url);
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                    aria-label="Share"
+                  >
+                    <Share className="h-4 w-4" />
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+                </div>
+
+                <div className="relative group flex-1">
+                  <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+                </div>
+
+                <div className="relative group flex-1">
+                  <button
+                    onClick={toggleVisibility}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                    aria-pressed={isPublicFlag}
+                    aria-label="Toggle visibility"
+                    title={isPublicFlag ? 'Public' : 'Private'}
+                  >
+                    {isPublicFlag ? (
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
+                    )}
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
                 </div>
               </div>
             </div>
 
-            {/* Gallery */}
-            {entry.images.length > 1 && (
+            {/* Scrollable Content */}
+            <div className="p-4 md:p-0 flex-1 overflow-y-auto custom-scrollbar pb-28 md:pb-0">
+              {/* Date */}
+              <div className="mb-1 ">
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+                <div className="text-white text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+              </div>
+
+              {/* Prompt */}
               <div className="mb-4">
-                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Products ({entry.images.length})</div>
-                <div className="grid grid-cols-4 gap-2">
-                  {entry.images.map((image, index) => (
-                    <button
-                      key={image.id}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
-                    >
-                      <Image
-                        src={image.url}
-                        alt={`Product ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+                  <span>Prompt</span>
+                  <button 
+                    onClick={() => copyPrompt(userPrompt, `preview-${entry.id}`)}
+                    className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                      copiedButtonId === `preview-${entry.id}` 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    {copiedButtonId === `preview-${entry.id}` ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
+                  {userPrompt}
+                </div>
+                {isLongPrompt && (
+                  <button
+                    onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                    className="mt-2 text-xs text-white/70 hover:text-white underline"
+                  >
+                    Read {isPromptExpanded ? 'less' : 'more'}
+                  </button>
+                )}
+              </div>
+
+              {/* Details */}
+              <div className="mb-4">
+                <div className="text-white/80 text-xs uppercase tracking-wider mb-2">Details</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Model:</span>
+                    <span className="text-white text-sm">{getModelDisplayName(entry.model)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Format:</span>
+                    <span className="text-white text-sm">Product</span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Action Button */}
-            <div className="mt-6">
-              <button 
-                onClick={onClose}
-                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
-              >
-                Close Preview
-              </button>
+              {/* Gallery */}
+              {entry.images.length > 1 && (
+                <div className="mb-4">
+                  <div className="text-white/80 text-xs uppercase tracking-wider mb-2">Products ({entry.images.length})</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {entry.images.map((image, index) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setSelectedImageIndex(index)}
+                        className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
+                      >
+                        <Image
+                          src={image.url}
+                          alt={`Product ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Button */}
+              <div className="mt-6">
+                <button 
+                  onClick={onClose}
+                  className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+                >
+                  Close Preview
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -687,7 +687,7 @@ const InputBox = () => {
       </div>
 
       {/* Input Section */}
-      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] z-[60] h-auto">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] lg:max-w-[840px] z-[60] h-auto">
         <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
           <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
@@ -702,7 +702,7 @@ const InputBox = () => {
                 autoComplete="off"
                 autoCorrect="on"
                 autoCapitalize="on"
-                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed"
+                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed lg:h-[4rem]"
               />
               {/* Fixed position buttons container */}
               <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
@@ -758,7 +758,7 @@ const InputBox = () => {
                     <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
-                    <span className="hidden md:inline">Generate Sticker</span>
+                    <span className="hidden md:inline">Generate</span>
                   </>
                 )}
               </button>

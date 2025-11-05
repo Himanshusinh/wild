@@ -84,7 +84,7 @@ const LiveChatModelsDropdown: React.FC = () => {
           selectedModel !== 'flux-kontext-pro'
             ? 'bg-white text-black'
             : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        } md:bg-white md:text-black md:hover:bg-white`}
       >
         <Cpu className="w-4 h-4 mr-1" />
         {currentModel?.name || 'Models'}

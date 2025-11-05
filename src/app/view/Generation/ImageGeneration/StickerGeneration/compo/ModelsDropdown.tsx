@@ -70,7 +70,7 @@ const ModelsDropdown = () => {
           selectedModel !== 'gemini-25-flash-image'
             ? 'bg-white text-black'
             : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        } md:bg-white md:text-black md:hover:bg-white`}
       >
         {(() => {
           const currentModel = modelsWithCredits.find(m => m.value === selectedModel);
@@ -79,7 +79,7 @@ const ModelsDropdown = () => {
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${activeDropdown === 'models' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'models' && (
-        <div className="absolute bottom-full left-0 mb-2 w-full md:w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 max-h-[50vh] md:max-h-none overflow-y-auto dropdown-scrollbar">
+        <div className="absolute bottom-full left-0 max-w-44 mb-2 ml-6 md:w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 max-h-[50vh] md:max-h-none overflow-y-auto dropdown-scrollbar">
           {modelsWithCredits.map((model) => (
             <button
               key={model.value}

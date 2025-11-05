@@ -699,7 +699,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       </div>
 
       {/* Input Section */}
-      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 w-[94%] md:w-[90%] md:max-w-[780px] z-[60] h-auto">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 w-[94%] md:w-[90%] lg:w-[90%] md:max-w-[780px] lg:max-w-[840px] z-[60] h-auto">
         <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
             <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4 pl-1.5 md:pl-2 py-1.5 md:py-2.5 w-full relative">
@@ -713,7 +713,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                 autoComplete="off"
                 autoCorrect="on"
                 autoCapitalize="on"
-                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed"
+                className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed lg:h-[4rem]"
               />
               {prompt.trim() && (
                 <div className="relative group">
@@ -764,7 +764,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                     <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
-                    <span className="hidden md:inline">Generate Logo</span>
+                    <span className="hidden md:inline">Generate</span>
                   </>
                 )}
               </button>

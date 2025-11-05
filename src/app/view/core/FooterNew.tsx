@@ -64,7 +64,7 @@ const FooterNew: React.FC = () => {
            </div>
            <div className="relative z-10">
             {/* Main Footer Content */}
-            <div className="py-8 md:py-6 lg:py-8 border-b border-white/10">
+            <div className="py-8 md:py-6 lg:py-8 lg:ml-56 border-b border-white/10">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8">
                 {/* Logo and Brand */}
                 <div className="lg:col-span-1 w-[100%] ">
@@ -184,7 +184,7 @@ const FooterNew: React.FC = () => {
                 </div>
 
                 {/* Company Category */}
-                <div className="space-y-4 ml-0 md:ml-6">
+                {/* <div className="space-y-4 ml-0 md:ml-6">
                   <h3 className="text-white font-semibold text-sm uppercase tracking-wider">
                     Company
                   </h3>
@@ -225,7 +225,7 @@ const FooterNew: React.FC = () => {
                       </Link>
                     </li>
                   </ul>
-                </div>
+                </div> */}
 
                 <div className="space-y-4 ml-0 md:ml-6">
                   <h3 className="text-white font-semibold text-sm uppercase tracking-wider">

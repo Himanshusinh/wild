@@ -10,7 +10,7 @@ interface FeatureItem {
 
 const brandingFeatures: FeatureItem[] = [
   { title: "Logo Generation", href: BRANDINGKIT.LOGO_GENERATION, icon: "🏢" },
-  { title: "Mockup Generation", href: BRANDINGKIT.MOCKUP_GENERATION, icon: "📱" },
+  { title: "Sticker Generation", href: BRANDINGKIT.MOCKUP_GENERATION, icon: "📱" },
   { title: "Product with Models", href: BRANDINGKIT.PRODUCT_WITH_MODEL_POSE, icon: "🧍" },
   // { title: "Product Generation", href: BRANDINGKIT.PRODUCT_GENERATION, icon: "📦" },
 ]

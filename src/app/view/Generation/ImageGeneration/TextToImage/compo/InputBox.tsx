@@ -2002,7 +2002,7 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] z-[60] h-auto">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] lg:max-w-[840px] z-[60] h-auto">
         <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
           <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
@@ -2186,9 +2186,9 @@ const InputBox = () => {
 
             <div className="flex flex-wrap items-center gap-1.5 md:gap-3 flex-1 min-w-0">
               <ModelsDropdown />
-              <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
+              <ImageCountDropdown />
               <LucidOriginOptions />
               <PhoenixOptions />
               <FileTypeDropdown />

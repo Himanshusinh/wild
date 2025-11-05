@@ -157,7 +157,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${activeDropdown === 'frameSize' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'frameSize' && (
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-[min(35vw,320px)] md:w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 max-w-44  md:w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2`}>
           {frameSizes.map((size) => (
             <button
               key={size.value}
