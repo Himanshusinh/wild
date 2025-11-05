@@ -48,7 +48,7 @@ const SidePannelFeatures = ({
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [userData, setUserData] = React.useState<any>(null);
   const [avatarFailed, setAvatarFailed] = React.useState(false);
-
+  
   // Credits (shared with top nav)
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits();
 
