@@ -14,11 +14,11 @@ import Squares from './Squares'
 
 const FooterNew: React.FC = () => {
   const legalLinks = [
-    { name: "Terms of use", href: "/view/policy?page=tos" },
-    { name: "Privacy Policy", href: "/view/policy?page=privacy" },
-    { name: "Cookies", href: "/view/policy?page=cookie" },
-    { name: "Legal Notice", href: "/view/policy?page=aup" },
-    { name: "DMCA", href: "/view/policy?page=dmca" },
+    { name: "Terms of use", href: "/view/policy?page=tos", target: "_blank" },
+    { name: "Privacy Policy", href: "/view/policy?page=privacy", target: "_blank" },
+    { name: "Cookies", href: "/view/policy?page=cookie", target: "_blank" },
+    { name: "Legal Notice", href: "/view/policy?page=aup", target: "_blank" },
+    { name: "DMCA", href: "/view/policy?page=dmca", target: "_blank" },
   ];
 
   // const socialLinks = [
@@ -161,17 +161,17 @@ const FooterNew: React.FC = () => {
                       </Link>
                     </li>
                     <li>
-                      <Link href="/view/policy?page=tos" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="/view/policy?page=tos" target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Terms for Use
                       </Link>
                     </li>
                     <li>
-                      <Link href="/view/policy?page=privacy" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="/view/policy?page=privacy" target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Privacy Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="/view/policy?page=cookie" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href="/view/policy?page=cookie" target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Cookie Policy
                       </Link>
                     </li>
@@ -280,6 +280,8 @@ const FooterNew: React.FC = () => {
                   <Link
                     key={link.name}
                     href={link.href}
+                    target={link.target || "_self"}
+                    rel={link.target === "_blank" ? "noopener noreferrer" : undefined}
                     className="text-gray-400 text-sm hover:text-white transition-colors duration-200 mb:text-xs"
                   >
                     {link.name}
