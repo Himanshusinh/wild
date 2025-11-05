@@ -660,12 +660,13 @@ const LiveChatGrid: React.FC<{ showCenterView: boolean; selectedUrl: string | nu
     <div className="space-y-8">
       {groupedByDate.map(({ date, images }) => {
         const dateObj = new Date(date);
-        const dateStr = dateObj.toLocaleDateString('en-US', {
+        const dateStr = new Intl.DateTimeFormat('en-US', {
           weekday: 'short',
           year: 'numeric',
           month: 'short',
-          day: 'numeric'
-        });
+          day: 'numeric',
+          timeZone: 'UTC'
+        }).format(dateObj);
         
         return (
           <div key={date} className="space-y-4">
