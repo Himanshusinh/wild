@@ -151,76 +151,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                               }
                             } catch {}
                           }}
-                          onMouseEnter={async (e) => {
-                            const video = e.currentTarget;
-                            console.log('🎥 VIDEO HOVER ENTER (UploadModal):', {
-                              videoSrc: video.src,
-                              videoReadyState: video.readyState,
-                              videoPaused: video.paused
-                            });
-                            
-                            try {
-                              // Force video to load if not ready
-                              if (video.readyState < 2) {
-                                console.log('⏳ Video not ready, loading...');
-                                video.load();
-                                await new Promise((resolve) => {
-                                  video.addEventListener('loadeddata', resolve, { once: true });
-                                  video.addEventListener('error', resolve, { once: true });
-                                });
-                              }
-                              
-                              console.log('🎥 Video ready, attempting to play...');
-                              video.currentTime = 1; // Start from 1 second for preview
-                              await video.play();
-                              console.log('✅ Video started playing successfully on hover!');
-                            } catch (error: any) {
-                              console.error('❌ Video play failed on hover:', error);
-                              console.log('Video error details:', {
-                                code: error.code,
-                                message: error.message,
-                                name: error.name,
-                                readyState: video.readyState,
-                                networkState: video.networkState
-                              });
-                              
-                              // Try alternative approach - muted autoplay
-                              console.log('🔄 Trying alternative play method...');
-                              video.muted = true; // Ensure muted for autoplay
-                              try {
-                                await video.play();
-                                console.log('✅ Video started playing with muted autoplay!');
-                              } catch (retryError) {
-                                console.error('❌ Retry also failed:', retryError);
-                              }
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            const video = e.currentTarget;
-                            console.log('🎥 VIDEO HOVER LEAVE (UploadModal)');
-                            video.pause();
-                            video.currentTime = 1; // Reset to 1 second frame
-                          }}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const video = e.currentTarget;
-                            console.log('🎥 VIDEO CLICKED (UploadModal)');
-                            
-                            if (video.paused) {
-                              try {
-                                video.currentTime = 1; // Start from 1 second for preview
-                                await video.play();
-                                console.log('✅ Video started playing on click!');
-                              } catch (error) {
-                                console.error('❌ Video play failed on click:', error);
-                              }
-                            } else {
-                              video.pause();
-                              video.currentTime = 1; // Reset to 1 second frame
-                              console.log('🎥 Video paused on click');
-                            }
-                          }}
+                          
                           
                         />
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
