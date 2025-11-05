@@ -1882,7 +1882,7 @@ const InputBox = () => {
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
                               onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
