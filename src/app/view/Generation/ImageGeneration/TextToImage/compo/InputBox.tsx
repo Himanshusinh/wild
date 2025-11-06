@@ -1892,7 +1892,7 @@ const InputBox = () => {
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <button
                               aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
                               onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
@@ -2007,6 +2007,8 @@ const InputBox = () => {
           {/* Top row: prompt + actions */}
           <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
             <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4 pl-1.5 md:pl-2 py-1.5 md:py-2.5 w-full relative">
+          <div className="flex items-start gap-0 px-3  pr-0">
+            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-4 w-full relative">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -2243,6 +2245,18 @@ const InputBox = () => {
                   )}
                 </div>
               )}
+</div>
+              
+              <div><div className="flex flex-col items-end gap-2 flex-shrink-0 justify-end">
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={isGeneratingLocally || !prompt.trim()}
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+              >
+                {isGeneratingLocally ? "Generating..." : "Generate"}
+              </button>
+            </div></div>
             </div>
           </div>
         </div>

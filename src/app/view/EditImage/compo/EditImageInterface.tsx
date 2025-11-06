@@ -163,13 +163,32 @@ const EditImageInterface: React.FC = () => {
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
           const frontendProxied = `/api/proxy/resource/${encodeURIComponent(storagePathParam)}`;
-          setInputs((prev) => ({ ...prev, [validFeature]: frontendProxied }));
+          // Apply to all features so switching tabs preserves the same input
+          setInputs({
+            'upscale': frontendProxied,
+            'remove-bg': frontendProxied,
+            'resize': frontendProxied,
+            'fill': frontendProxied,
+            'vectorize': frontendProxied,
+          });
         } else if (imageParam && imageParam.trim() !== '') {
-          setInputs((prev) => ({ ...prev, [validFeature]: imageParam }));
+          setInputs({
+            'upscale': imageParam,
+            'remove-bg': imageParam,
+            'resize': imageParam,
+            'fill': imageParam,
+            'vectorize': imageParam,
+          });
         }
       } else if (imageParam && imageParam.trim() !== '') {
         // Fallback: if only image provided, attach to current feature
-        setInputs((prev) => ({ ...prev, [selectedFeature]: imageParam }));
+        setInputs({
+          'upscale': imageParam,
+          'remove-bg': imageParam,
+          'resize': imageParam,
+          'fill': imageParam,
+          'vectorize': imageParam,
+        });
       }
     } catch { }
     // Only run once on mount for initial hydration from URL
@@ -398,13 +417,36 @@ const EditImageInterface: React.FC = () => {
     { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
   ] as const;
 
+  // Feature preview assets and display labels
+  const featurePreviewGif: Record<EditFeature, string> = {
+    'upscale': '/editimage/upscale_banner.jpg',
+    'remove-bg': '/editimage/RemoveBG_banner.jpg',
+    'fill': '/editimage/replace_banner.jpg',
+    'resize': '/editimage/resize_banner.jpg',
+    'vectorize': '/editimage/vector_banner.jpg',
+  };
+  const featureDisplayName: Record<EditFeature, string> = {
+    'upscale': 'Upscale',
+    'remove-bg': 'Remove BG',
+    'fill': 'Replace',
+    'resize': 'Resize',
+    'vectorize': 'Vectorize',
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = e.target?.result as string;
-        setInputs((prev) => ({ ...prev, [selectedFeature]: img }));
+        // Apply selected image to all features
+        setInputs({
+          'upscale': img,
+          'remove-bg': img,
+          'resize': img,
+          'fill': img,
+          'vectorize': img,
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -1041,48 +1083,13 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className=" bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-50 px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:px-5 pt-10">
+      <div className="w-full fixed top-0 z-30 px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-10">
         <div className="flex items-center gap-4">
-          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-14 lg:ml-14 ">
+          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-7 lg:ml-7 ">
             <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
             <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar md:gap-9 ml-6 sm:ml-8 md:ml-12 md:ml-34">
-            {features.map((feature) => (
-              <div
-                key={feature.id}
-                onClick={() => {
-                  setSelectedFeature(feature.id as EditFeature);
-                  // Ensure sensible default model per feature when switching tabs
-                  if (feature.id === 'remove-bg') {
-                    setModel('851-labs/background-remover');
-                  } else if (feature.id === 'upscale') {
-                    setModel('nightmareai/real-esrgan');
-                  } else if (feature.id === 'vectorize') {
-                    setModel('fal-ai/recraft/vectorize' as any);
-                  }
-                  setProcessing((p) => ({ ...p, [feature.id]: false }));
-                }}
-                className={`min-w-[220px] bg-white/5 rounded-lg p-2 border cursor-pointer transition-all md:min-w-auto md:p-3 ${selectedFeature === feature.id
-                  ? 'border-white/30 bg-white/10'
-                  : 'border-white/10 hover:bg-white/10'
-                  }`}
-              >
-                <div className="flex items-center gap-2 ml-1">
-                  <div className={`w-6 h-6 rounded flex items-center justify-center md:w-7 md:h-7 ${selectedFeature === feature.id ? 'bg-white/20' : 'bg-white/10'
-                    }`}>
-                    {feature.id === 'upscale' && (<img src="/icons/editimage1.svg" alt="Upscale" className="w-4 h-4 md:w-5 md:h-5" />)}
-                    {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-4 h-4 md:w-5 md:h-5" />)}
-                    {feature.id === 'resize' && (<img src="/icons/scaling.svg" alt="Resize" className="w-4 h-4 md:w-5 md:h-5" />)}
-                    {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-4 h-4 md:w-5 md:h-5" />)}
-                  </div>
-                  <div>
-                    <h3 className="text-white text-xs font-medium md:text-sm pr-2">{feature.label}</h3>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* feature tabs moved to left sidebar */}
         </div>
       </div>
       {/* Spacer to offset fixed header height */}
@@ -1107,13 +1114,21 @@ const EditImageInterface: React.FC = () => {
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {
-            setInputs((prev) => ({ ...prev, [selectedFeature]: first }));
+            // Apply selected image from modal to all features
+            setInputs({
+              'upscale': first,
+              'remove-bg': first,
+              'resize': first,
+              'fill': first,
+              'vectorize': first,
+            });
           }
         }}
       />
       <div className="flex flex-1 min-h-0 py-1 overflow-hidden pt-14" >
         {/* Left Sidebar - Controls */}
         <div className="w-1/2 md:w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-96 md:ml-8 sm:ml-16 md:ml-24 lg:ml-16 md:pt-6 lg:pt-8 xl:pt-12 2xl:pt-16">
+        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] ml-8 sm:ml-16 md:ml-9 lg:ml-9">
           {/* Error Message */}
           {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
@@ -1122,59 +1137,56 @@ const EditImageInterface: React.FC = () => {
           )}
 
 
-          {/* Input Image Upload (Fill mask overlays here) */}
-          <div className="px-3 md:px-4 ">
-            <h3 className="text-xs pl-0  font-medium text-white/80 mb-1 md:text-lg ">Input Image</h3>
+          {/* Feature tabs (two rows) */}
+          <div className="px-3 md:px-4 pt-3 w-auto">
+            <div className="grid grid-cols-4 gap-2">
+              {features.map((feature) => (
+                <button
+                  key={feature.id}
+                  onClick={() => {
+                    setSelectedFeature(feature.id as EditFeature);
+                    if (feature.id === 'remove-bg') {
+                      setModel('851-labs/background-remover');
+                    } else if (feature.id === 'upscale') {
+                      setModel('nightmareai/real-esrgan');
+                    } else if (feature.id === 'vectorize') {
+                      setModel('fal-ai/recraft/vectorize' as any);
+                    }
+                    setProcessing((p) => ({ ...p, [feature.id]: false }));
+                  }}
+                  className={`text-left bg-white/5 items-center justify-center rounded-lg p-1 h-18 w-auto border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                >
+                  <div className="flex items-center gap-0 justify-center">
+                    <div className={`w-6 h-6 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
+                      {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="w-6 h-6" />)}
+                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-6 h-6" />)}
+                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="w-5 h-5" />)}
+                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-6 h-6" />)}
+                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="w-7 h-7" />)}
+                    </div>
+                    
+                  </div>
+                  <div className="flex items-center justify-center pt-1">                  
+                    <span className="text-white text-xs md:text-sm text-center">{feature.label}</span>
+                  </div>
 
-            <div className="relative">
-              <div className="bg-white/5 rounded-xl border-2 border-dashed border-white/20 overflow-hidden min-h-[12rem] md:min-h-[14rem] md:min-h-[18rem]">
-                {inputs[selectedFeature] ? (
-                  <>
-                    <Image
-                      src={inputs[selectedFeature] as string}
-                      alt="Input"
-                      fill
-                      className="object-contain rounded-xl"
-                      onLoad={(e: any) => {
-                        try { setInputNaturalSize({ width: e?.target?.naturalWidth || 0, height: e?.target?.naturalHeight || 0 }); } catch { }
-                        // re-fit canvas on first load
-                        try { setTimeout(() => resizeCanvasToContainer(), 0); } catch { }
-                      }}
-                    />
-                    {/* Fill: mask canvas overlay over input image */}
-                    {(selectedFeature === 'fill' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
-                      <div ref={fillContainerRef} className="absolute inset-0">
-                        <canvas
-                          ref={fillCanvasRef}
-                          className="absolute inset-0 w-full h-full cursor-crosshair"
-                          onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
-                          onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
-                          onMouseUp={() => endMaskStroke()}
-                          onMouseLeave={() => endMaskStroke()}
-                        />
-                      </div>
-                    )}
-                    <button
-                      onClick={handleOpenUploadModal}
-                      className="absolute bottom-1 right-1 p-1.5 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
-                      aria-label="Change image"
-                    >
-                      <img src="/icons/fileupload.svg" alt="Upload" className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleOpenUploadModal}
-                    className="absolute inset-0 flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
-                  >
-                    <img src="/icons/fileupload.svg" alt="Upload" className="w-6 h-6 mb-1 md:w-7 md:h-7" />
-                    <span className="text-sm md:text-base">Upload Image</span>
-                  </button>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature Preview (GIF banner) */}
+          <div className="px-3 md:px-4 mb-2 pt-4">
+            <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
+              <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
+                {featureDisplayName[selectedFeature]}
               </div>
             </div>
           </div>
+
+          {/* Input Image section removed: unified canvas lives on the right */}
 
           {/* Vectorize model & parameters */}
           {selectedFeature === 'vectorize' && (
@@ -1740,49 +1752,87 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="p-4 flex items-start justify-center pt-7  ">
-            <div className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem] w-full max-w-6xl md:max-w-7xl   ">
+          <div className="p-4 flex items-start justify-center pt-3  ">
+            <div
+              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] w-full max-w-6xl md:max-w-7xl"
+              onDragOver={(e) => { try { e.preventDefault(); } catch {} }}
+              onDrop={(e) => {
+                try {
+                  e.preventDefault();
+                  const file = e.dataTransfer?.files?.[0];
+                  if (!file) return;
+                 const reader = new FileReader();
+                 reader.onload = (ev) => {
+                   const img = ev.target?.result as string;
+                   // Apply dropped image to all features so switching tabs preserves the same input
+                   setInputs({
+                     'upscale': img,
+                     'remove-bg': img,
+                     'resize': img,
+                     'fill': img,
+                     'vectorize': img,
+                   });
+                 };
+                  reader.readAsDataURL(file);
+                } catch {}
+              }}
+            >
               {/* Dotted grid background overlay */}
-              <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="absolute inset-0 z-0  pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               {outputs[selectedFeature] && (
-                <div className="absolute top-5 left-4 z-10 2xl:top-6 2xl:left-6">
+                <div className="absolute top-5 left-4 z-10 ">
                   <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
                 </div>
               )}
 
 
-              {/* Themed three dots menu - only show when there's an output */}
-              {outputs[selectedFeature] && (
-                <div
-                  className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4"
-                  onMouseEnter={() => setShowImageMenu(true)}
-                  onMouseLeave={() => setShowImageMenu(false)}
-                >
+              {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
+              {(outputs[selectedFeature] || inputs[selectedFeature]) && (
+                <div className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4 flex items-center gap-2">
+                  {outputs[selectedFeature] && (
+                    <div className="relative">
+                      <button
+                        ref={menuButtonRef}
+                        className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30 md:p-2"
+                        aria-haspopup="menu"
+                        aria-expanded={showImageMenu}
+                        onClick={() => setShowImageMenu(v => !v)}
+                      >
+                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="5" cy="12" r="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <circle cx="19" cy="12" r="2" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  {/* Upload other button next to menu */}
                   <button
-                    ref={menuButtonRef}
-                    className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-full transition-all duration-200 border border-white/30 md:p-3"
-                    aria-haspopup="menu"
-                    aria-expanded={showImageMenu}
+                    onClick={() => {
+                      // Do not clear existing image/output here. Only open the modal.
+                      // If user picks a new image, onAdd will replace the input.
+                      try { handleOpenUploadModal(); } catch {}
+                    }}
+                    className="p-2 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30"
+                    title="Upload other"
                   >
-                    <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <circle cx="5" cy="12" r="2" />
-                      <circle cx="12" cy="12" r="2" />
-                      <circle cx="19" cy="12" r="2" />
-                    </svg>
+                    <Image src="/icons/fileupload.svg" alt="Upload" width={18} height={18} />
                   </button>
 
+                  
+
                   {/* Themed dropdown menu */}
-                  {showImageMenu && (
-                    <div ref={menuRef} className="absolute bottom-12 left-0 bg-black/80 border border-white/30 rounded-xl shadow-2xl min-w-[160px] overflow-hidden md:min-w-[200px]">
+                  {outputs[selectedFeature] && showImageMenu && (
+                    <div ref={menuRef} className="absolute bottom-10 left-0 bg-black/80 border border-white/30 rounded-lg shadow-2xl min-w-[100px] overflow-hidden md:min-w-[150px]">
                       <button
                         onClick={async () => {
                           console.log('Download clicked!')
                           await handleDownloadOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-green-500/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-green-500/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-2"
                       >
-                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
                         Download
@@ -1793,7 +1843,7 @@ const EditImageInterface: React.FC = () => {
                           await handleShareOutput();
                           setShowImageMenu(false);
                         }}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-blue-500/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-3.5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-blue-500/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-2"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z" />
@@ -1814,7 +1864,7 @@ const EditImageInterface: React.FC = () => {
                             setShowImageMenu(false);
                           }
                         }}
-                        className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-3.5"
+                        className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-2"
                       >
                         <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -1836,32 +1886,27 @@ const EditImageInterface: React.FC = () => {
 
               {outputs[selectedFeature] ? (
                 <div className="w-full h-full relative">
-                  {selectedFeature === 'upscale' && inputs[selectedFeature] ? (
-                    // Upscale with toggle between comparison and zoom
-                    <div className="w-full h-full relative min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
-                      {/* View Mode Toggle - centered at bottom */}
-                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
-                        <div className="flex bg-black/80 rounded-lg p-1">
-                          <button
-                            onClick={() => setUpscaleViewMode('comparison')}
-                            className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'comparison'
-                                ? 'bg-white text-black'
-                                : 'text-white hover:bg-white/20'
-                              }`}
-                          >
-                            Compare
-                          </button>
-                          <button
-                            onClick={() => setUpscaleViewMode('zoom')}
-                            className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'zoom'
-                                ? 'bg-white text-black'
-                                : 'text-white hover:bg-white/20'
-                              }`}
-                          >
-                            Zoom
-                          </button>
+                  {(inputs[selectedFeature]) ? (
+                    // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
+                    <div className="w-full h-full relative min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] ">
+                      {inputs[selectedFeature] && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
+                          <div className="flex bg-black/80 rounded-lg p-1">
+                            <button
+                              onClick={() => setUpscaleViewMode('comparison')}
+                              className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'comparison' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                            >
+                              Compare
+                            </button>
+                            <button
+                              onClick={() => setUpscaleViewMode('zoom')}
+                              className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'zoom' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                            >
+                              Zoom
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {upscaleViewMode === 'comparison' ? (
                         // Comparison slider mode
@@ -1907,10 +1952,10 @@ const EditImageInterface: React.FC = () => {
                           </div>
                         </>
                       ) : (
-                        // Zoom mode
+                       // Zoom mode (all features)
                         <div
                           ref={imageContainerRef}
-                          className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]"
+                          className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
                           onMouseDown={handleMouseDown}
                           onMouseMove={handleMouseMove}
                           onMouseUp={handleMouseUp}
@@ -1981,7 +2026,7 @@ const EditImageInterface: React.FC = () => {
                     // Regular image viewer with zoom controls
                     <div
                       ref={imageContainerRef}
-                      className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]"
+                      className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
@@ -2049,25 +2094,42 @@ const EditImageInterface: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[28rem] lg:min-h-[36rem] 2xl:min-h-[40rem]">
-                  <div className="text-center">
-                    {processing[selectedFeature] ? (
-                      <>
-                        <div className="w-10 h-10 mx-auto mb-2 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        <p className="text-white/50 text-xs">Generating...</p>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-10 h-10 mx-auto mb-2 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-white/50 text-xs">Output will appear here</p>
-                      </>
-                    )}
-                  </div>
+                <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]">
+                  {inputs[selectedFeature] ? (
+                    <div className="absolute inset-0">
+                      <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-contain object-center" />
+                      {(selectedFeature === 'fill' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
+                        <div ref={fillContainerRef} className="absolute inset-0">
+                          <canvas
+                            ref={fillCanvasRef}
+                            className="absolute inset-0 w-full h-full cursor-crosshair"
+                            onMouseDown={(e) => { const p = pointFromMouseEvent(e); beginMaskStroke(p.x, p.y); }}
+                            onMouseMove={(e) => { const p = pointFromMouseEvent(e); continueMaskStroke(p.x, p.y); }}
+                            onMouseUp={() => endMaskStroke()}
+                            onMouseLeave={() => endMaskStroke()}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleOpenUploadModal}
+                      className="text-white/80 hover:text-white transition-colors text-center"
+                    >
+                      <svg className="w-10 h-10 mx-auto mb-2 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
+                      </svg>
+                      <span className="text-xs">Drop image here or click to upload</span>
+                    </button>
+                  )}
                 </div>
               )}
               {/* Fill mask overlay moved to input area */}
+              {processing[selectedFeature] && (
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                  <img src="/styles/Logo.gif" alt="Generating..." className="w-32 h-32 md:w-48 md:h-48 opacity-90" />
+                </div>
+              )}
             </div>
           </div>
         </div>
