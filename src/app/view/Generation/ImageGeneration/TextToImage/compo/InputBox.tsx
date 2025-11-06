@@ -543,6 +543,8 @@ const InputBox = () => {
       prompt,
       model: selectedModel,
       generationType: 'text-to-image',
+      frameSize: frameSize || undefined,
+      aspect_ratio: frameSize || undefined,
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
         url: '',

@@ -62,7 +62,9 @@ const EditImageInterface: React.FC = () => {
   // Fill mask drawing
   const fillCanvasRef = useRef<HTMLCanvasElement>(null);
   const fillContainerRef = useRef<HTMLDivElement>(null);
+  const resizeOverlayRef = useRef<HTMLDivElement>(null);
   const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [imageDisplayBounds, setImageDisplayBounds] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [isMasking, setIsMasking] = useState(false);
   const [hasMask, setHasMask] = useState(false);
   const [brushSize, setBrushSize] = useState(18);
@@ -73,7 +75,7 @@ const EditImageInterface: React.FC = () => {
   const [fillSyncMode, setFillSyncMode] = useState<boolean>(false);
   
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/outpaint' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/outpaint' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'bfl/flux-fill-expand'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -89,6 +91,7 @@ const EditImageInterface: React.FC = () => {
     if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
     if (m === 'fal-ai/outpaint') return 'FAL Outpaint (Resize)';
     if (m === 'fal-ai/bria/expand') return 'Bria Expand (Resize)';
+    if (m === 'bfl/flux-fill-expand') return 'FLUX Fill Expand (Resize)';
     if (m === 'fal-ai/bria/genfill') return 'Bria GenFill';
     if (m === '851-labs/background-remover') return '851 Labs Remove BG';
     if (m === 'lucataco/remove-bg') return 'LucaTaco Remove BG';
@@ -127,6 +130,166 @@ const EditImageInterface: React.FC = () => {
   const [dynamic, setDynamic] = useState('');
   const [sharpen, setSharpen] = useState('');
   const [backgroundType, setBackgroundType] = useState('');
+  // Interactive expand overlay state (left/right/top/bottom margins added around original image)
+  const [expandLeftPx, setExpandLeftPx] = useState<number>(0);
+  const [expandRightPx, setExpandRightPx] = useState<number>(0);
+  const [expandTopPx, setExpandTopPx] = useState<number>(0);
+  const [expandBottomPx, setExpandBottomPx] = useState<number>(0);
+  const [draggingEdge, setDraggingEdge] = useState<null | 'left' | 'right' | 'top' | 'bottom'>(null);
+  const dragStartRef = useRef<{x:number;y:number;l:number;r:number;t:number;b:number} | null>(null);
+
+  // Drag handlers for interactive expand overlay
+  useEffect(() => {
+    if (draggingEdge == null) return;
+    let lastUpdateTime = Date.now();
+    const minUpdateInterval = 16; // ~60fps
+    
+    const handleMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastUpdateTime < minUpdateInterval) return; // Throttle updates
+      lastUpdateTime = now;
+      
+      if (!resizeOverlayRef.current) return;
+      const start = dragStartRef.current;
+      if (!start) return;
+      
+      const origW = Number(resizeOrigW || 0);
+      const origH = Number(resizeOrigH || 0);
+      if (origW <= 0 || origH <= 0) return;
+      
+      // Get current image display bounds
+      if (!imageDisplayBounds) return;
+      
+      const rect = resizeOverlayRef.current.getBoundingClientRect();
+      
+      // Calculate mouse movement in screen pixels
+      const screenDx = e.clientX - start.x;
+      const screenDy = e.clientY - start.y;
+      
+      // Map screen pixels to image pixels (1:1 ratio for smooth dragging)
+      // The displayed image size vs original image size ratio
+      const scaleX = origW / imageDisplayBounds.width;
+      const scaleY = origH / imageDisplayBounds.height;
+      
+      // Convert screen movement to image pixel movement
+      const imgDx = screenDx * scaleX;
+      const imgDy = screenDy * scaleY;
+      
+      const clamp = (v:number) => Math.max(0, Math.min(5000, Math.round(v)));
+      
+      // For left handle: dragging left (negative screenDx) expands left, dragging right (positive screenDx) contracts left
+      if (draggingEdge === 'left') {
+        const newLeft = clamp(start.l - imgDx);
+        if (newLeft !== expandLeftPx) {
+          setExpandLeftPx(newLeft);
+        }
+      }
+      // For right handle: dragging right (positive screenDx) expands right, dragging left (negative screenDx) contracts right
+      else if (draggingEdge === 'right') {
+        const newRight = clamp(start.r + imgDx);
+        if (newRight !== expandRightPx) {
+          setExpandRightPx(newRight);
+        }
+      }
+      // For top handle: dragging up (negative screenDy) expands top, dragging down (positive screenDy) contracts top
+      else if (draggingEdge === 'top') {
+        const newTop = clamp(start.t - imgDy);
+        if (newTop !== expandTopPx) {
+          setExpandTopPx(newTop);
+        }
+      }
+      // For bottom handle: dragging down (positive screenDy) expands bottom, dragging up (negative screenDy) contracts bottom
+      else if (draggingEdge === 'bottom') {
+        const newBottom = clamp(start.b + imgDy);
+        if (newBottom !== expandBottomPx) {
+          setExpandBottomPx(newBottom);
+        }
+      }
+    };
+    
+    const handleUp = () => { 
+      setDraggingEdge(null); 
+      dragStartRef.current = null; 
+    };
+    
+    window.addEventListener('mousemove', handleMove, { passive: true });
+    window.addEventListener('mouseup', handleUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [draggingEdge, resizeOrigW, resizeOrigH, imageDisplayBounds, expandLeftPx, expandRightPx, expandTopPx, expandBottomPx]);
+
+  // Calculate and update image display bounds for handle positioning
+  useEffect(() => {
+    if (selectedFeature !== 'resize' || (model !== 'fal-ai/bria/expand' && model !== 'bfl/flux-fill-expand')) {
+      setImageDisplayBounds(null);
+      return;
+    }
+    const origW = Number(resizeOrigW || inputNaturalSize.width || 0);
+    const origH = Number(resizeOrigH || inputNaturalSize.height || 0);
+    if (origW <= 0 || origH <= 0) {
+      setImageDisplayBounds(null);
+      return;
+    }
+    const updateBounds = () => {
+      if (!resizeOverlayRef.current) {
+        // Retry after a short delay if ref isn't ready
+        setTimeout(updateBounds, 50);
+        return;
+      }
+      const rect = resizeOverlayRef.current.getBoundingClientRect();
+      const containerW = rect.width;
+      const containerH = rect.height;
+      if (containerW <= 0 || containerH <= 0) return;
+      const containerAspect = containerW / containerH;
+      const imageAspect = origW / origH;
+      let displayedW: number;
+      let displayedH: number;
+      let imageLeft: number;
+      let imageTop: number;
+      if (imageAspect > containerAspect) {
+        displayedW = containerW;
+        displayedH = containerW / imageAspect;
+        imageLeft = 0;
+        imageTop = (containerH - displayedH) / 2;
+      } else {
+        displayedH = containerH;
+        displayedW = containerH * imageAspect;
+        imageLeft = (containerW - displayedW) / 2;
+        imageTop = 0;
+      }
+      setImageDisplayBounds({ left: imageLeft, top: imageTop, width: displayedW, height: displayedH });
+    };
+    // Initial calculation with delay to ensure ref is attached
+    const timeoutId = setTimeout(updateBounds, 100);
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeOverlayRef.current) updateBounds();
+    });
+    if (resizeOverlayRef.current) {
+      resizeObserver.observe(resizeOverlayRef.current);
+    }
+    window.addEventListener('resize', updateBounds);
+    return () => {
+      clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateBounds);
+    };
+  }, [selectedFeature, model, resizeOrigW, resizeOrigH, inputNaturalSize, inputs[selectedFeature]]);
+
+  // When margins change, reflect into canvas size fields
+  useEffect(() => {
+    if (selectedFeature !== 'resize' || (model !== 'fal-ai/bria/expand' && model !== 'bfl/flux-fill-expand')) return;
+    const ow = Number(resizeOrigW || 0);
+    const oh = Number(resizeOrigH || 0);
+    if (ow > 0 && oh > 0) {
+      const newW = Math.min(5000, ow + expandLeftPx + expandRightPx);
+      const newH = Math.min(5000, oh + expandTopPx + expandBottomPx);
+      setResizeCanvasW(newW);
+      setResizeCanvasH(newH);
+    }
+  }, [expandLeftPx, expandRightPx, expandTopPx, expandBottomPx, selectedFeature, model, resizeOrigW, resizeOrigH]);
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | ''>('');
@@ -223,7 +386,7 @@ const EditImageInterface: React.FC = () => {
 
   // Ensure Bria is the default model when switching to Resize
   useEffect(() => {
-    if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand') {
+    if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand' && model !== 'bfl/flux-fill-expand') {
       setModel('fal-ai/bria/expand');
     }
   }, [selectedFeature]);
@@ -237,7 +400,7 @@ const EditImageInterface: React.FC = () => {
 
   // Populate resize fields when switching to resize feature if image is already loaded
   useEffect(() => {
-    if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && inputNaturalSize.width > 0 && inputNaturalSize.height > 0) {
+    if (selectedFeature === 'resize' && (model === 'fal-ai/bria/expand' || model === 'bfl/flux-fill-expand') && inputNaturalSize.width > 0 && inputNaturalSize.height > 0) {
       // Update original image size to match detected dimensions
       setResizeOrigW(inputNaturalSize.width);
       setResizeOrigH(inputNaturalSize.height);
@@ -245,6 +408,11 @@ const EditImageInterface: React.FC = () => {
       // This ensures fields are populated when switching to resize feature
       setResizeCanvasW(inputNaturalSize.width);
       setResizeCanvasH(inputNaturalSize.height);
+      // Reset margins when entering resize tab
+      setExpandLeftPx(0);
+      setExpandRightPx(0);
+      setExpandTopPx(0);
+      setExpandBottomPx(0);
     }
   }, [selectedFeature, model, inputNaturalSize]);
 
@@ -282,7 +450,7 @@ const EditImageInterface: React.FC = () => {
             const h = Math.max(1, Math.floor(img.naturalHeight || 0));
             setInputNaturalSize({ width: w, height: h });
             // Auto-populate resize fields when resize feature is selected and using Bria Expand
-            if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand') {
+            if (selectedFeature === 'resize' && (model === 'fal-ai/bria/expand' || model === 'bfl/flux-fill-expand')) {
               // Always update original image size to match input image dimensions
               setResizeOrigW(w);
               setResizeOrigH(h);
@@ -290,6 +458,11 @@ const EditImageInterface: React.FC = () => {
               // This ensures both fields reflect the current input image dimensions
               setResizeCanvasW(w);
               setResizeCanvasH(h);
+              // Reset interactive margins
+              setExpandLeftPx(0);
+              setExpandRightPx(0);
+              setExpandTopPx(0);
+              setExpandBottomPx(0);
             }
             try { if (measurableSrc.startsWith('blob:')) URL.revokeObjectURL(measurableSrc); } catch {}
             resolve();
@@ -990,7 +1163,32 @@ const EditImageInterface: React.FC = () => {
         return;
       }
 
-      if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand') {
+      if (selectedFeature === 'resize' && model === 'bfl/flux-fill-expand') {
+        // Build FLUX Fill Expand payload from UI
+        const isDataInput = String(normalizedInput).startsWith('data:');
+        const payload: any = { isPublic };
+        if (prompt && prompt.trim()) payload.prompt = prompt.trim();
+        if (resizeSeed !== '') payload.seed = Math.round(Number(resizeSeed) || 0);
+        if (resizeCanvasW && resizeCanvasH) payload.canvas_size = [Number(resizeCanvasW), Number(resizeCanvasH)];
+        if (resizeOrigW && resizeOrigH) payload.original_image_size = [Number(resizeOrigW), Number(resizeOrigH)];
+        // Calculate original_image_location from expansion margins (or use explicit values if set)
+        if (resizeOrigX !== '' && resizeOrigY !== '') {
+          payload.original_image_location = [Number(resizeOrigX), Number(resizeOrigY)];
+        } else {
+          // Use expansion margins to calculate position
+          // The original image is positioned at (expandLeftPx, expandTopPx) in the expanded canvas
+          payload.original_image_location = [expandLeftPx, expandTopPx];
+        }
+        if (isDataInput) payload.image = normalizedInput; else payload.image_url = currentInput;
+
+        const res = await axiosInstance.post('/api/bfl/expand-with-fill', payload);
+        const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
+        if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
+        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        return;
+      }
+
+      if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand' && model !== 'bfl/flux-fill-expand') {
         // Map existing expand controls onto Bria Expand schema
         const left = Math.max(0, Math.round(Number(resizeExpandLeft) || 0));
         const right = Math.max(0, Math.round(Number(resizeExpandRight) || 0));
@@ -1724,6 +1922,7 @@ const EditImageInterface: React.FC = () => {
                               : selectedFeature === 'resize'
                                 ? [
                                   { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
+                                  { label: 'FLUX Fill Expand', value: 'bfl/flux-fill-expand' },
                                   { label: 'FAL Outpaint', value: 'fal-ai/outpaint' },
                             ]
                           : [
@@ -1796,7 +1995,7 @@ const EditImageInterface: React.FC = () => {
               )}
 
               {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
-                  {selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && (
+                  {selectedFeature === 'resize' && (model === 'fal-ai/bria/expand' || model === 'bfl/flux-fill-expand') && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -2779,7 +2978,178 @@ const EditImageInterface: React.FC = () => {
                 <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]">
                   {inputs[selectedFeature] ? (
                     <div className="absolute inset-0">
-                      <Image src={inputs[selectedFeature] as string} alt="Input" fill className="object-contain object-center" />
+                      <Image 
+                        src={inputs[selectedFeature] as string} 
+                        alt="Input" 
+                        fill 
+                        className="object-contain object-center"
+                        onLoad={() => {
+                          // Trigger bounds recalculation when image loads
+                          if (selectedFeature === 'resize' && (model === 'fal-ai/bria/expand' || model === 'bfl/flux-fill-expand')) {
+                            setTimeout(() => {
+                              const origW = Number(resizeOrigW || inputNaturalSize.width || 0);
+                              const origH = Number(resizeOrigH || inputNaturalSize.height || 0);
+                              if (origW > 0 && origH > 0 && resizeOverlayRef.current) {
+                                const rect = resizeOverlayRef.current.getBoundingClientRect();
+                                const containerW = rect.width;
+                                const containerH = rect.height;
+                                if (containerW > 0 && containerH > 0) {
+                                  const containerAspect = containerW / containerH;
+                                  const imageAspect = origW / origH;
+                                  let displayedW: number;
+                                  let displayedH: number;
+                                  let imageLeft: number;
+                                  let imageTop: number;
+                                  if (imageAspect > containerAspect) {
+                                    displayedW = containerW;
+                                    displayedH = containerW / imageAspect;
+                                    imageLeft = 0;
+                                    imageTop = (containerH - displayedH) / 2;
+                                  } else {
+                                    displayedH = containerH;
+                                    displayedW = containerH * imageAspect;
+                                    imageLeft = (containerW - displayedW) / 2;
+                                    imageTop = 0;
+                                  }
+                                  setImageDisplayBounds({ left: imageLeft, top: imageTop, width: displayedW, height: displayedH });
+                                }
+                              }
+                            }, 50);
+                          }
+                        }}
+                      />
+                      {selectedFeature === 'resize' && (model === 'fal-ai/bria/expand' || model === 'bfl/flux-fill-expand') && (
+                        <div ref={resizeOverlayRef} className="absolute inset-0">
+                          {imageDisplayBounds && (
+                            <>
+                              {/* Border around original image (like BFL platform) */}
+                              <div
+                                className="absolute border-2 border-emerald-500 pointer-events-none z-0"
+                                style={{
+                                  left: `${imageDisplayBounds.left}px`,
+                                  top: `${imageDisplayBounds.top}px`,
+                                  width: `${imageDisplayBounds.width}px`,
+                                  height: `${imageDisplayBounds.height}px`,
+                                }}
+                              />
+                              {/* Visual expansion areas - show areas outside original image */}
+                              {expandLeftPx > 0 && (
+                                <div
+                                  className="absolute top-0 bottom-0 bg-emerald-300/20 pointer-events-none"
+                                  style={{ left: 0, width: `${imageDisplayBounds.left}px` }}
+                                />
+                              )}
+                              {expandRightPx > 0 && resizeOverlayRef.current && (
+                                <div
+                                  className="absolute top-0 bottom-0 bg-emerald-300/20 pointer-events-none"
+                                  style={{ right: 0, width: `${resizeOverlayRef.current.getBoundingClientRect().width - imageDisplayBounds.left - imageDisplayBounds.width}px` }}
+                                />
+                              )}
+                              {expandTopPx > 0 && (
+                                <div
+                                  className="absolute left-0 right-0 bg-emerald-300/20 pointer-events-none"
+                                  style={{ top: 0, height: `${imageDisplayBounds.top}px` }}
+                                />
+                              )}
+                              {expandBottomPx > 0 && resizeOverlayRef.current && (
+                                <div
+                                  className="absolute left-0 right-0 bg-emerald-300/20 pointer-events-none"
+                                  style={{ bottom: 0, height: `${resizeOverlayRef.current.getBoundingClientRect().height - imageDisplayBounds.top - imageDisplayBounds.height}px` }}
+                                />
+                              )}
+                              {/* Draggable handles at original image boundaries - thin lines like BFL platform */}
+                              <div
+                                className="absolute bg-emerald-500 cursor-ew-resize z-20 hover:bg-emerald-400 active:bg-emerald-300 transition-colors"
+                                style={{ 
+                                  left: `${imageDisplayBounds.left - 2}px`, 
+                                  top: `${imageDisplayBounds.top}px`,
+                                  width: '4px',
+                                  height: `${imageDisplayBounds.height}px`
+                                }}
+                                onMouseDown={(e) => { 
+                                  e.preventDefault(); 
+                                  e.stopPropagation(); 
+                                  setDraggingEdge('left'); 
+                                  dragStartRef.current = { 
+                                    x: e.clientX, 
+                                    y: e.clientY, 
+                                    l: expandLeftPx, 
+                                    r: expandRightPx, 
+                                    t: expandTopPx, 
+                                    b: expandBottomPx 
+                                  }; 
+                                }}
+                              />
+                              <div
+                                className="absolute bg-emerald-500 cursor-ew-resize z-20 hover:bg-emerald-400 active:bg-emerald-300 transition-colors"
+                                style={{ 
+                                  left: `${imageDisplayBounds.left + imageDisplayBounds.width - 2}px`, 
+                                  top: `${imageDisplayBounds.top}px`,
+                                  width: '4px',
+                                  height: `${imageDisplayBounds.height}px`
+                                }}
+                                onMouseDown={(e) => { 
+                                  e.preventDefault(); 
+                                  e.stopPropagation(); 
+                                  setDraggingEdge('right'); 
+                                  dragStartRef.current = { 
+                                    x: e.clientX, 
+                                    y: e.clientY, 
+                                    l: expandLeftPx, 
+                                    r: expandRightPx, 
+                                    t: expandTopPx, 
+                                    b: expandBottomPx 
+                                  }; 
+                                }}
+                              />
+                              <div
+                                className="absolute bg-emerald-500 cursor-ns-resize z-20 hover:bg-emerald-400 active:bg-emerald-300 transition-colors"
+                                style={{ 
+                                  left: `${imageDisplayBounds.left}px`, 
+                                  top: `${imageDisplayBounds.top - 2}px`,
+                                  width: `${imageDisplayBounds.width}px`,
+                                  height: '4px'
+                                }}
+                                onMouseDown={(e) => { 
+                                  e.preventDefault(); 
+                                  e.stopPropagation(); 
+                                  setDraggingEdge('top'); 
+                                  dragStartRef.current = { 
+                                    x: e.clientX, 
+                                    y: e.clientY, 
+                                    l: expandLeftPx, 
+                                    r: expandRightPx, 
+                                    t: expandTopPx, 
+                                    b: expandBottomPx 
+                                  }; 
+                                }}
+                              />
+                              <div
+                                className="absolute bg-emerald-500 cursor-ns-resize z-20 hover:bg-emerald-400 active:bg-emerald-300 transition-colors"
+                                style={{ 
+                                  left: `${imageDisplayBounds.left}px`, 
+                                  top: `${imageDisplayBounds.top + imageDisplayBounds.height - 2}px`,
+                                  width: `${imageDisplayBounds.width}px`,
+                                  height: '4px'
+                                }}
+                                onMouseDown={(e) => { 
+                                  e.preventDefault(); 
+                                  e.stopPropagation(); 
+                                  setDraggingEdge('bottom'); 
+                                  dragStartRef.current = { 
+                                    x: e.clientX, 
+                                    y: e.clientY, 
+                                    l: expandLeftPx, 
+                                    r: expandRightPx, 
+                                    t: expandTopPx, 
+                                    b: expandBottomPx 
+                                  }; 
+                                }}
+                              />
+                            </>
+                          )}
+                        </div>
+                      )}
                       {(selectedFeature === 'fill' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
                         <div ref={fillContainerRef} className="absolute inset-0">
                           <canvas

@@ -43,6 +43,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [objectUrl, setObjectUrl] = React.useState<string>('');
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
+  const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -330,6 +331,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     
     let revoke: string | null = null;
     setObjectUrl('');
+    setImageDimensions(null); // Reset dimensions when image changes
     const run = async () => {
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
@@ -505,8 +507,75 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const selectedEntry: any = selectedPair.entry || preview?.entry;
   const isUserUploadSelected = false;
 
+  // Helper function to calculate aspect ratio from dimensions
+  const calculateAspectRatio = (width: number, height: number): string => {
+    if (!width || !height || width <= 0 || height <= 0) return '—';
+    
+    const ratio = width / height;
+    const tolerance = 0.01; // 1% tolerance for matching common ratios
+    
+    // Common aspect ratios with their decimal values
+    const commonRatios: Array<{ ratio: number; label: string }> = [
+      { ratio: 1.0, label: '1:1' },
+      { ratio: 4/3, label: '4:3' },
+      { ratio: 3/4, label: '3:4' },
+      { ratio: 16/9, label: '16:9' },
+      { ratio: 9/16, label: '9:16' },
+      { ratio: 3/2, label: '3:2' },
+      { ratio: 2/3, label: '2:3' },
+      { ratio: 21/9, label: '21:9' },
+      { ratio: 9/21, label: '9:21' },
+      { ratio: 16/10, label: '16:10' },
+      { ratio: 10/16, label: '10:16' },
+      { ratio: 5/4, label: '5:4' },
+      { ratio: 4/5, label: '4:5' },
+    ];
+    
+    // Check if ratio matches any common ratio (within tolerance)
+    for (const common of commonRatios) {
+      if (Math.abs(ratio - common.ratio) < tolerance || Math.abs(ratio - 1/common.ratio) < tolerance) {
+        return common.label;
+      }
+    }
+    
+    // If no match, calculate simplified ratio using GCD
+    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+    const divisor = gcd(width, height);
+    const w = width / divisor;
+    const h = height / divisor;
+    
+    // If the simplified ratio is reasonable, return it
+    if (w <= 100 && h <= 100) {
+      return `${w}:${h}`;
+    }
+    
+    // Otherwise, return a rounded decimal ratio
+    return `${Math.round(ratio * 100) / 100}:1`;
+  };
+
+  // Get aspect ratio from entry or calculate from image dimensions
+  const getAspectRatio = (): string => {
+    // First try to get from stored fields
+    const stored = selectedEntry?.frameSize || selectedEntry?.aspect_ratio || selectedEntry?.aspectRatio;
+    if (stored && stored !== '—' && stored !== null && stored !== undefined) return stored;
+    
+    // Try to get from image metadata (stored in database)
+    const imgWidth = (selectedImage as any)?.width || (selectedEntry as any)?.width;
+    const imgHeight = (selectedImage as any)?.height || (selectedEntry as any)?.height;
+    if (imgWidth && imgHeight) {
+      return calculateAspectRatio(imgWidth, imgHeight);
+    }
+    
+    // Try to get from loaded image dimensions (from onLoad event)
+    if (imageDimensions && imageDimensions.width && imageDimensions.height) {
+      return calculateAspectRatio(imageDimensions.width, imageDimensions.height);
+    }
+    
+    return '—';
+  };
+
   const displayedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '—';
-  const displayedAspect = selectedEntry?.frameSize || '—';
+  const displayedAspect = getAspectRatio();
   const cleanPrompt = getCleanPrompt(selectedEntry?.prompt || '');
   const isLongPrompt = cleanPrompt.length > 280;
 
@@ -635,6 +704,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   decoding="async"
                   fetchPriority="high"
                   className="object-contain w-auto h-auto max-w-full max-h-full mx-auto"
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (img.naturalWidth && img.naturalHeight) {
+                      setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                    }
+                  }}
                 />
                 {isUserUploadSelected && (
                   <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm ">User upload</div>
