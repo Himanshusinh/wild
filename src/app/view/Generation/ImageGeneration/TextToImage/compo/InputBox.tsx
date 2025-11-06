@@ -2028,7 +2028,7 @@ const InputBox = () => {
                           inputEl.current.focus();
                         }
                       }}
-                      className="px-1.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-1.5 py-1.5 -mt-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
                       aria-label="Clear prompt"
                     >
                       <svg
@@ -2046,7 +2046,7 @@ const InputBox = () => {
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                       </svg>
                     </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
                   </div>
                 )}
                 {/* Previews just to the left of upload */}
