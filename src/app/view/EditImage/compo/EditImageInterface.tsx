@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -46,7 +46,7 @@ const EditImageInterface: React.FC = () => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
   const [showImageMenu, setShowImageMenu] = useState(false);
-
+  
   // Zoom and pan state
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -54,7 +54,7 @@ const EditImageInterface: React.FC = () => {
   const [lastPoint, setLastPoint] = useState({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [fitScale, setFitScale] = useState(1);
-
+  
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -67,12 +67,13 @@ const EditImageInterface: React.FC = () => {
   const [hasMask, setHasMask] = useState(false);
   const [brushSize, setBrushSize] = useState(18);
   const [eraseMode, setEraseMode] = useState(false);
-  const [fillSteps, setFillSteps] = useState(30);
-  const [fillGuidance, setFillGuidance] = useState(7.5);
   const [fillSeed, setFillSeed] = useState<string>('');
-
+  const [fillNegativePrompt, setFillNegativePrompt] = useState<string>('');
+  const [fillNumImages, setFillNumImages] = useState<number>(1);
+  const [fillSyncMode, setFillSyncMode] = useState<boolean>(false);
+  
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/outpaint' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -86,6 +87,11 @@ const EditImageInterface: React.FC = () => {
     if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
     if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
     if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
+    if (m === 'fal-ai/outpaint') return 'FAL Outpaint (Resize)';
+    if (m === 'fal-ai/bria/expand') return 'Bria Expand (Resize)';
+    if (m === 'fal-ai/bria/genfill') return 'Bria GenFill';
+    if (m === '851-labs/background-remover') return '851 Labs Remove BG';
+    if (m === 'lucataco/remove-bg') return 'LucaTaco Remove BG';
     return m;
   };
   const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
@@ -98,12 +104,32 @@ const EditImageInterface: React.FC = () => {
   const [topazFaceEnhance, setTopazFaceEnhance] = useState<boolean>(true);
   const [topazFaceCreativity, setTopazFaceCreativity] = useState<number>(0);
   const [topazFaceStrength, setTopazFaceStrength] = useState<number>(0.8);
+  // Outpaint (resize) controls
+  const [resizeExpandLeft, setResizeExpandLeft] = useState<number>(0);
+  const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
+  const [resizeExpandTop, setResizeExpandTop] = useState<number>(0);
+  const [resizeExpandBottom, setResizeExpandBottom] = useState<number>(400);
+  const [resizeZoomOutPercentage, setResizeZoomOutPercentage] = useState<number>(20);
+  const [resizeNumImages, setResizeNumImages] = useState<number>(1);
+  const [resizeSafetyChecker, setResizeSafetyChecker] = useState<boolean>(true);
+  const [resizeSyncMode, setResizeSyncMode] = useState<boolean>(false);
+  const [resizeOutputFormat, setResizeOutputFormat] = useState<'png' | 'jpeg' | 'jpg' | 'webp'>('png');
+  const [resizeAspectRatio, setResizeAspectRatio] = useState<'' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '2:3' | '3:2' | '4:5' | '5:4'>('');
+  // Bria Expand specific fields
+  const [resizeCanvasW, setResizeCanvasW] = useState<number | ''>('');
+  const [resizeCanvasH, setResizeCanvasH] = useState<number | ''>('');
+  const [resizeOrigW, setResizeOrigW] = useState<number | ''>('');
+  const [resizeOrigH, setResizeOrigH] = useState<number | ''>('');
+  const [resizeOrigX, setResizeOrigX] = useState<number | ''>('');
+  const [resizeOrigY, setResizeOrigY] = useState<number | ''>('');
+  const [resizeSeed, setResizeSeed] = useState<string>('');
+  const [resizeNegativePrompt, setResizeNegativePrompt] = useState<string>('');
   const [dynamic, setDynamic] = useState('');
   const [sharpen, setSharpen] = useState('');
   const [backgroundType, setBackgroundType] = useState('');
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | ''>('');
   // Vectorize controls
   const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
   const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
@@ -129,7 +155,7 @@ const EditImageInterface: React.FC = () => {
   const historyEntries = useAppSelector((s: any) => (s.history?.entries || []).filter((e: any) => e.generationType === 'text-to-image'));
   const historyLoading = useAppSelector((s: any) => s.history?.loading || false);
   const historyHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
-
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize from query params: feature and image
@@ -153,6 +179,10 @@ const EditImageInterface: React.FC = () => {
           setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
           setModel('nightmareai/real-esrgan');
+        } else if (validFeature === 'resize') {
+          setModel('fal-ai/bria/expand');
+        } else if (validFeature === 'fill') {
+          setModel('fal-ai/bria/genfill' as any);
         } else if (validFeature === 'vectorize') {
           setModel('fal-ai/recraft/vectorize' as any);
         }
@@ -191,6 +221,86 @@ const EditImageInterface: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Ensure Bria is the default model when switching to Resize
+  useEffect(() => {
+    if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand') {
+      setModel('fal-ai/bria/expand');
+    }
+  }, [selectedFeature]);
+
+  // Ensure Bria GenFill is the default model when switching to Fill/Replace
+  useEffect(() => {
+    if (selectedFeature === 'fill' && model !== 'fal-ai/bria/genfill') {
+      setModel('fal-ai/bria/genfill' as any);
+    }
+  }, [selectedFeature]);
+
+  // Populate resize fields when switching to resize feature if image is already loaded
+  useEffect(() => {
+    if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && inputNaturalSize.width > 0 && inputNaturalSize.height > 0) {
+      // Update original image size to match detected dimensions
+      setResizeOrigW(inputNaturalSize.width);
+      setResizeOrigH(inputNaturalSize.height);
+      // Update canvas size to match detected dimensions
+      // This ensures fields are populated when switching to resize feature
+      setResizeCanvasW(inputNaturalSize.width);
+      setResizeCanvasH(inputNaturalSize.height);
+    }
+  }, [selectedFeature, model, inputNaturalSize]);
+
+  // Auto-detect input image dimensions and prefill Bria fields
+  // Ensure we always know the natural dimensions of the input image so any mask
+  // that we export can be scaled to the image's pixel size. This runs whenever
+  // inputs change and picks the first available input image across features.
+  useEffect(() => {
+    const src = inputs.upscale || inputs['remove-bg'] || inputs.resize || inputs.fill || inputs.vectorize || inputs[selectedFeature];
+    if (!src) return;
+    // Note: we intentionally run this regardless of currently selected feature
+    // so mask export (fill/remove-bg) can scale to the true image pixel size.
+    (async () => {
+      try {
+        let measurableSrc = String(src);
+        // Make relative paths absolute for Image measurement
+        if (!/^https?:|^data:|^blob:/i.test(measurableSrc)) {
+          measurableSrc = new URL(measurableSrc, window.location.origin).href;
+        }
+        // If it's a proxy path that streams, load via fetch->blob to avoid CORS hiccups, then measure
+        const needsBlob = measurableSrc.startsWith(window.location.origin) || measurableSrc.startsWith('/');
+        if (needsBlob && !/^data:|^blob:/i.test(measurableSrc)) {
+          try {
+            const resp = await fetch(measurableSrc, { cache: 'force-cache' });
+            const blob = await resp.blob();
+            measurableSrc = URL.createObjectURL(blob);
+          } catch {
+            // fallback to direct src
+          }
+        }
+        await new Promise<void>((resolve) => {
+          const img = new window.Image();
+          img.onload = () => {
+            const w = Math.max(1, Math.floor(img.naturalWidth || 0));
+            const h = Math.max(1, Math.floor(img.naturalHeight || 0));
+            setInputNaturalSize({ width: w, height: h });
+            // Auto-populate resize fields when resize feature is selected and using Bria Expand
+            if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand') {
+              // Always update original image size to match input image dimensions
+              setResizeOrigW(w);
+              setResizeOrigH(h);
+              // Always update canvas size to match input image dimensions when a new image is loaded
+              // This ensures both fields reflect the current input image dimensions
+              setResizeCanvasW(w);
+              setResizeCanvasH(h);
+            }
+            try { if (measurableSrc.startsWith('blob:')) URL.revokeObjectURL(measurableSrc); } catch {}
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = measurableSrc;
+        });
+      } catch {}
+    })();
+  }, [inputs, selectedFeature, model]);
+
   // Zoom and pan utility functions (improved from ImagePreviewModal)
   const clampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
     if (!imageContainerRef.current) return newOffset;
@@ -224,12 +334,12 @@ const EditImageInterface: React.FC = () => {
 
   const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageContainerRef.current) return;
-
+    
     const container = imageContainerRef.current;
     const rect = container.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-
+    
     if (Math.abs(scale - fitScale) < 1e-3) {
       // Zoom to 1.5x at click point (more reasonable)
       zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 1.5));
@@ -247,16 +357,16 @@ const EditImageInterface: React.FC = () => {
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
-
+    
     e.preventDefault();
     const deltaX = e.clientX - lastPoint.x;
     const deltaY = e.clientY - lastPoint.y;
-
+    
     const newOffset = {
       x: offset.x + deltaX,
       y: offset.y + deltaY
     };
-
+    
     const clampedOffset = clampOffset(newOffset, scale);
     setOffset(clampedOffset);
     setLastPoint({ x: e.clientX, y: e.clientY });
@@ -342,7 +452,7 @@ const EditImageInterface: React.FC = () => {
 
     // Add passive: false to allow preventDefault
     document.addEventListener('wheel', handleGlobalWheel, { passive: false });
-
+    
     return () => {
       document.removeEventListener('wheel', handleGlobalWheel);
     };
@@ -464,18 +574,51 @@ const EditImageInterface: React.FC = () => {
     if (!container || !canvas) return;
     const rect = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
+    
+    // Save existing canvas content if there's a mask
+    let savedDataUrl: string | null = null;
+    if (hasMask) {
+      try {
+        savedDataUrl = canvas.toDataURL('image/png');
+      } catch (e) {
+        // If toDataURL fails, continue without saving
+      }
+    }
+    
+    const oldWidth = canvas.width / dpr;
+    const oldHeight = canvas.height / dpr;
+    const newWidth = Math.floor(rect.width * dpr);
+    const newHeight = Math.floor(rect.height * dpr);
+    
+    canvas.width = newWidth;
+    canvas.height = newHeight;
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
-    const ctx = getCanvasContext();
-    if (ctx) {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const newCtx = getCanvasContext();
+    if (newCtx) {
+      newCtx.setTransform(1, 0, 0, 1, 0, 0);
+      newCtx.scale(dpr, dpr);
+      
+      // Restore saved content if it exists
+      if (savedDataUrl) {
+        const img = document.createElement('img');
+        img.onload = () => {
+          const currentCtx = fillCanvasRef.current?.getContext('2d');
+          if (currentCtx) {
+            currentCtx.setTransform(1, 0, 0, 1, 0, 0);
+            currentCtx.scale(dpr, dpr);
+            currentCtx.drawImage(img, 0, 0, rect.width, rect.height);
+          }
+        };
+        img.src = savedDataUrl;
+      } else {
+        // No mask to preserve, clear the canvas
+        newCtx.clearRect(0, 0, rect.width, rect.height);
       setHasMask(false);
     }
-  }, [getCanvasContext]);
+    }
+  }, [getCanvasContext, hasMask]);
 
   useEffect(() => {
     if (selectedFeature !== 'fill') return;
@@ -553,6 +696,57 @@ const EditImageInterface: React.FC = () => {
       return url as any;
     };
 
+    const toDataUriIfLocal = async (src: string): Promise<string> => {
+      if (!src) return src as any;
+      if (src.startsWith('data:')) return src;
+      if (src.startsWith('blob:')) {
+        try {
+          const resp = await fetch(src);
+          const blob = await resp.blob();
+          return await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ''));
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch {
+          return src;
+        }
+      }
+      // If the image is stored on Zata (or another known storage served via
+      // the `/api/proxy/download/:path` backend route), fetch via our proxy
+      // so we avoid cross-origin/read restrictions, then convert to data URI.
+      try {
+        const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+        if (String(src).startsWith(ZATA_PREFIX)) {
+          const path = src.substring(ZATA_PREFIX.length);
+          const proxyUrl = `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}`;
+          try {
+            const pResp = await fetch(proxyUrl, { credentials: 'include' });
+            if (pResp && pResp.ok) {
+              const blob = await pResp.blob();
+              return await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(String(reader.result || ''));
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            }
+          } catch (e) {
+            // fallthrough to attempt direct fetch below
+            console.warn('[toDataUriIfLocal] proxy fetch failed, falling back to direct fetch', e);
+          }
+        }
+      } catch (e) {
+        // ignore and continue
+      }
+
+      // Last resort: try a direct fetch (may fail due to CORS). If it fails,
+      // return the original src so existing behavior remains.
+      return src;
+    };
+
     const currentInputRaw = inputs[selectedFeature];
     const currentInput = toAbsoluteProxyUrl(currentInputRaw) as any;
     if (!currentInput) return;
@@ -560,13 +754,14 @@ const EditImageInterface: React.FC = () => {
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
+      const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
       const isPublic = await getIsPublic();
       if (selectedFeature === 'vectorize') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error('Please upload an image to vectorize');
         if (vectorizeModel === 'fal-ai/recraft/vectorize') {
           const body: any = { isPublic };
-          if (String(currentInputRaw).startsWith('data:')) body.image = currentInput;
+          if (String(normalizedInput).startsWith('data:')) body.image = normalizedInput;
           else body.image_url = currentInput;
           const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
@@ -587,7 +782,7 @@ const EditImageInterface: React.FC = () => {
             splice_threshold: vSpliceThreshold,
             path_precision: vPathPrecision,
           };
-          if (String(currentInputRaw).startsWith('data:')) body.image = currentInput; else body.image_url = currentInput;
+          if (String(normalizedInput).startsWith('data:')) body.image = normalizedInput; else body.image_url = currentInput;
           const res = await axiosInstance.post('/api/fal/image2svg', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
@@ -597,29 +792,25 @@ const EditImageInterface: React.FC = () => {
       if (selectedFeature === 'fill') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error('Please upload an image for fill');
-        // Export mask as PNG data URI
-        const maskDataUrl = (() => {
+        if (!prompt || !prompt.trim()) {
+          setErrorMsg('Please enter a prompt for fill');
+          setProcessing((prev) => ({ ...prev, ['fill']: false }));
+          return;
+        }
+        // Export mask as PNG data URI and ensure its pixel size matches the
+        // actual input image dimensions (FAL requires mask and image to have
+        // identical width/height). This may involve fetching the image to
+        // read its natural size and rescaling the mask accordingly.
+        let maskDataUrl: string | undefined;
+        {
           const c = fillCanvasRef.current;
-          if (!c) return undefined as any;
+          if (!c) return;
           if (!hasMask) {
-            try {
-              // Create a full-opaque mask covering the whole image so provider doesn't reject missing mask
-              const natW = Math.max(1, Math.floor(inputNaturalSize.width || 1024));
-              const natH = Math.max(1, Math.floor(inputNaturalSize.height || 1024));
-              const off = document.createElement('canvas');
-              off.width = natW;
-              off.height = natH;
-              const octx = off.getContext('2d');
-              if (octx) {
-                octx.fillStyle = '#FFFFFF';
-                octx.fillRect(0, 0, natW, natH);
-                return off.toDataURL('image/png');
-              }
-            } catch { }
-            return undefined as any;
+            setErrorMsg('Please draw a mask on the image to specify the area to replace');
+            setProcessing((prev) => ({ ...prev, ['fill']: false }));
+            return;
           }
           try {
-            // Scale painted mask (display canvas) to input image's natural resolution
             const off = document.createElement('canvas');
             const dispRect = fillContainerRef.current?.getBoundingClientRect();
             const displayW = Math.max(1, Math.floor(dispRect?.width || c.width));
@@ -629,35 +820,147 @@ const EditImageInterface: React.FC = () => {
             off.width = natW;
             off.height = natH;
             const octx = off.getContext('2d');
-            if (!octx) return c.toDataURL('image/png');
-            octx.drawImage(c, 0, 0, displayW, displayH, 0, 0, natW, natH);
-            return off.toDataURL('image/png');
+            if (!octx) {
+              maskDataUrl = c.toDataURL('image/png');
+            } else {
+              // Use the canvas's internal pixel dimensions as the source when
+              // resampling. `c.width`/`c.height` are the device-pixel buffer
+              // sizes; using them prevents accidental 1x1 outputs when the
+              // display size differs (DPR scaling).
+              octx.drawImage(c, 0, 0, c.width, c.height, 0, 0, natW, natH);
+              maskDataUrl = off.toDataURL('image/png');
+            }
           } catch {
-            return c.toDataURL('image/png');
+            const c2 = fillCanvasRef.current as HTMLCanvasElement | null;
+            maskDataUrl = c2 ? c2.toDataURL('image/png') : undefined;
           }
-        })();
-        if (!prompt || !prompt.trim()) {
-          setErrorMsg('Please enter a prompt for fill');
-          setProcessing((prev) => ({ ...prev, ['fill']: false }));
-          return;
         }
-        const body: any = {
-          image: currentInput,
-          steps: Math.floor(Math.max(15, Math.min(50, Number(fillSteps) || 30))),
-          guidance: Number((Math.max(1.5, Math.min(100, Number(fillGuidance) || 7.5))).toFixed(1)),
-          output_format: 'jpeg',
-          generationType: 'text-to-image',
-          isPublic,
-        };
-        if (prompt && prompt.trim()) body.prompt = prompt.trim();
-        console.log('[Fill] Image URL:', currentInput);
-        if (maskDataUrl) body.mask = maskDataUrl;
-        if (String(fillSeed).trim() !== '' && Number.isFinite(Number(fillSeed))) body.seed = Math.floor(Number(fillSeed));
-        console.log('[Fill] Request payload:', { ...body, mask: body.mask ? '[MASK_DATA]' : undefined });
+        if (!maskDataUrl) return; // Error already set above
+
+        // Sanity-check the exported mask: ensure it actually contains painted
+        // pixels (non-zero alpha). If the mask appears empty (often caused by
+        // canvas sizing/probing failures) abort with a helpful message.
         try {
-          const res = await axiosInstance.post('/api/bfl/fill', body);
-          const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
+          const sanityOff = document.createElement('canvas');
+          const dispRect = fillContainerRef.current?.getBoundingClientRect();
+          const displayW = Math.max(1, Math.floor(dispRect?.width || (fillCanvasRef.current?.width || 1)));
+          const displayH = Math.max(1, Math.floor(dispRect?.height || (fillCanvasRef.current?.height || 1)));
+          const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
+          const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+          sanityOff.width = natW;
+          sanityOff.height = natH;
+          const sctx = sanityOff.getContext('2d');
+          if (sctx) {
+            const maskImg = new window.Image();
+            await new Promise<void>((resolve) => {
+              maskImg.onload = () => {
+                try {
+                  sctx.drawImage(maskImg, 0, 0, natW, natH);
+                } catch (e) {}
+                resolve();
+              };
+              maskImg.onerror = () => resolve();
+              maskImg.src = maskDataUrl as string;
+            });
+            try {
+              const data = sctx.getImageData(0, 0, Math.max(1, natW), Math.max(1, natH)).data;
+              let alphaNonZero = false;
+              for (let i = 3; i < data.length; i += 4) {
+                if (data[i] !== 0) { alphaNonZero = true; break; }
+              }
+              if (!alphaNonZero) {
+                setErrorMsg('Mask appears empty. Please draw a mask with the brush and try again.');
+                setProcessing((prev) => ({ ...prev, ['fill']: false }));
+                return;
+              }
+            } catch (e) {
+              // If getImageData fails (CORS), continue; we'll try rescaling below
+            }
+          }
+        } catch (e) {
+          // ignore sanity errors and proceed to probing/rescaling
+        }
+
+        // If we're sending an image_url (not a data URI), fetch the image to
+        // obtain its true natural size and rescale the mask to match if needed.
+        const fillSourceImage = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
+        if (!String(fillSourceImage).startsWith('data:')) {
+          try {
+            const probeImg = new window.Image();
+            probeImg.crossOrigin = 'anonymous';
+            const imgUrl = currentInput as string;
+            await new Promise<void>((resolve) => {
+              probeImg.onload = () => resolve();
+              probeImg.onerror = () => resolve();
+              probeImg.src = imgUrl;
+            });
+            const imgW = Math.max(1, Math.floor((probeImg as any).naturalWidth || 0));
+            const imgH = Math.max(1, Math.floor((probeImg as any).naturalHeight || 0));
+            if (imgW && imgH) {
+              // Create an image from the mask data URL then draw into a canvas of the target size
+              const maskImg = new window.Image();
+              maskImg.crossOrigin = 'anonymous';
+              await new Promise<void>((resolve) => {
+                maskImg.onload = () => {
+                  try {
+                    const final = document.createElement('canvas');
+                    final.width = imgW;
+                    final.height = imgH;
+                    const fctx = final.getContext('2d');
+                    if (fctx) fctx.drawImage(maskImg, 0, 0, imgW, imgH);
+                    maskDataUrl = final.toDataURL('image/png');
+                  } catch (e) {
+                    // keep existing maskDataUrl on error
+                  }
+                  resolve();
+                };
+                maskImg.onerror = () => resolve();
+                maskImg.src = maskDataUrl as string;
+              });
+            }
+          } catch (e) {
+            // Ignore probe failures; fallback maskDataUrl will be used and may fail server-side if sizes mismatch
+            console.warn('[Fill] failed to probe input image size for mask rescaling', e);
+          }
+        }
+
+        const body: any = {
+          isPublic,
+          prompt: prompt.trim(),
+        };
+        // Add image (data URI or URL)
+        if (String(fillSourceImage).startsWith('data:')) {
+          body.image = fillSourceImage;
+        } else {
+          body.image_url = currentInput;
+        }
+        // Add mask (data URI or URL)
+        if (String(maskDataUrl).startsWith('data:')) {
+          body.mask = maskDataUrl;
+        } else {
+          body.mask_url = maskDataUrl;
+        }
+        // Optional parameters
+        if (fillNegativePrompt && fillNegativePrompt.trim()) {
+          body.negative_prompt = fillNegativePrompt.trim();
+        }
+        if (String(fillSeed).trim() !== '' && Number.isFinite(Number(fillSeed))) {
+          body.seed = Math.floor(Number(fillSeed));
+        }
+        const numImages = Number(fillNumImages ?? 1);
+        if (Number.isFinite(numImages) && numImages >= 1 && numImages <= 4) {
+          body.num_images = Math.round(numImages);
+        }
+        if (fillSyncMode) {
+          body.sync_mode = true;
+        }
+        console.log('[Fill] Request payload:', { ...body, image: body.image ? '[IMAGE_DATA]' : body.image_url, mask: body.mask ? '[MASK_DATA]' : body.mask_url });
+        try {
+          const res = await axiosInstance.post('/api/fal/bria/genfill', body);
+          const imagesArray = res?.data?.data?.images || res?.data?.images || [];
+          const out = imagesArray[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['fill']: out }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
           return;
         } catch (fillError) {
           console.error('[Fill] API Error:', fillError);
@@ -667,9 +970,60 @@ const EditImageInterface: React.FC = () => {
         }
       }
 
+      if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand') {
+        // Build Bria Expand payload from UI. If fields are empty, try to infer from image + expand sliders
+        const isDataInput = String(normalizedInput).startsWith('data:');
+        const payload: any = { isPublic, sync_mode: !!resizeSyncMode };
+        if (prompt && prompt.trim()) payload.prompt = prompt.trim();
+        if (resizeNegativePrompt && resizeNegativePrompt.trim()) payload.negative_prompt = resizeNegativePrompt.trim();
+        if (resizeSeed !== '') payload.seed = Math.round(Number(resizeSeed) || 0);
+        if (resizeAspectRatio) payload.aspect_ratio = resizeAspectRatio;
+        if (resizeCanvasW && resizeCanvasH) payload.canvas_size = [Number(resizeCanvasW), Number(resizeCanvasH)];
+        if (resizeOrigW && resizeOrigH) payload.original_image_size = [Number(resizeOrigW), Number(resizeOrigH)];
+        if (resizeOrigX !== '' && resizeOrigY !== '') payload.original_image_location = [Number(resizeOrigX), Number(resizeOrigY)];
+        if (isDataInput) payload.image = normalizedInput; else payload.image_url = currentInput;
+
+        const res = await axiosInstance.post('/api/fal/bria/expand', payload);
+        const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
+        if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
+        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        return;
+      }
+
+      if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand') {
+        // Map existing expand controls onto Bria Expand schema
+        const left = Math.max(0, Math.round(Number(resizeExpandLeft) || 0));
+        const right = Math.max(0, Math.round(Number(resizeExpandRight) || 0));
+        const top = Math.max(0, Math.round(Number(resizeExpandTop) || 0));
+        const bottom = Math.max(0, Math.round(Number(resizeExpandBottom) || 0));
+        const baseW = Math.max(1, Math.round(inputNaturalSize.width || 0));
+        const baseH = Math.max(1, Math.round(inputNaturalSize.height || 0));
+        const canvasW = Math.min(5000, baseW + left + right);
+        const canvasH = Math.min(5000, baseH + top + bottom);
+
+        const payload: any = {
+          isPublic,
+          canvas_size: [canvasW, canvasH],
+          original_image_size: [baseW, baseH],
+          original_image_location: [left, top],
+          sync_mode: !!resizeSyncMode,
+        };
+        if (prompt && prompt.trim()) payload.prompt = prompt.trim();
+        if (resizeAspectRatio) payload.aspect_ratio = resizeAspectRatio;
+
+        const isDataInput = String(normalizedInput).startsWith('data:');
+        if (isDataInput) payload.image = normalizedInput; else payload.image_url = currentInput;
+
+        const res = await axiosInstance.post('/api/fal/outpaint', payload);
+        const outUrl = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
+        if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
+        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        return;
+      }
+
       if (selectedFeature === 'remove-bg') {
         const body: any = {
-          image: currentInput,
+          image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
           isPublic,
           model,
         };
@@ -690,7 +1044,17 @@ const EditImageInterface: React.FC = () => {
               off.height = natH;
               const octx = off.getContext('2d');
               if (!octx) return c.toDataURL('image/png');
-              octx.drawImage(c, 0, 0, displayW, displayH, 0, 0, natW, natH);
+              // See note above: draw from the canvas's full pixel buffer.
+              octx.drawImage(c, 0, 0, c.width, c.height, 0, 0, natW, natH);
+              // Quick sanity: ensure mask has non-zero alpha
+              try {
+                const d = octx.getImageData(0, 0, Math.max(1, natW), Math.max(1, natH)).data;
+                let hasAlpha = false;
+                for (let i = 3; i < d.length; i += 4) { if (d[i] !== 0) { hasAlpha = true; break; } }
+                if (!hasAlpha) return undefined as any;
+              } catch (e) {
+                // ignore getImageData errors (CORS)
+              }
               return off.toDataURL('image/png');
             } catch {
               const c = fillCanvasRef.current as HTMLCanvasElement | null;
@@ -753,7 +1117,7 @@ const EditImageInterface: React.FC = () => {
           };
           const res = await axiosInstance.post('/api/runway/generate', runwayPayload);
           const taskId = res?.data?.data?.taskId || res?.data?.taskId;
-
+          
           if (taskId) {
             // Poll for completion like the image generation flow
             let imageUrl: string | undefined;
@@ -761,7 +1125,7 @@ const EditImageInterface: React.FC = () => {
               try {
                 const statusRes = await axiosInstance.get(`/api/runway/status/${taskId}`);
                 const status = statusRes?.data?.data || statusRes?.data;
-
+                
                 if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
                   imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                   break;
@@ -775,7 +1139,7 @@ const EditImageInterface: React.FC = () => {
               }
               await new Promise(res => setTimeout(res, 1000));
             }
-
+            
             if (imageUrl) {
               // no-op after removing using-prompt feature
             } else {
@@ -800,7 +1164,7 @@ const EditImageInterface: React.FC = () => {
               max_images: 1,
               isPublic,
             };
-
+            
             // Use Replicate generate endpoint (same as image generation flow)
             const res = await axiosInstance.post('/api/replicate/generate', payload);
             const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
@@ -849,7 +1213,7 @@ const EditImageInterface: React.FC = () => {
         // Defaults mirror UpscalePopup: clarity 2, esrgan 4
         const clarityScale = parseScale(2);
         const esrganScale = parseScale(4);
-        let payload: any = { image: currentInput, model };
+        let payload: any = { image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput, model };
         // if (model === 'philz1337x/clarity-upscaler') {
         //   payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
         // } else 
@@ -861,28 +1225,7 @@ const EditImageInterface: React.FC = () => {
           payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
         } else if (model === 'fal-ai/topaz/upscale/image') {
           // Use FAL Topaz Upscaler endpoint
-          // Normalize local inputs to data URI (handles both data: and blob: sources)
-          const toDataUriIfLocal = async (src: string): Promise<string> => {
-            if (!src) return src as any;
-            if (src.startsWith('data:')) return src;
-            if (src.startsWith('blob:')) {
-              try {
-                const resp = await fetch(src);
-                const blob = await resp.blob();
-                return await new Promise<string>((resolve, reject) => {
-                  const reader = new FileReader();
-                  reader.onloadend = () => resolve(String(reader.result || ''));
-                  reader.onerror = reject;
-                  reader.readAsDataURL(blob);
-                });
-              } catch {
-                return src; // fallback
-              }
-            }
-            return src;
-          };
-
-          const normalizedLocal = await toDataUriIfLocal(String(currentInputRaw));
+          const normalizedLocal = normalizedInput;
           const isData = String(normalizedLocal).startsWith('data:');
           const body: any = {
             ...(isData ? { image: normalizedLocal } : { image_url: currentInput }),
@@ -900,10 +1243,10 @@ const EditImageInterface: React.FC = () => {
           if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
           return;
-        }
+        } 
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
-
+         
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
         console.log('[EditImage] upscale.res', res?.data);
         const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
@@ -935,6 +1278,8 @@ const EditImageInterface: React.FC = () => {
       setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
       setModel('nightmareai/real-esrgan');
+    } else if (selectedFeature === 'resize') {
+      setModel('fal-ai/outpaint');
     } else if (selectedFeature === 'vectorize') {
       setModel('fal-ai/recraft/vectorize' as any);
     }
@@ -945,16 +1290,32 @@ const EditImageInterface: React.FC = () => {
     setSharpen('');
     setBackgroundType('rgba');
     setThreshold('');
+    setResizeExpandLeft(0);
+    setResizeExpandRight(0);
+    setResizeExpandTop(0);
+    setResizeExpandBottom(400);
+    setResizeZoomOutPercentage(20);
+    setResizeNumImages(1);
+    setResizeSafetyChecker(true);
+    setResizeSyncMode(false);
+    setResizeOutputFormat('png');
+    setResizeAspectRatio('');
+    setFillSeed('');
+    setFillNegativePrompt('');
+    setFillNumImages(1);
+    setFillSyncMode(false);
+    setIsMasking(false);
+    setHasMask(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  
 
+  
 
-
-
-
+  
 
   // Helper functions from ImagePreviewModal.tsx
   const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
@@ -979,7 +1340,7 @@ const EditImageInterface: React.FC = () => {
         alert('No image available to download')
         return
       }
-
+      
       await downloadFileWithNaming(url, null, 'image', 'edited');
     } catch (e) {
       console.error('[EditImage] download.error', e)
@@ -994,7 +1355,7 @@ const EditImageInterface: React.FC = () => {
         alert('No image available to share')
         return
       }
-
+      
       // Use the same logic as ImagePreviewModal
       if (!navigator.share) {
         // Fallback: Copy image URL to clipboard
@@ -1014,25 +1375,25 @@ const EditImageInterface: React.FC = () => {
         alert('Image URL copied to clipboard!');
         return;
       }
-
+      
       const response = await fetch(downloadUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-
+      
       const blob = await response.blob();
       const fileName = (toProxyPath(shareUrl) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-
+      
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
-
+      
       // Use Web Share API
       await navigator.share({
         title: 'Wild Mind AI Generated Image',
         text: `Check out this AI-generated image!`,
         files: [file]
       });
-
+      
       console.log('Image shared successfully');
     } catch (error: any) {
       // Handle user cancellation gracefully
@@ -1040,7 +1401,7 @@ const EditImageInterface: React.FC = () => {
         console.log('Share cancelled by user');
         return;
       }
-
+      
       // Fallback to copying URL
       console.error('Share failed:', error);
       try {
@@ -1086,8 +1447,8 @@ const EditImageInterface: React.FC = () => {
             <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
           </div>
           {/* feature tabs moved to left sidebar */}
-        </div>
-      </div>
+                </div>
+            </div>
       {/* Spacer to offset fixed header height */}
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
@@ -1118,6 +1479,17 @@ const EditImageInterface: React.FC = () => {
               'fill': first,
               'vectorize': first,
             });
+            // Clear all outputs when a new image is selected so the output area re-renders
+            setOutputs({
+              'upscale': null,
+              'remove-bg': null,
+              'resize': null,
+              'fill': null,
+              'vectorize': null,
+            });
+            // Also reset zoom and pan state
+            setScale(1);
+            setOffset({ x: 0, y: 0 });
           }
         }}
       />
@@ -1125,7 +1497,7 @@ const EditImageInterface: React.FC = () => {
         {/* Left Sidebar - Controls */}
         <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] ml-8 sm:ml-16 md:ml-9 lg:ml-9">
           {/* Error Message */}
-          {errorMsg && (
+            {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
               <p className="text-red-400 text-xs">{errorMsg}</p>
             </div>
@@ -1144,6 +1516,8 @@ const EditImageInterface: React.FC = () => {
                       setModel('851-labs/background-remover');
                     } else if (feature.id === 'upscale') {
                       setModel('nightmareai/real-esrgan');
+                    } else if (feature.id === 'resize') {
+                      setModel('fal-ai/outpaint');
                     } else if (feature.id === 'vectorize') {
                       setModel('fal-ai/recraft/vectorize' as any);
                     }
@@ -1212,8 +1586,8 @@ const EditImageInterface: React.FC = () => {
                             <span className="truncate">{opt.label}</span>
                           </button>
                         ))}
-                      </div>
-                    )}
+                        </div>
+                      )}
                   </div>
                 </div>
                 {vectorizeModel === 'fal-ai/image2svg' && (
@@ -1222,13 +1596,13 @@ const EditImageInterface: React.FC = () => {
                       <div>
                         <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Colormode</label>
                         <div className="relative edit-dropdown">
-                          <button
+                      <button
                             onClick={() => setActiveDropdown(activeDropdown === 'vColorMode' ? '' : 'vColorMode')}
                             className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
-                          >
+                      >
                             <span className="truncate">{vColorMode}</span>
                             <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vColorMode' ? 'rotate-180' : ''}`} />
-                          </button>
+                      </button>
                           {activeDropdown === 'vColorMode' && (
                             <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                               {['color','binary'].map((opt) => (
@@ -1241,13 +1615,13 @@ const EditImageInterface: React.FC = () => {
                       <div>
                         <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Hierarchical</label>
                         <div className="relative edit-dropdown">
-                          <button
+                    <button
                             onClick={() => setActiveDropdown(activeDropdown === 'vHierarchical' ? '' : 'vHierarchical')}
                             className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
-                          >
+                    >
                             <span className="truncate">{vHierarchical}</span>
                             <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vHierarchical' ? 'rotate-180' : ''}`} />
-                          </button>
+                    </button>
                           {activeDropdown === 'vHierarchical' && (
                             <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                               {['stacked','cutout'].map((opt) => (
@@ -1255,8 +1629,8 @@ const EditImageInterface: React.FC = () => {
                               ))}
                             </div>
                           )}
+                </div>
                         </div>
-                      </div>
                       <div>
                         <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Mode</label>
                         <div className="relative edit-dropdown">
@@ -1272,7 +1646,7 @@ const EditImageInterface: React.FC = () => {
                               {['spline','polygon'].map((opt) => (
                                 <button key={opt} onClick={() => { setVMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
                               ))}
-                            </div>
+                      </div>
                           )}
                         </div>
                       </div>
@@ -1318,55 +1692,60 @@ const EditImageInterface: React.FC = () => {
           )}
 
           {/* Action Buttons moved to bottom under Parameters */}
-
+ 
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
           <div className="flex-1 min-h-0 p-3 overflow-hidden md:p-4">
             {selectedFeature !== 'vectorize' && (
               <>
-                <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
+            <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
 
-                <div className="space-y-1">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                        >
-                          <span className="truncate">
+            <div className="space-y-1">
+              {selectedFeature !== 'fill' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
+                  <div className="relative edit-dropdown">
+                    <button
+                      onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                    >
+                      <span className="truncate">
                             {model ? getUpscaleModelLabel(model) : 'Select model'}
-                          </span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {activeDropdown === 'model' && (
-                          <div className={`absolute top-full mt-2 z-30 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                            {(selectedFeature === 'remove-bg'
-                              ? [
-                                // { label: 'bria/eraser', value: 'bria/eraser' },
-                                { label: '851-labs/background-remover', value: '851-labs/background-remover' },
-                                { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
+                      </span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'model' && (
+                      <div className={`absolute top-full mt-2 z-30 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                        {(selectedFeature === 'remove-bg'
+                          ? [
+                              { label: '851-labs/background-remover', value: '851-labs/background-remover' },
+                              { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
                               ]
-                              : [
-                                { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
-                                // { label: 'MV-Lab Swin2SR', value: 'mv-lab/swin2sr' },
-                              ]
-                            ).concat(selectedFeature !== 'remove-bg' ? [
-                              { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-                              { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
-                            ] : []).map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() => { setModel(opt.value as any); setActiveDropdown(''); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
-                                className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                              >
-                                <span className="truncate">{opt.label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                              : selectedFeature === 'resize'
+                                ? [
+                                  { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
+                                  { label: 'FAL Outpaint', value: 'fal-ai/outpaint' },
+                            ]
+                          : [
+                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+                                  { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+                                  { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+                            ]
+                        ).map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => { setModel(opt.value as any); setActiveDropdown(''); setOutputs((prev) => ({ ...prev, [selectedFeature]: null })); setProcessing((p) => ({ ...p, [selectedFeature]: false })); }}
+                            className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span className="truncate">{opt.label}</span>
+                          </button>
+                        ))}
                       </div>
-                    </div>
+                    )}
+                  </div>
+                </div>
+                </div>
+              )}
                     {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
                       <div>
                         <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
@@ -1374,195 +1753,501 @@ const EditImageInterface: React.FC = () => {
                         <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
                       </div>
                     )}
-                    {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">{output || 'Select format'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'output' && (
-                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
+                  <div className="relative edit-dropdown">
+                    <button
+                      onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                    >
+                      <span className="truncate">{output || 'Select format'}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'output' && (
+                      <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                               {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
-                                <button
-                                  key={fmt}
-                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="uppercase">{fmt}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                          <button
+                            key={fmt}
+                            onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                            className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span className="uppercase">{fmt}</span>
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
+                </div>
+                )}
+              </div>
 
-                  {/* Prompt for Fill */}
-                  {selectedFeature === 'fill' && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt</label>
-                      <input
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Describe what to fill"
-                        className="w-full h-[32px] px-2 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 md:text-sm"
-                      />
-                    </div>
-                  )}
+              {/* Prompt for Fill */}
+              {selectedFeature === 'fill' && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt</label>
+                  <input
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe what to fill"
+                    className="w-full h-[32px] px-2 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 md:text-sm"
+                  />
+                </div>
+              )}
 
-                  {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
-                  {selectedFeature === 'resize' && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt (Optional)</label>
-                      <textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Describe details to guide the edit"
-                        rows={1}
-                        className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2"
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                      <div className="col-span-2">
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
-                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">{backgroundType || 'Select background type'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'backgroundType' && (
-                            <div className={`absolute top-full z-30 mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-44 overflow-y-auto dropdown-scrollbar`}>
-                              {[
-                                { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
-                                { label: 'white', value: 'white', description: 'Solid white background' },
-                                { label: 'green', value: 'green', description: 'Solid green background' },
-                                { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
-                                { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
-                                { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
-                              ].map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                                  className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <div className="flex items-center justify-between w-full">
-                                    <span className="truncate font-medium">{opt.label}</span>
-                                  </div>
-                                  <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
-                                    {opt.description}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
+              {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
+                  {selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Canvas Size*</label>
+                          <div className="flex items-center gap-2">
+                            <input type="number" min={1} max={5000} value={resizeCanvasW as any} onChange={(e)=>setResizeCanvasW(e.target.value === '' ? '' : Math.max(1, Math.min(5000, Number(e.target.value) || 1)))} placeholder="W" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                            <input type="number" min={1} max={5000} value={resizeCanvasH as any} onChange={(e)=>setResizeCanvasH(e.target.value === '' ? '' : Math.max(1, Math.min(5000, Number(e.target.value) || 1)))} placeholder="H" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                          </div>
+                          <div className="text-[11px] text-white/45 mt-1">Must be ≤ 5000 × 5000</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Aspect Ratio</label>
+                          <div className="relative edit-dropdown">
+                            <button onClick={() => setActiveDropdown(activeDropdown === 'resizeAspect' ? '' : 'resizeAspect')} className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                              <span className="truncate">{resizeAspectRatio || 'Select the Aspect Ratio'}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeAspect' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'resizeAspect' && (
+                              <div className={`absolute bottom-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-56 overflow-y-auto dropdown-scrollbar`}>
+                                {['1:1','2:3','3:2','3:4','4:3','4:5','5:4','9:16','16:9'].map((ar) => (
+                                  <button key={ar} onClick={() => { setResizeAspectRatio(ar as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${resizeAspectRatio === ar ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{ar}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {selectedFeature === 'fill' && (
-                      <>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Original Image Size</label>
+                        <div className="flex items-center gap-2">
+                          <input type="number" min={1} max={5000} value={resizeOrigW as any} onChange={(e)=>setResizeOrigW(e.target.value === '' ? '' : Math.max(1, Math.min(5000, Number(e.target.value) || 1)))} placeholder="W" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                          <input type="number" min={1} max={5000} value={resizeOrigH as any} onChange={(e)=>setResizeOrigH(e.target.value === '' ? '' : Math.max(1, Math.min(5000, Number(e.target.value) || 1)))} placeholder="H" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                        </div>
+                      </div>
+
+                      {/* <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Original Image Location (X,Y)</label>
+                        <div className="flex items-center gap-2">
+                          <input type="number" value={resizeOrigX as any} onChange={(e)=>setResizeOrigX(e.target.value === '' ? '' : Math.round(Number(e.target.value) || 0))} placeholder="X" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                          <input type="number" value={resizeOrigY as any} onChange={(e)=>setResizeOrigY(e.target.value === '' ? '' : Math.round(Number(e.target.value) || 0))} placeholder="Y" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                        </div>
+                        <div className="text-[11px] text-white/45 mt-1">X,Y may be outside canvas to crop the original</div>
+                      </div> */}
+
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Negative Prompt (Optional)</label>
+                        <textarea value={resizeNegativePrompt} onChange={(e)=>setResizeNegativePrompt(e.target.value)} rows={1} className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2" />
+                      </div>
+
+                      {/* <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
-                          <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                          <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Seed (Optional)</label>
+                          <input type="number" value={resizeSeed} onChange={(e)=>setResizeSeed(e.target.value)} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
                         </div>
                         <div className="flex items-end">
-                          <button type="button" onClick={() => setEraseMode(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${eraseMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
-                            {eraseMode ? 'Erase' : 'Paint'}
+                          <div className="flex items-center justify-between bg-white/5 border border-white/15 rounded-lg px-3 py-2 w-full">
+                            <div className="pr-4">
+                              <p className="text-xs font-medium text-white/80">Sync Mode</p>
+                              <p className="text-[11px] text-white/50">Return media as data URI.</p>
+                            </div>
+                            <button type="button" onClick={() => setResizeSyncMode(v => !v)} className={`px-3 py-1 text-xs rounded-lg border border-white/25 transition ${resizeSyncMode ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}>{resizeSyncMode ? 'On' : 'Off'}</button>
+                          </div>
+                        </div>
+                      </div> */}
+                    </div>
+                  )}
+
+                  {selectedFeature === 'resize' && model === 'fal-ai/outpaint' && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Prompt (Optional)</label>
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe details to guide the edit"
+                    rows={1}
+                    className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2"
+                  />
+                </div>
+              )}
+
+                  {selectedFeature === 'resize' && model === 'fal-ai/outpaint' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">
+                          Expand Left
+                          <span className="ml-2 text-white/40">{resizeExpandLeft}px</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={700}
+                            value={resizeExpandLeft}
+                            onChange={(e) => setResizeExpandLeft(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={700}
+                            value={resizeExpandLeft}
+                            onChange={(e) => setResizeExpandLeft(Math.max(0, Math.min(700, Number(e.target.value) || 0)))}
+                            className="w-16 h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">
+                          Expand Right
+                          <span className="ml-2 text-white/40">{resizeExpandRight}px</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={700}
+                            value={resizeExpandRight}
+                            onChange={(e) => setResizeExpandRight(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={700}
+                            value={resizeExpandRight}
+                            onChange={(e) => setResizeExpandRight(Math.max(0, Math.min(700, Number(e.target.value) || 0)))}
+                            className="w-16 h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">
+                          Expand Top
+                          <span className="ml-2 text-white/40">{resizeExpandTop}px</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={700}
+                            value={resizeExpandTop}
+                            onChange={(e) => setResizeExpandTop(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={700}
+                            value={resizeExpandTop}
+                            onChange={(e) => setResizeExpandTop(Math.max(0, Math.min(700, Number(e.target.value) || 0)))}
+                            className="w-16 h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">
+                          Expand Bottom
+                          <span className="ml-2 text-white/40">{resizeExpandBottom}px</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={700}
+                            value={resizeExpandBottom}
+                            onChange={(e) => setResizeExpandBottom(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={700}
+                            value={resizeExpandBottom}
+                            onChange={(e) => setResizeExpandBottom(Math.max(0, Math.min(700, Number(e.target.value) || 0)))}
+                            className="w-16 h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">
+                          Zoom Out Percentage
+                          <span className="ml-2 text-white/40">{resizeZoomOutPercentage}%</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={resizeZoomOutPercentage}
+                            onChange={(e) => setResizeZoomOutPercentage(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={resizeZoomOutPercentage}
+                            onChange={(e) => setResizeZoomOutPercentage(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            className="w-16 h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">
+                          Number of Images
+                          <span className="ml-2 text-white/40">{resizeNumImages}</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={1}
+                            max={4}
+                            value={resizeNumImages}
+                            onChange={(e) => setResizeNumImages(Number(e.target.value))}
+                            className="flex-1"
+                          />
+                          <div className="w-10 text-center text-white text-xs bg-white/5 border border-white/20 rounded-lg py-1">
+                            {resizeNumImages}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between bg-white/5 border border-white/15 rounded-lg px-3 py-2">
+                          <div className="pr-4">
+                            <p className="text-xs font-medium text-white/80">Enable Safety Checker</p>
+                            <p className="text-[11px] text-white/50">Blocks unsafe or sensitive generations.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setResizeSafetyChecker((v) => !v)}
+                            className={`px-3 py-1 text-xs rounded-lg border border-white/25 transition ${resizeSafetyChecker ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+                          >
+                            {resizeSafetyChecker ? 'On' : 'Off'}
                           </button>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Steps (15-50)</label>
-                          <input type="number" min={15} max={50} value={fillSteps} onChange={(e) => setFillSteps(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                        <div className="flex items-center justify-between bg-white/5 border border-white/15 rounded-lg px-3 py-2">
+                          <div className="pr-4">
+                            <p className="text-xs font-medium text-white/80">Sync Mode</p>
+                            <p className="text-[11px] text-white/50">When enabled, returns media as Base64 in the response.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setResizeSyncMode((v) => !v)}
+                            className={`px-3 py-1 text-xs rounded-lg border border-white/25 transition ${resizeSyncMode ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+                          >
+                            {resizeSyncMode ? 'On' : 'Off'}
+                          </button>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Guidance (1.5-100)</label>
-                          <input type="number" min={1.5} max={100} step={0.5} value={fillGuidance} onChange={(e) => setFillGuidance(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Seed (optional)</label>
-                          <input type="number" value={fillSeed} onChange={(e) => setFillSeed(e.target.value)} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Buttons moved to bottom footer */}
-                  </div>
-
-                  {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={threshold}
-                        onChange={(e) => setThreshold(e.target.value)}
-                        placeholder="0.0 (soft alpha) to 1.0"
-                        className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                      />
-                      <div className="mt-1 text-xs text-white/50">
-                        Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
                       </div>
-                      <div className="mt-2">
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
-                        <button
-                          type="button"
-                          onClick={() => setReverseBg(v => !v)}
-                          className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
-                        >
-                          {reverseBg ? 'Enabled' : 'Disabled'}
-                        </button>
-                        <div className="mt-1 text-xs text-white/50">
-                          Remove foreground instead of background
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'resizeOutput' ? '' : 'resizeOutput')}
+                              className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate uppercase">{resizeOutputFormat}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeOutput' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'resizeOutput' && (
+                              <div className={`absolute bottom-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                {['png', 'jpeg', 'jpg', 'webp'].map((fmt) => (
+                                  <button
+                                    key={fmt}
+                                    onClick={() => { setResizeOutputFormat(fmt as any); setActiveDropdown(''); }}
+                                    className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${resizeOutputFormat === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  >
+                                    <span className="uppercase">{fmt}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Aspect Ratio</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'resizeAspect' ? '' : 'resizeAspect')}
+                              className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate">{resizeAspectRatio ? resizeAspectRatio : 'Match input'}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeAspect' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'resizeAspect' && (
+                              <div className={`absolute bottom-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-56 overflow-y-auto dropdown-scrollbar`}>
+                                {[{ label: 'Match input', value: '' }, { label: '1:1', value: '1:1' }, { label: '16:9', value: '16:9' }, { label: '9:16', value: '9:16' }, { label: '4:3', value: '4:3' }, { label: '3:4', value: '3:4' }].map((opt) => (
+                                  <button
+                                    key={opt.value || 'original'}
+                                    onClick={() => { setResizeAspectRatio(opt.value as any); setActiveDropdown(''); }}
+                                    className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${resizeAspectRatio === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  >
+                                    <span className="truncate">{opt.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+              {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
+                  <div className="relative edit-dropdown">
+                    <button
+                      onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
+                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                    >
+                      <span className="truncate">{backgroundType || 'Select background type'}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'backgroundType' && (
+                      <div className={`absolute top-full z-30 mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-44 overflow-y-auto dropdown-scrollbar`}>
+                        {[
+                          { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
+                          { label: 'white', value: 'white', description: 'Solid white background' },
+                          { label: 'green', value: 'green', description: 'Solid green background' },
+                          { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
+                          { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
+                          { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
+                            className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="truncate font-medium">{opt.label}</span>
+                            </div>
+                            <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
+                              {opt.description}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedFeature === 'fill' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
+                          <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                          <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
+                  </div>
+                  <div className="flex items-end">
+                    <button type="button" onClick={() => setEraseMode(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${eraseMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>
+                      {eraseMode ? 'Erase' : 'Paint'}
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Negative Prompt (Optional)</label>
+                    <textarea value={fillNegativePrompt} onChange={(e) => setFillNegativePrompt(e.target.value)} rows={1} className="w-full px-2 py-1 bg-black/80 border border-white/25 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none md:text-sm md:py-2" placeholder="Describe what to avoid" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                  <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Number of Images</label>
+                      <input type="number" min={1} max={4} value={fillNumImages} onChange={(e) => setFillNumImages(Math.max(1, Math.min(4, Number(e.target.value) || 1)))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                  </div>
+                  <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Seed (Optional)</label>
+                    <input type="number" value={fillSeed} onChange={(e) => setFillSeed(e.target.value)} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none" />
+                    </div>
+                  </div>
+                  <div className="flex items-end">
+                    <div className="flex items-center justify-between bg-white/5 border border-white/15 rounded-lg px-3 py-2 w-full">
+                      <div className="pr-4">
+                        <p className="text-xs font-medium text-white/80">Sync Mode</p>
+                        <p className="text-[11px] text-white/50">Return media as data URI.</p>
+                      </div>
+                      <button type="button" onClick={() => setFillSyncMode(v => !v)} className={`px-3 py-1 text-xs rounded-lg border border-white/25 transition ${fillSyncMode ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}>{fillSyncMode ? 'On' : 'Off'}</button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+                {/* Buttons moved to bottom footer */}
+              </div>
+
+              {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={threshold}
+                    onChange={(e) => setThreshold(e.target.value)}
+                    placeholder="0.0 (soft alpha) to 1.0"
+                    className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                  />
+                  <div className="mt-1 text-xs text-white/50">
+                    Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
+                  </div>
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
+                    <button
+                      type="button"
+                      onClick={() => setReverseBg(v => !v)}
+                      className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
+                    >
+                      {reverseBg ? 'Enabled' : 'Disabled'}
+                    </button>
+                    <div className="mt-1 text-xs text-white/50">
+                      Remove foreground instead of background
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedFeature === 'upscale' && (
+                <>
+                  {model === 'nightmareai/real-esrgan' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={10}
+                          step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 4}
+                          onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
+                          className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
+                          <button
+                            type="button"
+                            onClick={() => setFaceEnhance(v => !v)}
+                            className={`h-[30px] w-full px-3  rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                          >
+                            {faceEnhance ? 'Enabled' : 'Disabled'}
+                          </button>
                         </div>
                       </div>
                     </div>
                   )}
-
-                  {selectedFeature === 'upscale' && (
-                    <>
-                      {model === 'nightmareai/real-esrgan' && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={1}
-                              value={Number(String(scaleFactor).replace('x', '')) || 4}
-                              onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
-                              className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <div className="w-full">
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
-                              <button
-                                type="button"
-                                onClick={() => setFaceEnhance(v => !v)}
-                                className={`h-[30px] w-full px-3  rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
-                              >
-                                {faceEnhance ? 'Enabled' : 'Disabled'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                       {model === 'philz1337x/crystal-upscaler' && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -1681,11 +2366,11 @@ const EditImageInterface: React.FC = () => {
                             <div>
                               <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face strength (0-1)</label>
                               <input type="number" min={0} max={1} step={0.1} value={topazFaceStrength} onChange={(e)=>setTopazFaceStrength(Math.max(0, Math.min(1, Number(e.target.value) || 0.8)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
-                            </div>
-                          </div>
                         </div>
-                      )}
-                      {/* {model === 'mv-lab/swin2sr' && (
+                      </div>
+                    </div>
+                  )}
+                  {/* {model === 'mv-lab/swin2sr' && (
                     <div>
                       <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Task</label>
                       <div className="relative edit-dropdown">
@@ -1712,11 +2397,10 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     </div>
                   )} */}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+                </>
+              )}
+                </>
+              )}
 
             {/* Bottom action buttons under parameters */}
             <div className="mt-3 pt-2 border-t border-white/10">
@@ -1737,11 +2421,11 @@ const EditImageInterface: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Footer removed; buttons are rendered at the end of Parameters above */}
-
-        </div>
-
+ 
+            {/* Footer removed; buttons are rendered at the end of Parameters above */}
+ 
+          </div>
+ 
         {/* Right Main Area - Image Display */}
         <div className="flex-1 flex flex-col bg-[#07070B] overflow-hidden">
 
@@ -1749,7 +2433,7 @@ const EditImageInterface: React.FC = () => {
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center pt-3  ">
             <div
-              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] w-full max-w-6xl md:max-w-7xl"
+              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:h-auto md:max-h-[50rem]   w-full max-w-6xl md:max-w-[100rem]"
               onDragOver={(e) => { try { e.preventDefault(); } catch {} }}
               onDrop={(e) => {
                 try {
@@ -1767,37 +2451,48 @@ const EditImageInterface: React.FC = () => {
                      'fill': img,
                      'vectorize': img,
                    });
+                   // Clear all outputs when a new image is dropped so the output area re-renders
+                   setOutputs({
+                     'upscale': null,
+                     'remove-bg': null,
+                     'resize': null,
+                     'fill': null,
+                     'vectorize': null,
+                   });
+                   // Also reset zoom and pan state
+                   setScale(1);
+                   setOffset({ x: 0, y: 0 });
                  };
                   reader.readAsDataURL(file);
                 } catch {}
               }}
             >
-              {/* Dotted grid background overlay */}
+                {/* Dotted grid background overlay */}
               <div className="absolute inset-0 z-0  pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
               {outputs[selectedFeature] && (
                 <div className="absolute top-5 left-4 z-10 ">
                   <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
                 </div>
               )}
-
+              
 
               {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
               {(outputs[selectedFeature] || inputs[selectedFeature]) && (
                 <div className="absolute bottom-3 left-3 z-50 md:bottom-4 md:left-4 flex items-center gap-2">
-                  {outputs[selectedFeature] && (
+              {outputs[selectedFeature] && (
                     <div className="relative">
-                      <button
-                        ref={menuButtonRef}
+                  <button
+                    ref={menuButtonRef}
                         className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30 md:p-2"
-                        aria-haspopup="menu"
-                        aria-expanded={showImageMenu}
+                    aria-haspopup="menu"
+                    aria-expanded={showImageMenu}
                         onClick={() => setShowImageMenu(v => !v)}
-                      >
-                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
+                  >
+                    <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
                           <circle cx="5" cy="12" r="2" />
                           <circle cx="12" cy="12" r="2" />
                           <circle cx="19" cy="12" r="2" />
-                        </svg>
+                    </svg>
                       </button>
                     </div>
                   )}
@@ -1815,7 +2510,7 @@ const EditImageInterface: React.FC = () => {
                   </button>
 
                   
-
+                  
                   {/* Themed dropdown menu */}
                   {outputs[selectedFeature] && showImageMenu && (
                     <div ref={menuRef} className="absolute bottom-10 left-0 bg-black/80 border border-white/30 rounded-lg shadow-2xl min-w-[100px] overflow-hidden md:min-w-[150px]">
@@ -1876,26 +2571,26 @@ const EditImageInterface: React.FC = () => {
                   {(inputs[selectedFeature]) ? (
                     // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
                     <div className="w-full h-full relative min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] ">
-                      {inputs[selectedFeature] && (
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
-                          <div className="flex bg-black/80 rounded-lg p-1">
-                            <button
-                              onClick={() => setUpscaleViewMode('comparison')}
+                      {inputs[selectedFeature] && selectedFeature !== 'resize' && (
+                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
+                        <div className="flex bg-black/80 rounded-lg p-1">
+                          <button
+                            onClick={() => setUpscaleViewMode('comparison')}
                               className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'comparison' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
-                            >
-                              Compare
-                            </button>
-                            <button
-                              onClick={() => setUpscaleViewMode('zoom')}
+                          >
+                            Compare
+                          </button>
+                          <button
+                            onClick={() => setUpscaleViewMode('zoom')}
                               className={`px-2 py-1 text-xs rounded transition-colors ${upscaleViewMode === 'zoom' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
-                            >
-                              Zoom
-                            </button>
-                          </div>
+                          >
+                            Zoom
+                          </button>
                         </div>
+                      </div>
                       )}
 
-                      {upscaleViewMode === 'comparison' ? (
+                      {selectedFeature !== 'resize' && upscaleViewMode === 'comparison' ? (
                         // Comparison slider mode
                         <>
                           <div className="absolute inset-0">
@@ -1906,7 +2601,7 @@ const EditImageInterface: React.FC = () => {
                               className="object-contain object-center"
                             />
                           </div>
-                          <div
+                          <div 
                             className="absolute inset-0"
                             style={{
                               clipPath: `inset(0 0 0 ${sliderPosition}%)`
@@ -1929,7 +2624,7 @@ const EditImageInterface: React.FC = () => {
                               onChange={(e) => setSliderPosition(Number(e.target.value))}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
                             />
-                            <div
+                            <div 
                               className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
                               style={{ left: `${sliderPosition}%` }}
                             />
@@ -1937,8 +2632,8 @@ const EditImageInterface: React.FC = () => {
                           <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
                             <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
                           </div>
-                        </>
-                      ) : (
+                          </>
+                       ) : (
                        // Zoom mode (all features)
                         <div
                           ref={imageContainerRef}
@@ -1969,10 +2664,10 @@ const EditImageInterface: React.FC = () => {
                             }}
                             onClick={handleImageClick}
                           />
-
+                          
                           {/* Zoom Controls */}
                           <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
-                            <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
+                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
                               <button
                                 onClick={() => {
                                   const newScale = Math.max(0.1, scale - 0.1);
@@ -2040,7 +2735,7 @@ const EditImageInterface: React.FC = () => {
                         }}
                         onClick={handleImageClick}
                       />
-
+                      
                       {/* Zoom Controls */}
                       <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
                         <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
@@ -2105,10 +2800,10 @@ const EditImageInterface: React.FC = () => {
                     >
                       <svg className="w-10 h-10 mx-auto mb-2 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
-                      </svg>
+                        </svg>
                       <span className="text-xs">Drop image here or click to upload</span>
                     </button>
-                  )}
+                    )}
                 </div>
               )}
               {/* Fill mask overlay moved to input area */}
