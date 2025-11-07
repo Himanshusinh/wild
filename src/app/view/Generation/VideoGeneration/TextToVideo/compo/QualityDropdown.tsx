@@ -141,11 +141,7 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
           }
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${
-          selectedQuality !== "720p" && selectedQuality !== "480p" && selectedQuality !== "360p" && selectedQuality !== "540p"
-            ? 'bg-white text-black' 
-            : 'bg-transparent text-white/90 hover:bg-white/5'
-        }`}
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white`}
       >
         <Monitor className="w-4 h-4 mr-1" />
         {selectedQualityInfo?.label || selectedQuality}
