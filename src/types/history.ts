@@ -3,6 +3,11 @@ export interface GeneratedImage {
   url: string;
   firebaseUrl?: string; // URL after uploading to Firebase Storage
   originalUrl: string; // Original URL from BFL API
+  // Optimized image URLs
+  webpUrl?: string; // WebP optimized version
+  thumbnailUrl?: string; // Thumbnail version (400x400)
+  blurDataUrl?: string; // Base64 blur placeholder
+  optimized?: boolean; // Flag indicating if image has been optimized
 }
 
 export interface GeneratedVideo {

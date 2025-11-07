@@ -62,18 +62,42 @@ const InputBox = () => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
       if (!hasUserScrolledRef.current) return;
-      if (!hasMoreHistory || historyLoading || loadingMoreRef.current) return;
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMoreHistory) {
+        console.log('[Mockup] IO: skip loadMore - NO MORE ITEMS', { hasMoreHistory });
+        return;
+      }
+      
+      if (historyLoading || loadingMoreRef.current) {
+        console.log('[Mockup] IO: skip loadMore - already loading', { historyLoading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
+      console.log('[Mockup] IO: loadMore start', { hasMoreHistory });
+      
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'mockup-generation' }, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e) {
-        // ignore
+        console.log('[Mockup] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Mockup] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Mockup] IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Mockup] IO: observer attached', { hasMoreHistory });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Mockup] IO: observer disconnected');
+    };
   }, [hasMoreHistory, historyLoading, dispatch]);
 
   const mockupHistoryEntries = historyEntries

@@ -1001,23 +1001,47 @@ const InputBox = () => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
       if (!hasUserScrolledRef.current) return;
-      if (!hasMore || loading || loadingMoreRef.current) return;
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMore) {
+        console.log('[Video] IO: skip loadMore - NO MORE ITEMS', { hasMore });
+        return;
+      }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('[Video] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
       const nextPage = page + 1;
       setPage(nextPage);
+      console.log('[Video] IO: loadMore start', { nextPage, hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { mode: 'video' } as any,
           paginationParams: { limit: 10 }
         })).unwrap();
-      } catch (e) {
-        console.error('[Video] IO loadMore error', e);
+        console.log('[Video] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Video] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Video] IO loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Video] IO: observer attached', { hasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Video] IO: observer disconnected');
+    };
   }, [hasMore, loading, page, dispatch, sentinelElement]);
 
   // Also mark user scroll on window in case container isn't scroll root

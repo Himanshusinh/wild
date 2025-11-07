@@ -190,25 +190,45 @@ const InputBox = () => {
         console.log('[Logo] IO: skip until user scrolls');
         return;
       }
-      if (!hasMore || loading || loadingMoreRef.current) {
-        console.log('[Logo] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMore) {
+        console.log('[Logo] IO: skip loadMore - NO MORE ITEMS', { hasMore });
         return;
       }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('[Logo] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
-      console.log('[Logo] IO: loadMore start');
+      console.log('[Logo] IO: loadMore start', { hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({ 
           filters: { generationType: 'logo' }, 
           paginationParams: { limit: 10 } 
         })).unwrap();
-      } catch (e) {
-        console.error('[Logo] IO: loadMore error', e);
+        console.log('[Logo] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Logo] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Logo] IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Logo] IO: observer attached', { hasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Logo] IO: observer disconnected');
+    };
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
@@ -505,7 +525,16 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           </div>
         ) : (
                           <div className="relative w-full h-full group">
-                            <SmartImage src={image.url || image.originalUrl || '/placeholder-logo.png'} alt={localGeneratingEntries[0].prompt} fill className="object-cover" sizes="192px" />
+                            <SmartImage 
+                              src={image.url || image.originalUrl || '/placeholder-logo.png'} 
+                              thumbnailUrl={image.thumbnailUrl}
+                              webpUrl={image.webpUrl}
+                              blurDataUrl={image.blurDataUrl}
+                              alt={localGeneratingEntries[0].prompt} 
+                              fill 
+                              className="object-cover" 
+                              sizes="192px" 
+                            />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover copy button overlay */}
                             <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -651,6 +680,9 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           <div className="relative w-full h-full group">
                             <SmartImage
                                 src={image.url || image.originalUrl || '/placeholder-logo.png'}
+                                thumbnailUrl={image.thumbnailUrl}
+                                webpUrl={image.webpUrl}
+                                blurDataUrl={image.blurDataUrl}
                                 alt={entry.prompt}
                               fill
                                 className="object-cover transition-transform group-hover:scale-105"

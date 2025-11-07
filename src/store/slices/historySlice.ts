@@ -128,8 +128,19 @@ export const loadHistory = createAsyncThunk(
             createdAt: it?.createdAt || timestamp,
           };
         });
+      
+      // Backend returns hasMore (new) or we fallback to checking nextCursor (legacy)
+      const hasMore = result.hasMore !== undefined ? Boolean(result.hasMore) : Boolean(result.nextCursor);
       const nextCursor = result.nextCursor;
-      return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
+      
+      console.log('[loadHistory] Response:', { 
+        itemCount: items.length, 
+        hasMore, 
+        nextCursor: nextCursor ? (typeof nextCursor === 'number' ? `${nextCursor} (timestamp)` : `${nextCursor} (legacy)`) : null,
+        debugTag
+      });
+      
+      return { entries: items, hasMore, nextCursor };
     } catch (error: any) {
       if (error === '__CONDITION_ABORT__' || (typeof error?.message === 'string' && error.message === '__CONDITION_ABORT__')) {
         return rejectWithValue('__CONDITION_ABORT__');
@@ -282,8 +293,18 @@ export const loadMoreHistory = createAsyncThunk(
             createdAt: it?.createdAt || timestamp,
           };
         });
+      
+      // Backend returns hasMore (new) or we fallback to checking nextCursor (legacy)
+      const hasMore = result.hasMore !== undefined ? Boolean(result.hasMore) : Boolean(result.nextCursor);
       const nextCursor = result.nextCursor;
-      return { entries: items, hasMore: Boolean(nextCursor), nextCursor };
+      
+      console.log('[loadMoreHistory] Response:', { 
+        itemCount: items.length, 
+        hasMore, 
+        nextCursor: nextCursor ? (typeof nextCursor === 'number' ? `${nextCursor} (timestamp)` : `${nextCursor} (legacy)`) : null
+      });
+      
+      return { entries: items, hasMore, nextCursor };
     } catch (error) {
       // Keep error for visibility
       console.error('❌ Load more history failed:', error);

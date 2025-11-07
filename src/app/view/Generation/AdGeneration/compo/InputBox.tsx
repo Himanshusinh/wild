@@ -83,18 +83,42 @@ const AdGenerationInputBox: React.FC = () => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
       if (!hasUserScrolledRef.current) return;
-      if (!hasMore || loading || loadingMoreRef.current) return;
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMore) {
+        console.log('[Ad] IO: skip loadMore - NO MORE ITEMS', { hasMore });
+        return;
+      }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('[Ad] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
+      console.log('[Ad] IO: loadMore start', { hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e) {
-        // ignore
+        console.log('[Ad] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Ad] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Ad] IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Ad] IO: observer attached', { hasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Ad] IO: observer disconnected');
+    };
   }, [hasMore, loading, dispatch]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

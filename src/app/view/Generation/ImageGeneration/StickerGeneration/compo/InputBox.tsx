@@ -173,25 +173,45 @@ const InputBox = () => {
         console.log('[Sticker] IO: skip until user scrolls');
         return;
       }
-      if (!hasMore || loading || loadingMoreRef.current) {
-        console.log('[Sticker] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMore) {
+        console.log('[Sticker] IO: skip loadMore - NO MORE ITEMS', { hasMore });
         return;
       }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('[Sticker] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
-      console.log('[Sticker] IO: loadMore start');
+      console.log('[Sticker] IO: loadMore start', { hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({ 
           filters: { generationType: 'sticker-generation' }, 
           paginationParams: { limit: 10 } 
         })).unwrap();
-      } catch (e) {
-        console.error('[Sticker] IO: loadMore error', e);
+        console.log('[Sticker] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Sticker] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Sticker] IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Sticker] IO: observer attached', { hasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Sticker] IO: observer disconnected');
+    };
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
@@ -501,7 +521,16 @@ const InputBox = () => {
                           </div>
                         ) : (
                           <div className="relative w-full h-full group">
-                            <SmartImage src={image.url || image.originalUrl || '/placeholder-sticker.png'} alt={localGeneratingEntries[0].prompt} fill className="object-cover" sizes="192px" />
+                            <SmartImage 
+                              src={image.url || image.originalUrl || '/placeholder-sticker.png'} 
+                              thumbnailUrl={image.thumbnailUrl}
+                              webpUrl={image.webpUrl}
+                              blurDataUrl={image.blurDataUrl}
+                              alt={localGeneratingEntries[0].prompt} 
+                              fill 
+                              className="object-cover" 
+                              sizes="192px" 
+                            />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover copy button overlay */}
                             <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -631,6 +660,9 @@ const InputBox = () => {
                             <div className="relative w-full h-full group">
                               <SmartImage
                                 src={image.url}
+                                thumbnailUrl={image.thumbnailUrl}
+                                webpUrl={image.webpUrl}
+                                blurDataUrl={image.blurDataUrl}
                                 alt={`Generated sticker ${imageIndex + 1}`}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200"

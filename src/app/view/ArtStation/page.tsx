@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import SmartImage from '@/components/media/SmartImage'
+import { OptimizedImage } from '@/components/media/OptimizedImage'
 import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
@@ -23,7 +24,16 @@ type PublicItem = {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
-  images?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
+  images?: { 
+    id: string; 
+    url: string; 
+    originalUrl?: string; 
+    storagePath?: string;
+    webpUrl?: string;
+    thumbnailUrl?: string;
+    blurDataUrl?: string;
+    optimized?: boolean;
+  }[];
   videos?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
   audios?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
 };
@@ -747,7 +757,7 @@ export default function ArtStationPage() {
                                 muted
                                 playsInline
                                 preload="metadata"
-                                poster={toThumbUrl(media.url, { w: 640, q: 60 }) || undefined}
+                                poster={media.thumbnailUrl || media.webpUrl || toThumbUrl(media.url, { w: 640, q: 60 }) || undefined}
                                 // play on hover
                                 onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
                                 onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
@@ -775,24 +785,47 @@ export default function ArtStationPage() {
                             />
                           </>
                         ) : (
-                          <Image
-                            src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
-                            alt={item.prompt || ''}
-                            fill
-                            sizes={sizes}
-                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                            placeholder="blur"
-                            blurDataURL={blur}
-                            priority={isPriority}
-                            fetchPriority={isPriority ? 'high' : 'auto'}
-                            onLoadingComplete={(img) => {
-                              try {
-                                const el = img as unknown as HTMLImageElement
-                                if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                              } catch { }
-                              markTileLoaded(cardId)
-                            }}
-                          />
+                          <div className="relative w-full h-full">
+                            {media.thumbnailUrl || media.webpUrl ? (
+                              <Image
+                                src={media.thumbnailUrl || media.webpUrl || media.url}
+                                alt={item.prompt || ''}
+                                fill
+                                sizes={sizes}
+                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                                placeholder="blur"
+                                blurDataURL={media.blurDataUrl || blur}
+                                priority={isPriority}
+                                fetchPriority={isPriority ? 'high' : 'auto'}
+                                onLoadingComplete={(img) => {
+                                  try {
+                                    const el = img as unknown as HTMLImageElement
+                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                  } catch { }
+                                  markTileLoaded(cardId)
+                                }}
+                              />
+                            ) : (
+                              <Image
+                                src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
+                                alt={item.prompt || ''}
+                                fill
+                                sizes={sizes}
+                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                                placeholder="blur"
+                                blurDataURL={blur}
+                                priority={isPriority}
+                                fetchPriority={isPriority ? 'high' : 'auto'}
+                                onLoadingComplete={(img) => {
+                                  try {
+                                    const el = img as unknown as HTMLImageElement
+                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                  } catch { }
+                                  markTileLoaded(cardId)
+                                }}
+                              />
+                            )}
+                          </div>
                         )
                       })()}
                       {kind === 'video' && (
@@ -1036,7 +1069,7 @@ export default function ArtStationPage() {
                       if (preview.kind === 'video') {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         const proxied = toDirectUrl(vid.url) || vid.url
-                        const poster = toThumbUrl(vid.url, { w: 1280, q: 60 }) || undefined
+                        const poster = vid.thumbnailUrl || vid.webpUrl || toThumbUrl(vid.url, { w: 1280, q: 60 }) || undefined
                         return (
                           <div className="relative w-full h-full">
                             <video src={proxied} className="w-full h-full" controls autoPlay playsInline preload="auto" poster={poster} />
@@ -1158,7 +1191,7 @@ export default function ArtStationPage() {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
                                 const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
                                 const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={toThumbUrl(vd.url, { w: 320, q: 60 }) || undefined} />
+                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={vd.thumbnailUrl || vd.webpUrl || toThumbUrl(vd.url, { w: 320, q: 60 }) || undefined} />
                               })()}
                             </button>
                           ))}

@@ -203,25 +203,45 @@ const ProductWithModelPoseInputBox = () => {
         console.log('[Product] IO: skip until user scrolls');
         return;
       }
-      if (!hasMore || loading || loadingMoreRef.current) {
-        console.log('[Product] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMore) {
+        console.log('[Product] IO: skip loadMore - NO MORE ITEMS', { hasMore });
         return;
       }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('[Product] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
-      console.log('[Product] IO: loadMore start');
+      console.log('[Product] IO: loadMore start', { hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({ 
           filters: { generationType: 'product-generation' }, 
           paginationParams: { limit: 10 } 
         })).unwrap();
-      } catch (e) {
-        console.error('[Product] IO: loadMore error', e);
+        console.log('[Product] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Product] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Product] IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Product] IO: observer attached', { hasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Product] IO: observer disconnected');
+    };
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
