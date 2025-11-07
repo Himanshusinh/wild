@@ -561,6 +561,8 @@ const InputBox = () => {
       prompt,
       model: selectedModel,
       generationType: 'text-to-image',
+      frameSize: frameSize || undefined,
+      aspect_ratio: frameSize || undefined,
       images: Array.from({ length: imageCount }, (_, index) => ({
         id: `loading-${index}`,
         url: '',
@@ -2015,8 +2017,8 @@ const InputBox = () => {
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto">
         <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
           {/* Top row: prompt + actions */}
-          <div className="flex items-start gap-0 p-3 pr-3">
-            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-2.5 w-full relative">
+          <div className="flex items-start gap-0 px-3  pr-0">
+            <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-4 w-full relative">
               <textarea
                 ref={inputEl}
                 placeholder="Type your prompt..."
@@ -2053,7 +2055,7 @@ const InputBox = () => {
                           inputEl.current.focus();
                         }
                       }}
-                      className="px-1.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-1.5 py-1.5 -mt-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
                       aria-label="Clear prompt"
                     >
                       <svg
@@ -2071,7 +2073,7 @@ const InputBox = () => {
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                       </svg>
                     </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
                   </div>
                 )}
                 {/* Previews just to the left of upload */}
@@ -2119,32 +2121,37 @@ const InputBox = () => {
                     })}
                   </div>
                 )}
-                <div className="relative group">
-                  <button
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
-                    onClick={() => setIsUploadOpen(true)}
-                    type="button"
-                    aria-label="Upload"
-                  >
-                    <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-90" />
-                    <span className="text-white text-sm"> </span>
-                  </button>
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
+               <div className="relative flex items-center gap-1.5 -mr-1 -mt-1.5">
+                  <div className="relative">
+                    <button
+                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      onClick={() => setIsUploadOpen(true)}
+                      type="button"
+                      aria-label="Upload character"
+                    >
+                      <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                      <span className="text-white text-sm"> </span>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                  </div>
+                  <div className="relative">
+                    <button
+                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      onClick={() => setIsUploadOpen(true)}
+                      type="button"
+                      aria-label="Upload image"
+                    >
+                      <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                      <span className="text-white text-sm"> </span>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Fixed position Generate button */}
-            <div className="flex flex-col items-end gap-2 flex-shrink-0">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
-              <button
-                onClick={handleGenerate}
-                disabled={isGeneratingLocally || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-              >
-                {isGeneratingLocally ? "Generating..." : "Generate"}
-              </button>
-            </div>
+            
           </div>
 
           {/* Bottom row: pill options */}
@@ -2179,8 +2186,8 @@ const InputBox = () => {
             </span>
           </div> */}
 
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-              <ModelsDropdown />
+            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
+              <div className="flex items-center gap-3 -mb-2"><ModelsDropdown />
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
@@ -2238,6 +2245,18 @@ const InputBox = () => {
                   )}
                 </div>
               )}
+</div>
+              
+              <div><div className="flex flex-col items-end gap-2 flex-shrink-0 justify-end">
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={isGeneratingLocally || !prompt.trim()}
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+              >
+                {isGeneratingLocally ? "Generating..." : "Generate"}
+              </button>
+            </div></div>
             </div>
           </div>
         </div>
