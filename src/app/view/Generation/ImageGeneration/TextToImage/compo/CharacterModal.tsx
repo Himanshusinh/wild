@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import SmartImage from "@/components/media/SmartImage";
 import CreateCharacterModal from './CreateCharacterModal';
+import UploadModal from './UploadModal';
 import { useAppDispatch } from "@/store/hooks";
 import { getApiClient } from '@/lib/axiosInstance';
 
@@ -38,6 +39,8 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
   const [localSelectedCharacter, setLocalSelectedCharacter] = useState<Character | null>(null);
   const [localUpload, setLocalUpload] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadSelectedImages, setUploadSelectedImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [characterEntries, setCharacterEntries] = useState<any[]>([]);
@@ -188,7 +191,9 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
   };
 
   const handleCreateNew = () => {
-    setIsCreateModalOpen(true);
+    // Do not hide nav tabs; open the Upload modal so user can pick images from library or device
+    setTab('create');
+    setIsUploadModalOpen(true);
   };
 
   const handleCharacterCreated = async (character: Character) => {
@@ -255,10 +260,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                 </button>
                 <button 
                   className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'create' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
-                  onClick={() => {
-                    setTab('create');
-                    setIsCreateModalOpen(true);
-                  }}
+                  onClick={handleCreateNew}
                 >
                   Create New Character
                 </button>
@@ -473,22 +475,56 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                     </button>
                   </div>
                 </div>
+              ) : tab === 'create' ? (
+                <div>
+                  <div className="text-white/70 text-sm mb-3">Create a new character</div>
+                  {isCreateModalOpen ? (
+                    <div>
+                      <CreateCharacterModal
+                        isOpen={true}
+                        embedded={true}
+                        initialFrontImage={uploadSelectedImages?.[0]}
+                        initialLeftImage={uploadSelectedImages?.[1]}
+                        initialRightImage={uploadSelectedImages?.[2]}
+                        onClose={() => {
+                          setIsCreateModalOpen(false);
+                          if (tab === 'create') setTab('library');
+                          setUploadSelectedImages([]);
+                        }}
+                        onCharacterCreated={handleCharacterCreated}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-[50vh] text-white/60">
+                      <div>
+                        <div className="text-lg mb-2">Start by picking images to create a character</div>
+                        <div className="text-sm">Click "Create New Character" above to choose images from your library or device.</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : null}
             </div>
           </div>
         </div>
       </div>
 
-      <CreateCharacterModal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          if (tab === 'create') {
-            setTab('library');
-          }
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onAdd={(urls: string[]) => {
+          // Save selection and open the create-character modal with selected images
+          setUploadSelectedImages(urls || []);
+          setIsUploadModalOpen(false);
+          setIsCreateModalOpen(true);
         }}
-        onCharacterCreated={handleCharacterCreated}
+        historyEntries={characterEntries}
+        remainingSlots={3}
+        onLoadMore={() => handleLoadMore()}
+        hasMore={hasMore}
+        loading={loading}
       />
+      
     </>
   );
 };
