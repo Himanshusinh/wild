@@ -109,21 +109,15 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       setError("Front image is required");
       return;
     }
-    if (!leftImage) {
-      setError("Left side image is required");
-      return;
-    }
-    if (!rightImage) {
-      setError("Right side image is required");
-      return;
-    }
 
     setIsGenerating(true);
     setError(null);
 
     try {
       const characterPrompt = `${name.trim()}, highly realistic and natural-looking portrait, square format, professional photography, detailed facial features, natural lighting, high quality, photorealistic, edge-to-edge character, no borders, no frames, no white padding, no background frames, seamless edges, full frame character, no margins, no white space around subject`;
-      const uploadedImages: string[] = [frontImage, leftImage, rightImage];
+      const uploadedImages: string[] = [frontImage];
+      if (leftImage) uploadedImages.push(leftImage);
+      if (rightImage) uploadedImages.push(rightImage);
 
       const model = "gemini-25-flash-image";
       const api = (await import("@/lib/axiosInstance")).getApiClient();
@@ -227,7 +221,7 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-white/90 text-sm font-medium mb-2">
-              Upload from Left Side <span className="text-red-400">*</span>
+              Upload from Left Side <span className="text-white/50 text-xs">(Optional)</span>
             </label>
             <div
               className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors ${
@@ -264,7 +258,7 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
           <div>
             <label className="block text-white/90 text-sm font-medium mb-2">
-              Upload from Right Side <span className="text-red-400">*</span>
+              Upload from Right Side <span className="text-white/50 text-xs">(Optional)</span>
             </label>
             <div
               className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors ${
@@ -317,7 +311,7 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           <button
             className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleGenerate}
-            disabled={isGenerating || !name.trim() || !frontImage || !leftImage || !rightImage}
+            disabled={isGenerating || !name.trim() || !frontImage}
           >
             {isGenerating ? "Creating..." : "Create Character"}
           </button>
