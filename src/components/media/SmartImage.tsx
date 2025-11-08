@@ -10,8 +10,8 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 	thumbQuality?: number;
 	/** Optimized thumbnail URL (pre-generated) */
 	thumbnailUrl?: string;
-	/** Optimized WebP URL */
-	webpUrl?: string;
+	/** Optimized AVIF URL (primary format) */
+	avifUrl?: string;
 	/** Base64 blur placeholder */
 	blurDataUrl?: string;
 	/** If true, renders as decorative (alt="") to avoid alt text flash on load */
@@ -22,7 +22,7 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 
 /**
  * SmartImage
- * - Prioritizes pre-generated optimized thumbnails (thumbnailUrl, webpUrl, blurDataUrl)
+ * - Prioritizes pre-generated optimized thumbnails (thumbnailUrl, avifUrl, blurDataUrl)
  * - Falls back to API thumbnail proxy for Zata-hosted assets for faster loads
  * - Provides a tiny inline blur placeholder for nicer LQIP
  * - Works with either fill or width/height
@@ -40,7 +40,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	thumbWidth = 640,
 	thumbQuality = 60,
 	thumbnailUrl,
-	webpUrl,
+	avifUrl,
 	blurDataUrl,
 	decorative,
 	onLoadingComplete,
@@ -50,11 +50,12 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	const BLUR_PLACEHOLDER =
 		'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+';
 
-	// Prioritize optimized thumbnails: thumbnailUrl -> webpUrl -> toThumbUrl() -> original
+	// Prioritize optimized thumbnails: thumbnailUrl -> avifUrl -> toThumbUrl() -> original
 	const optimized = (() => {
-		// Use pre-generated thumbnail if available
+		// Use pre-generated thumbnail if available (small 400x400)
 		if (thumbnailUrl) return thumbnailUrl;
-		if (webpUrl) return webpUrl;
+		// Use optimized AVIF if available (full-size optimized)
+		if (avifUrl) return avifUrl;
 		
 		// Fall back to on-demand thumbnail generation
 		try {

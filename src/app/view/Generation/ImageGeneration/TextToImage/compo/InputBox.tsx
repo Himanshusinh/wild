@@ -51,7 +51,6 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
-import SmartImage from "@/components/media/SmartImage";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -1804,22 +1803,20 @@ const InputBox = () => {
                         </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <SmartImage 
-                            src={image.url} 
-                            thumbnailUrl={image.thumbnailUrl}
-                            webpUrl={image.webpUrl}
-                            blurDataUrl={image.blurDataUrl}
+                          <Image 
+                            src={image.thumbnailUrl || image.avifUrl || image.url} 
                             alt="" 
                             fill 
                             className="object-cover transition-opacity duration-300" 
                             sizes="192px"
-                            thumbWidth={384}
-                            thumbQuality={60}
-                            decorative
-                            onLoadingComplete={(imgEl) => {
+                            onLoad={() => {
                               // Smooth fade-in effect
-                              try { (imgEl as HTMLElement).style.opacity = '1'; } catch {}
+                              try { 
+                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
+                                if (img) img.style.opacity = '1';
+                              } catch {}
                             }}
+                            style={{ opacity: 0 }}
                           />
                           {/* Shimmer loading effect */}
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
@@ -1887,22 +1884,20 @@ const InputBox = () => {
                               </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <SmartImage 
-                            src={image.url}
-                            thumbnailUrl={image.thumbnailUrl}
-                            webpUrl={image.webpUrl}
-                            blurDataUrl={image.blurDataUrl}
+                          <Image 
+                            src={image.thumbnailUrl || image.avifUrl || image.url}
                             alt="" 
                             fill 
                             className="object-contain transition-opacity duration-300" 
                             sizes="192px"
-                            thumbWidth={384}
-                            thumbQuality={60}
-                            decorative
-                            onLoadingComplete={(imgEl) => {
+                            onLoad={() => {
                               // Smooth fade-in effect
-                              try { (imgEl as HTMLElement).style.opacity = '1'; } catch {}
+                              try { 
+                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
+                                if (img) img.style.opacity = '1';
+                              } catch {}
                             }}
+                            style={{ opacity: 0 }}
                           />
                           {/* Hover copy button overlay */}
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -1963,19 +1958,13 @@ const InputBox = () => {
                           ) : (
                             // Completed image with shimmer loading
                             <div className="relative w-full h-full group">
-                              <SmartImage
-                                src={image.url}
-                                thumbnailUrl={image.thumbnailUrl}
-                                webpUrl={image.webpUrl}
-                                blurDataUrl={image.blurDataUrl}
+                              <Image
+                                src={image.thumbnailUrl || image.avifUrl || image.url}
                                 alt=""
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200 "
                                 sizes="192px"
-                                thumbWidth={384}
-                                thumbQuality={60}
-                                decorative
-                                onLoadingComplete={() => {
+                                onLoad={() => {
                                   // Remove shimmer when image loads
                                   setTimeout(() => {
                                     const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;

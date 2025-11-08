@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import SmartImage from "@/components/media/SmartImage";
 import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -525,11 +524,8 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           </div>
         ) : (
                           <div className="relative w-full h-full group">
-                            <SmartImage 
-                              src={image.url || image.originalUrl || '/placeholder-logo.png'} 
-                              thumbnailUrl={image.thumbnailUrl}
-                              webpUrl={image.webpUrl}
-                              blurDataUrl={image.blurDataUrl}
+                            <Image 
+                              src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'} 
                               alt={localGeneratingEntries[0].prompt} 
                               fill 
                               className="object-cover" 
@@ -678,16 +674,13 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           ) : (
                             // Completed logo
                           <div className="relative w-full h-full group">
-                            <SmartImage
-                                src={image.url || image.originalUrl || '/placeholder-logo.png'}
-                                thumbnailUrl={image.thumbnailUrl}
-                                webpUrl={image.webpUrl}
-                                blurDataUrl={image.blurDataUrl}
+                            <Image
+                                src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'}
                                 alt={entry.prompt}
                               fill
                                 className="object-cover transition-transform group-hover:scale-105"
                               sizes="192px"
-                              onLoadingComplete={() => {
+                              onLoad={() => {
                                 setTimeout(() => {
                                   const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
                                     if (shimmer) shimmer.style.opacity = '0';

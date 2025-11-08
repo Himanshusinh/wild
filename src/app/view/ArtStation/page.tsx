@@ -1,7 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import SmartImage from '@/components/media/SmartImage'
 import { OptimizedImage } from '@/components/media/OptimizedImage'
 import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
@@ -9,7 +8,7 @@ import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
-import { toThumbUrl, toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
+import { toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -757,7 +756,7 @@ export default function ArtStationPage() {
                                 muted
                                 playsInline
                                 preload="metadata"
-                                poster={media.thumbnailUrl || media.webpUrl || toThumbUrl(media.url, { w: 640, q: 60 }) || undefined}
+                                poster={media.thumbnailUrl || media.avifUrl || undefined}
                                 // play on hover
                                 onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
                                 onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
@@ -786,9 +785,9 @@ export default function ArtStationPage() {
                           </>
                         ) : (
                           <div className="relative w-full h-full">
-                            {media.thumbnailUrl || media.webpUrl ? (
+                            {media.thumbnailUrl || media.avifUrl ? (
                               <Image
-                                src={media.thumbnailUrl || media.webpUrl || media.url}
+                                src={media.thumbnailUrl || media.avifUrl || media.url}
                                 alt={item.prompt || ''}
                                 fill
                                 sizes={sizes}
@@ -807,7 +806,7 @@ export default function ArtStationPage() {
                               />
                             ) : (
                               <Image
-                                src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
+                                src={media.url}
                                 alt={item.prompt || ''}
                                 fill
                                 sizes={sizes}
@@ -1069,7 +1068,7 @@ export default function ArtStationPage() {
                       if (preview.kind === 'video') {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         const proxied = toDirectUrl(vid.url) || vid.url
-                        const poster = vid.thumbnailUrl || vid.webpUrl || toThumbUrl(vid.url, { w: 1280, q: 60 }) || undefined
+                        const poster = vid.thumbnailUrl || vid.avifUrl || undefined
                         return (
                           <div className="relative w-full h-full">
                             <video src={proxied} className="w-full h-full" controls autoPlay playsInline preload="auto" poster={poster} />
@@ -1191,7 +1190,7 @@ export default function ArtStationPage() {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
                                 const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
                                 const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={vd.thumbnailUrl || vd.webpUrl || toThumbUrl(vd.url, { w: 320, q: 60 }) || undefined} />
+                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={vd.thumbnailUrl || vd.avifUrl || undefined} />
                               })()}
                             </button>
                           ))}

@@ -2,7 +2,6 @@
 
  import React, { useEffect, useRef, useState, useMemo } from 'react';
   import Image from 'next/image';
-  import SmartImage from '@/components/media/SmartImage';
   import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
   import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
   import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
@@ -20,7 +19,6 @@
   // Replaced custom loader with Logo.gif
   import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
   import { getCreditsForModel } from '@/utils/modelCredits';
-  import { toThumbUrl } from '@/lib/thumb';
 
   const History = () => {
     const dispatch = useAppDispatch();
@@ -1441,7 +1439,7 @@
                                       playsInline 
                                       loop 
                                       preload="metadata"
-                                      poster={toThumbUrl(mediaUrl, { w: 640, q: 60 }) || undefined}
+                                      poster={(media as any).thumbnailUrl || (media as any).avifUrl || undefined}
                                       onMouseEnter={async (e) => { 
                                         try { 
                                           await (e.currentTarget as HTMLVideoElement).play();
@@ -1619,16 +1617,13 @@
                                     );
                                   }
                                   return (
-                                    <SmartImage
-                                      src={mediaUrl}
+                                    <Image
+                                      src={(media as any).thumbnailUrl || (media as any).avifUrl || mediaUrl}
                                       alt={entry.prompt}
                                       fill
                                       className="object-cover group-hover:scale-105 transition-transform duration-200"
                                       sizes="192px"
-                                      thumbWidth={480}
-                                      thumbQuality={60}
-                                      decorative
-                                      onLoadingComplete={() => {
+                                      onLoad={() => {
                                         try {
                                           setTimeout(() => {
                                             const shimmer = document.querySelector(`[data-image-id=\"${entry.id}-${media.id || mediaIndex}\"] .shimmer`) as HTMLElement;
