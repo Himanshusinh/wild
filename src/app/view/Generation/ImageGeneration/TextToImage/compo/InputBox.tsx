@@ -16,6 +16,10 @@ import {
   generateImages,
   generateMiniMaxImages,
   setUploadedImages,
+  setSelectedCharacter,
+  addSelectedCharacter,
+  removeSelectedCharacter,
+  clearSelectedCharacters,
   setSelectedModel,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
@@ -46,6 +50,7 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ImagePreviewModal from "./ImagePreviewModal";
 import UpscalePopup from "./UpscalePopup";
 import UploadModal from "./UploadModal";
+import CharacterModal, { Character } from "./CharacterModal";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
@@ -65,6 +70,7 @@ const InputBox = () => {
   const [isRemoveBgOpen, setIsRemoveBgOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -177,9 +183,43 @@ const InputBox = () => {
   };
 
   // Adjust natural language references like "image 4" -> "image 3" (zero-based)
-  const adjustPromptImageNumbers = (text: string): string => {
+  // Also, if combinedImages and selectedCharacters are provided, replace @Name mentions
+  // with the corresponding image index (1-based) that will be sent in uploadedImages.
+  const adjustPromptImageNumbers = (text: string, combinedImages?: string[], selectedCharacters?: any[]): string => {
     try {
-      return text.replace(/\b(image|img)\s*([1-9]\d*)\b/gi, (_m, word, num) => {
+      let t = String(text || '');
+
+      // If we have combinedImages and selectedCharacters, replace @Name with image N (1-based)
+      if (combinedImages && Array.isArray(combinedImages) && selectedCharacters && Array.isArray(selectedCharacters)) {
+        const mentionRegex = /@([\w-]+)/g;
+        let out = '';
+        let lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = mentionRegex.exec(t))) {
+          const matchIndex = m.index as number;
+          const name = m[1];
+          out += t.slice(lastIndex, matchIndex);
+          // find matching character by name
+          const char = selectedCharacters.find((c: any) => String(c.name).toLowerCase() === String(name).toLowerCase());
+          if (char && char.frontImageUrl) {
+            const url = String(char.frontImageUrl);
+            const idx = combinedImages.findIndex((u: string) => String(u) === url);
+            if (idx >= 0) {
+              out += `the character in the image ${idx + 1}`; // 1-based in prompt, will be converted to zero-based below
+            } else {
+              out += m[0];
+            }
+          } else {
+            out += m[0];
+          }
+          lastIndex = matchIndex + m[0].length;
+        }
+        out += t.slice(lastIndex);
+        t = out;
+      }
+
+      // Now convert any "image N" (1-based) to zero-based indexes expected by some providers
+      return t.replace(/\b(image|img)\s*([1-9]\d*)\b/gi, (_m, word, num) => {
         const n = Math.max(0, parseInt(String(num), 10) - 1);
         return `${word} ${n}`;
       });
@@ -424,6 +464,304 @@ const InputBox = () => {
   const uploadedImages = useAppSelector(
     (state: any) => state.generation?.uploadedImages || []
   );
+  const selectedCharacters = useAppSelector(
+    (state: any) => state.generation?.selectedCharacters || []
+  );
+
+  // ContentEditable approach for inline character tags (like Cursor)
+  const contentEditableRef = useRef<HTMLDivElement>(null);
+  const isUpdatingRef = useRef(false);
+  
+  // Function to update contentEditable with tags
+  const updateContentEditable = React.useCallback(() => {
+    if (!contentEditableRef.current || isUpdatingRef.current) return;
+    
+    const div = contentEditableRef.current;
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    
+    // Save cursor position
+    let cursorOffset = 0;
+    if (range && div.contains(range.startContainer)) {
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(div);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      cursorOffset = preCaretRange.toString().length;
+    }
+    
+    isUpdatingRef.current = true;
+    
+    // Clear and rebuild content
+    div.innerHTML = '';
+    
+    // If no prompt and no characters, leave empty
+    if (!prompt && selectedCharacters.length === 0) {
+      isUpdatingRef.current = false;
+      return;
+    }
+    
+  // Parse prompt and create nodes
+  let parts: Array<{ type: 'text' | 'tag'; content: string; character?: any }> = [];
+    let lastIndex = 0;
+    
+    // Find all @references in the prompt
+    const refMatches = Array.from(prompt.matchAll(/@(\w+)/gi)) as RegExpMatchArray[];
+    
+    refMatches.forEach((match) => {
+      const matchIndex = match.index!;
+      const refName = match[1];
+      const character = selectedCharacters.find((char: any) => 
+        char.name.toLowerCase() === refName.toLowerCase()
+      );
+
+      if (character && matchIndex >= lastIndex) {
+        // Add text before reference
+        if (matchIndex > lastIndex) {
+          const textBefore = prompt.substring(lastIndex, matchIndex);
+          if (textBefore) {
+            parts.push({ type: 'text', content: textBefore });
+          }
+        }
+        // Add reference tag
+        parts.push({ type: 'tag', content: match[0], character });
+        lastIndex = matchIndex + match[0].length;
+      }
+    });
+
+    // Add remaining text
+    if (lastIndex < prompt.length) {
+      const textAfter = prompt.substring(lastIndex);
+      if (textAfter) {
+        parts.push({ type: 'text', content: textAfter });
+      }
+    }
+
+    // If no parts and we have text, add it as text
+    if (parts.length === 0 && prompt) {
+      parts.push({ type: 'text', content: prompt });
+    }
+
+    // If there are selected characters but no explicit @tags in the prompt,
+    // prepend the selected characters as visible tags so users always see
+    // the attached characters in the contentEditable area (like Freepik).
+    // This lets users type anywhere while the tags remain present.
+    const hasTagParts = parts.some(p => p.type === 'tag');
+    if (selectedCharacters && selectedCharacters.length > 0 && !hasTagParts) {
+      const leadingTags = selectedCharacters.map((char: any) => ({ type: 'tag' as const, content: `@${char.name}`, character: char }));
+      parts = [...leadingTags, ...parts];
+    }
+
+    // Build DOM nodes
+    parts.forEach((part) => {
+      if (part.type === 'tag' && part.character) {
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'character-tag group relative inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 border border-blue-400/30 rounded text-blue-300 text-sm font-medium hover:bg-blue-500/30 transition-colors mx-0.5';
+        tagSpan.contentEditable = 'false';
+        tagSpan.style.display = 'inline-flex';
+        tagSpan.style.verticalAlign = 'baseline';
+        tagSpan.setAttribute('data-character-id', part.character.id);
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = `@${part.character.name}`;
+        tagSpan.appendChild(nameSpan);
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 text-blue-200 hover:text-white';
+        removeBtn.type = 'button';
+        removeBtn.contentEditable = 'false';
+        removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        removeBtn.onclick = (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          removeCharacterReference(part.character.name);
+        };
+        tagSpan.appendChild(removeBtn);
+        
+        div.appendChild(tagSpan);
+      } else {
+        const textNode = document.createTextNode(part.content);
+        div.appendChild(textNode);
+      }
+    });
+    
+    // Restore cursor position
+    if (range && cursorOffset > 0) {
+      try {
+        const walker = document.createTreeWalker(
+          div,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        let currentPos = 0;
+        let node;
+        while (node = walker.nextNode()) {
+          const nodeLength = node.textContent?.length || 0;
+          if (currentPos + nodeLength >= cursorOffset) {
+            const newRange = document.createRange();
+            newRange.setStart(node, Math.min(cursorOffset - currentPos, nodeLength));
+            newRange.setEnd(node, Math.min(cursorOffset - currentPos, nodeLength));
+            selection?.removeAllRanges();
+            selection?.addRange(newRange);
+            break;
+          }
+          currentPos += nodeLength;
+        }
+      } catch (e) {
+        // Ignore cursor restoration errors
+      }
+    }
+    
+    // Adjust height
+    div.style.height = 'auto';
+    div.style.height = Math.min(div.scrollHeight, 96) + 'px';
+    
+    setTimeout(() => { isUpdatingRef.current = false; }, 50);
+  }, [prompt, selectedCharacters]);
+
+  // Ensure contentEditable is synced whenever prompt or selected characters change
+  useEffect(() => {
+    // Defer to next tick to avoid interfering with other layout tasks
+    setTimeout(() => {
+      try {
+        updateContentEditable();
+      } catch (e) {
+        // ignore
+      }
+    }, 0);
+  }, [prompt, selectedCharacters, updateContentEditable]);
+
+  // Helper function to combine uploadedImages with selectedCharacters images
+  // Maps @references in prompt to character images in the correct order
+  const getCombinedUploadedImages = (): string[] => {
+    const result: string[] = [];
+    const added = new Set<string>();
+
+    // 1) Add character images in the order they are mentioned in the prompt (@Name)
+    try {
+      const mentionRegex = /@([\w-]+)/g;
+      const seenNames = new Set<string>();
+      let m: RegExpExecArray | null;
+      while ((m = mentionRegex.exec(prompt))) {
+        const name = m[1];
+        if (seenNames.has(name.toLowerCase())) continue; // skip duplicate mentions
+        seenNames.add(name.toLowerCase());
+        const char = (selectedCharacters || []).find((c: any) => String(c.name).toLowerCase() === name.toLowerCase());
+        if (char && char.frontImageUrl) {
+          const url = String(char.frontImageUrl);
+          if (!added.has(url)) {
+            result.push(url);
+            added.add(url);
+          }
+        }
+      }
+    } catch (e) {
+      // fall back to simple behavior below
+    }
+
+    // 2) Append any selected character images that weren't mentioned (preserve selection order)
+    (selectedCharacters || []).forEach((c: any) => {
+      const url = c?.frontImageUrl;
+      if (url && !added.has(url)) {
+        result.push(String(url));
+        added.add(String(url));
+      }
+    });
+
+    // 3) Append other uploaded images (user-uploaded) that are not already included
+    (uploadedImages || []).forEach((u: string) => {
+      try {
+        const url = String(u);
+        if (url && !added.has(url)) {
+          result.push(url);
+          added.add(url);
+        }
+      } catch { /* ignore */ }
+    });
+
+    return result;
+  };
+
+  // Function to remove character reference (removes from selectedCharacters)
+  const removeCharacterReference = (characterName: string) => {
+    // Remove the character from selectedCharacters and clean up any @mentions
+    try {
+      const character = (selectedCharacters || []).find((char: any) => String(char.name).toLowerCase() === String(characterName).toLowerCase());
+      if (character) {
+        dispatch(removeSelectedCharacter(character.id));
+      }
+
+      // Helper to escape special chars for regex
+      const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
+
+      // Remove any @characterName occurrences from the prompt (case-insensitive)
+      // Be liberal in matching so we also remove trailing punctuation like commas/periods
+      const nameEsc = escapeRegExp(String(characterName));
+      // Match @Name followed by optional non-word punctuation (e.g. @Name, @Name.) or end of string
+      const regex = new RegExp(`@${nameEsc}(?:[^\\w]|$)`, 'gi');
+      if (prompt && regex.test(prompt)) {
+        const newPrompt = prompt.replace(regex, ' ').trim().replace(/\s+/g, ' ');
+        dispatch(setPrompt(newPrompt));
+      }
+
+      // Also remove any leftover plain-text @mentions inside the contentEditable DOM
+      // (This handles cases where the DOM contains a text node like "@Name" that didn't come from prompt)
+      setTimeout(() => {
+        try {
+          const div = contentEditableRef.current;
+          if (div) {
+            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
+            const nodesToRemove: Node[] = [];
+            const nodesToTrim: { node: Text; value: string }[] = [];
+            let node: Node | null = walker.nextNode();
+            while (node) {
+              // If element is a character-tag with matching data-character-id, remove it
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const el = node as HTMLElement;
+                if (el.classList && el.classList.contains('character-tag')) {
+                  const dataId = el.getAttribute('data-character-id');
+                  if (character && dataId && String(dataId) === String(character.id)) {
+                    nodesToRemove.push(el);
+                  }
+                }
+              }
+
+              // If it's a text node containing the literal @name, trim/remove it
+              if (node.nodeType === Node.TEXT_NODE) {
+                const txt = node.nodeValue || '';
+                // Liberal match inside text nodes (handle trailing punctuation)
+                const re = new RegExp(`@${nameEsc}(?:[^\\w]|$)`, 'i');
+                if (re.test(txt)) {
+                  // If the text node is mostly the mention, remove it entirely
+                  if (txt.trim().toLowerCase().replace(/[^\w@]/g, '') === `@${String(characterName).toLowerCase().replace(/[^\w]/g, '')}`) {
+                    nodesToRemove.push(node);
+                  } else {
+                    // Otherwise remove just the mention substring
+                    const newVal = txt.replace(re, ' ').replace(/\s+/g, ' ');
+                    nodesToTrim.push({ node: node as Text, value: newVal });
+                  }
+                }
+              }
+
+              node = walker.nextNode();
+            }
+
+            nodesToRemove.forEach(n => n.parentNode?.removeChild(n));
+            nodesToTrim.forEach(t => t.node.nodeValue = t.value);
+
+            // After DOM manip, force the controlled content to re-sync
+            updateContentEditable();
+            // Keep focus on the contentEditable for UX continuity
+            div.focus();
+          }
+        } catch (e) {
+          // ignore DOM cleanup errors
+        }
+      }, 50);
+    } catch (e) {
+      // swallow to avoid breaking UI
+    }
+  };
 
   // Credits management
   const {
@@ -438,8 +776,11 @@ const InputBox = () => {
   });
 
   // Function to clear input after successful generation
+  // Note: Selected characters are NOT cleared - they remain like the prompt
   const clearInputs = () => {
-    setUploadedImages([]);
+    dispatch(setUploadedImages([]));
+    // Don't clear selectedCharacters - they should remain like the prompt
+    // dispatch(clearSelectedCharacters());
     // Reset file input
     if (inputEl.current) {
       inputEl.current.value = "";
@@ -712,23 +1053,23 @@ const InputBox = () => {
 
             // Make direct API call to avoid creating multiple history entries
             console.log(`=== MAKING RUNWAY API CALL FOR IMAGE ${index + 1} ===`);
-            const promptAdjusted = adjustPromptImageNumbers(prompt);
+            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const combinedImages = getCombinedUploadedImages();
             console.log('API payload:', {
               promptText: `${promptAdjusted} [Style: ${style}]`,
               model: selectedModel,
               ratio,
               generationType: "text-to-image",
-              uploadedImagesCount: uploadedImages.length,
+              uploadedImagesCount: combinedImages.length,
               style,
               existingHistoryId: firebaseHistoryId
             });
-
             const result = await dispatch(runwayGenerate({
               promptText: `${promptAdjusted} [Style: ${style}]`,
               model: selectedModel,
               ratio,
               generationType: "text-to-image",
-              uploadedImages,
+              uploadedImages: combinedImages,
               style,
               existingHistoryId: firebaseHistoryId,
               isPublic
@@ -1015,7 +1356,7 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
-          const promptAdjusted = adjustPromptImageNumbers(prompt);
+          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
           const result = await dispatch(
             generateMiniMaxImages({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -1072,14 +1413,15 @@ const InputBox = () => {
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
-          const promptAdjusted = adjustPromptImageNumbers(prompt);
+          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
             aspect_ratio: frameSize as any,
-            uploadedImages: (uploadedImages || []).map((u: string) => toAbsoluteFromProxy(u)),
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
             output_format: 'jpeg',
             generationType: 'text-to-image',
             isPublic,
@@ -1122,13 +1464,14 @@ const InputBox = () => {
       } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
         // Imagen 4 models via FAL generate endpoint
         try {
-          const promptAdjusted = adjustPromptImageNumbers(prompt);
+          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize as any,
             num_images: imageCount,
-            uploadedImages: (uploadedImages || []).map((u: string) => toAbsoluteFromProxy(u)),
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
             output_format: outputFormat,
             generationType: 'text-to-image',
             isPublic,
@@ -1176,7 +1519,7 @@ const InputBox = () => {
           const seedreamAllowedAspect = new Set([
             'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
           ]);
-          const promptAdjusted = adjustPromptImageNumbers(prompt);
+          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
           const payload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: 'bytedance/seedream-4',
@@ -1239,7 +1582,7 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
-            const promptAdjusted = adjustPromptImageNumbers(prompt);
+            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-turbo',
@@ -1315,7 +1658,7 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
-            const promptAdjusted = adjustPromptImageNumbers(prompt);
+            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-quality',
@@ -1390,7 +1733,7 @@ const InputBox = () => {
           // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
-            const promptAdjusted = adjustPromptImageNumbers(prompt);
+            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'leonardoai/lucid-origin',
@@ -1558,7 +1901,8 @@ const InputBox = () => {
           }
 
           // Call local image generation proxy (server uploads to Firebase)
-          const promptAdjusted = adjustPromptImageNumbers(prompt);
+          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(bflGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
@@ -1566,6 +1910,7 @@ const InputBox = () => {
             frameSize,
             style,
             isPublic,
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
           })).unwrap();
 
           // History is persisted by backend; no local completed entry needed
@@ -1596,7 +1941,8 @@ const InputBox = () => {
           // flux-dev uses frameSize conversion (handled in API route)
           const isFluxProModel = selectedModel === "flux-pro-1.1" || selectedModel === "flux-pro-1.1-ultra" || selectedModel === "flux-pro";
 
-          const promptAdjusted = adjustPromptImageNumbers(prompt);
+          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
           let generationPayload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
@@ -1604,7 +1950,7 @@ const InputBox = () => {
             frameSize,
             style,
             generationType: "text-to-image",
-            uploadedImages,
+            uploadedImages: combinedImages,
           };
 
           // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
@@ -1745,6 +2091,13 @@ const InputBox = () => {
         
         /* Keep default browser spellcheck underlines without forcing decoration */
         textarea[spellcheck="true"] { text-decoration: none; }
+        
+        /* Placeholder for contentEditable */
+        [contenteditable][data-placeholder]:empty::before {
+          content: attr(data-placeholder);
+          color: rgba(255, 255, 255, 0.5);
+          pointer-events: none;
+        }
       `}</style>
       
       <div className="inset-0 pl-0 pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
@@ -1992,29 +2345,137 @@ const InputBox = () => {
           {/* Top row: prompt + actions */}
           <div className="flex items-start gap-0 px-3  pr-0">
             <div className="flex-1 flex items-start gap-2 bg-transparent rounded-lg pr-4 pl-2 py-4 w-full relative">
-              <textarea
-                ref={inputEl}
-                placeholder="Type your prompt..."
-                value={prompt}
-                onChange={(e) => {
-                  dispatch(setPrompt(e.target.value));
-                  adjustTextareaHeight(e.target);
+              {/* ContentEditable with inline character tags - allows typing anywhere */}
+              <div
+                ref={contentEditableRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => {
+                  if (isUpdatingRef.current) return;
+                  
+                  const div = e.currentTarget;
+                  
+                  // Extract text content (including from tags)
+                  let text = '';
+                  const walker = document.createTreeWalker(
+                    div,
+                    NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+                    null
+                  );
+                  
+                  let node;
+                  while (node = walker.nextNode()) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                      text += node.textContent || '';
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                      const el = node as Element;
+                      if (el.classList.contains('character-tag')) {
+                        const nameSpan = el.querySelector('span');
+                        if (nameSpan) {
+                          text += nameSpan.textContent || '';
+                        }
+                      } else {
+                        // For other elements, get text content
+                        text += el.textContent || '';
+                      }
+                    }
+                  }
+                  
+                  // Clean duplicates
+                  const cleanedText = text.replace(/(@\w+)(\s*\1)+/g, '$1');
+                  
+                  // Update state
+                  isUpdatingRef.current = true;
+                  dispatch(setPrompt(cleanedText));
+                  
+                  // Adjust height
+                  div.style.height = 'auto';
+                  div.style.height = Math.min(div.scrollHeight, 96) + 'px';
+                  
+                  // Re-render tags after a short delay to ensure they're visible
+                  setTimeout(() => {
+                    isUpdatingRef.current = false;
+                    // Check if tags need to be re-rendered
+                    const hasTags = div.querySelector('.character-tag');
+                    const shouldHaveTags = selectedCharacters.length > 0 && cleanedText.match(/@\w+/);
+                    if (!hasTags && shouldHaveTags) {
+                      updateContentEditable();
+                    }
+                  }, 100);
                 }}
-                spellCheck={true}
-                lang="en"
-                autoComplete="off"
-                autoCorrect="on"
-                autoCapitalize="on"
-                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
-                  }`}
-                rows={1}
+                onKeyDown={(e) => {
+                  // Allow normal typing, but prevent deleting tags directly
+                  if (e.key === 'Backspace' || e.key === 'Delete') {
+                    const div = e.currentTarget;
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0);
+                      let node: Node | null = range.startContainer;
+                      
+                      while (node && node !== div) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                          const el = node as Element;
+                          if (el.classList.contains('character-tag')) {
+                            // If cursor is at start of tag, move before it
+                            if (e.key === 'Backspace') {
+                              e.preventDefault();
+                              const textNode = document.createTextNode('');
+                              div.insertBefore(textNode, el);
+                              range.setStartBefore(textNode);
+                              range.collapse(true);
+                              selection.removeAllRanges();
+                              selection.addRange(range);
+                              return;
+                            }
+                            // If cursor is at end of tag, move after it
+                            if (e.key === 'Delete') {
+                              e.preventDefault();
+                              const textNode = document.createTextNode('');
+                              div.insertBefore(textNode, el.nextSibling);
+                              range.setStartAfter(textNode);
+                              range.collapse(true);
+                              selection.removeAllRanges();
+                              selection.addRange(range);
+                              return;
+                            }
+                          }
+                        }
+                        node = node.parentNode;
+                      }
+                    }
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text/plain');
+                  const selection = window.getSelection();
+                  if (selection && selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    const textNode = document.createTextNode(text);
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.collapse(false);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                  }
+                  // Trigger input event
+                  const inputEvent = new Event('input', { bubbles: true });
+                  e.currentTarget.dispatchEvent(inputEvent);
+                }}
+                className={`flex-1 min-w-[200px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${
+                  !prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
+                }`}
                 style={{
                   minHeight: '24px',
                   maxHeight: '96px',
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+                  scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap'
                 }}
+                data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
               />
               {/* Fixed position buttons container */}
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -2050,8 +2511,40 @@ const InputBox = () => {
                   </div>
                 )}
                 {/* Previews just to the left of upload */}
-                {uploadedImages.length > 0 && (
+                {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
                   <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
+                    {/* Selected Characters Preview */}
+                    {selectedCharacters.map((character: any) => (
+                      <div
+                        key={character.id}
+                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                        title={`Character: ${character.name}`}
+                      >
+                        <img
+                          src={character.frontImageUrl}
+                          alt={character.name}
+                          aria-hidden="true"
+                          decoding="async"
+                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                        />
+                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                            C
+                          </div>
+                        </div>
+                        <button
+                          aria-label={`Remove character ${character.name}`}
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch(removeSelectedCharacter(character.id));
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Uploaded Images Preview */}
                     {uploadedImages.map((u: string, i: number) => {
                       const count = uploadedImages.length;
                       const sizeClass = count >= 9 ? 'w-8 h-8' : count >= 6 ? 'w-10 h-10' : 'w-12 h-12';
@@ -2098,7 +2591,7 @@ const InputBox = () => {
                   <div className="relative">
                     <button
                       className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsUploadOpen(true)}
+                      onClick={() => setIsCharacterModalOpen(true)}
                       type="button"
                       aria-label="Upload character"
                     >
@@ -2272,6 +2765,20 @@ const InputBox = () => {
           const next = [...uploadedImages, ...urls].slice(0, 10);
           dispatch(setUploadedImages(next));
         }}
+      />
+
+      {/* Character Modal */}
+      <CharacterModal
+        isOpen={isCharacterModalOpen}
+        onClose={() => setIsCharacterModalOpen(false)}
+        onAdd={(character: Character) => {
+          dispatch(addSelectedCharacter(character));
+        }}
+        onRemove={(characterId: string) => {
+          dispatch(removeSelectedCharacter(characterId));
+        }}
+        selectedCharacters={selectedCharacters}
+        maxCharacters={10}
       />
     </React.Fragment>
   );

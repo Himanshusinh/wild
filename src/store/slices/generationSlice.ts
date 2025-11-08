@@ -19,6 +19,14 @@ interface GenerationState {
     status: string;
   } | null;
   uploadedImages: string[];
+  selectedCharacters: {
+    id: string;
+    name: string;
+    frontImageUrl: string;
+    leftImageUrl?: string;
+    rightImageUrl?: string;
+    createdAt: string;
+  }[];
   // Lucid Origin options
   lucidStyle: string;
   lucidContrast: string;
@@ -44,6 +52,7 @@ const initialState: GenerationState = {
   lastGeneratedImages: [],
   generationProgress: null,
   uploadedImages: [],
+  selectedCharacters: [],
   // Lucid Origin defaults
   lucidStyle: 'none',
   lucidContrast: 'medium',
@@ -354,6 +363,41 @@ const generationSlice = createSlice({
     setUploadedImages: (state, action: PayloadAction<string[]>) => {
       state.uploadedImages = action.payload;
     },
+    setSelectedCharacter: (state, action: PayloadAction<{
+      id: string;
+      name: string;
+      frontImageUrl: string;
+      leftImageUrl?: string;
+      rightImageUrl?: string;
+      createdAt: string;
+    } | null>) => {
+      // Legacy support: if null, clear all; if character, replace array with single item
+      if (action.payload === null) {
+        state.selectedCharacters = [];
+      } else {
+        state.selectedCharacters = [action.payload];
+      }
+    },
+    addSelectedCharacter: (state, action: PayloadAction<{
+      id: string;
+      name: string;
+      frontImageUrl: string;
+      leftImageUrl?: string;
+      rightImageUrl?: string;
+      createdAt: string;
+    }>) => {
+      // Don't add if already exists or if limit reached (10 characters)
+      const exists = state.selectedCharacters.some(c => c.id === action.payload.id);
+      if (!exists && state.selectedCharacters.length < 10) {
+        state.selectedCharacters.push(action.payload);
+      }
+    },
+    removeSelectedCharacter: (state, action: PayloadAction<string>) => {
+      state.selectedCharacters = state.selectedCharacters.filter(c => c.id !== action.payload);
+    },
+    clearSelectedCharacters: (state) => {
+      state.selectedCharacters = [];
+    },
     // Lucid Origin options
     setLucidStyle: (state, action: PayloadAction<string>) => {
       state.lucidStyle = action.payload;
@@ -489,6 +533,10 @@ export const {
   setLastGeneratedImages,
   setGenerationProgress,
   setUploadedImages,
+  setSelectedCharacter,
+  addSelectedCharacter,
+  removeSelectedCharacter,
+  clearSelectedCharacters,
   // Lucid Origin options
   setLucidStyle,
   setLucidContrast,

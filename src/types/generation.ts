@@ -11,6 +11,7 @@ export type GenerationType =
   | 'ad-generation'
   | 'live-chat'
   | 'logo-generation'
-  | 'edit-image';
+  | 'edit-image'
+  | 'text-to-character';
 
 
