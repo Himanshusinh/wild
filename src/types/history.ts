@@ -3,6 +3,12 @@ export interface GeneratedImage {
   url: string;
   firebaseUrl?: string; // URL after uploading to Firebase Storage
   originalUrl: string; // Original URL from BFL API
+  // Optimized image URLs
+  avifUrl?: string; // AVIF optimized version (primary format)
+  webpUrl?: string; // WebP optimized version (deprecated)
+  thumbnailUrl?: string; // Thumbnail version (400x400)
+  blurDataUrl?: string; // Base64 blur placeholder
+  optimized?: boolean; // Flag indicating if image has been optimized
 }
 
 export interface GeneratedVideo {
@@ -11,6 +17,9 @@ export interface GeneratedVideo {
   storagePath?: string; // Storage path in Zata
   firebaseUrl?: string; // URL after uploading to Firebase Storage
   originalUrl?: string; // Original URL from provider API
+  // Optimized video thumbnails
+  avifUrl?: string; // AVIF poster/thumbnail
+  thumbnailUrl?: string; // Video thumbnail/poster
 }
 
 export interface GeneratedAudio {

@@ -8,6 +8,12 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 	src: string;
 	thumbWidth?: number;
 	thumbQuality?: number;
+	/** Optimized thumbnail URL (pre-generated) */
+	thumbnailUrl?: string;
+	/** Optimized AVIF URL (primary format) */
+	avifUrl?: string;
+	/** Base64 blur placeholder */
+	blurDataUrl?: string;
 	/** If true, renders as decorative (alt="") to avoid alt text flash on load */
 	decorative?: boolean;
 	// Note: Next/Image onLoadingComplete receives HTMLImageElement
@@ -16,7 +22,8 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 
 /**
  * SmartImage
- * - Uses API thumbnail proxy for Zata-hosted assets for faster loads
+ * - Prioritizes pre-generated optimized thumbnails (thumbnailUrl, avifUrl, blurDataUrl)
+ * - Falls back to API thumbnail proxy for Zata-hosted assets for faster loads
  * - Provides a tiny inline blur placeholder for nicer LQIP
  * - Works with either fill or width/height
  */
@@ -32,6 +39,9 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	fetchPriority,
 	thumbWidth = 640,
 	thumbQuality = 60,
+	thumbnailUrl,
+	avifUrl,
+	blurDataUrl,
 	decorative,
 	onLoadingComplete,
 	...rest
@@ -40,8 +50,14 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	const BLUR_PLACEHOLDER =
 		'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+';
 
-	// Prefer our thumbnail proxy for Zata paths; fallback to original src otherwise
+	// Prioritize optimized thumbnails: thumbnailUrl -> avifUrl -> toThumbUrl() -> original
 	const optimized = (() => {
+		// Use pre-generated thumbnail if available (small 400x400)
+		if (thumbnailUrl) return thumbnailUrl;
+		// Use optimized AVIF if available (full-size optimized)
+		if (avifUrl) return avifUrl;
+		
+		// Fall back to on-demand thumbnail generation
 		try {
 			const u = toThumbUrl(src, { w: thumbWidth, q: thumbQuality });
 			return u || src;
@@ -49,6 +65,9 @@ const SmartImage: React.FC<SmartImageProps> = ({
 			return src;
 		}
 	})();
+
+	// Use pre-generated blur placeholder if available, otherwise use default
+	const finalBlurDataUrl = blurDataUrl || BLUR_PLACEHOLDER;
 
 	// Use empty alt if decorative or alt not provided to prevent caption flashes on load
 	const finalAlt = decorative ? '' : (typeof alt === 'string' ? alt : '');
@@ -63,7 +82,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 			sizes={sizes}
 			{...(fill ? { fill: true } : { width, height })}
 			placeholder="blur"
-			blurDataURL={BLUR_PLACEHOLDER}
+			blurDataURL={finalBlurDataUrl}
 			priority={priority}
 			fetchPriority={fetchPriority}
 			loading={loading}

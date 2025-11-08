@@ -56,7 +56,6 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
-import SmartImage from "@/components/media/SmartImage";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -824,32 +823,50 @@ const InputBox = () => {
     const observer = new IntersectionObserver(async (entries) => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
+      
       // Require a user scroll before we begin auto-paginating
       if (!hasUserScrolledRef.current) {
         console.log('🖼️ IO: skip loadMore until user scrolls');
         return;
       }
-      if (!hasMore || loading || loadingMoreRef.current) {
-        console.log('🖼️ IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+      
+      // CRITICAL: Check hasMore FIRST before any other checks
+      if (!hasMore) {
+        console.log('🖼️ IO: skip loadMore - NO MORE ITEMS', { hasMore });
         return;
       }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('🖼️ IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
       const nextPage = page + 1;
       setPage(nextPage);
-      console.log('🖼️ IO: loadMore start', { nextPage });
+      console.log('🖼️ IO: loadMore start', { nextPage, hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'text-to-image' },
           paginationParams: { limit: 10 }
         })).unwrap();
-      } catch (e) {
-        console.error('🖼️ IO: loadMore error', e);
+        console.log('🖼️ IO: loadMore success');
+      } catch (e: any) {
+        // Check if it was rejected due to hasMore condition
+        if (e?.message?.includes('no more pages')) {
+          console.log('🖼️ IO: loadMore skipped - no more pages');
+        } else {
+          console.error('🖼️ IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, rootMargin: '0px', threshold: 0.1 });
+    
     observer.observe(el);
-    console.log('🖼️ IO: observer attached');
+    console.log('🖼️ IO: observer attached', { hasMore });
+    
     return () => {
       observer.disconnect();
       console.log('🖼️ IO: observer disconnected');
@@ -2139,19 +2156,20 @@ const InputBox = () => {
                         </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <SmartImage 
-                            src={image.url} 
+                          <Image 
+                            src={image.thumbnailUrl || image.avifUrl || image.url} 
                             alt="" 
                             fill 
                             className="object-cover transition-opacity duration-300" 
                             sizes="192px"
-                            thumbWidth={384}
-                            thumbQuality={60}
-                            decorative
-                            onLoadingComplete={(imgEl) => {
+                            onLoad={() => {
                               // Smooth fade-in effect
-                              try { (imgEl as HTMLElement).style.opacity = '1'; } catch {}
+                              try { 
+                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
+                                if (img) img.style.opacity = '1';
+                              } catch {}
                             }}
+                            style={{ opacity: 0 }}
                           />
                           {/* Shimmer loading effect */}
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
@@ -2219,19 +2237,20 @@ const InputBox = () => {
                               </div>
                       ) : image.url ? (
                         <div className="relative w-full h-full group">
-                          <SmartImage 
-                            src={image.url} 
+                          <Image 
+                            src={image.thumbnailUrl || image.avifUrl || image.url}
                             alt="" 
                             fill 
                             className="object-contain transition-opacity duration-300" 
                             sizes="192px"
-                            thumbWidth={384}
-                            thumbQuality={60}
-                            decorative
-                            onLoadingComplete={(imgEl) => {
+                            onLoad={() => {
                               // Smooth fade-in effect
-                              try { (imgEl as HTMLElement).style.opacity = '1'; } catch {}
+                              try { 
+                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
+                                if (img) img.style.opacity = '1';
+                              } catch {}
                             }}
+                            style={{ opacity: 0 }}
                           />
                           {/* Hover copy button overlay */}
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -2292,16 +2311,13 @@ const InputBox = () => {
                           ) : (
                             // Completed image with shimmer loading
                             <div className="relative w-full h-full group">
-                              <SmartImage
-                                src={image.url}
+                              <Image
+                                src={image.thumbnailUrl || image.avifUrl || image.url}
                                 alt=""
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-200 "
                                 sizes="192px"
-                                thumbWidth={384}
-                                thumbQuality={60}
-                                decorative
-                                onLoadingComplete={() => {
+                                onLoad={() => {
                                   // Remove shimmer when image loads
                                   setTimeout(() => {
                                     const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
