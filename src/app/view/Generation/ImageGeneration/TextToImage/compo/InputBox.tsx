@@ -205,7 +205,7 @@ const InputBox = () => {
             const url = String(char.frontImageUrl);
             const idx = combinedImages.findIndex((u: string) => String(u) === url);
             if (idx >= 0) {
-              out += `character in image ${idx + 1}`; // 1-based in prompt, will be converted to zero-based below
+              out += `the character in the image ${idx + 1}`; // 1-based in prompt, will be converted to zero-based below
             } else {
               out += m[0];
             }

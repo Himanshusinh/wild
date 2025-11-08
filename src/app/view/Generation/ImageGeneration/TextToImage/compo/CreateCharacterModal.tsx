@@ -3,6 +3,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Character } from "./CharacterModal";
+import UploadModal from "./UploadModal";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { loadHistory, loadMoreHistory } from "@/store/slices/historySlice";
 
 type CreateCharacterModalProps = {
   isOpen: boolean;
@@ -23,16 +26,26 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
   initialRightImage,
   embedded = false,
 }) => {
+  const dispatch = useAppDispatch();
   const [name, setName] = useState("");
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [leftImage, setLeftImage] = useState<string | null>(null);
   const [rightImage, setRightImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const frontInputRef = useRef<HTMLInputElement>(null);
-  const leftInputRef = useRef<HTMLInputElement>(null);
-  const rightInputRef = useRef<HTMLInputElement>(null);
+  
+  // Upload modal states
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadModalType, setUploadModalType] = useState<'front' | 'left' | 'right'>('front');
+  
+  // History entries for UploadModal
+  const historyEntries = useAppSelector((state: any) => {
+    const allEntries = state.history?.entries || [];
+    // Filter to show only text-to-image generations for the upload modal
+    return allEntries.filter((entry: any) => entry.generationType === 'text-to-image' && entry.status === 'completed' && entry.images && entry.images.length > 0);
+  });
+  const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
+  const loading = useAppSelector((state: any) => state.history?.loading || false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -42,8 +55,19 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       setRightImage(null);
       setError(null);
       setIsGenerating(false);
+      setUploadModalOpen(false);
     }
   }, [isOpen]);
+
+  // Load history entries when modal opens
+  useEffect(() => {
+    if (isOpen && uploadModalOpen) {
+      dispatch(loadHistory({
+        filters: { generationType: 'text-to-image' },
+        paginationParams: { limit: 20 }
+      }) as any);
+    }
+  }, [isOpen, uploadModalOpen, dispatch]);
 
   // Prefill when initial images provided
   useEffect(() => {
@@ -56,26 +80,24 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleImageUpload = (file: File, setter: (url: string) => void, maxSize = 2 * 1024 * 1024) => {
-    if (file.size > maxSize) {
-      setError("File size must be less than 2MB");
-      return;
+  const handleOpenUploadModal = (type: 'front' | 'left' | 'right') => {
+    setUploadModalType(type);
+    setUploadModalOpen(true);
+  };
+
+  const handleUploadModalAdd = (urls: string[]) => {
+    if (urls.length === 0) return;
+    const selectedUrl = urls[0]; // Take first selected image
+    
+    if (uploadModalType === 'front') {
+      setFrontImage(selectedUrl);
+    } else if (uploadModalType === 'left') {
+      setLeftImage(selectedUrl);
+    } else if (uploadModalType === 'right') {
+      setRightImage(selectedUrl);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setter(reader.result as string);
-      setError(null);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleFileSelect = (inputRef: React.RefObject<HTMLInputElement | null>) => {
-    inputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (url: string) => void) => {
-    const file = e.target.files?.[0];
-    if (file) handleImageUpload(file, setter);
+    
+    setUploadModalOpen(false);
   };
 
   const handleGenerate = async () => {
@@ -87,15 +109,21 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       setError("Front image is required");
       return;
     }
+    if (!leftImage) {
+      setError("Left side image is required");
+      return;
+    }
+    if (!rightImage) {
+      setError("Right side image is required");
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
 
     try {
-      const characterPrompt = `${name.trim()}, highly realistic and natural-looking portrait, passport-style framing, square format, professional photography, detailed facial features, natural lighting, high quality, photorealistic`;
-      const uploadedImages: string[] = [frontImage];
-      if (leftImage) uploadedImages.push(leftImage);
-      if (rightImage) uploadedImages.push(rightImage);
+      const characterPrompt = `${name.trim()}, highly realistic and natural-looking portrait, square format, professional photography, detailed facial features, natural lighting, high quality, photorealistic, edge-to-edge character, no borders, no frames, no white padding, no background frames, seamless edges, full frame character, no margins, no white space around subject`;
+      const uploadedImages: string[] = [frontImage, leftImage, rightImage];
 
       const model = "gemini-25-flash-image";
       const api = (await import("@/lib/axiosInstance")).getApiClient();
@@ -137,13 +165,13 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
   // Inner dialog (no overlay)
   const dialog = (
-    <div className="w-full max-w-2xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
+    <div className="w-auto max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl md:min-h-[70vh] min-h-[95vh] overflow-y-auto">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <h2 className="text-white text-lg font-semibold">Create New Character</h2>
         <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-4">
         <div>
           <label className="block text-white/90 text-sm font-medium mb-2">
             Character Name <span className="text-red-400">*</span>
@@ -159,24 +187,17 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
         <div>
           <label className="block text-white/90 text-sm font-medium mb-2">
-            Front Image <span className="text-red-400">*</span>
+            Front Photo <span className="text-red-400">*</span>
           </label>
           <div
-            className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors md:max-h-auto h-auto w-auto md:max-w-full ${
               frontImage ? "border-white/40" : "border-white/30"
             }`}
-            onClick={() => handleFileSelect(frontInputRef)}
+            onClick={() => handleOpenUploadModal('front')}
           >
-            <input
-              ref={frontInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleFileChange(e, setFrontImage)}
-            />
             {frontImage ? (
-              <div className="relative w-full aspect-square max-w-xs mx-auto rounded-lg overflow-hidden ring-1 ring-white/20">
-                <Image src={frontImage} alt="Front" fill className="object-cover" />
+              <div className="relative w-full aspect-square max-w-xs mx-auto rounded-lg overflow-hidden ring-1 ring-white/20 md:max-h-[200px] max-h-[150px] md:max-w-[200px] max-w-[150px]">
+                <Image src={frontImage} alt="Front" fill className="object-cover " />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -197,7 +218,7 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
                   <path d="M12 5v14" />
                   <path d="M5 12h14" />
                 </svg>
-                <div className="mt-2 text-sm">Click to upload front image</div>
+                <div className="mt-2 text-sm">Click to upload front photo</div>
               </div>
             )}
           </div>
@@ -206,21 +227,14 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-white/90 text-sm font-medium mb-2">
-              Left Side Image <span className="text-white/50 text-xs">(Optional)</span>
+              Upload from Left Side <span className="text-red-400">*</span>
             </label>
             <div
               className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors ${
                 leftImage ? "border-white/40" : "border-white/30"
               }`}
-              onClick={() => handleFileSelect(leftInputRef)}
+              onClick={() => handleOpenUploadModal('left')}
             >
-              <input
-                ref={leftInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileChange(e, setLeftImage)}
-              />
               {leftImage ? (
                 <div className="relative w-full aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
                   <Image src={leftImage} alt="Left" fill className="object-cover" />
@@ -250,21 +264,14 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
           <div>
             <label className="block text-white/90 text-sm font-medium mb-2">
-              Right Side Image <span className="text-white/50 text-xs">(Optional)</span>
+              Upload from Right Side <span className="text-red-400">*</span>
             </label>
             <div
               className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors ${
                 rightImage ? "border-white/40" : "border-white/30"
               }`}
-              onClick={() => handleFileSelect(rightInputRef)}
+              onClick={() => handleOpenUploadModal('right')}
             >
-              <input
-                ref={rightInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileChange(e, setRightImage)}
-              />
               {rightImage ? (
                 <div className="relative w-full aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
                   <Image src={rightImage} alt="Right" fill className="object-cover" />
@@ -310,7 +317,7 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           <button
             className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleGenerate}
-            disabled={isGenerating || !name.trim() || !frontImage}
+            disabled={isGenerating || !name.trim() || !frontImage || !leftImage || !rightImage}
           >
             {isGenerating ? "Creating..." : "Create Character"}
           </button>
@@ -319,15 +326,61 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
     </div>
   );
 
-  if (embedded) return dialog;
+  if (embedded) {
+    return (
+      <>
+        {dialog}
+        {/* Upload Modal */}
+        <UploadModal
+          isOpen={uploadModalOpen}
+          onClose={() => setUploadModalOpen(false)}
+          historyEntries={historyEntries as any}
+          remainingSlots={1}
+          hasMore={hasMore}
+          loading={loading}
+          onLoadMore={async () => {
+            try {
+              if (!hasMore || loading) return;
+              await (dispatch as any)(loadMoreHistory({
+                filters: { generationType: 'text-to-image' },
+                paginationParams: { limit: 20 }
+              })).unwrap();
+            } catch {}
+          }}
+          onAdd={handleUploadModalAdd}
+        />
+      </>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-[100]" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-        {dialog}
+    <>
+      <div className="fixed inset-0 z-[100]" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+          {dialog}
+        </div>
       </div>
-    </div>
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        historyEntries={historyEntries as any}
+        remainingSlots={1}
+        hasMore={hasMore}
+        loading={loading}
+        onLoadMore={async () => {
+          try {
+            if (!hasMore || loading) return;
+            await (dispatch as any)(loadMoreHistory({
+              filters: { generationType: 'text-to-image' },
+              paginationParams: { limit: 20 }
+            })).unwrap();
+          } catch {}
+        }}
+        onAdd={handleUploadModalAdd}
+      />
+    </>
   );
 };
 

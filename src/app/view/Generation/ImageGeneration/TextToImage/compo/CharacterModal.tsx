@@ -126,6 +126,9 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
       setLocalSelectedCharacter(null);
       setLocalUpload(null);
       setTab('library');
+      setIsCreateModalOpen(false);
+      setIsUploadModalOpen(false);
+      setUploadSelectedImages([]);
     }
   }, [isOpen]);
 
@@ -191,9 +194,9 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
   };
 
   const handleCreateNew = () => {
-    // Do not hide nav tabs; open the Upload modal so user can pick images from library or device
+    // Directly open the CreateCharacterModal when Create New Character tab is clicked
     setTab('create');
-    setIsUploadModalOpen(true);
+    setIsCreateModalOpen(true);
   };
 
   const handleCharacterCreated = async (character: Character) => {
@@ -477,31 +480,19 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                 </div>
               ) : tab === 'create' ? (
                 <div>
-                  <div className="text-white/70 text-sm mb-3">Create a new character</div>
-                  {isCreateModalOpen ? (
-                    <div>
-                      <CreateCharacterModal
-                        isOpen={true}
-                        embedded={true}
-                        initialFrontImage={uploadSelectedImages?.[0]}
-                        initialLeftImage={uploadSelectedImages?.[1]}
-                        initialRightImage={uploadSelectedImages?.[2]}
-                        onClose={() => {
-                          setIsCreateModalOpen(false);
-                          if (tab === 'create') setTab('library');
-                          setUploadSelectedImages([]);
-                        }}
-                        onCharacterCreated={handleCharacterCreated}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-[50vh] text-white/60">
-                      <div>
-                        <div className="text-lg mb-2">Start by picking images to create a character</div>
-                        <div className="text-sm">Click "Create New Character" above to choose images from your library or device.</div>
-                      </div>
-                    </div>
-                  )}
+                  <CreateCharacterModal
+                    isOpen={true}
+                    embedded={true}
+                    initialFrontImage={uploadSelectedImages?.[0]}
+                    initialLeftImage={uploadSelectedImages?.[1]}
+                    initialRightImage={uploadSelectedImages?.[2]}
+                    onClose={() => {
+                      setIsCreateModalOpen(false);
+                      setTab('library');
+                      setUploadSelectedImages([]);
+                    }}
+                    onCharacterCreated={handleCharacterCreated}
+                  />
                 </div>
               ) : null}
             </div>
