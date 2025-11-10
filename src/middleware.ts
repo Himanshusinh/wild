@@ -41,6 +41,11 @@ export function middleware(req: NextRequest) {
   // Allow public pages
   const isPublic = (
     pathname === '/' ||
+    // SEO assets must be public and unprotected
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname.startsWith('/sitemap-') ||
+    pathname.endsWith('.xml') ||
     pathname.startsWith('/view/Landingpage') ||
     pathname.startsWith('/view/ArtStation') ||
     pathname.startsWith('/view/signup') ||
