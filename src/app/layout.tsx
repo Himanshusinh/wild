@@ -38,6 +38,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })(window,document,'script','dataLayer','GTM-W8R7DSW7');
           `}
         </Script>
+        {/* Google tag (gtag.js) */}
+        <Script
+          id="google-analytics-src"
+          src="https://www.googletagmanager.com/gtag/js?id=G-S8H5QSFV5Z"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-S8H5QSFV5Z');
+          `}
+        </Script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
