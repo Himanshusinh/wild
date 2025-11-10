@@ -34,7 +34,7 @@ export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -68,7 +68,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -100,7 +100,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text_to_image' | 'image_to_video' | 'video_to_video';
+  generationType?: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video';
   dateRange?: {
     start: Date;
     end: Date;

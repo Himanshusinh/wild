@@ -17,6 +17,7 @@ const mapGenerationTypeForBackend = (type?: string): string | undefined => {
     case 'mockup-generation':
     case 'ad-generation':
     case 'text-to-image':
+    case 'text-to-character':
       return normalized;
     // Video variants mapping kept only if backend expects snake-case for those endpoints (not used by branding kit pages)
     case 'image-to-video':
@@ -78,7 +79,7 @@ const initialState: HistoryState = {
 export const loadHistory = createAsyncThunk(
   'history/loadHistory',
   async (
-    { filters, paginationParams, requestOrigin, expectedType, debugTag }: { filters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page'; expectedType?: string; debugTag?: string } = {},
+    { filters, paginationParams, requestOrigin, expectedType, debugTag }: { filters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page' | 'character-modal'; expectedType?: string; debugTag?: string } = {},
     { rejectWithValue, getState, signal }
   ) => {
     try {
@@ -89,7 +90,9 @@ export const loadHistory = createAsyncThunk(
       const currentType = normalize(uiType === 'image-to-image' ? 'text-to-image' : uiType);
       const expected = normalize(expectedType);
       // Allow logo/logo-generation synonym
-      const expectedMatches = !expected || expected === currentType || (expected === 'logo' && currentType === 'logo-generation') || (expected === 'logo-generation' && currentType === 'logo');
+      // Allow character-modal requests to bypass UI type check
+      const isCharacterModal = requestOrigin === 'character-modal';
+      const expectedMatches = !expected || expected === currentType || (expected === 'logo' && currentType === 'logo-generation') || (expected === 'logo-generation' && currentType === 'logo') || isCharacterModal;
       if (!expectedMatches) {
         try { console.log('[historySlice] loadHistory.abort-before-request: expectedType changed', { expected, currentType, debugTag }); } catch {}
         return rejectWithValue('__CONDITION_ABORT__');
@@ -168,7 +171,9 @@ export const loadHistory = createAsyncThunk(
         const fMode = (args as any)?.filters?.mode;
 
         // Global guard: if caller provided an expectedType and it no longer matches current UI type, skip for any origin
-        if (expected && expected !== currentType && !(expected === 'logo' && currentType === 'logo-generation') && !(expected === 'logo-generation' && currentType === 'logo')) {
+        // Exception: character-modal requests can bypass this check
+        const isCharacterModal = origin === 'character-modal';
+        if (expected && expected !== currentType && !(expected === 'logo' && currentType === 'logo-generation') && !(expected === 'logo-generation' && currentType === 'logo') && !isCharacterModal) {
           try { console.log('[historySlice] loadHistory.condition SKIP: expectedType changed (any-origin)', { origin, expected, currentType, debugTag }); } catch {}
           return false;
         }
@@ -459,6 +464,8 @@ const historySlice = createSlice({
             // product synonyms
             if ((f === 'product-generation' && e === 'product') || (f === 'product' && e === 'product-generation')) return true;
             if ((f === 'product-generation' && e === 'product-generation') || (f === 'product' && e === 'product')) return true;
+            // text-to-character exact match
+            if (f === 'text-to-character' && e === 'text-to-character') return true;
             return false;
           };
           state.entries = state.entries.filter((it: any) => matchesType(it?.generationType));
