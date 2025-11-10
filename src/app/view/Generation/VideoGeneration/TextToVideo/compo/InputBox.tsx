@@ -6,7 +6,9 @@ import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
-import { addHistoryEntry, loadMoreHistory, loadHistory, updateHistoryEntry, clearFilters } from "@/store/slices/historySlice";
+import { addHistoryEntry, loadMoreHistory, loadHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
+import axiosInstance from "@/lib/axiosInstance";
+import { Trash2 } from 'lucide-react';
 import { addNotification } from "@/store/slices/uiSlice";
 import { useSearchParams } from "next/navigation";
 // historyService removed; backend owns history persistence
@@ -82,7 +84,16 @@ const InputBox = () => {
 
     if (imageUrl) {
       // Decode the URL-encoded image parameter
-      const decodedImageUrl = decodeURIComponent(imageUrl);
+      let decodedImageUrl = decodeURIComponent(imageUrl);
+      
+      // Convert proxy URL to full Zata URL if needed
+      if (decodedImageUrl.startsWith('/api/proxy/resource/')) {
+        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
+        const path = decodedImageUrl.replace('/api/proxy/resource/', '');
+        decodedImageUrl = `${ZATA_PREFIX}${decodeURIComponent(path)}`;
+        console.log('Video generation - converted proxy URL to full Zata URL:', decodedImageUrl);
+      }
+      
       console.log('Loading image from URL parameter for video generation:', decodedImageUrl);
 
       // Set generation mode to image-to-video
@@ -154,6 +165,21 @@ const InputBox = () => {
       try {
         (await import('react-hot-toast')).default.error('Failed to copy');
       } catch { }
+    }
+  };
+
+  // Delete handler - same logic as ImagePreviewModal
+  const handleDeleteVideo = async (e: React.MouseEvent, entry: HistoryEntry) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      toast.success('Video deleted');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Failed to delete generation');
     }
   };
 
@@ -2825,15 +2851,23 @@ const InputBox = () => {
                                   </svg>
                                 </div>
                               </div>
-                              {/* Hover copy button overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                              {/* Hover buttons overlay */}
+                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/20 text-white/90 backdrop-blur-3xl"
+                                  className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete video"
+                                  className="pointer-events-auto p-1 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteVideo(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                               {/* Video duration or other info */}

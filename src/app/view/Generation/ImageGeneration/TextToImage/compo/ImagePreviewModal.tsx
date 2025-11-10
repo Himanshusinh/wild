@@ -632,18 +632,34 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const handleCreateVideo = () => {
     try {
       // Navigate to Video Generation with the current image as input
+      // Use the same approach as Remix button - use storagePath to construct direct Zata URL
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         const original = selectedImage?.url || '';
         const pathCandidate = toProxyPath(original);
         return pathCandidate && pathCandidate !== original ? pathCandidate : '';
       })();
+      
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-      const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+      
+      // Use direct Zata URL (same as Remix button approach)
+      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+      let imgUrl = '';
+      
+      if (storagePath) {
+        // Construct direct Zata URL from storage path (same as Remix)
+        imgUrl = `${ZATA_PREFIX}${storagePath}`;
+      } else if (fallbackHttp) {
+        // If fallback is already a full Zata URL, use it directly
+        if (fallbackHttp.startsWith(ZATA_PREFIX)) {
+          imgUrl = fallbackHttp;
+        } else if (fallbackHttp.startsWith('http://') || fallbackHttp.startsWith('https://')) {
+          imgUrl = fallbackHttp;
+        }
+      }
       
       console.log('Create Video - ImagePreviewModal debug:', {
         selectedImage: selectedImage,
         storagePath: storagePath,
-        fallbackHttp: fallbackHttp,
         imgUrl: imgUrl
       });
       
