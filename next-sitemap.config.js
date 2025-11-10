@@ -1,14 +1,20 @@
 /** @type {import('next-sitemap').IConfig} */
-const siteUrl = process.env.SITE_URL || 'https://wildmindai.com';
-
 module.exports = {
-  siteUrl,
+  siteUrl: 'https://wildmindai.com',
   generateRobotsTxt: true,
-  // Ensure artifacts are written to /public for static serving in production
-  outDir: './public',
+  outDir: './public', // very important
   changefreq: 'weekly',
   priority: 0.7,
-  exclude: ['/admin/*', '/api/*', '/temp/*', '/_next/*', '/404'],
+  sitemapSize: 5000,
+  exclude: ['/admin/', '/api/', '/temp/', '/_next/', '/404'],
+  transform: async (config, path) => {
+    return {
+      loc: path,
+      changefreq: config.changefreq,
+      priority: config.priority,
+      lastmod: new Date().toISOString(),
+    };
+  },
   robotsTxtOptions: {
     policies: [
       {
@@ -18,8 +24,4 @@ module.exports = {
       },
     ],
   },
-  sitemapSize: 5000,
-  alternateRefs: [
-    { href: 'https://wildmindai.com', hreflang: 'en' },
-  ],
 };
