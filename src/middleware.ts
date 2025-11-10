@@ -7,6 +7,13 @@ export function middleware(req: NextRequest) {
 
   // Base response with security headers
   const res = NextResponse.next();
+  // Force correct MIME types for SEO files
+  if (pathname.endsWith('.xml')) {
+    res.headers.set('Content-Type', 'application/xml');
+  }
+  if (pathname === '/robots.txt') {
+    res.headers.set('Content-Type', 'text/plain; charset=utf-8');
+  }
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
