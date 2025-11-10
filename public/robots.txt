@@ -1,9 +1,6 @@
 # *
 User-agent: *
-Allow: /
-Disallow: /admin/
-Disallow: /api/
-Disallow: /temp/
+Disallow: /
 
 # Host
 Host: https://wildmindai.com
