@@ -2880,10 +2880,10 @@ const InputBox = () => {
                   }`}
                 aria-label="Text to Video"
               >
-                Text→Video
+                T → V
               </button>
-              <div className="pointer-events-none absolute -bottom-7 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/80 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-[100]">Text to Video</div>
-            </div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-11 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Text To Video</div>
+              </div>
             <div className="relative group">
               <button
                 onClick={() => setGenerationMode("image_to_video")}
@@ -2893,9 +2893,9 @@ const InputBox = () => {
                   }`}
                 aria-label="Image to Video"
               >
-                Image→Video
+                I → V
               </button>
-              <div className="pointer-events-none absolute -bottom-7 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/80 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-[100]">Image to Video</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-11 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Image To Video</div>
             </div>
             <div className="relative group">
               <button
@@ -2906,9 +2906,9 @@ const InputBox = () => {
                   }`}
                 aria-label="Video to Video"
               >
-                Video→Video
+                V → V
               </button>
-              <div className="pointer-events-none absolute -bottom-7 left-1/2 backdrop-blur-3xl shadow-2xl -translate-x-1/2 bg-black/80 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-[100]">Video to Video</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-11 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Video To Video</div>
             </div>
           </div>
         </div>
@@ -3169,7 +3169,7 @@ const InputBox = () => {
                         >
                           <div className=" relative ">
                             <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload First Frame </div>
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap"> First Frame </div>
                           </div>
                         </button>
                       </div>
@@ -3187,7 +3187,7 @@ const InputBox = () => {
                       >
                         <div className="relative">
                           <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload First Frame </div>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap"> First Frame </div>
                         </div>
                       </button>
 
@@ -3228,7 +3228,7 @@ const InputBox = () => {
                       >
                         <div className="relative">
                           <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Last Frame (optional)</div>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap"> Last Frame (optional)</div>
                         </div>
                         <input
                           type="file"
