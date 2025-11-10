@@ -6,6 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "postbuild": "next-sitemap",
+    "ping-sitemap": "node scripts/ping-sitemap.js",
+    "postdeploy": "npm run ping-sitemap",
     "start": "next start",
     "lint": "next lint"
   },
