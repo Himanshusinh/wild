@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Disallow: /
+
+# Host
+Host: https://wildmindai.com
+
+# Sitemaps
+Sitemap: https://wildmindai.com/sitemap.xml

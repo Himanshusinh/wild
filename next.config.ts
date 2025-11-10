@@ -28,6 +28,23 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    // Ensure correct content-type for XML sitemaps on Vercel/Next
+    return [
+      {
+        source: '/:path*.xml',
+        headers: [
+          { key: 'Content-Type', value: 'application/xml' },
+        ],
+      },
+      {
+        source: '/robots.txt',
+        headers: [
+          { key: 'Content-Type', value: 'text/plain; charset=utf-8' },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       { source: '/HomePage', destination: '/view/HomePage' },

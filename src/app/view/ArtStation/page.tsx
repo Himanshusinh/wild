@@ -22,6 +22,8 @@ type PublicItem = {
   aspect_ratio?: string;
   createdAt?: string;
   updatedAt?: string;
+  isPublic?: boolean;
+  isDeleted?: boolean;
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
   images?: { 
     id: string; 
@@ -438,9 +440,17 @@ export default function ArtStationPage() {
   }
 
   const filteredItems = useMemo(() => {
-    if (activeCategory === 'All') return items;
+    // Filter out deleted and non-public items (in case they slip through from backend)
+    const validItems = items.filter(item => {
+      // Must be public and not deleted
+      if (item.isDeleted === true) return false;
+      if (item.isPublic === false) return false;
+      return true;
+    });
+
+    if (activeCategory === 'All') return validItems;
     const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
-    return items.filter(item => {
+    return validItems.filter(item => {
       const type = item.generationType?.toLowerCase();
       switch (activeCategory) {
         case 'Images':
