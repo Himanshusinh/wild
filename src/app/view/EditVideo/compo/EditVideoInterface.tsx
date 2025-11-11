@@ -1911,7 +1911,12 @@ const EditVideoInterface: React.FC = () => {
         const src = inputs['upscale'];
         if (!src) throw new Error('Please upload a video to upscale');
         const body: any = {};
-        if (String(src).startsWith('data:')) body.video = src; else body.video_url = currentInput;
+        if (String(src).startsWith('data:')) {
+          // For data URI, send video (validator will convert data URI to video_url)
+          body.video = src;
+        } else {
+          body.video_url = currentInput;
+        }
         body.upscale_mode = seedvrUpscaleMode;
         if (seedvrUpscaleMode === 'factor') body.upscale_factor = Number(seedvrUpscaleFactor) || 2;
         if (seedvrUpscaleMode === 'target') body.target_resolution = seedvrTargetResolution;
@@ -1922,8 +1927,13 @@ const EditVideoInterface: React.FC = () => {
         body.output_write_mode = seedvrOutputWriteMode;
         if (seedvrSyncMode) body.sync_mode = true;
         const res = await axiosInstance.post('/api/fal/seedvr/upscale/video', body);
-        const videoUrl = res?.data?.data?.video?.url || res?.data?.data?.video_url || res?.data?.data?.url || res?.data?.url || '';
-        if (videoUrl) setOutputs(prev => ({ ...prev, ['upscale']: videoUrl }));
+        // Backend returns { videos: [{ url: string, ... }], historyId, ... }
+        const videoUrl = res?.data?.data?.videos?.[0]?.url || res?.data?.videos?.[0]?.url || '';
+        if (videoUrl) {
+          setOutputs(prev => ({ ...prev, ['upscale']: videoUrl }));
+        } else {
+          console.error('[Video Upscale] No video URL in response:', res?.data);
+        }
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch {}
         return;
       }
