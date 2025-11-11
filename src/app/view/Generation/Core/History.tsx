@@ -52,6 +52,7 @@
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | null>('desc');
     const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
     const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product' | 'user-uploads'>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateInput, setDateInput] = useState<string>("");
     const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -864,8 +865,18 @@
       return url.startsWith('data:audio') || /\.(mp3|wav|m4a|ogg|aac|flac)(\?|$)/i.test(url);
     };
 
+    // Filter entries by search query
+    const filteredEntries = useMemo(() => {
+      if (!searchQuery.trim()) return historyEntries;
+      const query = searchQuery.trim().toLowerCase();
+      return historyEntries.filter((entry: HistoryEntry) => {
+        const prompt = (entry.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }, [historyEntries, searchQuery]);
+
     // Group entries by date to mirror TextToImage UI
-    const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const groupedByDate = filteredEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
       const dateKey = new Date(entry.timestamp).toDateString();
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(entry);
@@ -1049,6 +1060,47 @@
               </div>
             )} */}
             </div>
+            
+            {/* Search Input and Buttons */}
+            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // Search is already applied via filteredEntries useMemo
+                    }
+                  }}
+                  placeholder="Search by prompt..."
+                  className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                />
+                <button
+                  onClick={() => {
+                    // Search is already applied via filteredEntries useMemo
+                  }}
+                  className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                  aria-label="Search"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                  </svg>
+                </button>
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                  aria-label="Clear search"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
             {/* Sort buttons */}
             <div className="ml-8 flex items-right justify-end  gap-2">
               <button
