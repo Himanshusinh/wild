@@ -1253,9 +1253,9 @@ const EditVideoInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="p-4 flex items-start justify-center pt-3  ">
+          <div className="p-4 flex items-center justify-center pt-3 h-full">
             <div
-              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:h-auto md:max-h-[50rem]   w-full max-w-6xl md:max-w-[100rem]"
+              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] h-full w-full max-w-6xl md:max-w-[100rem] flex items-center justify-center"
               onDragOver={(e) => { try { e.preventDefault(); } catch {} }}
               onDrop={(e) => {
                 try {
@@ -1383,14 +1383,14 @@ const EditVideoInterface: React.FC = () => {
               )}
 
               {outputs[selectedFeature] ? (
-                <div className="w-full h-full relative">
+                <div className="w-full h-full relative flex items-center justify-center">
                   {(inputs[selectedFeature]) ? (
                     // Comparison slider removed - always show output video in zoom mode
-                    <div className="w-full h-full relative min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] ">
+                    <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[40rem]">
                        {/* Zoom mode (all features) - always show output */}
                         <div
                           ref={imageContainerRef}
-                          className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
+                          className="w-full h-full relative cursor-move select-none flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[40rem]"
                           onMouseDown={handleMouseDown}
                           onMouseMove={handleMouseMove}
                           onMouseUp={handleMouseUp}
@@ -1404,11 +1404,10 @@ const EditVideoInterface: React.FC = () => {
                             <video
                               src={outputs[selectedFeature] as string}
                               controls
-                              className="w-full h-full object-contain object-center"
+                              className="max-w-full max-h-full w-auto h-auto object-contain"
                               style={{
                                 transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                                 transformOrigin: 'center center',
-                                objectPosition: 'center 55%'
                               }}
                               onLoadedData={(e) => {
                                 const video = e.target as HTMLVideoElement;
@@ -1477,7 +1476,7 @@ const EditVideoInterface: React.FC = () => {
                     // Regular image viewer with zoom controls
                     <div
                       ref={imageContainerRef}
-                      className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
+                      className="w-full h-full relative cursor-move select-none flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
@@ -1491,11 +1490,10 @@ const EditVideoInterface: React.FC = () => {
                         <video
                           src={outputs[selectedFeature] as string}
                           controls
-                          className="w-full h-full object-contain object-center"
+                          className="max-w-full max-h-full w-auto h-auto object-contain"
                           style={{
                             transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                             transformOrigin: 'center center',
-                            objectPosition: 'center 55%'
                           }}
                           onLoadedData={(e) => {
                             const video = e.target as HTMLVideoElement;
@@ -1562,14 +1560,14 @@ const EditVideoInterface: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]">
+                <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
                   {inputs[selectedFeature] ? (
-                    <div className="absolute inset-0">
+                    <div className="absolute inset-0 flex items-center justify-center">
                       {isVideoUrl(inputs[selectedFeature]) ? (
                         <video
                           src={inputs[selectedFeature] as string}
                           controls
-                          className="w-full h-full object-contain object-center"
+                          className="max-w-full max-h-full w-auto h-auto object-contain"
                           onLoadedData={(e) => {
                             const video = e.target as HTMLVideoElement;
                             setInputNaturalSize({ width: video.videoWidth, height: video.videoHeight });
