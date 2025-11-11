@@ -33,12 +33,9 @@ const SidePannelFeatures = ({
   const pathname = usePathname();
   const router = useRouter();
   const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
-  const [showVideoEditDropdown, setShowVideoEditDropdown] = React.useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
-  const videoEditRef = React.useRef<HTMLDivElement>(null);
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
-  const videoEditDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [userData, setUserData] = React.useState<any>(null);
   const [avatarFailed, setAvatarFailed] = React.useState(false);
@@ -80,6 +77,9 @@ const SidePannelFeatures = ({
       case 'edit-image':
         router.push('/edit-image');
         return;
+      case 'edit-video':
+        router.push('/edit-video');
+        return;
       default:
         return;
     }
@@ -103,14 +103,6 @@ const SidePannelFeatures = ({
 
   const toggleBrandingDropdown = () => {
     setShowBrandingDropdown(!showBrandingDropdown);
-    // Close video edit dropdown when opening branding dropdown
-    setShowVideoEditDropdown(false);
-  };
-
-  const toggleVideoEditDropdown = () => {
-    setShowVideoEditDropdown(!showVideoEditDropdown);
-    // Close branding dropdown when opening video edit dropdown
-    setShowBrandingDropdown(false);
   };
 
   // Close dropdown when clicking outside
@@ -122,7 +114,6 @@ const SidePannelFeatures = ({
         !sidebarRef.current.contains(event.target as Node)
       ) {
         setShowBrandingDropdown(false);
-        setShowVideoEditDropdown(false);
         return;
       }
 
@@ -135,21 +126,11 @@ const SidePannelFeatures = ({
       ) {
         setShowBrandingDropdown(false);
       }
-
-      // Handle video edit dropdown
-      if (
-        showVideoEditDropdown &&
-        videoEditRef.current &&
-        !videoEditRef.current.contains(event.target as Node) &&
-        !(videoEditDropdownRef.current && videoEditDropdownRef.current.contains(event.target as Node))
-      ) {
-        setShowVideoEditDropdown(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showBrandingDropdown, showVideoEditDropdown]);
+  }, [showBrandingDropdown]);
 
   // Close dropdowns when sidebar is not hovered (collapsed)
   React.useEffect(() => {
@@ -157,7 +138,6 @@ const SidePannelFeatures = ({
       // Add a small delay to prevent dropdowns from closing too quickly
       const timer = setTimeout(() => {
         setShowBrandingDropdown(false);
-        setShowVideoEditDropdown(false);
       }, 150); // 150ms delay
 
       return () => clearTimeout(timer);
@@ -260,51 +240,15 @@ const SidePannelFeatures = ({
         </div>
       </div>
 
-      <div className="relative">
+      <div>
         <div
-          ref={videoEditRef}
-          onClick={toggleVideoEditDropdown}
-          className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
+          onClick={() => handleGenerationTypeChange('edit-video')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
             }`}
         >
           <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Edit</span>
         </div>
-
-        {showVideoEditDropdown && (
-          <div
-            ref={videoEditDropdownRef}
-            className='absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-100 min-w-[200px]'
-          >
-            <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
-              <span className='text-xs text-white/90 uppercase tracking-wider'>Video Edit</span>
-            </div>
-
-            <div
-              onClick={() => router.push('/video-edit')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Video Edit</span>
-            </div>
-
-            <div
-              onClick={() => router.push('/video-edit')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Video Edit</span>
-            </div>
-
-            <div
-              onClick={() => router.push('/video-edit')}
-              className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''
-                }`}
-            >
-              <span className='text-sm text-white'>Video Edit</span>
-            </div>
-          </div>)}
-
       </div>
 
       <div>

@@ -1,4 +1,4 @@
-  'use client';
+'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -9,13 +9,13 @@ import { getIsPublic } from '@/lib/publicFlag';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
+import VideoUploadModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoUploadModal';
 import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand';
 
-const EditImageInterface: React.FC = () => {
+const EditVideoInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
   const searchParams = useSearchParams();
   const [selectedFeature, setSelectedFeature] = useState<EditFeature>('upscale');
@@ -52,6 +52,17 @@ const EditImageInterface: React.FC = () => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
   const [showImageMenu, setShowImageMenu] = useState(false);
+  const [showUpscaleAdvanced, setShowUpscaleAdvanced] = useState(false);
+  // SeedVR upscale params (video)
+  const [seedvrUpscaleMode, setSeedvrUpscaleMode] = useState<'factor' | 'target'>('factor');
+  const [seedvrUpscaleFactor, setSeedvrUpscaleFactor] = useState<number>(2);
+  const [seedvrTargetResolution, setSeedvrTargetResolution] = useState<'720p' | '1080p' | '1440p' | '2160p'>('1080p');
+  const [seedvrNoiseScale, setSeedvrNoiseScale] = useState<number>(0.1);
+  const [seedvrOutputFormat, setSeedvrOutputFormat] = useState<'X264 (.mp4)' | 'VP9 (.webm)' | 'PRORES4444 (.mov)' | 'GIF (.gif)'>('X264 (.mp4)');
+  const [seedvrOutputQuality, setSeedvrOutputQuality] = useState<'low' | 'medium' | 'high' | 'maximum'>('high');
+  const [seedvrOutputWriteMode, setSeedvrOutputWriteMode] = useState<'fast' | 'balanced' | 'small'>('balanced');
+  const [seedvrSyncMode, setSeedvrSyncMode] = useState<boolean>(false);
+  const [seedvrSeed, setSeedvrSeed] = useState<string>('');
   
   // Zoom and pan state
   const [scale, setScale] = useState(1);
@@ -93,7 +104,7 @@ const EditImageInterface: React.FC = () => {
   const [expandHoverEdge, setExpandHoverEdge] = useState<string | null>(null);
   
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/outpaint' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'bfl/flux-fill-expand' | 'google_nano_banana' | 'seedream_4'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/outpaint' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'bfl/flux-fill-expand' | 'google_nano_banana' | 'seedream_4' | 'fal-ai/seedvr/upscale/video'>('nightmareai/real-esrgan');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -184,17 +195,32 @@ const EditImageInterface: React.FC = () => {
 
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const historyEntries = useAppSelector((s: any) => (s.history?.entries || []).filter((e: any) => e.generationType === 'text-to-image'));
+  const historyEntries = useAppSelector((s: any) => (s.history?.entries || []).filter((e: any) => e.generationType === 'text-to-video'));
   const historyLoading = useAppSelector((s: any) => s.history?.loading || false);
   const historyHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper to check if URL is a video
+  const isVideoUrl = (url: string | null | undefined): boolean => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.m4v'];
+    const videoMimeTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    const lowerUrl = url.toLowerCase();
+    // Check file extension
+    if (videoExtensions.some(ext => lowerUrl.includes(ext))) return true;
+    // Check data URI mime type
+    if (url.startsWith('data:') && videoMimeTypes.some(mime => url.includes(mime))) return true;
+    // Check blob URL (assume it's video for video edit interface)
+    if (url.startsWith('blob:')) return true;
+    return false;
+  };
+
   // Initialize from query params: feature and image
   useEffect(() => {
     // Ensure we have some history for the upload modal library tab
     (async () => {
-      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch { }
+      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-video' }, paginationParams: { limit: 30 } })).unwrap(); } catch { }
     })();
     try {
       // Allow tab selection via query or path (for /edit-image/fill)
@@ -210,7 +236,7 @@ const EditImageInterface: React.FC = () => {
         if (validFeature === 'remove-bg') {
           setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
-          setModel('nightmareai/real-esrgan');
+          setModel('fal-ai/seedvr/upscale/video' as any);
         } else if (validFeature === 'resize') {
           setModel('fal-ai/bria/expand');
         } else if (validFeature === 'fill') {
@@ -272,6 +298,15 @@ const EditImageInterface: React.FC = () => {
       // Always use Google Nano Banana for Replace and Erase features
       if (model !== 'google_nano_banana') {
         setModel('google_nano_banana');
+      }
+    }
+  }, [selectedFeature, model]);
+
+  // Ensure SeedVR is the default model when switching to Upscale
+  useEffect(() => {
+    if (selectedFeature === 'upscale') {
+      if (model !== 'fal-ai/seedvr/upscale/video') {
+        setModel('fal-ai/seedvr/upscale/video' as any);
       }
     }
   }, [selectedFeature, model]);
@@ -637,15 +672,10 @@ const EditImageInterface: React.FC = () => {
     }
   }, [showImageMenu, outputs, selectedFeature]);
 
-  const features = [
+  const features: { id: 'upscale' | 'remove-bg'; label: string; description: string }[] = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
     { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your image' },
-    { id: 'fill', label: 'Replace', description: 'Mask areas to regenerate with a prompt' },
-    { id: 'erase', label: 'Erase', description: 'Erase masked areas from the image' },
-    { id: 'expand', label: 'Expand', description: 'Expand image by stretching canvas boundaries' },
-    { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
-    { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
-  ] as const;
+  ];
 
   // Feature preview assets and display labels
   const featurePreviewGif: Record<EditFeature, string> = {
@@ -669,19 +699,19 @@ const EditImageInterface: React.FC = () => {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && file.type.startsWith('video/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const img = e.target?.result as string;
-        // Apply selected image to all features
+        const video = e.target?.result as string;
+        // Apply selected video to both features
         setInputs({
-          'upscale': img,
-          'remove-bg': img,
-          'resize': img,
-          'fill': img,
-          'vectorize': img,
-          'erase': img,
-          'expand': img,
+          'upscale': video,
+          'remove-bg': video,
+          'resize': null,
+          'fill': null,
+          'vectorize': null,
+          'erase': null,
+          'expand': null,
         });
       };
       reader.readAsDataURL(file);
@@ -1876,6 +1906,27 @@ const EditImageInterface: React.FC = () => {
         return;
       }
 
+      if (selectedFeature === 'upscale') {
+        // Video Upscale via FAL SeedVR
+        const src = inputs['upscale'];
+        if (!src) throw new Error('Please upload a video to upscale');
+        const body: any = {};
+        if (String(src).startsWith('data:')) body.video = src; else body.video_url = currentInput;
+        body.upscale_mode = seedvrUpscaleMode;
+        if (seedvrUpscaleMode === 'factor') body.upscale_factor = Number(seedvrUpscaleFactor) || 2;
+        if (seedvrUpscaleMode === 'target') body.target_resolution = seedvrTargetResolution;
+        if (seedvrSeed !== '') body.seed = Math.round(Number(seedvrSeed) || 0);
+        body.noise_scale = Number.isFinite(Number(seedvrNoiseScale)) ? Number(seedvrNoiseScale) : 0.1;
+        body.output_format = seedvrOutputFormat;
+        body.output_quality = seedvrOutputQuality;
+        body.output_write_mode = seedvrOutputWriteMode;
+        if (seedvrSyncMode) body.sync_mode = true;
+        const res = await axiosInstance.post('/api/fal/seedvr/upscale/video', body);
+        const videoUrl = res?.data?.data?.video?.url || res?.data?.data?.video_url || res?.data?.data?.url || res?.data?.url || '';
+        if (videoUrl) setOutputs(prev => ({ ...prev, ['upscale']: videoUrl }));
+        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch {}
+        return;
+      }
       if (selectedFeature === 'remove-bg') {
         const body: any = {
           image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
@@ -2132,7 +2183,7 @@ const EditImageInterface: React.FC = () => {
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
-      setModel('nightmareai/real-esrgan');
+      setModel('fal-ai/seedvr/upscale/video' as any);
     } else if (selectedFeature === 'resize') {
       setModel('fal-ai/outpaint');
     } else if (selectedFeature === 'vectorize') {
@@ -2297,9 +2348,9 @@ const EditImageInterface: React.FC = () => {
       {/* Sticky header like ArtStation */}
       <div className="w-full fixed top-0 z-30 px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-10">
         <div className="flex items-center gap-4">
-          <div className="shrink-0 px-1 ml-6 sm:ml-8 md:ml-7 lg:ml-7 ">
-            <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Images</h1>
-            <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
+          <div className="shrink-0 px-1 ml-6 sm:ml-20 md:ml-24 lg:ml-24 ">
+            <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Videos</h1>
+            <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your videos with AI</p>
           </div>
           {/* feature tabs moved to left sidebar */}
                 </div>
@@ -2307,7 +2358,7 @@ const EditImageInterface: React.FC = () => {
       {/* Spacer to offset fixed header height */}
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
-      <UploadModal
+      <VideoUploadModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         historyEntries={historyEntries as any}
@@ -2318,7 +2369,7 @@ const EditImageInterface: React.FC = () => {
           try {
             if (!historyHasMore || historyLoading) return;
             await (dispatch as any)(loadMoreHistory({
-              filters: { generationType: 'text-to-image' },
+              filters: { generationType: 'text-to-video' },
               paginationParams: { limit: 20 }
             })).unwrap();
           } catch { }
@@ -2326,17 +2377,17 @@ const EditImageInterface: React.FC = () => {
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {
-            // Apply selected image from modal to all features
+            // Apply selected video from modal to both features
             setInputs({
               'upscale': first,
               'remove-bg': first,
-              'resize': first,
-              'fill': first,
-              'vectorize': first,
-              'erase': first,
-              'expand': first,
+              'resize': null,
+              'fill': null,
+              'vectorize': null,
+              'erase': null,
+              'expand': null,
             });
-            // Clear all outputs when a new image is selected so the output area re-renders
+            // Clear all outputs when a new video is selected so the output area re-renders
             setOutputs({
               'upscale': null,
               'remove-bg': null,
@@ -2375,10 +2426,6 @@ const EditImageInterface: React.FC = () => {
                       setModel('851-labs/background-remover');
                     } else if (feature.id === 'upscale') {
                       setModel('nightmareai/real-esrgan');
-                    } else if (feature.id === 'resize') {
-                      setModel('fal-ai/outpaint');
-                    } else if (feature.id === 'vectorize') {
-                      setModel('fal-ai/recraft/vectorize' as any);
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
@@ -2388,12 +2435,6 @@ const EditImageInterface: React.FC = () => {
                     <div className={`w-6 h-6 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
                       {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="w-6 h-6" />)}
                       {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-6 h-6" />)}
-                      {feature.id === 'expand' && (<img src="/icons/resize.svg" alt="Expand" className="w-6 h-6" />)}
-                      {feature.id === 'erase' && (<img src="/icons/erase.svg" alt="Erase" className="w-8 h-8" />)}
-                    
-                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="w-5 h-5" />)}
-                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-6 h-6" />)}
-                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="w-7 h-7" />)}
                     </div>
                     
                   </div>
@@ -3172,7 +3213,131 @@ const EditImageInterface: React.FC = () => {
                 </div>
               )}
 
-              {selectedFeature === 'upscale' && (
+              {selectedFeature === 'upscale' && model === 'fal-ai/seedvr/upscale/video' && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Upscale Mode</label>
+                      <div className="relative edit-dropdown">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')} className="h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium bg-white/5 text-white/90 flex items-center justify-between">
+                          <span className="truncate">{seedvrUpscaleMode}</span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'backgroundType' && (
+                          <div className="absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2">
+                            {(['factor','target'] as const).map((opt) => (
+                              <button key={opt} onClick={() => { setSeedvrUpscaleMode(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${seedvrUpscaleMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {seedvrUpscaleMode === 'factor' ? (
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Upscale Factor</label>
+                        <input type="number" min={0.1} max={10} step={0.1} value={seedvrUpscaleFactor} onChange={(e)=>setSeedvrUpscaleFactor(Math.max(0.1, Math.min(10, Number(e.target.value) || 2)))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Target Resolution</label>
+                        <div className="relative edit-dropdown">
+                          <button onClick={() => setActiveDropdown(activeDropdown === 'resizeAspect' ? '' : 'resizeAspect')} className="h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium bg-white/5 text-white/90 flex items-center justify-between">
+                            <span className="truncate">{seedvrTargetResolution}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeAspect' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'resizeAspect' && (
+                            <div className="absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2">
+                              {(['720p','1080p','1440p','2160p'] as const).map((opt) => (
+                                <button key={opt} onClick={() => { setSeedvrTargetResolution(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${seedvrTargetResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2">
+                    <h4 className="text-xs font-medium text-white/80">Additional Settings</h4>
+                    <button type="button" onClick={() => setShowUpscaleAdvanced(v => !v)} className="px-2 py-1 text-xs rounded-lg bg-white/10 hover:bg-white/20 text-white/80 border border-white/20">{showUpscaleAdvanced ? 'Less' : 'More'}</button>
+                  </div>
+                  {showUpscaleAdvanced && (
+                    <div className="space-y-2 mt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1">Seed</label>
+                          <input type="number" value={seedvrSeed as any} onChange={(e)=>setSeedvrSeed(e.target.value)} placeholder="random" className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1">Noise Scale</label>
+                          <input type="number" min={0} max={2} step={0.01} value={seedvrNoiseScale} onChange={(e)=>setSeedvrNoiseScale(Math.max(0, Math.min(2, Number(e.target.value) || 0.1)))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1">Output Format</label>
+                          <div className="relative edit-dropdown">
+                            <button onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')} className="h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium bg-white/5 text-white/90 flex items-center justify-between">
+                              <span className="truncate">{seedvrOutputFormat}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'output' && (
+                              <div className="absolute z-30 top-full mt-2 left-0 w-56 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2">
+                                {(['X264 (.mp4)','VP9 (.webm)','PRORES4444 (.mov)','GIF (.gif)'] as const).map((fmt) => (
+                                  <button key={fmt} onClick={() => { setSeedvrOutputFormat(fmt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${seedvrOutputFormat === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{fmt}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1">Output Quality</label>
+                          <div className="relative edit-dropdown">
+                            <button onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')} className="h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium bg-white/5 text-white/90 flex items-center justify-between">
+                              <span className="truncate">{seedvrOutputQuality}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'vectorizeModel' && (
+                              <div className="absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2">
+                                {(['low','medium','high','maximum'] as const).map((q) => (
+                                  <button key={q} onClick={() => { setSeedvrOutputQuality(q); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${seedvrOutputQuality === q ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{q}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1">Write Mode</label>
+                          <div className="relative edit-dropdown">
+                            <button onClick={() => setActiveDropdown(activeDropdown === 'swinTask' ? '' : 'swinTask')} className="h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium bg-white/5 text-white/90 flex items-center justify-between">
+                              <span className="truncate">{seedvrOutputWriteMode}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'swinTask' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'swinTask' && (
+                              <div className="absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2">
+                                {(['fast','balanced','small'] as const).map((m) => (
+                                  <button key={m} onClick={() => { setSeedvrOutputWriteMode(m); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${seedvrOutputWriteMode === m ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{m}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-end">
+                          <div className="w-full">
+                            <label className="block text-xs font-medium text-white/70 mb-1">Sync Mode</label>
+                            <button type="button" onClick={() => setSeedvrSyncMode(v=>!v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${seedvrSyncMode ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>{seedvrSyncMode ? 'On' : 'Off'}</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-white/50">Note: When sync_mode is true, the media will be returned as a Base64 URI and not stored.</div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {selectedFeature === 'upscale' && model !== 'fal-ai/seedvr/upscale/video' && (
                 <>
                   {model === 'nightmareai/real-esrgan' && (
                     <div className="grid grid-cols-2 gap-2">
@@ -3393,21 +3558,21 @@ const EditImageInterface: React.FC = () => {
                 try {
                   e.preventDefault();
                   const file = e.dataTransfer?.files?.[0];
-                  if (!file) return;
+                  if (!file || !file.type.startsWith('video/')) return;
                  const reader = new FileReader();
                  reader.onload = (ev) => {
-                   const img = ev.target?.result as string;
-                   // Apply dropped image to all features so switching tabs preserves the same input
+                   const video = ev.target?.result as string;
+                   // Apply dropped video to both features so switching tabs preserves the same input
                    setInputs({
-                     'upscale': img,
-                     'remove-bg': img,
-                     'resize': img,
-                     'fill': img,
-                     'vectorize': img,
-                     'erase': img,
-                     'expand': img,
+                     'upscale': video,
+                     'remove-bg': video,
+                     'resize': null,
+                     'fill': null,
+                     'vectorize': null,
+                     'erase': null,
+                     'expand': null,
                    });
-                   // Clear all outputs when a new image is dropped so the output area re-renders
+                   // Clear all outputs when a new video is dropped so the output area re-renders
                    setOutputs({
                      'upscale': null,
                      'remove-bg': null,
@@ -3552,12 +3717,20 @@ const EditImageInterface: React.FC = () => {
                         // Comparison slider mode
                         <>
                           <div className="absolute inset-0">
-                            <Image
-                              src={inputs[selectedFeature] as string}
-                              alt="Original"
-                              fill
-                              className="object-contain object-center"
-                            />
+                            {isVideoUrl(inputs[selectedFeature]) ? (
+                              <video
+                                src={inputs[selectedFeature] as string}
+                                controls
+                                className="w-full h-full object-contain object-center"
+                              />
+                            ) : (
+                              <Image
+                                src={inputs[selectedFeature] as string}
+                                alt="Original"
+                                fill
+                                className="object-contain object-center"
+                              />
+                            )}
                           </div>
                           <div 
                             className="absolute inset-0"
@@ -3565,13 +3738,22 @@ const EditImageInterface: React.FC = () => {
                               clipPath: `inset(0 0 0 ${sliderPosition}%)`
                             }}
                           >
-                            <Image
-                              src={outputs[selectedFeature] as string}
-                              alt="Generated"
-                              fill
-                              className="object-contain object-center"
-                              style={{ objectPosition: 'center 55%' }}
-                            />
+                            {isVideoUrl(outputs[selectedFeature]) ? (
+                              <video
+                                src={outputs[selectedFeature] as string}
+                                controls
+                                className="w-full h-full object-contain object-center"
+                                style={{ objectPosition: 'center 55%' }}
+                              />
+                            ) : (
+                              <Image
+                                src={outputs[selectedFeature] as string}
+                                alt="Generated"
+                                fill
+                                className="object-contain object-center"
+                                style={{ objectPosition: 'center 55%' }}
+                              />
+                            )}
                           </div>
                           <div className="absolute inset-0">
                             <input
@@ -3605,23 +3787,40 @@ const EditImageInterface: React.FC = () => {
                           tabIndex={0}
                           style={{ outline: 'none' }}
                         >
-                          <Image
-                            ref={imageRef}
-                            src={outputs[selectedFeature] as string}
-                            alt="Output"
-                            fill
-                            className="object-contain object-center"
-                            style={{
-                              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                              transformOrigin: 'center center',
-                              objectPosition: 'center 55%'
-                            }}
-                            onLoad={(e) => {
-                              const img = e.target as HTMLImageElement;
-                              setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                            }}
-                            onClick={handleImageClick}
-                          />
+                          {isVideoUrl(outputs[selectedFeature]) ? (
+                            <video
+                              src={outputs[selectedFeature] as string}
+                              controls
+                              className="w-full h-full object-contain object-center"
+                              style={{
+                                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                                transformOrigin: 'center center',
+                                objectPosition: 'center 55%'
+                              }}
+                              onLoadedData={(e) => {
+                                const video = e.target as HTMLVideoElement;
+                                setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+                              }}
+                            />
+                          ) : (
+                            <Image
+                              ref={imageRef}
+                              src={outputs[selectedFeature] as string}
+                              alt="Output"
+                              fill
+                              className="object-contain object-center"
+                              style={{
+                                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                                transformOrigin: 'center center',
+                                objectPosition: 'center 55%'
+                              }}
+                              onLoad={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                              }}
+                              onClick={handleImageClick}
+                            />
+                          )}
                           
                           {/* Zoom Controls */}
                           <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
@@ -3676,23 +3875,40 @@ const EditImageInterface: React.FC = () => {
                       tabIndex={0}
                       style={{ outline: 'none' }}
                     >
-                      <Image
-                        ref={imageRef}
-                        src={outputs[selectedFeature] as string}
-                        alt="Output"
-                        fill
-                        className="object-contain object-center"
-                        style={{
-                          transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                          transformOrigin: 'center center',
-                          objectPosition: 'center 55%'
-                        }}
-                        onLoad={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                        }}
-                        onClick={handleImageClick}
-                      />
+                      {isVideoUrl(outputs[selectedFeature]) ? (
+                        <video
+                          src={outputs[selectedFeature] as string}
+                          controls
+                          className="w-full h-full object-contain object-center"
+                          style={{
+                            transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                            transformOrigin: 'center center',
+                            objectPosition: 'center 55%'
+                          }}
+                          onLoadedData={(e) => {
+                            const video = e.target as HTMLVideoElement;
+                            setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+                          }}
+                        />
+                      ) : (
+                        <Image
+                          ref={imageRef}
+                          src={outputs[selectedFeature] as string}
+                          alt="Output"
+                          fill
+                          className="object-contain object-center"
+                          style={{
+                            transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                            transformOrigin: 'center center',
+                            objectPosition: 'center 55%'
+                          }}
+                          onLoad={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                          }}
+                          onClick={handleImageClick}
+                        />
+                      )}
                       
                       {/* Zoom Controls */}
                       <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
@@ -3737,26 +3953,38 @@ const EditImageInterface: React.FC = () => {
                 <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]">
                   {inputs[selectedFeature] ? (
                     <div className="absolute inset-0">
-                      <Image
-                        src={inputs[selectedFeature] as string} 
-                        alt="Input" 
-                        fill 
-                        className="object-contain object-center"
-                        onLoad={(e) => {
-                          if (selectedFeature === 'expand') {
-                            const img = e.target as HTMLImageElement;
-                            setExpandOriginalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                            setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                            // Trigger canvas redraw after a short delay to ensure container is ready
-                            setTimeout(() => {
-                              drawExpandCanvas();
-                            }, 100);
-                          } else {
-                            const img = e.target as HTMLImageElement;
-                            setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                          }
-                        }}
-                      />
+                      {isVideoUrl(inputs[selectedFeature]) ? (
+                        <video
+                          src={inputs[selectedFeature] as string}
+                          controls
+                          className="w-full h-full object-contain object-center"
+                          onLoadedData={(e) => {
+                            const video = e.target as HTMLVideoElement;
+                            setInputNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+                          }}
+                        />
+                      ) : (
+                        <Image
+                          src={inputs[selectedFeature] as string} 
+                          alt="Input" 
+                          fill 
+                          className="object-contain object-center"
+                          onLoad={(e) => {
+                            if (selectedFeature === 'expand') {
+                              const img = e.target as HTMLImageElement;
+                              setExpandOriginalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                              setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                              // Trigger canvas redraw after a short delay to ensure container is ready
+                              setTimeout(() => {
+                                drawExpandCanvas();
+                              }, 100);
+                            } else {
+                              const img = e.target as HTMLImageElement;
+                              setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                            }
+                          }}
+                        />
+                      )}
                       {selectedFeature === 'expand' && expandOriginalSize.width > 0 && (
                         <div ref={expandContainerRef} className="absolute inset-0 z-10">
                           <canvas
@@ -3839,7 +4067,7 @@ const EditImageInterface: React.FC = () => {
                       <svg className="w-10 h-10 mx-auto mb-2 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
                         </svg>
-                      <span className="text-xs">Drop image here or click to upload</span>
+                      <span className="text-xs">Drop video here or click to upload</span>
                     </button>
                     )}
                 </div>
@@ -3858,4 +4086,7 @@ const EditImageInterface: React.FC = () => {
   );
 };
 
-export default EditImageInterface;
+
+
+export default EditVideoInterface;
+

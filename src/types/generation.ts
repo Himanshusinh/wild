@@ -12,6 +12,7 @@ export type GenerationType =
   | 'live-chat'
   | 'logo-generation'
   | 'edit-image'
+  | 'edit-video'
   | 'text-to-character';
 
 
