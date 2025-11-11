@@ -1436,7 +1436,7 @@ const EditVideoInterface: React.FC = () => {
                           )}
                           
                           {/* Zoom Controls */}
-                          <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
+                          <div className="absolute bottom-3 right-3 z-30 2xl:bottom-16 2xl:right-4">
                           <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
                               <button
                                 onClick={() => {
@@ -1523,7 +1523,7 @@ const EditVideoInterface: React.FC = () => {
                       )}
                       
                       {/* Zoom Controls */}
-                      <div className="absolute bottom-3 right-3 z-30 2xl:bottom-4 2xl:right-4">
+                      <div className="absolute bottom-3 right-3 z-30 2xl:bottom-16 2xl:right-4">
                         <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
                           <button
                             onClick={() => {
