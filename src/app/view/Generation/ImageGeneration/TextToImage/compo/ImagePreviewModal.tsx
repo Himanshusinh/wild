@@ -28,7 +28,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (urlOrPath.startsWith(ZATA_PREFIX)) {
       return urlOrPath.substring(ZATA_PREFIX.length);
     }
-    return urlOrPath;
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), return empty to indicate they should be used directly
+    return '';
   }, []);
 
   const toProxyResourceUrl = React.useCallback((urlOrPath: string | undefined) => {
@@ -322,8 +325,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   // Helper to get media proxy URL
   const toMediaProxyUrl = React.useCallback((urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    // If it's already a full HTTP/HTTPS URL (external), use it directly
+    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+      return urlOrPath;
+    }
     const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+    // If path is empty, it means it's not a Zata URL - use original URL directly
+    if (!path) return urlOrPath;
+    // For Zata paths, use proxy
+    return `/api/proxy/media/${encodeURIComponent(path)}`;
   }, [toProxyPath]);
 
   React.useEffect(() => {
@@ -336,18 +347,30 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
         const selectedImage = selectedPair.image || preview.image;
-        // Use media proxy like SmartImage does (more reliable than resource proxy)
-        const url = toMediaProxyUrl(selectedImage?.url || preview.image.url);
+        const imageUrl = selectedImage?.url || preview.image.url;
+        if (!imageUrl) return;
+        
+        // Use media proxy for Zata URLs, direct URL for external URLs (FAL, etc.)
+        const url = toMediaProxyUrl(imageUrl);
         if (!url) return;
+        
+        // For external URLs (FAL), use CORS mode; for proxy URLs, use credentials
+        const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
         const res = await fetch(url, {
-          credentials: 'include'
+          credentials: isExternalUrl ? 'omit' : 'include',
+          mode: isExternalUrl ? 'cors' : 'same-origin'
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.warn('[ImagePreviewModal] Failed to fetch image:', url, res.status);
+          return;
+        }
         const blob = await res.blob();
         const obj = URL.createObjectURL(blob);
         revoke = obj;
         setObjectUrl(obj);
-      } catch {}
+      } catch (err) {
+        console.error('[ImagePreviewModal] Error loading image:', err);
+      }
     };
     run();
     return () => {
