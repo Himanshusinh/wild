@@ -210,7 +210,7 @@ const SidePannelFeatures = ({
       <div className="relative">
         <div
           onClick={handleImageGenerationClick}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
@@ -221,7 +221,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => handleGenerationTypeChange('edit-image')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} />
@@ -232,7 +232,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => handleGenerationTypeChange('text-to-video')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
@@ -243,7 +243,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => handleGenerationTypeChange('edit-video')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
@@ -254,7 +254,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => handleGenerationTypeChange('text-to-music')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.musicGeneration} alt="Music Generation" width={30} height={30} />
@@ -265,7 +265,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => router.push(NAV_ROUTES.LIVE_CHAT)}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} />
@@ -301,7 +301,7 @@ const SidePannelFeatures = ({
         <div
           ref={brandingRef}
           onClick={toggleBrandingDropdown}
-          className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isBrandingActive ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isBrandingActive ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
@@ -357,7 +357,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => router.push('/view/ArtStation')}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} />
@@ -375,7 +375,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onClick={() => router.push(NAV_ROUTES.PRICING)}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/10' : ''
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
             }`}
         >
           <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} />
@@ -397,7 +397,7 @@ const SidePannelFeatures = ({
             }
             router.push('/history');
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : ''}`}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
         >
           <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} />
           <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
