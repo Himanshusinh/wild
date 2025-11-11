@@ -16,13 +16,20 @@ export function toZataPath(urlOrPath: string): string {
   return ''
 }
 
-export function toThumbUrl(urlOrPath: string, opts?: { w?: number; q?: number }): string {
+export function toThumbUrl(urlOrPath: string, opts?: { w?: number; q?: number; fmt?: 'auto' | 'webp' | 'avif'; t?: number }): string {
   const path = toZataPath(urlOrPath)
   if (!path) return ''
   const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
   const w = opts?.w ?? 512
   const q = opts?.q ?? 60
-  return `${base}/api/proxy/thumb/${encodeURIComponent(path)}?w=${w}&q=${q}`
+  const fmt = opts?.fmt
+  const t = typeof opts?.t === 'number' ? opts?.t : undefined
+  const params = new URLSearchParams()
+  params.set('w', String(w))
+  params.set('q', String(q))
+  if (fmt) params.set('fmt', fmt)
+  if (typeof t === 'number') params.set('t', String(t))
+  return `${base}/api/proxy/thumb/${encodeURIComponent(path)}?${params.toString()}`
 }
 
 export function toMediaProxy(urlOrPath: string): string {

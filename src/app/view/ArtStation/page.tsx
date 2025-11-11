@@ -1,13 +1,14 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import Nav from '../HomePage/compo/Nav'
+import { OptimizedImage } from '@/components/media/OptimizedImage'
+import Nav from '../Generation/Core/Nav'
 import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
-import { toThumbUrl, toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
+import { toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -21,8 +22,19 @@ type PublicItem = {
   aspect_ratio?: string;
   createdAt?: string;
   updatedAt?: string;
+  isPublic?: boolean;
+  isDeleted?: boolean;
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
-  images?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
+  images?: { 
+    id: string; 
+    url: string; 
+    originalUrl?: string; 
+    storagePath?: string;
+    webpUrl?: string;
+    thumbnailUrl?: string;
+    blurDataUrl?: string;
+    optimized?: boolean;
+  }[];
   videos?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
   audios?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
 };
@@ -50,6 +62,7 @@ export default function ArtStationPage() {
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
@@ -428,28 +441,50 @@ export default function ArtStationPage() {
   }
 
   const filteredItems = useMemo(() => {
-    if (activeCategory === 'All') return items;
-    const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
-    return items.filter(item => {
-      const type = item.generationType?.toLowerCase();
-      switch (activeCategory) {
-        case 'Images':
-          return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
-        case 'Videos':
-          return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
-        case 'Music':
-          return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
-        case 'Logos':
-          return type === 'logo';
-        case 'Stickers':
-          return type === 'sticker-generation';
-        case 'Products':
-          return type === 'product-generation';
-        default:
-          return true;
-      }
+    // Filter out deleted and non-public items (in case they slip through from backend)
+    const validItems = items.filter(item => {
+      // Must be public and not deleted
+      if (item.isDeleted === true) return false;
+      if (item.isPublic === false) return false;
+      return true;
     });
-  }, [items, activeCategory]);
+
+    // Apply category filter
+    let categoryFiltered = validItems;
+    if (activeCategory !== 'All') {
+      const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
+      categoryFiltered = validItems.filter(item => {
+        const type = item.generationType?.toLowerCase();
+        switch (activeCategory) {
+          case 'Images':
+            return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
+          case 'Videos':
+            return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
+          case 'Music':
+            return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
+          case 'Logos':
+            return type === 'logo';
+          case 'Stickers':
+            return type === 'sticker-generation';
+          case 'Products':
+            return type === 'product-generation';
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      categoryFiltered = categoryFiltered.filter(item => {
+        const prompt = (item.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }
+
+    return categoryFiltered;
+  }, [items, activeCategory, searchQuery]);
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
@@ -681,6 +716,45 @@ export default function ArtStationPage() {
                   </button> 
                 ))}
 
+                {/* Search Input and Buttons */}
+                <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Search is already applied via filteredItems useMemo
+                        }
+                      }}
+                      placeholder="Search by prompt..."
+                      className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                    />
+                    <button
+                      onClick={() => {
+                        // Search is already applied via filteredItems useMemo
+                      }}
+                      className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                      aria-label="Search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -749,7 +823,7 @@ export default function ArtStationPage() {
                                 muted
                                 playsInline
                                 preload="metadata"
-                                poster={toThumbUrl(media.url, { w: 640, q: 60 }) || undefined}
+                                poster={media.thumbnailUrl || media.avifUrl || undefined}
                                 // play on hover
                                 onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
                                 onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
@@ -777,24 +851,47 @@ export default function ArtStationPage() {
                             />
                           </>
                         ) : (
-                          <Image
-                            src={toThumbUrl(media.url, { w: 640, q: 60 }) || media.url}
-                            alt={item.prompt || ''}
-                            fill
-                            sizes={sizes}
-                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                            placeholder="blur"
-                            blurDataURL={blur}
-                            priority={isPriority}
-                            fetchPriority={isPriority ? 'high' : 'auto'}
-                            onLoadingComplete={(img) => {
-                              try {
-                                const el = img as unknown as HTMLImageElement
-                                if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                              } catch { }
-                              markTileLoaded(cardId)
-                            }}
-                          />
+                          <div className="relative w-full h-full">
+                            {media.thumbnailUrl || media.avifUrl ? (
+                              <Image
+                                src={media.thumbnailUrl || media.avifUrl || media.url}
+                                alt={item.prompt || ''}
+                                fill
+                                sizes={sizes}
+                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                                placeholder="blur"
+                                blurDataURL={media.blurDataUrl || blur}
+                                priority={isPriority}
+                                fetchPriority={isPriority ? 'high' : 'auto'}
+                                onLoadingComplete={(img) => {
+                                  try {
+                                    const el = img as unknown as HTMLImageElement
+                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                  } catch { }
+                                  markTileLoaded(cardId)
+                                }}
+                              />
+                            ) : (
+                              <Image
+                                src={media.url}
+                                alt={item.prompt || ''}
+                                fill
+                                sizes={sizes}
+                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                                placeholder="blur"
+                                blurDataURL={blur}
+                                priority={isPriority}
+                                fetchPriority={isPriority ? 'high' : 'auto'}
+                                onLoadingComplete={(img) => {
+                                  try {
+                                    const el = img as unknown as HTMLImageElement
+                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                  } catch { }
+                                  markTileLoaded(cardId)
+                                }}
+                              />
+                            )}
+                          </div>
                         )
                       })()}
                       {kind === 'video' && (
@@ -1038,7 +1135,7 @@ export default function ArtStationPage() {
                       if (preview.kind === 'video') {
                         const vid = videos[selectedVideoIndex] || videos[0] || { url: preview.url }
                         const proxied = toDirectUrl(vid.url) || vid.url
-                        const poster = toThumbUrl(vid.url, { w: 1280, q: 60 }) || undefined
+                        const poster = vid.thumbnailUrl || vid.avifUrl || undefined
                         return (
                           <div className="relative w-full h-full">
                             <video src={proxied} className="w-full h-full" controls autoPlay playsInline preload="auto" poster={poster} />
@@ -1160,7 +1257,7 @@ export default function ArtStationPage() {
                                 const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
                                 const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url;
                                 const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={toThumbUrl(vd.url, { w: 320, q: 60 }) || undefined} />
+                                return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={vd.thumbnailUrl || vd.avifUrl || undefined} />
                               })()}
                             </button>
                           ))}

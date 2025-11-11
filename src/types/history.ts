@@ -3,6 +3,12 @@ export interface GeneratedImage {
   url: string;
   firebaseUrl?: string; // URL after uploading to Firebase Storage
   originalUrl: string; // Original URL from BFL API
+  // Optimized image URLs
+  avifUrl?: string; // AVIF optimized version (primary format)
+  webpUrl?: string; // WebP optimized version (deprecated)
+  thumbnailUrl?: string; // Thumbnail version (400x400)
+  blurDataUrl?: string; // Base64 blur placeholder
+  optimized?: boolean; // Flag indicating if image has been optimized
 }
 
 export interface GeneratedVideo {
@@ -11,6 +17,9 @@ export interface GeneratedVideo {
   storagePath?: string; // Storage path in Zata
   firebaseUrl?: string; // URL after uploading to Firebase Storage
   originalUrl?: string; // Original URL from provider API
+  // Optimized video thumbnails
+  avifUrl?: string; // AVIF poster/thumbnail
+  thumbnailUrl?: string; // Video thumbnail/poster
 }
 
 export interface GeneratedAudio {
@@ -25,7 +34,7 @@ export interface HistoryEntry {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -59,7 +68,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -91,7 +100,7 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text_to_image' | 'image_to_video' | 'video_to_video';
+  generationType?: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video';
   dateRange?: {
     start: Date;
     end: Date;

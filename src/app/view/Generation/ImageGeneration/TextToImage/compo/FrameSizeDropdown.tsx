@@ -58,13 +58,17 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     { name: 'Landscape Wide', value: '3:2', icon: 'landscape' },
     { name: 'Wide', value: '16:9', icon: 'landscape' },
     { name: 'Ultra Wide', value: '21:9', icon: 'ultrawide' },
-    // Additional ratios for Lucid Origin and Phoenix 1.0
-    { name: 'Portrait 4:5', value: '4:5', icon: 'portrait' },
-    { name: 'Landscape 5:4', value: '5:4', icon: 'landscape' },
-    { name: 'Ultra Wide 2:1', value: '2:1', icon: 'ultrawide' },
-    { name: 'Portrait 1:2', value: '1:2', icon: 'portrait' },
-    { name: 'Ultra Wide 3:1', value: '3:1', icon: 'ultrawide' },
-    { name: 'Portrait 1:3', value: '1:3', icon: 'portrait' },
+    // Additional ratios for various models
+    { name: 'Portrait 4:5', value: '4:5', icon: 'portrait', hideValue: true },
+    { name: 'Landscape 5:4', value: '5:4', icon: 'landscape', hideValue: true },
+    { name: 'Ultra Wide 2:1', value: '2:1', icon: 'ultrawide', hideValue: true },
+    { name: 'Portrait 1:2', value: '1:2', icon: 'portrait', hideValue: true },
+    { name: 'Ultra Wide 3:1', value: '3:1', icon: 'ultrawide', hideValue: true },
+    { name: 'Portrait 1:3', value: '1:3', icon: 'portrait', hideValue: true },
+    // Additional ratios for Ideogram and BFL Flux
+    { name: 'Portrait 10:16', value: '10:16', icon: 'portrait', hideValue: true },
+    { name: 'Landscape 16:10', value: '16:10', icon: 'landscape', hideValue: true },
+    { name: 'Portrait 9:21', value: '9:21', icon: 'portrait', hideValue: true },
   ];
 
   // Some providers (MiniMax) specify an explicit allowed list; others accept broader ranges.
@@ -75,10 +79,24 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
   const isSeedream = selectedModel === 'seedream-v4';
+  const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image';
+  const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
 
   const frameSizes = (() => {
+    if (isGoogleNanoBanana) {
+      // Google Nano Banana: only these aspect ratios are supported according to official schema
+      // Supported: 21:9, 1:1, 4:3, 3:2, 2:3, 5:4, 4:5, 3:4, 16:9, 9:16
+      const allowed = new Set(['21:9', '1:1', '4:3', '3:2', '2:3', '5:4', '4:5', '3:4', '16:9', '9:16']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isImagen) {
+      // Imagen 4 models: 1:1,16:9,9:16,3:4,4:3 (from validateFalGenerate)
+      const allowed = new Set(['1:1', '16:9', '9:16', '3:4', '4:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isSeedream) {
       // Seedream v4: follow schema exactly, include match_input_image
+      // Supported: match_input_image,1:1,4:3,3:4,16:9,9:16,3:2,2:3,21:9 (from validateImageGenerate)
       const allowed = [
         { name: 'Match Input Image ', value: 'match_input_image', icon: 'square' },
         { name: 'Square', value: '1:1', icon: 'square' },
@@ -92,32 +110,33 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       ];
       return allowed;
     }
+    if (isIdeogram) {
+      // Ideogram v3: 1:3,3:1,1:2,2:1,9:16,16:9,10:16,16:10,2:3,3:2,3:4,4:3,4:5,5:4,1:1 (from validateImageGenerate)
+      const allowed = new Set(['1:3', '3:1', '1:2', '2:1', '9:16', '16:9', '10:16', '16:10', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '1:1']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isLucidOrigin) {
+      // Lucid Origin: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3 (from validateImageGenerate)
+      const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isPhoenix) {
+      // Phoenix 1.0: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3 (from validateImageGenerate)
+      const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isMiniMax) {
       // MiniMax: 1:1,16:9,4:3,3:2,2:3,3:4,9:16,21:9
       const allowed = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
-    if (isLucidOrigin) {
-      // Lucid Origin: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3
-      const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
-      return baseSizes.filter(s => allowed.has(s.value));
-    }
-    if (isPhoenix) {
-      // Phoenix 1.0: 1:1,16:9,9:16,3:2,2:3,4:5,5:4,3:4,4:3,2:1,1:2,3:1,1:3
-      const allowed = new Set(['1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3']);
-      return baseSizes.filter(s => allowed.has(s.value));
-    }
-    if (isImagen) {
-      // Imagen models: 1:1,16:9,9:16,3:4,4:3
-      const allowed = new Set(['1:1', '16:9', '9:16', '3:4', '4:3']);
+    if (isFlux) {
+      // BFL Flux models: 1:1,3:4,4:3,16:9,9:16,3:2,2:3,21:9,9:21,16:10,10:16 (from validateBflGenerate)
+      const allowed = new Set(['1:1', '3:4', '4:3', '16:9', '9:16', '3:2', '2:3', '21:9', '9:21', '16:10', '10:16']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isRunway) {
       // Runway: we map to pixel ratios later; keep a rich but safe set
-      return baseSizes;
-    }
-    if (isFlux) {
-      // Flux models accept aspect or width/height derived; use common set
       return baseSizes;
     }
     return baseSizes;
@@ -189,7 +208,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
                     }`}></span>
                 )}
                 <span>{size.name}</span>
-              {size.value !== 'match_input_image' && (
+              {size.value !== 'match_input_image' && !(size as any).hideValue && (
                 <span className={`text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'}`}>{size.value}</span>
               )}
               </span>

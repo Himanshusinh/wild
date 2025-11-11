@@ -128,23 +128,47 @@ const InputBox = () => {
       const entry = entries[0];
       if (!entry.isIntersecting) return;
       if (!hasUserScrolledRef.current) return;
-      if (!storeHasMore || storeLoading || loadingMoreRef.current) return;
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!storeHasMore) {
+        console.log('[Music] IO: skip loadMore - NO MORE ITEMS', { storeHasMore });
+        return;
+      }
+      
+      if (storeLoading || loadingMoreRef.current) {
+        console.log('[Music] IO: skip loadMore - already loading', { storeLoading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
       const nextPage = page + 1;
       setPage(nextPage);
+      console.log('[Music] IO: loadMore start', { nextPage, storeHasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'text-to-music' },
           paginationParams: { limit: 10 }
         } as any)).unwrap();
-      } catch (e) {
-        console.error('[Music] IO loadMore error', e);
+        console.log('[Music] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Music] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Music] IO loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Music] IO: observer attached', { storeHasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Music] IO: observer disconnected');
+    };
   }, [storeHasMore, storeLoading, page, dispatch]);
 
   const handleGenerate = async (payload: any) => {

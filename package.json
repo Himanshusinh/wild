@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postbuild": "next-sitemap",
+    "ping-sitemap": "node scripts/ping-sitemap.js",
+    "postdeploy": "npm run ping-sitemap",
     "start": "next start",
     "lint": "next lint"
   },
@@ -34,6 +37,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "next-sitemap": "4.2.3",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"

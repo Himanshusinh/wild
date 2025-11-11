@@ -2,7 +2,6 @@
 
  import React, { useEffect, useRef, useState, useMemo } from 'react';
   import Image from 'next/image';
-  import SmartImage from '@/components/media/SmartImage';
   import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
   import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
   import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
@@ -20,7 +19,6 @@
   // Replaced custom loader with Logo.gif
   import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
   import { getCreditsForModel } from '@/utils/modelCredits';
-  import { toThumbUrl } from '@/lib/thumb';
 
   const History = () => {
     const dispatch = useAppDispatch();
@@ -106,6 +104,21 @@
         try {
           toast.error('Failed to copy');
         } catch {}
+      }
+    };
+
+    // Delete handler - same logic as ImagePreviewModal
+    const handleDeleteGeneration = async (e: React.MouseEvent, entry: HistoryEntry) => {
+      try {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+        await axiosInstance.delete(`/api/generations/${entry.id}`);
+        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        toast.success('Generation deleted');
+      } catch (err) {
+        console.error('Delete failed:', err);
+        toast.error('Failed to delete generation');
       }
     };
 
@@ -1445,7 +1458,7 @@
                                       playsInline 
                                       loop 
                                       preload="metadata"
-                                      poster={toThumbUrl(mediaUrl, { w: 640, q: 60 }) || undefined}
+                                      poster={(media as any).thumbnailUrl || (media as any).avifUrl || undefined}
                                       onMouseEnter={async (e) => { 
                                         try { 
                                           await (e.currentTarget as HTMLVideoElement).play();
@@ -1545,7 +1558,7 @@
                                 </div>
                               )}
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
                                 {/* <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-xs text-white flex-1 leading-snug"
@@ -1560,11 +1573,19 @@
                                 </span> */}
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded-lg hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete generation"
+                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteGeneration(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>
@@ -1586,7 +1607,7 @@
                                 <span className="text-xs text-white">Audio</span>
                               </div>
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
                                 {/* <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-xs text-white flex-1 leading-snug"
@@ -1601,11 +1622,19 @@
                                 </span> */}
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete generation"
+                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteGeneration(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={16} />
                                 </button>
                               </div>
                             </div>
@@ -1623,16 +1652,13 @@
                                     );
                                   }
                                   return (
-                                    <SmartImage
-                                      src={mediaUrl}
+                                    <Image
+                                      src={(media as any).thumbnailUrl || (media as any).avifUrl || mediaUrl}
                                       alt={entry.prompt}
                                       fill
                                       className="object-cover group-hover:scale-105 transition-transform duration-200"
                                       sizes="192px"
-                                      thumbWidth={480}
-                                      thumbQuality={60}
-                                      decorative
-                                      onLoadingComplete={() => {
+                                      onLoad={() => {
                                         try {
                                           setTimeout(() => {
                                             const shimmer = document.querySelector(`[data-image-id=\"${entry.id}-${media.id || mediaIndex}\"] .shimmer`) as HTMLElement;
@@ -1655,14 +1681,22 @@
                               )}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete generation"
+                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteGeneration(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>

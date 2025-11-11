@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import SmartImage from "@/components/media/SmartImage";
 import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -22,7 +21,11 @@ import {
   loadHistory,
   clearHistory,
   clearFilters,
+  removeHistoryEntry,
 } from "@/store/slices/historySlice";
+import axiosInstance from "@/lib/axiosInstance";
+import { Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -118,6 +121,21 @@ const InputBox = () => {
     }
   };
 
+  // Delete handler - same logic as ImagePreviewModal
+  const handleDeleteImage = async (e: React.MouseEvent, entry: HistoryEntry) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      toast.success('Image deleted');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Failed to delete generation');
+    }
+  };
+
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
@@ -190,25 +208,45 @@ const InputBox = () => {
         console.log('[Logo] IO: skip until user scrolls');
         return;
       }
-      if (!hasMore || loading || loadingMoreRef.current) {
-        console.log('[Logo] IO: skip loadMore', { hasMore, loading, busy: loadingMoreRef.current });
+      
+      // CRITICAL: Check hasMore FIRST
+      if (!hasMore) {
+        console.log('[Logo] IO: skip loadMore - NO MORE ITEMS', { hasMore });
         return;
       }
+      
+      if (loading || loadingMoreRef.current) {
+        console.log('[Logo] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
+        return;
+      }
+      
       loadingMoreRef.current = true;
-      console.log('[Logo] IO: loadMore start');
+      console.log('[Logo] IO: loadMore start', { hasMore });
+      
       try {
         await (dispatch as any)(loadMoreHistory({ 
           filters: { generationType: 'logo' }, 
           paginationParams: { limit: 10 } 
         })).unwrap();
-      } catch (e) {
-        console.error('[Logo] IO: loadMore error', e);
+        console.log('[Logo] IO: loadMore success');
+      } catch (e: any) {
+        if (e?.message?.includes('no more pages')) {
+          console.log('[Logo] IO: loadMore skipped - no more pages');
+        } else {
+          console.error('[Logo] IO: loadMore error', e);
+        }
       } finally {
         loadingMoreRef.current = false;
       }
     }, { root: null, threshold: 0.1 });
+    
     observer.observe(el);
-    return () => observer.disconnect();
+    console.log('[Logo] IO: observer attached', { hasMore });
+    
+    return () => {
+      observer.disconnect();
+      console.log('[Logo] IO: observer disconnected');
+    };
   }, [hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
@@ -505,11 +543,17 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           </div>
         ) : (
                           <div className="relative w-full h-full group">
-                            <SmartImage src={image.url || image.originalUrl || '/placeholder-logo.png'} alt={localGeneratingEntries[0].prompt} fill className="object-cover" sizes="192px" />
+                            <Image 
+                              src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'} 
+                              alt={localGeneratingEntries[0].prompt} 
+                              fill 
+                              className="object-cover" 
+                              sizes="192px" 
+                            />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                            {/* Hover copy button overlay */}
-                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-full bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                            {/* Hover buttons overlay */}
+                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
@@ -649,13 +693,13 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                           ) : (
                             // Completed logo
                           <div className="relative w-full h-full group">
-                            <SmartImage
-                                src={image.url || image.originalUrl || '/placeholder-logo.png'}
+                            <Image
+                                src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'}
                                 alt={entry.prompt}
                               fill
                                 className="object-cover transition-transform group-hover:scale-105"
                               sizes="192px"
-                              onLoadingComplete={() => {
+                              onLoad={() => {
                                 setTimeout(() => {
                                   const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
                                     if (shimmer) shimmer.style.opacity = '0';
@@ -663,10 +707,18 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                               }}
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                            {/* Hover copy button overlay */}
-                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-full bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                            {/* Hover buttons overlay */}
+                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
+                              <button
+                                aria-label="Delete image"
+                                className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                onClick={(e) => handleDeleteImage(e, entry)}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </div>
