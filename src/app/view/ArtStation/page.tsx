@@ -62,6 +62,7 @@ export default function ArtStationPage() {
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
@@ -448,28 +449,42 @@ export default function ArtStationPage() {
       return true;
     });
 
-    if (activeCategory === 'All') return validItems;
-    const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
-    return validItems.filter(item => {
-      const type = item.generationType?.toLowerCase();
-      switch (activeCategory) {
-        case 'Images':
-          return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
-        case 'Videos':
-          return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
-        case 'Music':
-          return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
-        case 'Logos':
-          return type === 'logo';
-        case 'Stickers':
-          return type === 'sticker-generation';
-        case 'Products':
-          return type === 'product-generation';
-        default:
-          return true;
-      }
-    });
-  }, [items, activeCategory]);
+    // Apply category filter
+    let categoryFiltered = validItems;
+    if (activeCategory !== 'All') {
+      const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
+      categoryFiltered = validItems.filter(item => {
+        const type = item.generationType?.toLowerCase();
+        switch (activeCategory) {
+          case 'Images':
+            return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
+          case 'Videos':
+            return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
+          case 'Music':
+            return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
+          case 'Logos':
+            return type === 'logo';
+          case 'Stickers':
+            return type === 'sticker-generation';
+          case 'Products':
+            return type === 'product-generation';
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      categoryFiltered = categoryFiltered.filter(item => {
+        const prompt = (item.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }
+
+    return categoryFiltered;
+  }, [items, activeCategory, searchQuery]);
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
@@ -701,6 +716,45 @@ export default function ArtStationPage() {
                   </button> 
                 ))}
 
+                {/* Search Input and Buttons */}
+                <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Search is already applied via filteredItems useMemo
+                        }
+                      }}
+                      placeholder="Search by prompt..."
+                      className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                    />
+                    <button
+                      onClick={() => {
+                        // Search is already applied via filteredItems useMemo
+                      }}
+                      className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                      aria-label="Search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
