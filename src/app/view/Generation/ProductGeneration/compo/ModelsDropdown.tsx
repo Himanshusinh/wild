@@ -80,7 +80,7 @@ const ModelsDropdown = () => {
         <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 ${activeDropdown === 'product-models' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'product-models' && (
-        <div className="absolute bottom-full left-0 mb-2 max-w-44 w-20 ml-6 md:w-56 bg-black/90 backdrop-blur-3xl shadow-2xl z-100 rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 max-h-[50vh] md:max-h-none overflow-y-auto dropdown-scrollbar">
+        <div className="absolute bottom-full mb-2 left-0 ml-28 lg:ml-0 w-[90vw] md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar">
           {modelsWithCredits.map((model) => (
             <button
               key={model.value}

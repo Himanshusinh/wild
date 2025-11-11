@@ -2925,7 +2925,7 @@ const InputBox = () => {
           }}
         >
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start gap-3 p-3 pt-2 
+          <div className="flex items-start gap-3 px-3 pt-2 pb-0  
           ">
             <div className="flex-1 flex items-start  gap-2 bg-transparent rounded-lg pr-4">
               <textarea
@@ -3484,7 +3484,7 @@ const InputBox = () => {
                         {/* Audio toggle for Sora 2 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
                         >
                           {generateAudio ? 'Audio: On' : 'Audio: Off'}
                         </button>
@@ -3532,22 +3532,22 @@ const InputBox = () => {
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
+                        {/* Audio toggle for LTX V2 */}
+                        <button
+                          onClick={() => setGenerateAudio(v => !v)}
+                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5`}
+                        >
+                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                        </button>
                         {/* FPS selector for LTX V2 */}
                         <div className="relative">
                           <button
                             onClick={() => {/* simple toggle between 25 and 50 */ setFps(prev => prev === 25 ? 50 : 25); }}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
                           >
                             FPS: {fps}
                           </button>
                         </div>
-                        {/* Audio toggle for LTX V2 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </button>
                       </div>
                     );
                   }
@@ -3599,7 +3599,7 @@ const InputBox = () => {
                         {/* Audio toggle for Veo 3.1 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
                         >
                           {generateAudio ? 'Audio: On' : 'Audio: Off'}
                         </button>
@@ -3654,7 +3654,7 @@ const InputBox = () => {
                         {/* Audio toggle for Veo 3 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
                         >
                           {generateAudio ? 'Audio: On' : 'Audio: Off'}
                         </button>

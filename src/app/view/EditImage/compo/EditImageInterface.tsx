@@ -1746,6 +1746,7 @@ const EditImageInterface: React.FC = () => {
           {/* Footer removed; buttons are rendered at the end of Parameters above */}
 
         </div>
+        </div>
 
         {/* Right Main Area - Image Display */}
         <div className="w-1/2 md:flex-1 flex flex-col bg-[#07070B] overflow-hidden">

@@ -104,13 +104,13 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white lg:w-44 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white ${
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         }`}
       >
-        <div className="flex items-center md:flex-col md:items-start gap-1 md:gap-0">
+        <div className="flex items-center gap-1">
           <span className="text-white font-medium text-[11px] md:text-sm">Resolution</span>
-          <span className="text-[10px] md:text-xs text-white/60 mt-0 md:mt-0.5">{selectedResolution}</span>
+          <span className="text-[10px] md:text-xs text-white/60">{selectedResolution}</span>
         </div>
         <ChevronUp
           className={`w-3 h-3 md:w-4 md:h-4 text-white/60 transition-transform duration-200 ${
