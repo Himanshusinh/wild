@@ -5,7 +5,6 @@ import { useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { ViewType, GenerationType } from '@/types/generation';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
-import EditVideoInterface from '@/app/view/EditVideo/compo/EditVideoInterface';
 
 const EditVideoPage = () => {
   const dispatch = useAppDispatch();
@@ -30,15 +29,12 @@ const EditVideoPage = () => {
   };
 
   return (
-    <div className="relative">
-      <MainLayout
-        onViewChange={onViewChange}
-        onGenerationTypeChange={onGenerationTypeChange}
-        currentView="generation"
-        currentGenerationType="edit-video"
-      />
-      <EditVideoInterface />
-    </div>
+    <MainLayout
+      onViewChange={onViewChange}
+      onGenerationTypeChange={onGenerationTypeChange}
+      currentView="generation"
+      currentGenerationType="edit-video"
+    />
   );
 };
 
