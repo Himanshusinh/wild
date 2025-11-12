@@ -149,7 +149,7 @@ const SidePannelFeatures = ({
     pathname?.includes('/mockup-generation') ||
     pathname?.includes('/product-generation');
 
-  const isVideoEditActive = pathname?.includes('/video-edit');
+  const isVideoEditActive = pathname === '/edit-video' || pathname?.startsWith('/edit-video') || pathname?.includes('/EditVideo') || pathname?.includes('edit-video') || pathname?.includes('/video-edit');
 
   return (
     <div

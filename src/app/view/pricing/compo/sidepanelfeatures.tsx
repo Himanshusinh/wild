@@ -10,12 +10,6 @@ interface SidePannelFeaturesProps {
 
 const SidePannelFeatures = ({ onViewChange, onGenerationTypeChange }: SidePannelFeaturesProps) => {
   const pathname = usePathname();
-  // Debug: log pathname to verify it's correct
-  React.useEffect(() => {
-    if (pathname?.includes('edit-video') || pathname?.includes('EditVideo')) {
-      console.log('[SidePannelFeatures] Edit video pathname:', pathname);
-    }
-  }, [pathname]);
   const [showBrandingOptions, setShowBrandingOptions] = React.useState(false);
   const [currentGenerationType, setCurrentGenerationType] = React.useState('text-to-image');
   const imageGenerationRef = React.useRef<HTMLDivElement>(null);
