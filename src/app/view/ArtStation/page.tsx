@@ -945,7 +945,7 @@ export default function ArtStationPage() {
                             aria-label={isLiked ? 'Unlike' : 'Like'}
                             title={isLiked ? 'Unlike' : 'Like'}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={ isLiked ?"red":"currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
                             </svg>
                           </button>
@@ -1036,7 +1036,7 @@ export default function ArtStationPage() {
                 </div>
 
                 {/* Action buttons below close button */}
-                <div className="absolute top-12 right-8 z-20 flex items-center justify-between w-auto gap-2">
+                <div className="absolute top-12 right-8 z-20 flex items-center justify-between w-auto gap-2 ">
                   <div className="relative group">
                     <button
                       onClick={async () => {
@@ -1075,7 +1075,7 @@ export default function ArtStationPage() {
                           console.error('Download failed:', e);
                         }
                       }}
-                      className="w-[9vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                      className="w-[6vw]  flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                         <path d="M12 3v12" />
@@ -1101,7 +1101,7 @@ export default function ArtStationPage() {
                           alert('Link copied to clipboard!')
                         }
                       }}
-                      className="w-[9vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                      className="w-[6vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -1111,6 +1111,34 @@ export default function ArtStationPage() {
                     </button>
                     <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
                   </div>
+
+                  <div className="relative group ">
+                    {(() => {
+                      // Find the matching card to get the correct cardId
+                      const matchingCard = cards.find(({ item }) => item.id === preview.item.id);
+                      const previewCardId = matchingCard 
+                        ? `${preview.item.id}-${matchingCard.media?.id || '0'}-${cards.indexOf(matchingCard)}`
+                        : `${preview.item.id}-${preview.item.images?.[0]?.id || preview.item.videos?.[0]?.id || preview.item.audios?.[0]?.id || '0'}-0`;
+                      const previewIsLiked = likedCards.has(previewCardId);
+                      
+                      return (
+                        <button
+                          onClick={() => {
+                            toggleLike(previewCardId);
+                          }}
+                          className="w-[6vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill={previewIsLiked ? 'red' : 'none'} stroke={previewIsLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                          </svg>
+                        </button>
+                      );
+                    })()}
+                    <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Like</div>
+                  </div>
+                  
+
+
                 </div>
 
                 {/* Content */}
