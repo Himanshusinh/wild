@@ -1451,6 +1451,7 @@ const InputBox = () => {
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt, // Store original user-entered prompt
             model: selectedModel,
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
@@ -1502,6 +1503,7 @@ const InputBox = () => {
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt, // Store original user-entered prompt
             model: selectedModel,
             aspect_ratio: frameSize as any,
             num_images: imageCount,

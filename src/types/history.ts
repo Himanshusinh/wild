@@ -33,6 +33,7 @@ export interface GeneratedAudio {
 export interface HistoryEntry {
   id: string;
   prompt: string;
+  userPrompt?: string; // Original user-entered prompt (e.g., "@buddy is dancing with @emily")
   model: string;
   generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];

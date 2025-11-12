@@ -648,7 +648,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const displayedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '—';
   const displayedAspect = getAspectRatio();
-  const cleanPrompt = getCleanPrompt(selectedEntry?.prompt || '');
+  // Use userPrompt (original user-entered prompt) if available, otherwise use the transformed prompt
+  const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
+  const cleanPrompt = getCleanPrompt(promptToDisplay);
   const isLongPrompt = cleanPrompt.length > 280;
 
 
@@ -1004,7 +1006,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
                     const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
                     const qs = new URLSearchParams();
-                    qs.set('prompt', cleanPrompt);
+                    // Use userPrompt for remix if available, otherwise use cleanPrompt
+                    const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
+                    qs.set('prompt', remixPrompt);
                     if (imgUrl) qs.set('image', imgUrl);
                     if (storagePath) qs.set('sp', storagePath);
                     // also pass model, frameSize and style for preselection

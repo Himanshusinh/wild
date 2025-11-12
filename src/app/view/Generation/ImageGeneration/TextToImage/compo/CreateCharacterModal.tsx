@@ -114,7 +114,7 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
     setError(null);
 
     try {
-      const characterPrompt = `${name.trim()}, highly realistic and natural-looking portrait, square format, professional photography, detailed facial features, natural lighting, high quality, photorealistic, edge-to-edge character, no borders, no frames, no white padding, no background frames, seamless edges, full frame character, no margins, no white space around subject`;
+      const characterPrompt = `${name.trim()}, passport photo style, front facing, looking directly at camera, neutral expression, head and shoulders visible, hands partially visible, preserve exact skin texture and details from reference image, natural looking, maintain identical skin tone and complexion, professional photography, high quality, photorealistic, square format, light neutral background, even studio lighting, no white borders, no white padding, no white margins, no frames, no white space, edge-to-edge, full frame character, seamless background integration`;
       const uploadedImages: string[] = [frontImage];
       if (leftImage) uploadedImages.push(leftImage);
       if (rightImage) uploadedImages.push(rightImage);

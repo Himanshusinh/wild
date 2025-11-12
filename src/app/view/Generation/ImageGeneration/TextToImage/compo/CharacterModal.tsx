@@ -42,6 +42,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadSelectedImages, setUploadSelectedImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [characterEntries, setCharacterEntries] = useState<any[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
@@ -78,8 +79,9 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     }
   }, [isOpen, tab, dispatch]);
 
-  // Convert fetched entries to Character format
-  const characters: Character[] = characterEntries.map((entry: any) => {
+  // Convert fetched entries to Character format - memoized to prevent unnecessary recalculations
+  const characters: Character[] = React.useMemo(() => {
+    return characterEntries.map((entry: any) => {
     // Priority 1: Use characterName field if available (for text-to-character)
     let characterName: string | undefined = entry.characterName;
     
@@ -125,6 +127,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
       createdAt: entry.createdAt?.toDate?.()?.toISOString() || entry.createdAt || entry.timestamp || new Date().toISOString(),
     };
   });
+  }, [characterEntries]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -143,8 +146,6 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
       // This will be handled in the render
     }
   }, [isOpen, tab, characters.length]);
-
-  if (!isOpen) return null;
 
   // Handle direct character toggle (click on character card)
   const handleCharacterToggle = (character: Character) => {
@@ -213,9 +214,9 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     await fetchCharacters();
   };
 
-  const handleLoadMore = async () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
+  const handleLoadMore = React.useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
     try {
       const client = getApiClient();
       const last = characterEntries[characterEntries.length - 1];
@@ -236,9 +237,22 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     } catch (error) {
       console.error('Error loading more characters:', error);
     } finally {
-      setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, [loading, loadingMore, hasMore, characterEntries]);
+
+  // Memoize scroll handler to prevent unnecessary re-renders
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget as HTMLDivElement;
+    if (loading || loadingMore || !hasMore) return;
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
+    if (nearBottom) {
+      handleLoadMore();
+    }
+  }, [loading, loadingMore, hasMore, handleLoadMore]);
+
+  // Early return after all hooks are defined
+  if (!isOpen) return null;
 
   return (
     <>
@@ -301,36 +315,34 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                       </div>
                       <div
                         ref={listRef}
-                        onScroll={(e) => {
-                          const el = e.currentTarget as HTMLDivElement;
-                          if (loading) return;
-                          const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-                          if (nearBottom && hasMore && !loading) handleLoadMore();
-                        }}
+                        onScroll={handleScroll}
                         className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                       >
                         {characters.map((character) => {
                           const isAlreadySelected = selectedCharacters.some(c => c.id === character.id);
                           const selected = localSelectedCharacter?.id === character.id;
                           return (
-                            <button
+                            <div
                               key={character.id}
-                              onClick={() => {
-                                handleCharacterToggle(character);
-                              }}
-                              className={`relative w-full aspect-square rounded-lg overflow-hidden ring-1 ${
-                                (selected || isAlreadySelected) ? 'ring-white ring-2' : 'ring-white/20'
-                              } bg-black/50 ${isAlreadySelected ? '' : ''}`}
+                              className="relative w-full aspect-square"
                             >
-                              <SmartImage 
-                                src={character.frontImageUrl || '/styles/Logo.gif'} 
-                                alt={character.name} 
-                                fill 
-                                className="object-cover" 
-                              />
+                              <button
+                                onClick={() => {
+                                  handleCharacterToggle(character);
+                                }}
+                                className={`relative w-full h-full rounded-lg overflow-hidden ring-1 ${
+                                  (selected || isAlreadySelected) ? 'ring-white ring-2' : 'ring-white/20'
+                                } bg-black/50`}
+                              >
+                                <SmartImage 
+                                  src={character.frontImageUrl || '/styles/Logo.gif'} 
+                                  alt={character.name} 
+                                  fill 
+                                  className="object-cover" 
+                                />
                               {/* Checkbox indicator for selected characters */}
                               {isAlreadySelected && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded flex items-center justify-center">
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded flex items-center justify-center z-10">
                                   <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                   </svg>
@@ -338,19 +350,20 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                               )}
                               {/* Temporary selection indicator */}
                               {selected && !isAlreadySelected && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-white/50 rounded border-2 border-white" />
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-white/50 rounded border-2 border-white z-10" />
                               )}
                               <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 z-10">
                                 <div className="text-white text-xs font-medium truncate">{character.name}</div>
                               </div>
-                            </button>
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
                       {hasMore && characters.length > 0 && (
                         <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
-                          {loading ? 'Loading more…' : 'Scroll to load more'}
+                          {loadingMore ? 'Loading more…' : 'Scroll to load more'}
                         </div>
                       )}
                       <div className="flex justify-between items-center mt-4">
@@ -518,7 +531,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
         remainingSlots={3}
         onLoadMore={() => handleLoadMore()}
         hasMore={hasMore}
-        loading={loading}
+        loading={loadingMore}
       />
       
     </>
