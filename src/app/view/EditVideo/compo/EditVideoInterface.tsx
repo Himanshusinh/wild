@@ -616,14 +616,34 @@ const EditVideoInterface: React.FC = () => {
         body.video_output_type = birefOutputType;
         body.video_quality = birefQuality;
         body.video_write_mode = birefWriteMode;
-        const res = await axiosInstance.post('/api/fal/birefnet/v2/video/remove-bg', body);
+        // Ensure we're calling the backend endpoint (not Next.js)
+        const endpoint = '/api/fal/birefnet/v2/video/remove-bg';
+        console.log('[Video Remove BG] Calling endpoint:', endpoint, 'with body:', { ...body, video_url: body.video_url?.substring(0, 100) + '...', video: body.video ? 'data URI (length: ' + body.video.length + ')' : 'none' });
+        const res = await axiosInstance.post(endpoint, body);
         const out = res?.data?.data?.videos?.[0]?.url || res?.data?.videos?.[0]?.url || res?.data?.data?.video?.url || res?.data?.video?.url || '';
         if (out) setOutputs((prev) => ({ ...prev, ['remove-bg']: out }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch {}
       }
     } catch (e) {
-      console.error('[EditImage] run.error', e);
+      console.error('[EditVideo] run.error', e);
       const errorData = (e as any)?.response?.data;
+      const status = (e as any)?.response?.status;
+      const config = (e as any)?.config;
+      
+      // Check if we got an HTML response (Next.js error page)
+      if (errorData && typeof errorData === 'string' && errorData.includes('<!DOCTYPE html>')) {
+        const baseURL = config?.baseURL || axiosInstance.defaults.baseURL;
+        const url = config?.url || '';
+        console.error('[EditVideo] Got HTML response - request may have hit Next.js instead of backend', {
+          baseURL,
+          url,
+          fullUrl: baseURL ? `${baseURL}${url}` : url,
+          status
+        });
+        setErrorMsg(`Backend connection error. Please check that NEXT_PUBLIC_API_BASE_URL is set correctly. (Status: ${status || 'unknown'})`);
+        return;
+      }
+      
       let msg = (errorData && (errorData.message || errorData.error)) || (e as any)?.message || 'Request failed';
       if (!msg && Array.isArray(errorData)) {
         try { msg = errorData.map((x: any) => x?.msg || x).join(', '); } catch { }
@@ -631,7 +651,7 @@ const EditVideoInterface: React.FC = () => {
       if (typeof msg !== 'string') {
         try { msg = JSON.stringify(errorData); } catch { }
       }
-      console.log('[EditImage] Error details:', errorData);
+      console.log('[EditVideo] Error details:', { errorData, status, url: config?.url, baseURL: config?.baseURL });
       setErrorMsg(String(msg));
     } finally {
       setProcessing((prev) => ({ ...prev, [selectedFeature]: false }));
