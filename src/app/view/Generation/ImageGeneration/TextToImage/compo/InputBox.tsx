@@ -2132,6 +2132,22 @@ const InputBox = () => {
           color: rgba(255, 255, 255, 0.5);
           pointer-events: none;
         }
+
+        /* Mobile-only tweaks for the Models dropdown text to fit in one line */
+        @media (max-width: 767.98px) {
+          .models-mobile-tweak button,
+          .models-mobile-tweak .dropdown-trigger {
+            font-size: 12px !important;
+            line-height: 1.1;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            height: 32px;
+            white-space: nowrap;
+          }
+          .models-mobile-tweak span {
+            white-space: nowrap;
+          }
+        }
       `}</style>
       
       {(historyEntries.length > 0 || localGeneratingEntries.length > 0) && (
@@ -2535,8 +2551,21 @@ const InputBox = () => {
                 }}
                 data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
               />
-              {/* Upload buttons container */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Mobile inline Generate at right edge of prompt */}
+              <button
+                onClick={handleGenerate}
+                disabled={isGeneratingLocally || !prompt.trim()}
+                aria-label="Generate"
+                className="md:hidden absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-[#2F6BFF] text-white disabled:opacity-60 disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 19V5" />
+                  <path d="m5 12 7-7 7 7" />
+                </svg>
+              </button>
+
+              {/* Upload buttons container (hidden on mobile; shown on md+) */}
+              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
                 {prompt.trim() && (
                   <div className="relative group">
@@ -2653,8 +2682,6 @@ const InputBox = () => {
                       onClick={() => setIsCharacterModalOpen(true)}
                       type="button"
                       aria-label="Upload character"
-                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsUploadOpen(true)}
                     >
                       <Image src="/icons/character.svg" alt="Attach" width={24} height={24} className="opacity-100 w-6 h-6" />
                       <span className="text-white text-sm"> </span>
@@ -2681,10 +2708,103 @@ const InputBox = () => {
 
           {/* Bottom row: controls + Generate button */}
           <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
+            {/* Mobile: two-line layout */}
+            <div className="flex md:hidden w-full flex-col gap-2">
+              {/* Line 1: Model on left, uploads on right */}
+              <div className="w-full flex items-center justify-between gap-2">
+                <div className="models-mobile-tweak flex-1 min-w-0">
+                  <ModelsDropdown />
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Duplicate mobile upload buttons here */}
+                  <button
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
+                    onClick={() => setIsCharacterModalOpen(true)}
+                    type="button"
+                    aria-label="Upload character"
+                  >
+                    <Image src="/icons/character.svg" alt="Attach" width={20} height={20} className="opacity-100 w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Upload image"
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
+                    onClick={() => setIsUploadOpen(true)}
+                  >
+                    <Image src="/icons/fileupload.svg" alt="Attach" width={16} height={16} className="opacity-100" />
+                  </button>
+                </div>
+              </div>
+              {/* Line 2: controls in required sequence (mobile-only) */}
+              <div className="w-full flex flex-wrap items-center gap-2">
+                {/* 1) Frame size */}
+                <FrameSizeDropdown />
+                {/* 2) Style */}
+                <StyleSelector />
+                {/* 3) Image count */}
+                <ImageCountDropdown />
+                {/* 4) Seedream size (only when applicable) */}
+                {selectedModel === 'seedream-v4' && (
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('seedreamSize'))}
+                        className="h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1 md:gap-2"
+                      >
+                        {seedreamSize}
+                        <ChevronUp className={`w-3 h-3 md:w-4 md:h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'seedreamSize' && (
+                        <div className={`absolute bottom-full mb-2 left-0 ml-2 lg:ml-0 max-w-15 md:w-44 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                          {['1K','2K','4K','custom'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
+                              className={`w-full px-2 md:px-3 py-1.5 md:py-2 text-left text-[10px] md:text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {seedreamSize === opt && (
+                                <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {seedreamSize === 'custom' && (
+                      <>
+                        <input
+                          type="number"
+                          min={1024}
+                          max={4096}
+                          value={seedreamWidth}
+                          onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
+                          placeholder="Width"
+                          className="h-[28px] w-20 px-2 rounded-lg text-xs ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                        <input
+                          type="number"
+                          min={1024}
+                          max={4096}
+                          value={seedreamHeight}
+                          onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
+                          placeholder="Height"
+                          className="h-[28px] w-20 px-2 rounded-lg text-xs ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop/tablet: original layout */}
+            <div className="hidden md:flex items-center gap-3 flex-1 min-w-0 justify-between">
               {/* Main controls in exact sequence: Model, Frame Size, Style, Image Count */}
               <div className="flex items-center gap-3 -mb-2">
-                <ModelsDropdown />
+                <div className="models-mobile-tweak">
+                  <ModelsDropdown />
+                </div>
                 <FrameSizeDropdown />
                 <StyleSelector />
                 <ImageCountDropdown />
@@ -2744,8 +2864,8 @@ const InputBox = () => {
                   </div>
                 )}
               </div>
-              {/* Generate button on the right */}
-              <div className="flex flex-col items-end gap-2 flex-shrink-0 justify-end">
+              {/* Generate button on the right (hidden on mobile) */}
+              <div className="hidden md:flex flex-col items-end gap-2 flex-shrink-0 justify-end">
                 {error && <div className="text-red-500 text-sm">{error}</div>}
                 <button
                   onClick={handleGenerate}

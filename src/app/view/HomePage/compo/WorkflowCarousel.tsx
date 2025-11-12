@@ -89,7 +89,7 @@ export default function WorkflowCarousel({
               <article className="relative rounded-2xl md:rounded-3xl ring-white/10 bg-white/5 px-3 md:pl-8 py-6 md:py-24 md:min-h-[520px] lg:min-h-[520px] flex flex-col md:flex-row gap-4 md:gap-8 items-stretch">
                 {/* Left: text */}
                 <div className="flex-1 md:max-w-[calc(100%-650px)] lg:max-w-[calc(100%-720px)] -mt-4 md:-mt-8 lg:-mt-16 pr-6">
-                  <h3 className="text-white text-2xl md:text-[35px] font-medium mb-6 mt-4">
+                  <h3 className="text-white text-xl md:text-[35px] font-medium mb-6 mt-4">
                     {item.title}
                   </h3>
                   {item.subtitle && (
@@ -176,7 +176,7 @@ export default function WorkflowCarousel({
         </div>
 
         {/* Dots - mirrored on the left side with similar spacing */}
-        <div className="absolute bottom-14 left-3 md:bottom-20 md:left-8 z-10 flex items-center gap-2">
+        <div className="absolute bottom-14 left-5 md:bottom-20 md:left-8 z-10 flex items-center gap-2">
           {items.map((_, i) => (
             <button
               key={i}

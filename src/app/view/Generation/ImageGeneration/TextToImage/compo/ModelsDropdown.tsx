@@ -149,7 +149,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 ml-28 lg:ml-0 w-[90vw] md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 ml-10 lg:ml-0 w-[90vw] md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-1.5 md:pb-2 pt-1.5 md:pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             const leftValues = [
@@ -179,18 +179,18 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between ${selectedModel === model.value
+                      className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-[11px] md:text-[13px] leading-[1.15] md:leading-normal flex items-center justify-between ${selectedModel === model.value
                         ? 'bg-white text-black'
                         : 'text-white/90 hover:bg-white/10'
                         }`}
                     >
                       <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-1 md:gap-2">
-                          {model.name}
+                        <span className="flex items-center gap-1 md:gap-2 whitespace-nowrap">
+                          <span className="truncate">{model.name}</span>
                           <img src="/icons/crown.svg" alt="pro" className="w-3 h-3 md:w-4 md:h-4" />
                         </span>
                         {model.credits && (
-                          <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                          <span className="text-[10px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
                         )}
                       </div>
                       {selectedModel === model.value && (
@@ -208,15 +208,15 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-[10px] md:text-[13px] flex items-center justify-between ${selectedModel === model.value
+                      className={`w-full px-2 md:px-4 py-1.5 md:py-2 text-left transition text-[11px] md:text-[13px] leading-[1.15] md:leading-normal flex items-center justify-between ${selectedModel === model.value
                         ? 'bg-white text-black'
                         : 'text-white/90 hover:bg-white/10'
                         }`}
                     >
                       <div className="flex flex-col -mb-0">
-                        <span>{model.name}</span>
+                        <span className="whitespace-nowrap truncate">{model.name}</span>
                         {model.credits && (
-                          <span className="text-[9px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                          <span className="text-[10px] md:text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
                         )}
                       </div>
                       {selectedModel === model.value && (

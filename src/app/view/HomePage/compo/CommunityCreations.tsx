@@ -95,10 +95,10 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all border ${
+      className={`shrink-0 inline-flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1 md:py-2.5 rounded-lg md:rounded-full text-xs md:text-sm font-medium transition-all border-0 md:border ${
         active
-          ? 'bg-white  text-black shadow-sm'
-          : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+          ? 'bg-white text-[#0b0f17] md:text-black md:shadow-sm'
+          : 'bg-white/10 text-white/80 hover:bg-white/15 md:bg-gradient-to-b md:from-white/5 md:to-white/5 md:border-white/10 md:hover:text-white md:hover:bg-white/10'
       }`}
     >
       {leftIcon && <span className="text-white/90">{leftIcon}</span>}
@@ -247,13 +247,13 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full md:-pt-10 md:-mb-10 ${className}`}>
-      <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 md:mb-5">
+      <h2 className="text-2xl md:text-4xl font-medium text-white md:mb-5">
         Community Creations
       </h2>
 
-      {/* Filter bar + Explore link */}
-      <div className="mb-4 md:mb-6">
-        <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-1.5 md:pb-2 scrollbar-none">
+       {/* Filter bar + Explore link */}
+       <div className="md:mb-6">
+         <div className="flex items-center gap-2 flex-nowrap md:flex-wrap overflow-x-auto md:overflow-x-visible scrollbar-none pb-1.5 md:pb-2 md:gap-3">
           {CHIPS.map((chip, idx) => {
             const isActive = chip.key === active;
             return (

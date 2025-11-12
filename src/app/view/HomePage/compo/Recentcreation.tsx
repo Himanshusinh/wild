@@ -762,9 +762,9 @@ const Recentcreation: React.FC = () => {
         <div className="flex items-center justify-between">
 
           <div></div>
-          <div><button 
+          <div className="w-full md:w-auto flex justify-center md:justify-end"><button 
             onClick={handleMyCreationsClick}
-            className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 pt-4 mr-0 transition-colors"
+            className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 md:ml-2 pt-4 mr-0 transition-colors"
           >
             <span>More Creations</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

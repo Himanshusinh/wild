@@ -280,8 +280,8 @@ const HomePage: React.FC = () => {
           <Recentcreation />
           <Second />
           <main className="min-h-screen bg-[#07070B] text-white pt-10">
-            <div className="w-full md:pl-12 mt-10">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-0 ">Workflow</h2>
+            <div className="w-full md:pl-12 mt-3">
+              <h2 className="text-white text-2xl md:text-4xl font-medium ml-3 ">Workflow</h2>
               <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
             </div>
           </main>

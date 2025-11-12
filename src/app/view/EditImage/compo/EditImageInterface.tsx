@@ -2306,8 +2306,8 @@ const EditImageInterface: React.FC = () => {
             <p className="text-white/80 text-base sm:text-lg md:text-xl">Transform your images with AI</p>
           </div>
           {/* feature tabs moved to left sidebar */}
-                </div>
-            </div>
+        </div>
+      </div>
       {/* Spacer to offset fixed header height */}
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
@@ -2358,8 +2358,8 @@ const EditImageInterface: React.FC = () => {
       />
       <div className="flex flex-1 min-h-0 py-1 overflow-hidden pt-14" >
         {/* Left Sidebar - Controls */}
-        <div className="w-1/2 md:w-80 bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-96 md:ml-8 sm:ml-16 md:ml-24 lg:ml-16 md:pt-6 lg:pt-8 xl:pt-12 2xl:pt-16">
-        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] ml-8 sm:ml-16 md:ml-9 lg:ml-9">
+        <div className="flex-shrink-0 w-auto md:w-[500px] bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative">
+        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] ml-6 sm:ml-8 md:ml-7 lg:ml-7">
           {/* Error Message */}
             {errorMsg && (
             <div className="mx-3 mt-2 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
@@ -2571,9 +2571,9 @@ const EditImageInterface: React.FC = () => {
                   <div className="relative edit-dropdown">
                     <button
                       onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                      className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                      className={`h-[32px] w-full px-3 md:px-4 rounded-lg text-[12px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
                     >
-                      <span className="truncate">
+                      <span className="truncate whitespace-nowrap">
                             {model ? getUpscaleModelLabel(model) : 'Select model'}
                       </span>
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
@@ -3381,15 +3381,16 @@ const EditImageInterface: React.FC = () => {
             {/* Footer removed; buttons are rendered at the end of Parameters above */}
  
           </div>
+        </div>
  
         {/* Right Main Area - Image Display */}
-        <div className="w-1/2 md:flex-1 flex flex-col bg-[#07070B] overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col bg-[#07070B] overflow-hidden">
 
 
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center pt-3  ">
             <div
-              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:h-auto md:max-h-[50rem]   w-full max-w-6xl md:max-w-[100rem]"
+              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:h-auto md:max-h-[50rem]   w-full max-w-3xl md:max-w-[100rem]"
               onDragOver={(e) => { try { e.preventDefault(); } catch {} }}
               onDrop={(e) => {
                 try {
@@ -3848,10 +3849,10 @@ const EditImageInterface: React.FC = () => {
                     >
                       <svg className="w-10 h-10 mx-auto mb-2 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
-                        </svg>
+                      </svg>
                       <span className="text-xs">Drop image here or click to upload</span>
                     </button>
-                    )}
+                  )}
                 </div>
               )}
               {/* Fill mask overlay moved to input area */}
