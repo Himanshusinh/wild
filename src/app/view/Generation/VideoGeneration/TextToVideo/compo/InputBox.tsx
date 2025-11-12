@@ -6,7 +6,8 @@ import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
-import { addHistoryEntry, loadMoreHistory, loadHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
+import { addHistoryEntry, loadMoreHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import { Trash2 } from 'lucide-react';
 import { addNotification } from "@/store/slices/uiSlice";
@@ -1017,6 +1018,8 @@ const InputBox = () => {
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
   const didInitialLoadRef = useRef(false);
+  // Unified loader hook (declare once near top). Use alias to avoid conflicts.
+  const { refresh: refreshVideoHistory } = useHistoryLoader({ generationType: 'text-to-video', initialLimit: 50 });
   useEffect(() => {
     if (didInitialLoadRef.current) return;
     // If we don't have any entries yet, proactively load video history for this page
@@ -1024,12 +1027,7 @@ const InputBox = () => {
     if (!anyEntries && !loading) {
       didInitialLoadRef.current = true;
       try {
-        (dispatch as any)(loadHistory({
-          filters: { mode: 'video' } as any,
-          paginationParams: { limit: 12 },
-          requestOrigin: 'page',
-          debugTag: `video:init:${Date.now()}`,
-        }));
+  refreshVideoHistory();
       } catch (e) {
         // swallow
       }
@@ -2488,9 +2486,9 @@ const InputBox = () => {
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
 
-      // Refresh history to show the new video
-      dispatch(clearFilters());
-      dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
+  // Schedule a debounced history refresh instead of immediate duplicate fetches
+  dispatch(clearFilters());
+  refreshVideoHistory();
 
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -2557,6 +2555,8 @@ const InputBox = () => {
       setIsGenerating(false);
     }
   };
+
+  // (Removed duplicate hook declaration; initial load handled earlier)
 
   return (
     <React.Fragment>

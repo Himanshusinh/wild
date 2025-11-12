@@ -13,14 +13,11 @@ import {
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
-import { setFilters } from '@/store/slices/historySlice';
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import { useGenerationCredits } from '@/hooks/useCredits';
 // Replaced custom loader with Logo.gif
 import { 
   loadMoreHistory,
-  loadHistory,
-  clearHistory,
-  clearFilters,
   removeHistoryEntry,
 } from "@/store/slices/historySlice";
 import axiosInstance from "@/lib/axiosInstance";
@@ -147,49 +144,15 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to logo) — single initial request, no auto-fill loop
+  // Unified initial load & refresh via shared hook
+  const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'logo', initialLimit: 10 });
   useEffect(() => {
-    console.log('[Logo] useEffect: mount -> loading logo history');
-    (async () => {
-      try {
-        // Skip if route already changed during navigation
-        if (typeof pathname === 'string' && !pathname.includes('/logo-generation')) {
-          console.log('[Logo] initial load skipped: pathname not logo-generation', { pathname });
-          return;
-        }
-        if (loadLockRef.current) {
-          console.log('[Logo] initial load skipped (lock)');
-          return;
-        }
-        loadLockRef.current = true;
-        setInitialLoading(true);
-        const baseFilters: any = { generationType: 'logo' };
-        const debugTag = `page:logo:${Date.now()}`;
-        dispatch(setFilters(baseFilters));
-        // Fresh list for this view
-        dispatch(clearHistory());
-        // First page
-        console.log('[Logo] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
-        await (dispatch as any)(loadHistory({ 
-          filters: baseFilters,
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'logo',
-          debugTag
-        })).unwrap();
-        console.log('[Logo] initial loadHistory fulfilled');
-      } catch (e: any) {
-        if (e && e.name === 'ConditionError') {
-          // benign overlap
-        } else {
-          console.error('[Logo] initial loadHistory error', e);
-        }
-      } finally {
-        setInitialLoading(false);
-        setHasInitiallyLoaded(true);
-      }
-    })();
-  }, [dispatch, pathname]);
+    // Mark initial loading state until first entries arrive or timeout
+    if (initialLoading && historyEntries.length > 0) {
+      setInitialLoading(false);
+      setHasInitiallyLoaded(true);
+    }
+  }, [initialLoading, historyEntries.length]);
 
   // Mark user scroll
   useEffect(() => {
@@ -348,20 +311,8 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
         await handleGenerationSuccess(transactionId);
       }
 
-      // Refresh history to show the new logo
-      {
-        const debugTag = `page:logo:refresh:${Date.now()}`;
-        console.log('[Logo] refresh loadHistory after generation', { debugTag });
-        dispatch(
-          loadHistory({
-            filters: { generationType: "logo" },
-            paginationParams: { limit: 10 },
-            requestOrigin: 'page',
-            expectedType: 'logo',
-            debugTag,
-          })
-        );
-      }
+      // Debounced refresh instead of immediate duplicate requests
+      refreshHistoryDebounced();
 
       // Reset local generation state
       setIsGeneratingLocally(false);

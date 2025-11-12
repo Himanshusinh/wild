@@ -118,8 +118,13 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
 
         // Skip central fetch for self-managed pages that load their own history (to prevent duplicate requests)
         const selfManagedTypes = new Set<GenerationType>([
+          // Pages that now manage their own initial loads via a unified hook
+          'text-to-image',
+          'text-to-video',
+          'image-to-video',
           'logo',
           'sticker-generation',
+          'text-to-music',
           'product-generation',
           'ad-generation',
           'mockup-generation',

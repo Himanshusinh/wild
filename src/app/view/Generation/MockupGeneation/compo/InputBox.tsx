@@ -5,16 +5,19 @@ import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setPrompt } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
-import { addHistoryEntry, updateHistoryEntry, loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
+import { addHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store/slices/historySlice';
 import { HistoryEntry } from '@/types/history';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MockupImagePreview from '@/app/view/Generation/MockupGeneation/compo/MockupImagePreview';
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  // Ensure a single initial history load for mockup-generation to avoid duplicate requests
+  useHistoryLoader({ generationType: 'mockup-generation' });
 
   // Local UI state
   const [logoFile, setLogoFile] = useState<File | null>(null);

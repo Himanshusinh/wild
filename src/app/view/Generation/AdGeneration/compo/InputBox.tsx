@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory } from '@/store/slices/historySlice';
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import { uploadGeneratedImages } from '@/lib/imageUpload';
 import { BackendPromptV1 } from '@/types/backendPrompt';
 import AdImagePreview from './AdImagePreview';
@@ -9,7 +10,7 @@ import AdvancedManualForm from './AdvancedManualForm';
 import { bflGenerate, runwayVideo } from '@/store/slices/generationsApi';
 import { waitForRunwayVideoCompletion } from '@/lib/runwayVideoService';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
-import { setFilters, clearHistory } from '@/store/slices/historySlice';
+// setFilters/clearHistory no longer needed with unified loader
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 
 const AdGenerationInputBox: React.FC = () => {
@@ -65,21 +66,8 @@ const AdGenerationInputBox: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    // Initial fetch from backend — single request with filter + limit
-    (async () => {
-      try {
-        if (loadLockRef.current) return;
-        loadLockRef.current = true;
-        const baseFilters: any = { generationType: 'ad-generation' };
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        await (dispatch as any)(loadHistory({ filters: baseFilters, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e) {
-        // ignore
-      }
-    })();
-  }, [dispatch]);
+  // Unified initial load for ad-generation
+  const { refresh: refreshHistoryDebounced } = useHistoryLoader({ generationType: 'ad-generation', initialLimit: 10 });
 
   // Standardized infinite scroll using shared hook
   useIntersectionObserverForRef(
@@ -211,7 +199,7 @@ const AdGenerationInputBox: React.FC = () => {
       await uploadGeneratedImages([generatedVideo]);
 
       // Refresh history from backend (read-only)
-      await dispatch(loadHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } }));
+  refreshHistoryDebounced();
 
       console.log('[DONE] UGC ad generated successfully (Runway).');
       console.timeEnd('UGC Auto Flow Total');
@@ -256,7 +244,7 @@ const AdGenerationInputBox: React.FC = () => {
       await uploadGeneratedImages([generatedVideo]);
 
       // Refresh history from backend after completion
-      await dispatch(loadHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } }));
+  refreshHistoryDebounced();
 
       console.log('Manual mode video generated successfully!');
       setShowManualForm(false);

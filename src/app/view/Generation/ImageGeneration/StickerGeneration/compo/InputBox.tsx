@@ -13,13 +13,10 @@ import {
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
-import { setFilters } from '@/store/slices/historySlice';
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
   loadMoreHistory,
-  loadHistory,
-  clearHistory,
-  clearFilters,
   removeHistoryEntry,
 } from "@/store/slices/historySlice";
 import axiosInstance from "@/lib/axiosInstance";
@@ -131,48 +128,14 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to sticker-generation) — single initial request, no auto-fill loop
+  // Unified initial load & refresh via shared hook
+  const { refresh: refreshHistoryDebounced } = useHistoryLoader({ generationType: 'sticker-generation', initialLimit: 10 });
   useEffect(() => {
-    console.log('[Sticker] useEffect: mount -> loading sticker history');
-    (async () => {
-      try {
-        // Skip if route already changed during navigation
-        if (typeof pathname === 'string' && !pathname.includes('/sticker-generation')) {
-          console.log('[Sticker] initial load skipped: pathname not sticker-generation', { pathname });
-          return;
-        }
-        if (loadLockRef.current) {
-          console.log('[Sticker] initial load skipped (lock)');
-          return;
-        }
-        loadLockRef.current = true;
-        setInitialLoading(true);
-        const baseFilters: any = { generationType: 'sticker-generation' };
-        const debugTag = `page:sticker:${Date.now()}`;
-        // Set filters early so other observers (PageRouter) show correct type immediately
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        console.log('[Sticker] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
-        await (dispatch as any)(loadHistory({ 
-          filters: baseFilters,
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'sticker-generation',
-          debugTag
-        })).unwrap();
-        console.log('[Sticker] initial loadHistory fulfilled');
-      } catch (e: any) {
-        if (e && e.name === 'ConditionError') {
-          // benign: another in-flight request finished first
-        } else {
-          console.error('[Sticker] initial loadHistory error', e);
-        }
-      } finally {
-        setInitialLoading(false);
-        setHasInitiallyLoaded(true);
-      }
-    })();
-  }, [dispatch, pathname]);
+    if (initialLoading && historyEntries.length > 0) {
+      setInitialLoading(false);
+      setHasInitiallyLoaded(true);
+    }
+  }, [initialLoading, historyEntries.length]);
 
   // Mark user scroll
   useEffect(() => {
@@ -356,18 +319,8 @@ const InputBox = () => {
         await handleGenerationSuccess(transactionId);
       }
 
-      // Refresh history to show the new sticker
-      {
-        const debugTag = `page:sticker:refresh:${Date.now()}`;
-        console.log('[Sticker] refresh loadHistory after generation', { debugTag });
-        dispatch(loadHistory({ 
-          filters: { generationType: 'sticker-generation' }, 
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'sticker-generation',
-          debugTag,
-        }));
-      }
+      // Debounced refresh instead of immediate duplicate requests
+      refreshHistoryDebounced();
 
       // Reset local generation state
       setIsGeneratingLocally(false);

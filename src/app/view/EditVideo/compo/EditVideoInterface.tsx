@@ -8,7 +8,8 @@ import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import VideoUploadModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoUploadModal';
-import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory } from '@/store/slices/historySlice';
+import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 type EditFeature = 'upscale' | 'remove-bg';
@@ -93,12 +94,9 @@ const EditVideoInterface: React.FC = () => {
     return false;
   };
 
-  // Initialize from query params: feature and image
+  // Initialize from query params: feature and image and ensure we have some video history via unified loader
+  useHistoryLoader({ generationType: 'text-to-video', initialLimit: 30 });
   useEffect(() => {
-    // Ensure we have some history for the upload modal library tab
-    (async () => {
-      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-video' }, paginationParams: { limit: 30 } })).unwrap(); } catch { }
-    })();
     try {
       // Allow tab selection via query
       const featureParam = (searchParams?.get('feature') || '').toLowerCase();
