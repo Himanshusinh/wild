@@ -56,6 +56,8 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -420,18 +422,19 @@ const InputBox = () => {
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const hasUserScrolledRef = useRef(false);
+  // Store raw any events (including scroll-resume) but cast when passing to overlay (it ignores unknown types gracefully)
+  const ioEventsRef = useRef<any[]>([]);
+  const [ioEventsTick, setIoEventsTick] = useState(0);
 
   // Memoize the filtered entries and group by date
   const historyEntries = useAppSelector(
     (state: any) => {
       const allEntries = state.history?.entries || [];
-      // Show all text-to-image generations. Avoid filtering by prompt keywords
-      // so valid text-to-image generations (that happen to mention logo/sticker/product)
-      // are not accidentally hidden.
-      const filteredEntries = allEntries.filter((entry: any) =>
-        entry.generationType === 'text-to-image'
-      );
+      // Show all text-to-image generations; normalize underscores/hyphens and case
+      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+      const filteredEntries = allEntries.filter((entry: any) => normalize(entry.generationType) === 'text-to-image');
       console.log('🖼️ Image Generation - All entries:', allEntries.length);
       console.log('🖼️ Image Generation - Filtered entries:', filteredEntries.length);
       console.log('🖼️ Image Generation - Current page:', page);
@@ -804,74 +807,112 @@ const InputBox = () => {
 
   // Mark when the user has actually scrolled (to avoid auto-draining pages on initial mount)
   useEffect(() => {
-    const onAnyScroll = () => {
-      hasUserScrolledRef.current = true;
-    };
-    const historyContainer = document.querySelector('.overflow-y-auto');
+    const onAnyScroll = () => { hasUserScrolledRef.current = true; };
+    const el = scrollRootRef.current;
     window.addEventListener('scroll', onAnyScroll, { passive: true });
-    if (historyContainer) historyContainer.addEventListener('scroll', onAnyScroll, { passive: true });
+    if (el) el.addEventListener('scroll', onAnyScroll as any, { passive: true } as any);
     return () => {
       window.removeEventListener('scroll', onAnyScroll as any);
-      if (historyContainer) historyContainer.removeEventListener('scroll', onAnyScroll as any);
+      if (el) el.removeEventListener('scroll', onAnyScroll as any);
     };
   }, []);
 
-  // IntersectionObserver-based infinite scroll (prevents repeated triggers)
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      
-      // Require a user scroll before we begin auto-paginating
-      if (!hasUserScrolledRef.current) {
-        console.log('🖼️ IO: skip loadMore until user scrolls');
-        return;
-      }
-      
-      // CRITICAL: Check hasMore FIRST before any other checks
-      if (!hasMore) {
-        console.log('🖼️ IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('🖼️ IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
+  // Use centralized intersection observer helper to enforce hasMore-first and local busy guard
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
+      // increment page, dispatch loadMore (user-scroll gating is handled inside the hook)
       const nextPage = page + 1;
       setPage(nextPage);
-      console.log('🖼️ IO: loadMore start', { nextPage, hasMore });
-      
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'text-to-image' },
           paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('🖼️ IO: loadMore success');
       } catch (e: any) {
-        // Check if it was rejected due to hasMore condition
         if (e?.message?.includes('no more pages')) {
-          console.log('🖼️ IO: loadMore skipped - no more pages');
         } else {
-          console.error('🖼️ IO: loadMore error', e);
+          // errors are surfaced via toasts/handlers; avoid noisy console
         }
-      } finally {
-        loadingMoreRef.current = false;
       }
-    }, { root: null, rootMargin: '0px', threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('🖼️ IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('🖼️ IO: observer disconnected');
+    },
+    hasMore,
+    loading,
+  { root: scrollRootRef.current, rootMargin: '0px 0px 400px 0px', threshold: 0.01, onEvent: (evt) => { try { ioEventsRef.current.push(evt); if (ioEventsRef.current.length > 50) ioEventsRef.current.shift(); setIoEventsTick(v => v + 1); } catch {} } }
+  );
+
+  // Fallback scroll proximity loader: if sentinel remains intersecting (IO won't retrigger)
+  // and user scrolls near bottom, issue additional loadMore request respecting cooldown.
+  const lastManualLoadRef = useRef(0);
+  useEffect(() => {
+    const el = scrollRootRef.current;
+    if (!el) return;
+    const onScrollCheck = () => {
+      if (!hasMore || loading) return;
+      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+      // Trigger when within 800px of bottom
+      if (remaining > 800) return;
+      const now = Date.now();
+      // Cooldown (matches IO cooldown logic)
+      if (now - lastManualLoadRef.current < 800) return;
+      lastManualLoadRef.current = now;
+      (async () => {
+        try {
+          await (dispatch as any)(loadMoreHistory({
+            filters: { generationType: 'text-to-image' },
+            paginationParams: { limit: 10 }
+          })).unwrap();
+        } catch {}
+      })();
     };
-  }, [hasMore, loading, page, dispatch]);
+    el.addEventListener('scroll', onScrollCheck, { passive: true } as any);
+    return () => { try { el.removeEventListener('scroll', onScrollCheck as any); } catch {} };
+  }, [dispatch, hasMore, loading]);
+
+  // After a load completes, if the content still doesn't exceed the viewport
+  // (sentinel remains in view), proactively fetch the next page.
+  useEffect(() => {
+    if (loading) return;
+    if (!hasMore) return;
+    const el = scrollRootRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (remaining > 800) return;
+    const now = Date.now();
+    if (now - lastManualLoadRef.current < 800) return;
+    lastManualLoadRef.current = now;
+    (async () => {
+      try {
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'text-to-image' },
+          paginationParams: { limit: 10 }
+        })).unwrap();
+      } catch {}
+    })();
+  }, [loading, hasMore, dispatch]);
+
+  // Auto-fill loop: if container height still doesn't require scroll after updates, drain more pages.
+  const autoFillCyclesRef = useRef(0);
+  useEffect(() => {
+    const el = scrollRootRef.current;
+    if (!el) return;
+    if (loading) return;
+    if (!hasMore) return;
+    // Prevent runaway loops: max 8 auto cycles per mount
+    if (autoFillCyclesRef.current >= 8) return;
+    // If content height <= viewport + threshold, fetch another page
+    const needsFill = el.scrollHeight <= (el.clientHeight + 400);
+    if (!needsFill) return;
+    autoFillCyclesRef.current += 1;
+    (async () => {
+      try {
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'text-to-image' },
+          paginationParams: { limit: 20 }
+        })).unwrap();
+      } catch {}
+    })();
+  }, [historyEntries.length, hasMore, loading, dispatch]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -887,9 +928,9 @@ const InputBox = () => {
     try {
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
-      console.log('✅ Credits reserved for image generation:', creditResult);
+  // debug removed
     } catch (creditError: any) {
-      console.error('❌ Credit validation failed:', creditError);
+  // debug removed
       toast.error(creditError.message || 'Insufficient credits for generation');
       return;
     }
@@ -2117,7 +2158,7 @@ const InputBox = () => {
         }
       `}</style>
       
-      <div className="inset-0 pl-0 pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+  <div ref={scrollRootRef} className="inset-0 pl-0 pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-6 py-0 md:pl-4 pl-2 ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-4">
@@ -2352,8 +2393,9 @@ const InputBox = () => {
 
               
             </div>
+            {/* Infinite scroll sentinel inside scroll container */}
+            <div ref={sentinelRef} style={{ height: 24 }} />
           </div>
-          
         </div>
       </div>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto">
@@ -2743,8 +2785,7 @@ const InputBox = () => {
           </div>
         </div>
       </div>
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} style={{ height: 1 }} />
+  {/* sentinel moved inside scroll container */}
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
       <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
@@ -2781,6 +2822,17 @@ const InputBox = () => {
           const next = [...uploadedImages, ...urls].slice(0, 10);
           dispatch(setUploadedImages(next));
         }}
+      />
+
+      {/* Debug overlay – appears only when localStorage.wild_debug === '1' */}
+      <InfiniteScrollDebugOverlay
+        hasMore={hasMore}
+        loading={loading}
+        totalCount={(historyEntries?.length || 0) + (localGeneratingEntries?.length || 0)}
+        nextCursor={null}
+        containerRef={scrollRootRef as any}
+        sentinelRef={sentinelRef as any}
+        events={ioEventsRef.current}
       />
 
       {/* Character Modal */}

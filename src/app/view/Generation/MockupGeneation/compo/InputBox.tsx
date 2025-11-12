@@ -11,6 +11,7 @@ import { HistoryEntry } from '@/types/history';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MockupImagePreview from '@/app/view/Generation/MockupGeneation/compo/MockupImagePreview';
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -54,51 +55,22 @@ const InputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  // IntersectionObserver-based pagination
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMoreHistory) {
-        console.log('[Mockup] IO: skip loadMore - NO MORE ITEMS', { hasMoreHistory });
-        return;
-      }
-      
-      if (historyLoading || loadingMoreRef.current) {
-        console.log('[Mockup] IO: skip loadMore - already loading', { historyLoading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
-      console.log('[Mockup] IO: loadMore start', { hasMoreHistory });
-      
+  // Standardized intersection observer for mockup history
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'mockup-generation' }, paginationParams: { limit: 10 } })).unwrap();
-        console.log('[Mockup] IO: loadMore success');
       } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Mockup] IO: loadMore skipped - no more pages');
-        } else {
+        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
           console.error('[Mockup] IO: loadMore error', e);
         }
-      } finally {
-        loadingMoreRef.current = false;
       }
-    }, { root: null, threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Mockup] IO: observer attached', { hasMoreHistory });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Mockup] IO: observer disconnected');
-    };
-  }, [hasMoreHistory, historyLoading, dispatch]);
+    },
+    hasMoreHistory,
+    historyLoading,
+    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
+  );
 
   const mockupHistoryEntries = historyEntries
     .filter((e: HistoryEntry) => e.generationType === 'mockup-generation')
@@ -132,6 +104,12 @@ const InputBox = () => {
   );
 
   const canGenerate = !!logoFile && !isGenerating;
+
+  const clearInputs = () => {
+    setLogoFile(null);
+    setBusinessName('');
+    setBusinessTagline('');
+  };
 
   const handleGenerate = async () => {
     if (!logoFile) return;
@@ -382,9 +360,7 @@ const InputBox = () => {
                 console.error('❌ Failed to update Firebase history:', error);
               }
               
-              setLogoFile(null);
-              setBusinessName('');
-              setBusinessTagline('');
+              clearInputs();
               dispatch(addNotification({ type: 'success', message: `Generated ${completed.imageCount} mockup items` }));
               break;
               

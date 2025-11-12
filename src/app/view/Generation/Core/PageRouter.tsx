@@ -47,10 +47,12 @@ const generators: GeneratorComponentMap = {
   'edit-image': EditImageInterface,
 };
 
-export default function PageRouter() {
+export default function PageRouter({ currentView: propCurrentView, currentGenerationType: propCurrentGenerationType }: { currentView?: ViewType; currentGenerationType?: GenerationType } = {}) {
   const dispatch = useAppDispatch();
-  const currentView = useAppSelector((state: any) => state.ui?.currentView || 'generation');
-  const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image') as GenerationType;
+  const selectedView = useAppSelector((state: any) => state.ui?.currentView || 'generation');
+  const selectedGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image') as GenerationType;
+  const currentView = propCurrentView ?? selectedView;
+  const currentGenerationType = propCurrentGenerationType ?? selectedGenerationType;
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false);

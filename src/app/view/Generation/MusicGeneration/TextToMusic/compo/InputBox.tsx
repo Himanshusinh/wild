@@ -12,6 +12,7 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MusicInputBox from './MusicInputBox';
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
@@ -120,56 +121,27 @@ const InputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  // IntersectionObserver-based load more
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!storeHasMore) {
-        console.log('[Music] IO: skip loadMore - NO MORE ITEMS', { storeHasMore });
-        return;
-      }
-      
-      if (storeLoading || loadingMoreRef.current) {
-        console.log('[Music] IO: skip loadMore - already loading', { storeLoading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
+  // Standardized intersection observer for music history
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       const nextPage = page + 1;
       setPage(nextPage);
-      console.log('[Music] IO: loadMore start', { nextPage, storeHasMore });
-      
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'text-to-music' },
           paginationParams: { limit: 10 }
         } as any)).unwrap();
-        console.log('[Music] IO: loadMore success');
       } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Music] IO: loadMore skipped - no more pages');
-        } else {
+        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
           console.error('[Music] IO loadMore error', e);
         }
-      } finally {
-        loadingMoreRef.current = false;
       }
-    }, { root: null, threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Music] IO: observer attached', { storeHasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Music] IO: observer disconnected');
-    };
-  }, [storeHasMore, storeLoading, page, dispatch]);
+    },
+    storeHasMore,
+    storeLoading,
+    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
+  );
 
   const handleGenerate = async (payload: any) => {
     if (!payload.lyrics.trim()) {

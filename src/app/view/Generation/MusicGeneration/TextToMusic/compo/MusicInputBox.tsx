@@ -289,6 +289,15 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     return () => window.removeEventListener('keydown', handler);
   }, [canGenerate]);
 
+  // Clear inputs when parent indicates generation succeeded (resultUrl set)
+  useEffect(() => {
+    if (resultUrl) {
+      setLyrics('');
+      setSelectedStyle('Pop');
+      setSelectedInstruments(['Piano']);
+    }
+  }, [resultUrl]);
+
   const handleGenerate = () => {
     if (!canGenerate) return;
 

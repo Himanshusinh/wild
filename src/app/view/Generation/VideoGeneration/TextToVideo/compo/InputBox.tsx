@@ -42,6 +42,7 @@ import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 
 
 const InputBox = () => {
@@ -659,11 +660,13 @@ const InputBox = () => {
       if (!initial && (!libraryImageHasMore || !isUploadModalOpen)) return;
       setLibraryImageLoading(true);
       const api = getApiClient();
-      const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
+  const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
       if (!initial && libraryImageNextCursorRef.current) {
         params.cursor = libraryImageNextCursorRef.current;
       }
-      const res = await api.get('/api/generations', { params });
+  // Ensure createdAt ordering always requested
+  params.sortBy = 'createdAt';
+  const res = await api.get('/api/generations', { params });
       const payload = res.data?.data || res.data || {};
       const items: any[] = Array.isArray(payload.items) ? payload.items : [];
       const nextCursor: string | undefined = payload.nextCursor;
@@ -674,9 +677,12 @@ const InputBox = () => {
       items.forEach((e: any) => { existingById[e.id] = e; });
       const merged = Object.values(existingById);
 
-      setLibraryImageEntries(merged);
-      libraryImageNextCursorRef.current = nextCursor;
-      setLibraryImageHasMore(Boolean(nextCursor));
+  setLibraryImageEntries(merged);
+  libraryImageNextCursorRef.current = nextCursor;
+  // Infer hasMore from returned items count vs requested limit to avoid false-positives when
+  // backend incorrectly includes a nextCursor on the last page.
+  const requested = params.limit || 30;
+  setLibraryImageHasMore((items.length >= requested) && Boolean(nextCursor));
     } catch (e) {
       console.error('[VideoPage] Failed to fetch library images:', e);
     } finally {
@@ -983,6 +989,26 @@ const InputBox = () => {
   }, []);
 
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
+  // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
+  const didInitialLoadRef = useRef(false);
+  useEffect(() => {
+    if (didInitialLoadRef.current) return;
+    // If we don't have any entries yet, proactively load video history for this page
+    const anyEntries = Array.isArray(historyEntries) && historyEntries.length > 0;
+    if (!anyEntries && !loading) {
+      didInitialLoadRef.current = true;
+      try {
+        (dispatch as any)(loadHistory({
+          filters: { mode: 'video' } as any,
+          paginationParams: { limit: 12 },
+          requestOrigin: 'page',
+          debugTag: `video:init:${Date.now()}`,
+        }));
+      } catch (e) {
+        // swallow
+      }
+    }
+  }, [dispatch, loading, historyEntries]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -993,63 +1019,26 @@ const InputBox = () => {
     return () => { container.removeEventListener('scroll', onScroll as any); };
   }, [historyScrollElement]);
 
-  // IntersectionObserver-based load more for video history, using viewport as root
-  useEffect(() => {
-    if (!sentinelElement) return;
-    const el = sentinelElement;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMore) {
-        console.log('[Video] IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('[Video] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
+  // Standardized intersection observer for video history
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       const nextPage = page + 1;
       setPage(nextPage);
-      console.log('[Video] IO: loadMore start', { nextPage, hasMore });
-      
       try {
-        await (dispatch as any)(loadMoreHistory({
-          filters: { mode: 'video' } as any,
-          paginationParams: { limit: 10 }
-        })).unwrap();
-        console.log('[Video] IO: loadMore success');
+        await (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } })).unwrap();
       } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Video] IO: loadMore skipped - no more pages');
-        } else {
+        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
           console.error('[Video] IO loadMore error', e);
         }
-      } finally {
-        loadingMoreRef.current = false;
       }
-    }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Video] IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Video] IO: observer disconnected');
-    };
-  }, [hasMore, loading, page, dispatch, sentinelElement]);
+    },
+    hasMore,
+    loading,
+    { root: null, rootMargin: '0px 0px 400px 0px', threshold: 0.1 }
+  );
 
-  // Also mark user scroll on window in case container isn't scroll root
-  useEffect(() => {
-    const onWindowScroll = () => { hasUserScrolledRef.current = true; };
-    window.addEventListener('scroll', onWindowScroll, { passive: true } as any);
-    return () => window.removeEventListener('scroll', onWindowScroll as any);
-  }, []);
+  // Removed user-scroll gating for video pagination; IO will load as soon as sentinel intersects.
 
   // Auto-fill viewport if content is short (load more until we have enough content)
   useEffect(() => {
@@ -2545,7 +2534,7 @@ const InputBox = () => {
 
   return (
     <React.Fragment>
-      {(historyEntries.length > 0 || localVideoPreview) && (
+      {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
@@ -2864,7 +2853,7 @@ const InputBox = () => {
             </div>
           </div>
         </div>
-      )}
+      }
 
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">

@@ -5,8 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { clearGenerationState } from '@/store/slices/generationSlice';
-import Nav from './Nav';
-import SidePannelFeatures from './SidePannelFeatures';
+// Nav and SidePannelFeatures are now rendered in the root layout to remain persistent across route changes
 import PageRouter from './PageRouter';
 import NotificationToast from '@/components/ui/NotificationToast';
 import { ViewType, GenerationType } from '@/types/generation';
@@ -157,15 +156,9 @@ export default function MainLayout({
       {/* DEBUG: This is MainLayout component */}
       
       
-      <Nav />
-      <SidePannelFeatures
-        currentView={currentView as ViewType}
-        onViewChange={handleViewChange}
-        onGenerationTypeChange={handleGenerationTypeChange}
-        onWildmindSkitClick={() => setShowWildmindSkitPopup(true)}
-      />
       <div className="ml-[68px] pt-[62px]">
         <Suspense fallback={null}>
+          {/* Let PageRouter read from Redux; MainLayout already syncs UI state */}
           <PageRouter />
         </Suspense>
       </div>

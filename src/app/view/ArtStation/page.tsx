@@ -1,9 +1,9 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 import Image from 'next/image'
 import { OptimizedImage } from '@/components/media/OptimizedImage'
-import Nav from '../Generation/Core/Nav'
-import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
+// Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
@@ -249,8 +249,8 @@ export default function ArtStationPage() {
         aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
         frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
       }))
-      const newCursor = meta?.nextCursor || payload?.nextCursor
 
+      const newCursor = meta?.nextCursor || payload?.nextCursor
       console.log('[ArtStation] Parsed feed response:', {
         itemsCount: newItems.length,
         newCursor,
@@ -275,8 +275,11 @@ export default function ArtStationPage() {
         newItems.forEach(it => map.set(it.id, it))
         return Array.from(map.values())
       })
-      setCursor(newCursor)
-      const inferredHasMore = typeof meta?.hasMore === 'boolean' ? meta.hasMore : Boolean(newCursor)
+  setCursor(newCursor)
+      const pageLimit = 20
+      const inferredHasMore = typeof meta?.hasMore === 'boolean'
+        ? meta.hasMore
+        : (newItems.length >= pageLimit && Boolean(newCursor))
       setHasMore(inferredHasMore)
       setError(null)
 
@@ -348,39 +351,20 @@ export default function ArtStationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory])
 
-  // Infinite scroll observer
-  useEffect(() => {
-    if (!sentinelRef.current) return
-    // Don’t start observer until initial page for this tab is loaded
-    if (!initialLoadDoneRef.current) return
-    const el = sentinelRef.current
-    // Disconnect any prior observer before creating a new one for this tab/state
-    let observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0]
-      if (!entry.isIntersecting) return
-      if (!initialLoadDoneRef.current) return
-      // Serialize loads
-      if (loading || loadingMoreRef.current || !hasMore) {
-        return
-      }
-      loadingMoreRef.current = true
+  // Infinite scroll observer — use the shared helper to ensure hasMore-first and local busy guards
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       try {
         await fetchFeed(false)
       } catch (err) {
         console.error('[ArtStation] Error loading more:', err)
-      } finally {
-        loadingMoreRef.current = false
       }
-    }, {
-      root: null,
-      rootMargin: '600px',
-      threshold: 0.01
-    })
-    observer.observe(el)
-    return () => {
-      try { observer.disconnect() } catch { }
-    }
-  }, [hasMore, loading, cursor, activeCategory, items.length])
+    },
+    hasMore,
+    loading,
+    { root: null, rootMargin: '600px', threshold: 0.01, requireUserScrollRef: initialLoadDoneRef }
+  )
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
@@ -670,9 +654,8 @@ export default function ArtStationPage() {
 
   return (
     <div className="min-h-screen bg-[#07070B]">
-      <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
-      <div className="flex pt-0">
-        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
+      {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
+      <div className="flex pt-10 ml-[68px]">
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10">

@@ -7,6 +7,7 @@ import { getApiClient } from '@/lib/axiosInstance';
 import { getMeCached } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
 import { ArrowLeft } from 'lucide-react';
+import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy';
 
 interface UserData {
   uid: string;
@@ -50,6 +51,9 @@ const ProfileManagement = () => {
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [isPublic, setIsPublic] = useState<boolean>(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [canTogglePublic, setCanTogglePublic] = useState<boolean>(false);
+  const [policyMessage, setPolicyMessage] = useState<string>('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Edit states
   // Username editing states - DISABLED
@@ -87,12 +91,22 @@ const ProfileManagement = () => {
         setUserData(userData);
         // setEditedUsername(userData.username || ''); // DISABLED
         
+        // Get public policy from user data
+        const policy = getPublicPolicyFromUser(userData);
+        setCanTogglePublic(policy.canToggle);
+        setPolicyMessage(policy.message);
+        
         // Initialize public flag (same logic as Nav.tsx)
         try {
           const stored = localStorage.getItem('isPublicGenerations');
           const server = userData && (userData as any).isPublic;
           const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false);
-          setIsPublic(next);
+          // If user is restricted (cannot toggle), force to true
+          if (!policy.canToggle) {
+            setIsPublic(true);
+          } else {
+            setIsPublic(next);
+          }
         } catch {}
 
         // Fetch credits
@@ -241,6 +255,12 @@ const ProfileManagement = () => {
 
   // Handle public generations toggle (same as Nav.tsx)
   const handleTogglePublic = async () => {
+    // Check if user can toggle
+    if (!canTogglePublic) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    
     const next = !isPublic;
     setIsPublic(next);
     try {
@@ -336,20 +356,38 @@ const ProfileManagement = () => {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-1">Make Generations Public</h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-xs">Allow others to see your generated content on the public feed</p>
+                  <p className="text-gray-600 dark:text-gray-300 text-xs">
+                    {canTogglePublic 
+                      ? 'Allow others to see your generated content on the public feed'
+                      : '🔒 Your plan requires all generations to be public'}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isPublic}
-                  aria-label="Make Generations Public"
-                  onClick={handleTogglePublic}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTogglePublic(); } }}
-                  tabIndex={0}
-                  className={`relative z-10 w-12 h-6 rounded-full transition-colors cursor-pointer outline-none ${isPublic ? 'bg-blue-500 dark:bg-blue-600' : 'bg-gray-300 dark:bg-white/20'}`}
-                >
-                  <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
-                </button>
+                <div className="relative group">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isPublic}
+                    aria-label="Make Generations Public"
+                    onClick={handleTogglePublic}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTogglePublic(); } }}
+                    tabIndex={0}
+                    disabled={!canTogglePublic}
+                    className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${
+                      !canTogglePublic 
+                        ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60' 
+                        : isPublic 
+                          ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer' 
+                          : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
+                    }`}
+                  >
+                    <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
+                  </button>
+                  {!canTogglePublic && (
+                    <div className="absolute hidden group-hover:block bottom-full right-0 mb-2 w-56 p-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs rounded-lg shadow-lg z-50">
+                      Upgrade to Plan C or D to toggle private generations
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -367,6 +405,42 @@ const ProfileManagement = () => {
           </div>
         </div>
       </div>
+      
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-[#0F1419] rounded-2xl p-6 max-w-md w-full border border-black/10 dark:border-white/10 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🔒</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Want Private Generations?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
+                {policyMessage}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 rounded-full transition-colors font-medium text-sm text-gray-900 dark:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpgradeModal(false);
+                    router.push('/view/pricing');
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors font-medium text-sm text-white"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -21,6 +21,7 @@ import {
   clearHistory,
   clearFilters,
 } from "@/store/slices/historySlice";
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -161,57 +162,25 @@ const InputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  // IntersectionObserver-based infinite scroll
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) {
-        console.log('[Sticker] IO: skip until user scrolls');
-        return;
-      }
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMore) {
-        console.log('[Sticker] IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('[Sticker] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
-      console.log('[Sticker] IO: loadMore start', { hasMore });
-      
+  // Use shared IntersectionObserver helper for infinite scroll
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       try {
-        await (dispatch as any)(loadMoreHistory({ 
-          filters: { generationType: 'sticker-generation' }, 
-          paginationParams: { limit: 10 } 
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'sticker-generation' },
+          paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('[Sticker] IO: loadMore success');
       } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Sticker] IO: loadMore skipped - no more pages');
-        } else {
-          console.error('[Sticker] IO: loadMore error', e);
+        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
+          console.error('[INF_SCROLL] sticker loadMore error', e);
         }
-      } finally {
-        loadingMoreRef.current = false;
       }
-    }, { root: null, threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Sticker] IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Sticker] IO: observer disconnected');
-    };
-  }, [hasMore, loading, dispatch]);
+    },
+    hasMore,
+    loading,
+    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
+  );
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
