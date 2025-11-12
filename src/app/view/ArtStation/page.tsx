@@ -919,6 +919,7 @@ export default function ArtStationPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           {(() => {
                             const cb = item.createdBy || ({} as any)
+                            console.log('cb', cb)
                             const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
                             if (photo) {
                               const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
