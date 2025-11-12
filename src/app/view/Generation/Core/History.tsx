@@ -52,6 +52,7 @@
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | null>('desc');
     const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
     const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product' | 'user-uploads'>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateInput, setDateInput] = useState<string>("");
     const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -864,8 +865,18 @@
       return url.startsWith('data:audio') || /\.(mp3|wav|m4a|ogg|aac|flac)(\?|$)/i.test(url);
     };
 
+    // Filter entries by search query
+    const filteredEntries = useMemo(() => {
+      if (!searchQuery.trim()) return historyEntries;
+      const query = searchQuery.trim().toLowerCase();
+      return historyEntries.filter((entry: HistoryEntry) => {
+        const prompt = (entry.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }, [historyEntries, searchQuery]);
+
     // Group entries by date to mirror TextToImage UI
-    const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const groupedByDate = filteredEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
       const dateKey = new Date(entry.timestamp).toDateString();
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(entry);

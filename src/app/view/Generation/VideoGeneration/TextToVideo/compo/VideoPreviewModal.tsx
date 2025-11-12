@@ -235,9 +235,29 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   }
   const inputVideos = ((preview.entry as any)?.inputVideos || []) as any[];
   const inputImages = ((preview.entry as any)?.inputImages || []) as any[];
-  const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-  const proxied = toProxyResourceUrl(videoPath);
-  const videoUrl = proxied || rawVideoUrl;
+  
+  // Check if URL is already a proxy URL (frontend or full URL)
+  const isAlreadyProxyUrl = rawVideoUrl && (
+    rawVideoUrl.startsWith('/api/proxy/media/') || 
+    rawVideoUrl.includes('/api/proxy/media/') ||
+    rawVideoUrl.startsWith('http://localhost') && rawVideoUrl.includes('/api/proxy/media/')
+  );
+  
+  // If already a proxy URL, use it directly; otherwise convert to proxy
+  let videoUrl = '';
+  if (isAlreadyProxyUrl) {
+    // Extract the path from the proxy URL if it's a full URL
+    if (rawVideoUrl.startsWith('http://') || rawVideoUrl.startsWith('https://')) {
+      const urlObj = new URL(rawVideoUrl);
+      videoUrl = urlObj.pathname + (urlObj.search || '');
+    } else {
+      videoUrl = rawVideoUrl;
+    }
+  } else {
+    const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
+    const proxied = toProxyResourceUrl(videoPath);
+    videoUrl = proxied || rawVideoUrl;
+  }
 
   // Stream directly from same-origin proxy for faster start and range support
 
@@ -395,9 +415,22 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   className="max-w-full max-h-full object-contain"
                   autoPlay={true}
                   muted={false}
-                  onError={(e) => console.error('Video error:', e)}
-                  onLoadStart={() => console.log('Video loading started')}
-                  onLoadedData={() => console.log('Video loaded successfully')}
+                  preload="metadata"
+                  playsInline
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    const video = e.currentTarget;
+                    const error = video.error;
+                    console.error('Video error:', {
+                      code: error?.code,
+                      message: error?.message,
+                      url: videoUrl,
+                      networkState: video.networkState,
+                      readyState: video.readyState
+                    });
+                  }}
+                  onLoadStart={() => console.log('Video loading started:', videoUrl)}
+                  onLoadedData={() => console.log('Video loaded successfully:', videoUrl)}
                   onLoadedMetadata={(e) => {
                     const video = e.currentTarget;
                     if (video.duration && !isNaN(video.duration)) {
@@ -405,6 +438,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                       console.log('Video duration captured:', video.duration);
                     }
                   }}
+                  onCanPlay={() => console.log('Video can play:', videoUrl)}
+                  onStalled={() => console.warn('Video stalled:', videoUrl)}
+                  onWaiting={() => console.warn('Video waiting for data:', videoUrl)}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-white/5 rounded-lg">

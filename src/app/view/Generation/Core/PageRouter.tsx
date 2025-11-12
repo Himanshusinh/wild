@@ -15,9 +15,10 @@ import Bookmarks from './Bookmarks';
 import { loadHistory, clearHistoryByType, loadMoreHistory } from '@/store/slices/historySlice';
 import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
 import EditImageInterface from '../../EditImage/compo/EditImageInterface';
+import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'edit-image';
+type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'edit-image' | 'edit-video';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -45,6 +46,7 @@ const generators: GeneratorComponentMap = {
   
   // Image Editing Features
   'edit-image': EditImageInterface,
+  'edit-video': EditVideoInterface,
 };
 
 export default function PageRouter() {
@@ -121,6 +123,7 @@ export default function PageRouter() {
           'mockup-generation',
           'live-chat',
           'edit-image',
+          'edit-video',
         ]);
         if (selfManagedTypes.has(historyGenerationType)) {
           // Keep refs in sync but do not dispatch loadHistory here

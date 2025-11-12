@@ -35,16 +35,12 @@ const SidePannelFeatures = ({
   const pathname = usePathname();
   const router = useRouter();
   const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
-  const brandingClickCount = React.useRef(0);
-  const [showVideoEditDropdown, setShowVideoEditDropdown] = React.useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
   // Track hover on floating desktop panels so moving from the sidebar
   // into the panel doesn't immediately close the dropdowns
   const [isPanelHovered, setIsPanelHovered] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
-  const videoEditRef = React.useRef<HTMLDivElement>(null);
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
-  const videoEditDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [userData, setUserData] = React.useState<any>(null);
@@ -87,6 +83,9 @@ const SidePannelFeatures = ({
       case 'edit-image':
         router.push('/edit-image');
         return;
+      case 'edit-video':
+        router.push('/edit-video');
+        return;
       default:
         return;
     }
@@ -109,23 +108,7 @@ const SidePannelFeatures = ({
   };
 
   const toggleBrandingDropdown = () => {
-    if (!showBrandingDropdown) {
-      setShowBrandingDropdown(true);
-      brandingClickCount.current = 1;
-      setShowVideoEditDropdown(false);
-      return;
-    }
-    brandingClickCount.current += 1;
-    if (brandingClickCount.current >= 2) {
-      setShowBrandingDropdown(false);
-      brandingClickCount.current = 0;
-    }
-  };
-
-  const toggleVideoEditDropdown = () => {
-    setShowVideoEditDropdown(!showVideoEditDropdown);
-    // Close branding dropdown when opening video edit dropdown
-    setShowBrandingDropdown(false);
+    setShowBrandingDropdown(!showBrandingDropdown);
   };
 
   // Close dropdown when clicking outside
@@ -137,8 +120,6 @@ const SidePannelFeatures = ({
         !sidebarRef.current.contains(event.target as Node)
       ) {
         setShowBrandingDropdown(false);
-        brandingClickCount.current = 0;
-        setShowVideoEditDropdown(false);
         return;
       }
 
@@ -150,32 +131,20 @@ const SidePannelFeatures = ({
         !(brandingDropdownRef.current && brandingDropdownRef.current.contains(event.target as Node))
       ) {
         setShowBrandingDropdown(false);
-        brandingClickCount.current = 0;
-      }
-
-      // Handle video edit dropdown
-      if (
-        showVideoEditDropdown &&
-        videoEditRef.current &&
-        !videoEditRef.current.contains(event.target as Node) &&
-        !(videoEditDropdownRef.current && videoEditDropdownRef.current.contains(event.target as Node))
-      ) {
-        setShowVideoEditDropdown(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showBrandingDropdown, showVideoEditDropdown]);
+  }, [showBrandingDropdown]);
 
   // Close dropdowns when neither the sidebar nor a floating panel is hovered (desktop only).
   React.useEffect(() => {
     if (!isSidebarHovered && !isPanelHovered && !isMobileMenuOpen) {
       const timer = setTimeout(() => {
         setShowBrandingDropdown(false);
-        brandingClickCount.current = 0;
-        setShowVideoEditDropdown(false);
-      }, 150);
+      }, 150); // 150ms delay
+
       return () => clearTimeout(timer);
     }
   }, [isSidebarHovered, isPanelHovered, isMobileMenuOpen]);
@@ -294,124 +263,71 @@ const SidePannelFeatures = ({
           </div>
         </div>
 
-        <div className="relative">
-          <div
-            onClick={handleImageGenerationClick}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Image Generation</span>
-          </div>
+      <div className="relative">
+        <div
+          onClick={handleImageGenerationClick}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
         </div>
+      </div>
 
-        <div>
-          <div
-            onClick={() => handleGenerationTypeChange('edit-image')}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Image Edit</span>
-          </div>
+      <div>
+        <div
+          onClick={() => handleGenerationTypeChange('edit-image')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Edit</span>
         </div>
+      </div>
 
-        <div>
-          <div
-            onClick={() => handleGenerationTypeChange('text-to-video')}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Video Generation</span>
-          </div>
+      <div>
+        <div
+          onClick={() => handleGenerationTypeChange('text-to-video')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Generation</span>
         </div>
+      </div>
 
-        <div className="relative">
-          <div
-            ref={videoEditRef}
-            onClick={toggleVideoEditDropdown}
-            className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isVideoEditActive ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
-            <div className={`flex items-center gap-1 text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>
-              <span>Video Edit</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`hidden md:inline-block h-4 w-4 transition-transform duration-200 ${showVideoEditDropdown ? 'rotate-180' : 'rotate-0'}`}
-                aria-hidden="true"
-              >
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Mobile: expand below item */}
-          <div
-            ref={videoEditDropdownRef}
-            className={`md:hidden overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${showVideoEditDropdown ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}
-          >
-            <div className='mt-2 ml-12 mr-2 bg-transparent backdrop-blur-0 border border-white/20 rounded-2xl shadow-none p-2 space-y-1'>
-              <div
-                onClick={() => router.push('/video-edit')}
-                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''}`}
-              >
-                <span className='text-sm text-white'>Open Video Editor</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop: floating panel */}
-          {showVideoEditDropdown && (
-            <div
-              ref={videoEditDropdownRef}
-              className='hidden md:block absolute left-full top-0 ml-4 bg-black/70 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl p-2 space-y-1 z-[9999] min-w-[200px] pointer-events-auto'
-              onMouseEnter={() => setIsPanelHovered(true)}
-              onMouseLeave={() => setIsPanelHovered(false)}
-            >
-              <div className='px-3 py-2 bg-white/10 border border-white/10 rounded-xl shadow-md z-10'>
-                <span className='text-xs text-white/90 uppercase tracking-wider'>Video Edit</span>
-              </div>
-
-              <div
-                onClick={() => router.push('/video-edit')}
-                className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'video-edit' ? 'bg-white/15' : ''}`}
-              >
-                <span className='text-sm text-white'>Open Video Editor</span>
-              </div>
-            </div>
-          )}
-
+      <div>
+        <div
+          onClick={() => handleGenerationTypeChange('edit-video')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Edit</span>
         </div>
+      </div>
 
-        <div>
-          <div
-            onClick={() => handleGenerationTypeChange('text-to-music')}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.musicGeneration} alt="Music Generation" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Music Generation</span>
-          </div>
+      <div>
+        <div
+          onClick={() => handleGenerationTypeChange('text-to-music')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.musicGeneration} alt="Music Generation" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Music Generation</span>
         </div>
+      </div>
 
-        <div>
-          <div
-            onClick={() => router.push(NAV_ROUTES.LIVE_CHAT)}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Live Canvas</span>
-          </div>
+      <div>
+        <div
+          onClick={() => router.push(NAV_ROUTES.LIVE_CHAT)}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
         </div>
+      </div>
 
 
 
@@ -437,31 +353,16 @@ const SidePannelFeatures = ({
       </div> */}
 
 
-        <div className="relative">
-          <div
-            ref={brandingRef}
-            onClick={toggleBrandingDropdown}
-            className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${isBrandingActive ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
-            <div className={`flex items-center gap-1 text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>
-              <span>Branding Kit</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`hidden md:inline-block h-4 w-4 transition-transform duration-200 ${showBrandingDropdown ? 'rotate-180' : 'rotate-0'}`}
-                aria-hidden="true"
-              >
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </div>
-          </div>
+      <div className="relative">
+        <div
+          ref={brandingRef}
+          onClick={toggleBrandingDropdown}
+          className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isBrandingActive ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
+        </div>
 
           {/* Mobile: expand below item */}
           <div
@@ -527,17 +428,17 @@ const SidePannelFeatures = ({
 
         </div>
 
-        {/* Art Station */}
-        <div>
-          <div
-            onClick={() => router.push('/view/ArtStation')}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Art Station</span>
-          </div>
+      {/* Art Station */}
+      <div>
+        <div
+          onClick={() => router.push('/view/ArtStation')}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
         </div>
+      </div>
 
       {/* <div>
             <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
@@ -546,34 +447,32 @@ const SidePannelFeatures = ({
             </div>
         </div>  */}
 
-        <div>
-          <div
-            onClick={() => router.push(NAV_ROUTES.PRICING)}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/10' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Pricing</span>
-          </div>
+      <div>
+        <div
+          onClick={() => router.push(NAV_ROUTES.PRICING)}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Pricing</span>
         </div>
 
-        <div>
-          <div
-            onClick={() => {
-              try {
-                if (onViewChange && typeof onViewChange === 'function') {
-                  onViewChange('history');
-                }
-              } catch (error) {
-                console.error('Error in history click handler:', error);
+      <div>
+        <div
+          onClick={() => {
+            try {
+              if (onViewChange && typeof onViewChange === 'function') {
+                onViewChange('history');
               }
-              router.push('/history');
-            }}
-            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/10' : ''}`}
-          >
-            <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} />
-            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>History</span>
-          </div>
+            } catch (error) {
+              console.error('Error in history click handler:', error);
+            }
+            router.push('/history');
+          }}
+          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
+        >
+          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} />
+          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
         </div>
       </div>
 

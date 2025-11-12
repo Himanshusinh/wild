@@ -2986,7 +2986,7 @@ const InputBox = () => {
           {/* Input Row: prompt + actions */}
           <div className="flex items-start gap-3 px-3 pt-2 pb-0  
           ">
-            <div className="flex-1 flex items-start  gap-2 bg-transparent rounded-lg pr-4 relative">
+            <div className="flex-1 flex items-start  gap-2 bg-transparent rounded-lg pr-0">
               <textarea
                 ref={inputEl}
                 placeholder="Type your video prompt..."
