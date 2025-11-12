@@ -2917,13 +2917,11 @@ const InputBox = () => {
               </span>
               <svg className={`w-3 h-3 transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
             </button>
-            {showModeDropdown && (
-              <div className="absolute right-0 bottom-full mb-2 w-32 md:w-auto bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50 md:bottom-auto md:top-full md:mt-2" suppressHydrationWarning>
-                <button onClick={() => { setGenerationMode('text_to_video'); setShowModeDropdown(false); }} className={`w-full text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='text_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>T→V</button>
-                <button onClick={() => { setGenerationMode('image_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='image_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>I→V</button>
-                <button onClick={() => { setGenerationMode('video_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='video_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>V→V</button>
-              </div>
-            )}
+            <div className={`absolute right-0 bottom-full mb-2 w-32 md:w-auto bg-black/80 backdrop-blur-xl ring-1 ring-white/30 rounded-lg p-1.5 z-50 md:bottom-auto md:top-full md:mt-2 ${showModeDropdown ? 'block' : 'hidden'}`} suppressHydrationWarning>
+              <button onClick={() => { setGenerationMode('text_to_video'); setShowModeDropdown(false); }} className={`w-full text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='text_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>T→V</button>
+              <button onClick={() => { setGenerationMode('image_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='image_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>I→V</button>
+              <button onClick={() => { setGenerationMode('video_to_video'); setShowModeDropdown(false); }} className={`w-full mt-1 text-left px-2 py-1.5 rounded-md text-[10px] ${generationMode==='video_to_video'?'bg-white text-black':'text-white/90 hover:bg-white/10'}`}>V→V</button>
+            </div>
           </div>
           {/* Desktop: original buttons */}
           <div className="hidden md:flex bg-transparent backdrop-blur-3xl rounded-lg px-2 pt-2 pb-2 ring-1 ring-white/20 shadow-2xl" suppressHydrationWarning>
