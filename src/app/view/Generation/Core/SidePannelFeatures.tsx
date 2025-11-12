@@ -293,8 +293,8 @@ const SidePannelFeatures = ({
           >
             <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} />
             <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Home</span>
-          </div>
         </div>
+      </div>
 
       <div className="relative">
         <div
