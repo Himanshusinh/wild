@@ -47,6 +47,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
+  // Local state to track the current entry (updated after deletion)
+  const [currentEntry, setCurrentEntry] = React.useState<HistoryEntry | null>(preview?.entry || null);
+  
+  // Update currentEntry when preview changes
+  React.useEffect(() => {
+    if (preview?.entry) {
+      setCurrentEntry(preview.entry);
+    }
+  }, [preview?.entry?.id, preview?.entry?.images?.length]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -125,13 +134,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [isFsOpen]);
 
   // Build gallery from images in the SAME ENTRY (same generation run)
+  // Use currentEntry instead of preview.entry so it updates after deletion
   const sameDateGallery = React.useMemo(() => {
     try {
-      if (!preview?.entry) return [] as Array<{ entry: any, image: any }>;
-      const imgs = (preview.entry as any)?.images || [];
-      return imgs.map((im: any) => ({ entry: preview.entry, image: im }));
+      const entryToUse = currentEntry || preview?.entry;
+      if (!entryToUse) return [] as Array<{ entry: any, image: any }>;
+      const imgs = (entryToUse as any)?.images || [];
+      return imgs.map((im: any) => ({ entry: entryToUse, image: im }));
     } catch { return []; }
-  }, [preview]);
+  }, [currentEntry, preview]);
 
   const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
     try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
@@ -394,13 +405,51 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const handleDelete = async () => {
     try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${preview.entry.id}`);
-      try { dispatch(removeHistoryEntry(preview.entry.id)); } catch {}
-      onClose();
+      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+      const imageToDelete = selectedPair.image || preview?.image;
+      const entry = selectedPair.entry || preview?.entry;
+      
+      if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
+      
+      // Get the current entry to check how many images it has
+      const currentImages = Array.isArray((entry as any)?.images) ? (entry as any).images : [];
+      const remainingImages = currentImages.filter((img: any) => {
+        // Match by id, url, or storagePath
+        const matchesId = imageToDelete?.id && img.id === imageToDelete.id;
+        const matchesUrl = imageToDelete?.url && img.url === imageToDelete.url;
+        const matchesStoragePath = (imageToDelete as any)?.storagePath && img.storagePath === (imageToDelete as any).storagePath;
+        return !(matchesId || matchesUrl || matchesStoragePath);
+      });
+      
+      // If this is the last image, delete the entire entry
+      if (remainingImages.length === 0) {
+        await axiosInstance.delete(`/api/generations/${entry.id}`);
+        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        onClose();
+      } else {
+        // Otherwise, update the entry to remove just this image
+        await axiosInstance.patch(`/api/generations/${entry.id}`, {
+          images: remainingImages
+        });
+        // Update Redux store with the new images array
+        try {
+          dispatch(updateHistoryEntry({ id: entry.id, updates: { images: remainingImages } as any }));
+        } catch {}
+        // Update local entry state so the gallery updates immediately
+        setCurrentEntry({ ...entry, images: remainingImages } as any);
+        // Adjust the selected index - if we deleted the last image, go to the previous one
+        // If we deleted a middle image, stay at the same index (which will now show the next image)
+        const newIndex = Math.min(selectedIndex, remainingImages.length - 1);
+        if (newIndex >= 0 && newIndex < remainingImages.length) {
+          setSelectedIndex(newIndex);
+        } else {
+          // Shouldn't happen, but close if somehow no valid index
+          onClose();
+        }
+      }
     } catch (e) {
       console.error('Delete failed:', e);
-      alert('Failed to delete generation');
+      alert('Failed to delete image');
     }
   };
 
@@ -525,9 +574,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
   const selectedImage: any = selectedPair.image || preview?.image;
-  const selectedEntry: any = selectedPair.entry || preview?.entry;
+  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
   const isUserUploadSelected = false;
 
   // Helper function to calculate aspect ratio from dimensions

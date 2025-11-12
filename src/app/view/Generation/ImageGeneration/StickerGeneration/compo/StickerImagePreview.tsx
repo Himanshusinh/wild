@@ -27,6 +27,13 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const user = useAppSelector((state: any) => state.auth?.user);
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  // Local state to track the current entry (updated after deletion)
+  const [currentEntry, setCurrentEntry] = useState<HistoryEntry>(entry);
+  
+  // Update currentEntry when entry prop changes
+  React.useEffect(() => {
+    setCurrentEntry(entry);
+  }, [entry.id, entry.images?.length]);
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -108,8 +115,10 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   if (!isOpen) return null;
 
-  const inputImages = ((entry as any)?.inputImages || []) as any[];
-  const outputImages = (entry.images || []) as any[];
+  // Use currentEntry instead of entry so gallery updates after deletion
+  const entryToUse = currentEntry || entry;
+  const inputImages = ((entryToUse as any)?.inputImages || []) as any[];
+  const outputImages = (entryToUse.images || []) as any[];
   const galleryImages = [...inputImages, ...outputImages];
   const selectedImage = galleryImages[selectedImageIndex];
   
@@ -221,13 +230,64 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const handleDelete = async () => {
     try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
-      onClose();
+      // Calculate these values inside the function to ensure they're available
+      const inputImages = ((entry as any)?.inputImages || []) as any[];
+      const outputImages = (entry.images || []) as any[];
+      const galleryImages = [...inputImages, ...outputImages];
+      const selectedImage = galleryImages[selectedImageIndex];
+      const isUserUploadSelected = selectedImageIndex < inputImages.length;
+
+      // Only allow deleting output images, not input images (user uploads)
+      if (isUserUploadSelected) {
+        alert('Cannot delete user-uploaded images');
+        return;
+      }
+
+      const imageToDelete = selectedImage;
+      if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
+      
+      // Get the current output images (only these are deletable)
+      const currentImages = Array.isArray(entry.images) ? entry.images : [];
+      const remainingImages = currentImages.filter((img: any) => {
+        // Match by id, url, or storagePath
+        const matchesId = imageToDelete?.id && img.id === imageToDelete.id;
+        const matchesUrl = imageToDelete?.url && img.url === imageToDelete.url;
+        const matchesStoragePath = (imageToDelete as any)?.storagePath && img.storagePath === (imageToDelete as any).storagePath;
+        return !(matchesId || matchesUrl || matchesStoragePath);
+      });
+      
+      // If this is the last output image, delete the entire entry
+      if (remainingImages.length === 0) {
+        await axiosInstance.delete(`/api/generations/${entry.id}`);
+        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        onClose();
+      } else {
+        // Otherwise, update the entry to remove just this image
+        await axiosInstance.patch(`/api/generations/${entry.id}`, {
+          images: remainingImages
+        });
+        // Update Redux store with the new images array
+        try {
+          dispatch(updateHistoryEntry({ id: entry.id, updates: { images: remainingImages } as any }));
+        } catch {}
+        // Update local entry state so the gallery updates immediately
+        setCurrentEntry({ ...entry, images: remainingImages } as any);
+        // Adjust the selected index - account for inputImages offset
+        const newOutputIndex = Math.min(selectedImageIndex - inputImages.length, remainingImages.length - 1);
+        if (newOutputIndex >= 0 && newOutputIndex < remainingImages.length) {
+          // Adjust to account for inputImages
+          setSelectedImageIndex(inputImages.length + newOutputIndex);
+        } else if (inputImages.length > 0) {
+          // If no output images left but input images exist, show first input image
+          setSelectedImageIndex(0);
+        } else {
+          // No images left, close modal
+          onClose();
+        }
+      }
     } catch (e) {
       console.error('Delete failed:', e);
-      alert('Failed to delete generation');
+      alert('Failed to delete image');
     }
   };
 
