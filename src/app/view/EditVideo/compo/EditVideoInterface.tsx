@@ -492,9 +492,11 @@ const EditVideoInterface: React.FC = () => {
           return src;
         }
       }
-      // If the image is stored on Zata (or another known storage served via
+      // If the video/image is stored on Zata (or another known storage served via
       // the `/api/proxy/download/:path` backend route), fetch via our proxy
       // so we avoid cross-origin/read restrictions, then convert to data URI.
+      // This ensures the backend can access the file even if the original URL
+      // is not accessible from the production server.
       try {
         const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -516,13 +518,31 @@ const EditVideoInterface: React.FC = () => {
             // fallthrough to attempt direct fetch below
             console.warn('[toDataUriIfLocal] proxy fetch failed, falling back to direct fetch', e);
           }
+          // Try direct fetch from Zata as fallback (may work if CORS allows)
+          try {
+            const directResp = await fetch(src, { 
+              method: 'GET',
+              mode: 'cors',
+              credentials: 'omit'
+            });
+            if (directResp && directResp.ok) {
+              const blob = await directResp.blob();
+              return await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(String(reader.result || ''));
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            }
+          } catch (directErr) {
+            console.warn('[toDataUriIfLocal] direct fetch also failed', directErr);
+          }
         }
       } catch (e) {
         // ignore and continue
       }
 
-      // Last resort: try a direct fetch (may fail due to CORS). If it fails,
-      // return the original src so existing behavior remains.
+      // Last resort: return the original src (backend will try to use it as video_url)
       return src;
     };
 
@@ -533,6 +553,7 @@ const EditVideoInterface: React.FC = () => {
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
+      // Convert video URL to data URI to ensure backend can access it (fixes production issues)
       const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
       const isPublic = await getIsPublic();
       
@@ -541,10 +562,15 @@ const EditVideoInterface: React.FC = () => {
         const src = inputs['upscale'];
         if (!src) throw new Error('Please upload a video to upscale');
         const body: any = {};
-        if (String(src).startsWith('data:')) {
+        // Use normalizedInput (data URI) if conversion succeeded, otherwise fall back to video_url
+        if (normalizedInput && normalizedInput.startsWith('data:')) {
           // For data URI, send video (validator will convert data URI to video_url)
+          body.video = normalizedInput;
+        } else if (String(src).startsWith('data:')) {
+          // Fallback: if original src is already a data URI, use it
           body.video = src;
         } else {
+          // Use the absolute proxy URL (Zata URL) as fallback
           body.video_url = currentInput;
         }
         body.upscale_mode = seedvrUpscaleMode;
@@ -571,9 +597,14 @@ const EditVideoInterface: React.FC = () => {
         const src = inputs['remove-bg'];
         if (!src) throw new Error('Please upload a video');
         const body: any = {};
-        if (String(src).startsWith('data:')) {
-          body.video = src; // validator uploads and sets video_url
+        // Use normalizedInput (data URI) if conversion succeeded, otherwise fall back to video_url
+        if (normalizedInput && normalizedInput.startsWith('data:')) {
+          body.video = normalizedInput; // validator uploads and sets video_url
+        } else if (String(src).startsWith('data:')) {
+          // Fallback: if original src is already a data URI, use it
+          body.video = src;
         } else {
+          // Use the absolute proxy URL (Zata URL) as fallback
           body.video_url = currentInput;
         }
         // BiRefNet parameters
