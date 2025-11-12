@@ -94,7 +94,6 @@ export const loadHistory = createAsyncThunk(
       const isCharacterModal = requestOrigin === 'character-modal';
       const expectedMatches = !expected || expected === currentType || (expected === 'logo' && currentType === 'logo-generation') || (expected === 'logo-generation' && currentType === 'logo') || isCharacterModal;
       if (!expectedMatches) {
-        try { console.log('[historySlice] loadHistory.abort-before-request: expectedType changed', { expected, currentType, debugTag }); } catch {}
         return rejectWithValue('__CONDITION_ABORT__');
       }
       const client = axiosInstance;
@@ -105,22 +104,38 @@ export const loadHistory = createAsyncThunk(
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       if (paginationParams?.limit) params.limit = paginationParams.limit;
       if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
-      // Sorting support
-      (params as any).sortBy = 'createdAt';
-      if ((filters as any)?.sortOrder) (params as any).sortOrder = (filters as any).sortOrder;
+  // Use optimized backend pagination defaults (createdAt DESC) by omitting sortBy/sortOrder
       // Serialize date range if present (ISO strings)
       if ((filters as any)?.dateRange && (filters as any).dateRange.start && (filters as any).dateRange.end) {
         const dr = (filters as any).dateRange as any;
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-      const res = await client.get('/api/generations', { params, signal });
-      const result = res.data?.data || { items: [], nextCursor: undefined };
+  // Always request createdAt sorting explicitly
+  params.sortBy = 'createdAt';
+  const res = await client.get('/api/generations', { params, signal });
+      let result = res.data?.data || { items: [], nextCursor: undefined };
+
+      // Fallback: if filtered request returned zero items and we used a generationType filter,
+      // avoid sending invalid synonyms. Only try removing the generationType filter once to broaden.
+      if (Array.isArray(result.items) && result.items.length === 0 && params.generationType) {
+        const removed = String(params.generationType);
+        try {
+          const broadParams = { ...params } as any;
+          delete broadParams.generationType;
+          broadParams.sortBy = 'createdAt';
+          const broadRes = await client.get('/api/generations', { params: broadParams, signal });
+          const broadData = broadRes.data?.data || { items: [], nextCursor: undefined };
+          if (Array.isArray(broadData.items) && broadData.items.length > 0) {
+            result = broadData;
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       // Normalize dates so UI always has a valid timestamp (ISO)
-      // Filter out failed generations
       const items = (result.items || [])
-        .filter((it: any) => it?.status !== 'failed') // Filter out failed generations
         .map((it: any) => {
           const created = it?.createdAt || it?.updatedAt || it?.timestamp;
           const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
@@ -132,17 +147,18 @@ export const loadHistory = createAsyncThunk(
           };
         });
       
-      // Backend returns hasMore (new) or we fallback to checking nextCursor (legacy)
-      const hasMore = result.hasMore !== undefined ? Boolean(result.hasMore) : Boolean(result.nextCursor);
+      // Backend returns hasMore (preferred). If absent, infer using RAW item count before filtering failures.
+      const requestedLimit = (paginationParams && paginationParams.limit) || 10;
+      const rawItemCount = Array.isArray(result.items) ? result.items.length : 0;
+      let hasMore: boolean;
+      if (result.hasMore !== undefined) {
+        hasMore = Boolean(result.hasMore);
+      } else {
+        // Legacy inference: if raw items met or exceeded limit AND nextCursor exists => more pages.
+        hasMore = rawItemCount >= requestedLimit && Boolean(result.nextCursor);
+      }
       const nextCursor = result.nextCursor;
-      
-      console.log('[loadHistory] Response:', { 
-        itemCount: items.length, 
-        hasMore, 
-        nextCursor: nextCursor ? (typeof nextCursor === 'number' ? `${nextCursor} (timestamp)` : `${nextCursor} (legacy)`) : null,
-        debugTag
-      });
-      
+
       return { entries: items, hasMore, nextCursor };
     } catch (error: any) {
       if (error === '__CONDITION_ABORT__' || (typeof error?.message === 'string' && error.message === '__CONDITION_ABORT__')) {
@@ -150,7 +166,6 @@ export const loadHistory = createAsyncThunk(
       }
       // If axios was aborted via signal, treat as silent
       if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
-        try { console.log('[historySlice] loadHistory.aborted', { debugTag }); } catch {}
         return rejectWithValue('__CONDITION_ABORT__');
       }
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load history');
@@ -174,7 +189,6 @@ export const loadHistory = createAsyncThunk(
         // Exception: character-modal requests can bypass this check
         const isCharacterModal = origin === 'character-modal';
         if (expected && expected !== currentType && !(expected === 'logo' && currentType === 'logo-generation') && !(expected === 'logo-generation' && currentType === 'logo') && !isCharacterModal) {
-          try { console.log('[historySlice] loadHistory.condition SKIP: expectedType changed (any-origin)', { origin, expected, currentType, debugTag }); } catch {}
           return false;
         }
         // Only gatekeep central-origin requests; page-origin always allowed
@@ -182,17 +196,14 @@ export const loadHistory = createAsyncThunk(
           // If filter is a specific generationType, ensure it matches current UI type
           if (fType) {
             if (fType !== currentType && !(fType === 'logo' && currentType === 'logo-generation') && !(fType === 'logo-generation' && currentType === 'logo')) {
-              console.log('[historySlice] loadHistory.condition SKIP central: type mismatch', { fType, currentType, debugTag });
               return false;
             }
           }
           // If filter is a video mode, ensure UI is on a video type
           if (fMode === 'video' && !isVideoType(currentType)) {
-            console.log('[historySlice] loadHistory.condition SKIP central: not on video type', { currentType, debugTag });
             return false;
           }
         }
-        console.log('[historySlice] loadHistory.condition OK', { origin, currentType, fType, fMode, expected, debugTag });
         return true;
       } catch {
         return true;
@@ -209,13 +220,14 @@ export const loadMoreHistory = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     try {
+      try { console.log('[INF_SCROLL] thunk:loadMoreHistory:invoke', { filters, limit: paginationParams?.limit }); } catch {}
       const state = getState() as { history: HistoryState };
       const currentEntries = state.history.entries;
       
       // Debug removed to reduce noise
       
-      // Get the last entry's timestamp and ID to use as cursor for next page
-      let cursor: { timestamp: string; id: string } | undefined;
+  // Get the last entry to compute nextCursor (timestamp-based)
+  let cursor: { timestamp: string; id: string } | undefined;
       if (currentEntries.length > 0) {
         const normalizeGenerationType = (type?: string): string => {
           if (!type || typeof type !== 'string') return '';
@@ -267,27 +279,33 @@ export const loadMoreHistory = createAsyncThunk(
       // Debug removed to reduce noise
       
       const client = axiosInstance;
-      const params: any = { limit: nextPageParams.limit };
+  const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
       if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
-      if (nextPageParams.cursor?.id) params.cursor = nextPageParams.cursor.id;
-      // Sorting support
-      (params as any).sortBy = 'createdAt';
-      if ((filters as any)?.sortOrder) (params as any).sortOrder = (filters as any).sortOrder;
+      // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
+      if (nextPageParams.cursor?.timestamp) {
+        try {
+          const millis = new Date(nextPageParams.cursor.timestamp).getTime();
+          if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
+        } catch {}
+      }
+      // Do NOT set sortBy/sortOrder so backend uses optimized index (createdAt DESC)
       if ((filters as any)?.dateRange && (filters as any).dateRange.start && (filters as any).dateRange.end) {
         const dr = (filters as any).dateRange as any;
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-      const res = await client.get('/api/generations', { params });
+  try { console.log('[INF_SCROLL] thunk:loadMoreHistory:api', { params }); } catch {}
+  // Always request createdAt sorting explicitly
+  params.sortBy = 'createdAt';
+  const res = await client.get('/api/generations', { params });
+  try { console.log('[INF_SCROLL] thunk:loadMoreHistory:api:done', { status: res?.status, count: (res?.data?.data?.items || []).length, nextCursor: res?.data?.data?.nextCursor }); } catch {}
       const result = res.data?.data || { items: [], nextCursor: undefined };
 
       // Normalize dates so UI always has a valid timestamp (ISO)
-      // Filter out failed generations
       const items = (result.items || [])
-        .filter((it: any) => it?.status !== 'failed') // Filter out failed generations
         .map((it: any) => {
           const created = it?.createdAt || it?.updatedAt || it?.timestamp;
           const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : undefined);
@@ -299,20 +317,30 @@ export const loadMoreHistory = createAsyncThunk(
           };
         });
       
-      // Backend returns hasMore (new) or we fallback to checking nextCursor (legacy)
-      const hasMore = result.hasMore !== undefined ? Boolean(result.hasMore) : Boolean(result.nextCursor);
+      // Backend returns hasMore (preferred). If absent, infer using RAW item count before filtering failures.
+      const requestedLimit = (paginationParams && paginationParams.limit) || 10;
+      const rawItemCount = Array.isArray(result.items) ? result.items.length : 0;
+      let hasMore: boolean;
+      if (result.hasMore !== undefined) {
+        hasMore = Boolean(result.hasMore);
+      } else {
+        hasMore = rawItemCount >= requestedLimit && Boolean(result.nextCursor);
+      }
       const nextCursor = result.nextCursor;
-      
-      console.log('[loadMoreHistory] Response:', { 
-        itemCount: items.length, 
-        hasMore, 
-        nextCursor: nextCursor ? (typeof nextCursor === 'number' ? `${nextCursor} (timestamp)` : `${nextCursor} (legacy)`) : null
-      });
-      
+
+      try {
+        console.log('[INF_SCROLL] thunk:loadMoreHistory:result', {
+          itemCount: items.length,
+          requestedLimit,
+          hasMore,
+          nextCursor: nextCursor ? (typeof nextCursor === 'number' ? `${nextCursor} (ts)` : `${nextCursor} (legacy)`) : null
+        })
+      } catch {}
+
       return { entries: items, hasMore, nextCursor };
     } catch (error) {
       // Keep error for visibility
-      console.error('❌ Load more history failed:', error);
+      try { console.error('[INF_SCROLL] thunk:loadMoreHistory:error', error); } catch {}
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to load more history');
     }
   },
@@ -324,14 +352,13 @@ export const loadMoreHistory = createAsyncThunk(
       const state = getState() as { history: HistoryState };
       const { loading, inFlight, hasMore } = state.history;
       if (loading || inFlight) {
-        try { console.log('[historySlice] loadMoreHistory.condition SKIP: already loading'); } catch {}
         return false;
       }
-      if (!hasMore) {
-        try { console.log('[historySlice] loadMoreHistory.condition SKIP: no more pages'); } catch {}
-        return false;
-      }
-      try { console.log('[historySlice] loadMoreHistory.condition OK'); } catch {}
+      // NOTE: do not gate loadMore by the stored `hasMore` flag alone.
+      // The stored `hasMore` value can become stale or conservative (we prefer letting the server
+      // decide). Allowing the thunk to run when callers request more makes pagination resilient
+      // to inconsistent backend semantics (e.g., always-returned nextCursor). The thunk itself
+      // (and the in-thunk pre-flight guard) prevents duplicate concurrent requests.
       return true;
     }
   }
@@ -342,15 +369,12 @@ const addAndSaveHistoryEntry = createAsyncThunk(
   'history/addAndSaveHistoryEntry',
   async (entry: Omit<HistoryEntry, 'id'>, { rejectWithValue }) => {
     try {
-      console.log('[historySlice] addAndSaveHistoryEntry', { generationType: entry.generationType, imageCount: entry.imageCount });
       // Start a generation history record in backend for consistency
       const res = await axiosInstance.post('/api/generations', entry as any);
       const id = res.data?.data?.historyId || res.data?.data?.item?.id || Date.now().toString();
       const savedEntry: HistoryEntry = { ...entry, id };
-      console.log('[historySlice] addAndSaveHistoryEntry success', { id, generationType: entry.generationType });
       return savedEntry;
     } catch (error) {
-      console.error('[historySlice] addAndSaveHistoryEntry failed', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to save history entry');
     }
   }
@@ -433,10 +457,7 @@ const historySlice = createSlice({
           state.currentRequestKey = JSON.stringify({ type: 'load', filters: pendingArg?.filters || {}, limit: pendingArg?.paginationParams?.limit || 10, cursor: pendingArg?.paginationParams?.cursor?.id });
         } catch { state.currentRequestKey = 'unknown'; }
         state.error = null;
-        try {
-          const pendingArg = (action as any)?.meta?.arg;
-          console.log('[historySlice] loadHistory.pending', { currentFilters: state.filters, pendingArg, debugTag: pendingArg?.debugTag });
-        } catch {}
+        // removed noisy console
       })
       .addCase(loadHistory.fulfilled, (state, action) => {
         state.loading = false;
@@ -471,18 +492,16 @@ const historySlice = createSlice({
           state.entries = state.entries.filter((it: any) => matchesType(it?.generationType));
         }
         
-        state.hasMore = action.payload.hasMore;
-        state.lastLoadedCount = action.payload.entries.length;
+          state.lastLoadedCount = action.payload.entries.length;
+          // Trust server hasMore when provided; if entries empty but server reports hasMore
+          // keep hasMore true to allow a user-triggered retry (prevents false terminal state).
+          if (action.payload.entries.length === 0) {
+            state.hasMore = Boolean(action.payload.hasMore);
+          } else {
+            state.hasMore = Boolean(action.payload.hasMore);
+          }
         state.error = null;
-        try {
-          const debugTag = (action as any)?.meta?.arg?.debugTag;
-          console.log('[historySlice] loadHistory.fulfilled', {
-            usedFilters,
-            received: action.payload.entries.length,
-            hasMore: state.hasMore,
-            debugTag
-          });
-        } catch {}
+        // removed noisy console
       })
       .addCase(loadHistory.rejected, (state, action) => {
         state.loading = false;
@@ -490,17 +509,10 @@ const historySlice = createSlice({
         state.currentRequestKey = null;
         if (action.payload === '__CONDITION_ABORT__') {
           // Silent abort due to navigation/type change; do not set error
-          try {
-            const debugTag = (action as any)?.meta?.arg?.debugTag;
-            console.log('[historySlice] loadHistory.rejected (silent abort)', { debugTag });
-          } catch {}
           return;
         }
         state.error = action.payload as string;
-        try {
-          const debugTag = (action as any)?.meta?.arg?.debugTag;
-          console.warn('[historySlice] loadHistory.rejected', { error: state.error, debugTag });
-        } catch {}
+        // removed noisy console
       })
       // Load more history
       .addCase(loadMoreHistory.pending, (state, action) => {
@@ -510,7 +522,7 @@ const historySlice = createSlice({
           const pendingArg = (action as any)?.meta?.arg;
           state.currentRequestKey = JSON.stringify({ type: 'loadMore', filters: pendingArg?.filters || {}, limit: pendingArg?.paginationParams?.limit || 10 });
         } catch { state.currentRequestKey = 'unknown'; }
-        try { console.log('[historySlice] loadMoreHistory.pending', { currentCount: state.entries.length, currentFilters: state.filters }); } catch {}
+        // removed noisy console
       })
       .addCase(loadMoreHistory.fulfilled, (state, action) => {
         state.loading = false;
@@ -538,23 +550,27 @@ const historySlice = createSlice({
           newEntries = newEntries.filter((it: any) => matchesType(it?.generationType));
         }
         
+        // Append only genuinely new entries
         state.entries.push(...newEntries);
-        state.hasMore = action.payload.hasMore;
+
+        // Respect server-declared hasMore. Do NOT force-stop on zero net-new entries.
+        // Zero-new can happen due to de-duplication or server-side filtering while still
+        // having additional pages available. We'll trust the backend signal here.
+        const serverHasMore = Boolean(action.payload.hasMore);
         state.lastLoadedCount = newEntries.length;
-        try {
-          console.log('[historySlice] loadMoreHistory.fulfilled', {
-            added: newEntries.length,
-            total: state.entries.length,
-            hasMore: state.hasMore
-          });
-        } catch {}
+        state.hasMore = serverHasMore;
+        // removed noisy console
       })
       .addCase(loadMoreHistory.rejected, (state, action) => {
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+        // Treat condition-based aborts as silent (do not surface as user-visible errors)
+        if (action.payload === '__CONDITION_ABORT__') {
+          return;
+        }
         state.error = action.payload as string;
-        try { console.warn('[historySlice] loadMoreHistory.rejected', { error: state.error }); } catch {}
+        // removed noisy console
       })
       // Add and save history entry
       .addCase(addAndSaveHistoryEntry.pending, (state) => {
@@ -563,17 +579,11 @@ const historySlice = createSlice({
       .addCase(addAndSaveHistoryEntry.fulfilled, (state, action) => {
         // Add the saved entry with Firebase ID to the beginning
         state.entries.unshift(action.payload);
-        try {
-          console.log('[historySlice] addAndSaveHistoryEntry.fulfilled', {
-            id: action.payload.id,
-            generationType: action.payload.generationType,
-            totalEntries: state.entries.length
-          });
-        } catch {}
+        // removed noisy console
       })
       .addCase(addAndSaveHistoryEntry.rejected, (state, action) => {
         state.error = action.payload as string;
-        try { console.warn('[historySlice] addAndSaveHistoryEntry.rejected', { error: state.error }); } catch {}
+        // removed noisy console
       });
   },
 });

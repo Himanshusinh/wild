@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
@@ -50,6 +52,13 @@ const nextConfig: NextConfig = {
       { source: '/HomePage', destination: '/view/HomePage' },
       { source: '/Landingpage', destination: '/view/Landingpage' },
     ];
+  },
+  // Remove all console.* calls in production automatically as a safeguard.
+  // We still explicitly strip calls in source, but this guarantees a clean build.
+  compiler: isDev ? undefined : {
+    removeConsole: {
+      exclude: ['error', 'warn']
+    }
   },
 };
 

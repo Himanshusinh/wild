@@ -10,6 +10,7 @@ import { bflGenerate, runwayVideo } from '@/store/slices/generationsApi';
 import { waitForRunwayVideoCompletion } from '@/lib/runwayVideoService';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { setFilters, clearHistory } from '@/store/slices/historySlice';
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 
 const AdGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -30,8 +31,7 @@ const AdGenerationInputBox: React.FC = () => {
   const hasMore = useAppSelector((state) => state.history.hasMore);
   const loading = useAppSelector((state) => state.history.loading);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const loadingMoreRef = useRef(false);
-  const hasUserScrolledRef = useRef(false);
+  const hasUserScrolledRef = useRef(false); // gating until user scrolls
   const loadLockRef = useRef(false);
 
   // Filter history for ad generation (read-only)
@@ -56,7 +56,13 @@ const AdGenerationInputBox: React.FC = () => {
     // Mark user scroll to prevent auto-triggering IO before user interacts
     const onScroll = () => { hasUserScrolledRef.current = true; };
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll as any);
+    window.addEventListener('wheel', onScroll, { passive: true });
+    window.addEventListener('touchmove', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll as any);
+      window.removeEventListener('wheel', onScroll as any);
+      window.removeEventListener('touchmove', onScroll as any);
+    };
   }, []);
 
   useEffect(() => {
@@ -75,51 +81,26 @@ const AdGenerationInputBox: React.FC = () => {
     })();
   }, [dispatch]);
 
-  useEffect(() => {
-    // IntersectionObserver-based infinite scroll
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMore) {
-        console.log('[Ad] IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('[Ad] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
-      console.log('[Ad] IO: loadMore start', { hasMore });
-      
+  // Standardized infinite scroll using shared hook
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } })).unwrap();
-        console.log('[Ad] IO: loadMore success');
       } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Ad] IO: loadMore skipped - no more pages');
-        } else {
-          console.error('[Ad] IO: loadMore error', e);
-        }
-      } finally {
-        loadingMoreRef.current = false;
+        // Only log a compact INF_SCROLL-tagged error; hook already logs lifecycle
+        console.log('[INF_SCROLL] ad loadMore error', e?.message || e);
       }
-    }, { root: null, threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Ad] IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Ad] IO: observer disconnected');
-    };
-  }, [hasMore, loading, dispatch]);
+    },
+    hasMore,
+    loading,
+    {
+      root: null,
+      rootMargin: '0px 0px 400px 0px',
+      threshold: 0.1,
+      requireUserScrollRef: hasUserScrolledRef,
+    }
+  );
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -295,11 +276,7 @@ const AdGenerationInputBox: React.FC = () => {
     element.style.height = Math.min(element.scrollHeight, 96) + 'px';
   };
 
-  const loadMoreHistoryHandler = () => {
-    if (!loading && hasMore) {
-      dispatch(loadMoreHistory({ filters: { generationType: 'ad-generation' } }));
-    }
-  };
+  // Removed local loadMoreHistoryHandler in favor of standardized hook logic.
 
   return (
     <>

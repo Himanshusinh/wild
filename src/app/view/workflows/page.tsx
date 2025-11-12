@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import SidePannelFeatures from '../Generation/Core/SidePannelFeatures';
-import Nav from '../Generation/Core/Nav';
+// Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header';
 import TemplateGrid from './compo/TemplateGrid';
 import FooterNew from '../core/FooterNew';
@@ -34,23 +33,8 @@ const WorkflowsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#07070B]">
-      {/* Navigation - fixed at top */}
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <Nav />
-      </div>
-
-      {/* Main layout - side panel + content area */}
-      <div className="flex pt-10"> {/* pt-[80px] to account for fixed nav */}
-        {/* Side Panel - fixed width */}
-        <div className="w-[68px] flex-shrink-0">
-          <SidePannelFeatures 
-            currentView={currentView}
-            onViewChange={handleViewChange}
-            onGenerationTypeChange={handleGenerationTypeChange}
-          />
-        </div>
-
-        {/* Main Content Area - takes remaining width */}
+      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
+      <div className="flex pt-10 ml-[68px]"> {/* spacing to account for persistent Nav + SidePanel */}
         <div className="flex-1 min-w-0">
           <Header 
             activeCategory={activeCategory}

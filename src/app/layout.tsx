@@ -8,6 +8,8 @@ import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import ToastMount from './toast-mount'
 import ConsoleSilencer from "@/components/ConsoleSilencer";
+import Nav from './view/Generation/Core/Nav'
+import SidePannelFeatures from './view/Generation/Core/SidePannelFeatures'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,6 +72,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ReduxProvider>
           <AuthBootstrap />
           <ConsoleSilencer />
+          {/* Persistent UI: keep Nav and SidePanel mounted at the root so they don't remount on route changes */}
+          <Nav />
+          <SidePannelFeatures />
           {children}
           <Toaster
             position="top-center"

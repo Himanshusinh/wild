@@ -126,16 +126,32 @@ export function useInfiniteGenerations(
         // Handle different response formats
         const newItems = result.data?.items || result.items || [];
         const newNextCursor = result.data?.nextCursor ?? result.nextCursor ?? null;
-        const newHasMore = result.data?.hasMore ?? result.hasMore ?? false;
+
+        // Determine hasMore robustly:
+        // 1. If server provided an explicit boolean flag, trust it.
+        // 2. Otherwise, infer: if returned items.length < requested limit => no more pages.
+        //    If items.length >= limit then require nextCursor to be present to consider there are more pages.
+        const serverHasMore = result.data?.hasMore ?? result.hasMore;
+        let inferredHasMore: boolean;
+        if (typeof serverHasMore === 'boolean') {
+          inferredHasMore = serverHasMore;
+        } else {
+          const itemsCount = Array.isArray(newItems) ? newItems.length : 0;
+          if (itemsCount < limit) {
+            inferredHasMore = false;
+          } else {
+            inferredHasMore = Boolean(newNextCursor);
+          }
+        }
 
         if (isRefresh) {
           setItems(newItems);
         } else {
           setItems((prev) => [...prev, ...newItems]);
         }
-        
+
         setNextCursor(newNextCursor);
-        setHasMore(newHasMore);
+        setHasMore(inferredHasMore);
       } catch (err) {
         console.error("[useInfiniteGenerations] Error fetching generations:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch generations");
@@ -237,4 +253,174 @@ export function useInfiniteScrollObserver(
   }, [fetchMore, hasMore, loading]);
 
   return observerRef;
+}
+
+/**
+ * Attach an IntersectionObserver to an existing ref (sentinel) and call loadMore when needed.
+ * This is a small utility to standardize the "hasMore-first" + local-busy + optional user-scroll gating
+ */
+export function useIntersectionObserverForRef(
+  sentinelRef: React.RefObject<HTMLElement | null>,
+  loadMore: () => Promise<void>,
+  hasMore: boolean,
+  loading: boolean,
+  options?: {
+    root?: Element | null;
+    rootMargin?: string;
+    threshold?: number | number[];
+    // If true, skip checking the `hasMore` flag and always attempt to load when intersecting.
+    // Use this only when the caller knows the server may return inconsistent `hasMore` values
+    // and wants to rely on the thunk's internal guards instead.
+    ignoreHasMore?: boolean;
+    requireUserScrollRef?: React.RefObject<boolean>;
+    // Optional debug event sink to visualize IO behavior without using console
+    onEvent?: (evt: {
+      type: 'observe' | 'intersect' | 'skip' | 'load-start' | 'load-end' | 'disconnect' | 'scroll-resume';
+      detail?: any;
+      ts: number;
+    }) => void;
+  }
+) {
+  const loadingMoreRef = useRef(false);
+  // Keep latest values in refs to avoid recreating the observer too often
+  const latestLoadMoreRef = useRef(loadMore);
+  const latestHasMoreRef = useRef(hasMore);
+  const latestLoadingRef = useRef(loading);
+  const latestOnEventRef = useRef(options?.onEvent);
+  const latestRequireUserScrollRef = useRef(options?.requireUserScrollRef);
+  const lastIntersectingRef = useRef(false);
+  const lastLoadAtRef = useRef(0);
+
+  // Update refs each render
+  useEffect(() => { latestLoadMoreRef.current = loadMore; }, [loadMore]);
+  useEffect(() => { latestHasMoreRef.current = hasMore; }, [hasMore]);
+  useEffect(() => { latestLoadingRef.current = loading; }, [loading]);
+  useEffect(() => { latestOnEventRef.current = options?.onEvent; }, [options?.onEvent]);
+  useEffect(() => { latestRequireUserScrollRef.current = options?.requireUserScrollRef; }, [options?.requireUserScrollRef]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+  const { root = null, rootMargin = '0px 0px 200px 0px', threshold = 0.1 } = options || {};
+
+  try { latestOnEventRef.current && latestOnEventRef.current({ type: 'observe', ts: Date.now(), detail: { rootSet: Boolean(root), rootMargin, threshold } }); } catch {}
+  try { console.log('[INF_SCROLL] observe', { rootSet: Boolean(root), rootMargin, threshold }); } catch {}
+
+    const observer = new IntersectionObserver(async (entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) {
+        lastIntersectingRef.current = false;
+        return;
+      }
+      lastIntersectingRef.current = true;
+      try { latestOnEventRef.current && latestOnEventRef.current({ type: 'intersect', ts: Date.now(), detail: { isIntersecting: entry.isIntersecting, ratio: entry.intersectionRatio } }); } catch {}
+      try { console.log('[INF_SCROLL] intersect', { ratio: entry.intersectionRatio }); } catch {}
+      const requireUserScrollRef = latestRequireUserScrollRef.current;
+      if (requireUserScrollRef && !requireUserScrollRef.current) {
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'skip', ts: Date.now(), detail: { reason: 'user-not-scrolled' } }); } catch {}
+        try { console.log('[INF_SCROLL] skip', { reason: 'user-not-scrolled' }); } catch {}
+        return;
+      }
+
+  // Check hasMore first to avoid extra requests unless caller opted out
+  const hasMoreNow = latestHasMoreRef.current;
+  const loadingNow = latestLoadingRef.current;
+  const ignoreHasMore = Boolean(options?.ignoreHasMore);
+  if (!ignoreHasMore && !hasMoreNow) {
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'skip', ts: Date.now(), detail: { reason: 'no-more' } }); } catch {}
+        try { console.log('[INF_SCROLL] skip', { reason: 'no-more' }); } catch {}
+        return;
+      }
+
+      // Cooldown to avoid bursts (e.g., many wheel events): 700ms
+      const now = Date.now();
+      if (now - lastLoadAtRef.current < 700) {
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'skip', ts: now, detail: { reason: 'cooldown' } }); } catch {}
+        try { console.log('[INF_SCROLL] skip', { reason: 'cooldown' }); } catch {}
+        return;
+      }
+
+      if (loadingNow || loadingMoreRef.current) {
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'skip', ts: Date.now(), detail: { reason: 'busy', loading: loadingNow, localBusy: loadingMoreRef.current } }); } catch {}
+        try { console.log('[INF_SCROLL] skip', { reason: 'busy', loading: loadingNow, localBusy: loadingMoreRef.current }); } catch {}
+        return;
+      }
+
+      loadingMoreRef.current = true;
+      lastLoadAtRef.current = now;
+      try { latestOnEventRef.current && latestOnEventRef.current({ type: 'load-start', ts: Date.now() }); } catch {}
+      try { console.log('[INF_SCROLL] load-start'); } catch {}
+      try {
+        await latestLoadMoreRef.current();
+      } catch (e) {
+        // swallow - caller may log
+      } finally {
+        loadingMoreRef.current = false;
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'load-end', ts: Date.now() }); } catch {}
+        try { console.log('[INF_SCROLL] load-end'); } catch {}
+      }
+    }, { root, rootMargin, threshold });
+
+    observer.observe(el);
+
+    // If user-scroll gating is enabled, listen to scroll on root/window and
+    // retry load if sentinel is already intersecting and user has scrolled.
+    const requireUserScrollRef = latestRequireUserScrollRef.current;
+    const onScrollResume = async () => {
+      try { console.log('[INF_SCROLL] user-scroll'); } catch {}
+      const hasUserScrolled = !!requireUserScrollRef?.current;
+      const intersectingNow = lastIntersectingRef.current;
+      const hasMoreNow = latestHasMoreRef.current;
+      const loadingNow = latestLoadingRef.current;
+      if (hasUserScrolled && intersectingNow) {
+        if (!Boolean(options?.ignoreHasMore) && !hasMoreNow) return;
+        // cooldown
+        const now = Date.now();
+        if (now - lastLoadAtRef.current < 700) return;
+        if (loadingNow || loadingMoreRef.current) return;
+        loadingMoreRef.current = true;
+        lastLoadAtRef.current = now;
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'scroll-resume', ts: Date.now() }); } catch {}
+        try { console.log('[INF_SCROLL] scroll-resume'); } catch {}
+        try { latestOnEventRef.current && latestOnEventRef.current({ type: 'load-start', ts: Date.now() }); } catch {}
+        try { console.log('[INF_SCROLL] load-start'); } catch {}
+        try {
+          await latestLoadMoreRef.current();
+        } finally {
+          loadingMoreRef.current = false;
+          try { latestOnEventRef.current && latestOnEventRef.current({ type: 'load-end', ts: Date.now() }); } catch {}
+          try { console.log('[INF_SCROLL] load-end'); } catch {}
+        }
+      }
+    };
+    const rootEl = root as Element | null;
+    if (requireUserScrollRef) {
+      // listen to BOTH window and root, for scroll/wheel/touchmove
+      window.addEventListener('scroll', onScrollResume as any, { passive: true } as any);
+      window.addEventListener('wheel', onScrollResume as any, { passive: true } as any);
+      window.addEventListener('touchmove', onScrollResume as any, { passive: true } as any);
+      if (rootEl) {
+        rootEl.addEventListener('scroll', onScrollResume as any, { passive: true } as any);
+        rootEl.addEventListener('wheel', onScrollResume as any, { passive: true } as any);
+        rootEl.addEventListener('touchmove', onScrollResume as any, { passive: true } as any);
+      }
+    }
+
+    return () => {
+      try { observer.disconnect(); } catch { }
+      try { latestOnEventRef.current && latestOnEventRef.current({ type: 'disconnect', ts: Date.now() }); } catch {}
+      try { console.log('[INF_SCROLL] disconnect'); } catch {}
+      if (requireUserScrollRef) {
+        window.removeEventListener('scroll', onScrollResume as any);
+        window.removeEventListener('wheel', onScrollResume as any);
+        window.removeEventListener('touchmove', onScrollResume as any);
+        if (rootEl) {
+          rootEl.removeEventListener('scroll', onScrollResume as any);
+          rootEl.removeEventListener('wheel', onScrollResume as any);
+          rootEl.removeEventListener('touchmove', onScrollResume as any);
+        }
+      }
+    };
+  // Only recreate when the element or core IO settings change
+  }, [sentinelRef, options?.root, options?.rootMargin, options?.threshold]);
 }

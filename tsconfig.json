@@ -23,5 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/view/pricing/compo/FAQs.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/utils/__tests__/**"]
 }

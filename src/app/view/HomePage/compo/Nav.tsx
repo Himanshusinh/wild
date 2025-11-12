@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../../../lib/firebase'
 import { imageRoutes } from '../routes'
+import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy'
 
 interface UserData {
   uid: string
@@ -55,6 +56,8 @@ const Nav = () => {
       return stored ? stored === 'true' : false
     } catch { return false }
   })
+  const [canTogglePublic, setCanTogglePublic] = useState<boolean>(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -74,11 +77,20 @@ const Nav = () => {
   const user = await getMeCached()
         setUserData(user || null)
         
+        // Get public policy from user data
+        const policy = getPublicPolicyFromUser(user);
+        setCanTogglePublic(policy.canToggle);
+        
         try {
           const stored = localStorage.getItem('isPublicGenerations')
           const server = (user && (user as any).isPublic)
           const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false)
-          setIsPublic(next)
+          // If user is restricted (cannot toggle), force to true
+          if (!policy.canToggle) {
+            setIsPublic(true);
+          } else {
+            setIsPublic(next);
+          }
         } catch { }
 
         // Fetch credits/token balance
@@ -314,23 +326,44 @@ const Nav = () => {
 
                   {/* Make generations public toggle */}
                   <div className='flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors'>
-                    <span className='text-white text-sm'>Make generations public</span>
-                    <button
-                      type='button'
-                      aria-pressed={isPublic}
-                      onClick={async () => {
-                        const next = !isPublic
-                        setIsPublic(next)
-                        try {
-                          const api = getApiClient()
-                          await api.patch('/api/auth/me', { isPublic: next })
-                        } catch {}
-                        try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
-                      }}
-                      className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'}`}
-                    >
-                      <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0 left-0.5`} />
-                    </button>
+                    <span className='text-white text-sm'>
+                      Make generations public
+                      {!canTogglePublic && <span className="ml-1 text-xs">🔒</span>}
+                    </span>
+                    <div className="relative group">
+                      <button
+                        type='button'
+                        aria-pressed={isPublic}
+                        disabled={!canTogglePublic}
+                        onClick={async () => {
+                          if (!canTogglePublic) {
+                            setShowUpgradeModal(true);
+                            return;
+                          }
+                          const next = !isPublic
+                          setIsPublic(next)
+                          try {
+                            const api = getApiClient()
+                            await api.patch('/api/auth/me', { isPublic: next })
+                          } catch {}
+                          try { localStorage.setItem('isPublicGenerations', String(next)) } catch {}
+                        }}
+                        className={`w-10 h-5 rounded-full transition-colors ${
+                          !canTogglePublic 
+                            ? 'bg-white/20 cursor-not-allowed opacity-60' 
+                            : isPublic 
+                              ? 'bg-blue-500' 
+                              : 'bg-white/20'
+                        }`}
+                      >
+                        <span className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'} relative top-0 left-0.5`} />
+                      </button>
+                      {!canTogglePublic && (
+                        <div className="absolute hidden group-hover:block bottom-full right-0 mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50">
+                          Upgrade to Plan C or D for private generations
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Account Settings */}
@@ -360,6 +393,42 @@ const Nav = () => {
           )}
         </div>
       </div>
+      
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-[#0F1419] rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🔒</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Want Private Generations?
+              </h3>
+              <p className="text-gray-300 text-sm mb-6">
+                Your plan requires all generations to be public. Upgrade to Plan C or D for private generations.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors font-medium text-sm text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpgradeModal(false);
+                    router.push('/view/pricing');
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors font-medium text-sm text-white"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
