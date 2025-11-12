@@ -2850,7 +2850,7 @@ const InputBox = () => {
       />
 
       {/* Debug overlay – appears only when localStorage.wild_debug === '1' */}
-      <InfiniteScrollDebugOverlay
+      {/* <InfiniteScrollDebugOverlay
         hasMore={hasMore}
         loading={loading}
         totalCount={(historyEntries?.length || 0) + (localGeneratingEntries?.length || 0)}
@@ -2858,7 +2858,7 @@ const InputBox = () => {
         containerRef={scrollRootRef as any}
         sentinelRef={sentinelRef as any}
         events={ioEventsRef.current}
-      />
+      /> */}
 
       {/* Character Modal */}
       <CharacterModal

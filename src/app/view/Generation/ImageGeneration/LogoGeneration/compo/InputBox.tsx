@@ -37,6 +37,7 @@ const addHistoryEntry = (_: any) => ({ type: "history/noop" } as any);
 import ModelsDropdown from "./ModelsDropdown";
 import LogoCountDropdown from "./LogoCountDropdown";
 import LogoImagePreview from "./LogoImagePreview";
+import { useIntersectionObserverForRef } from "@/hooks/useInfiniteGenerations";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();

@@ -36,6 +36,7 @@ const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 import ModelsDropdown from './ModelsDropdown';
 import StickerCountDropdown from './StickerCountDropdown';
 import StickerImagePreview from './StickerImagePreview';
+import { useIntersectionObserverForRef } from "@/hooks/useInfiniteGenerations";
 // Replaced custom loader with Logo.gif
 
 const InputBox = () => {

@@ -43,6 +43,7 @@ import ProductImagePreview from './ProductImagePreview';
 import GenerationModeDropdown from './GenerationModeDropdown';
 import { getApiClient } from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
+import { useIntersectionObserverForRef } from "@/hooks/useInfiniteGenerations";
 
 const ProductWithModelPoseInputBox = () => {
   const dispatch = useAppDispatch();
