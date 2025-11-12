@@ -123,6 +123,20 @@ const SidePannelFeatures = ({ onViewChange, onGenerationTypeChange }: SidePannel
         
         <div>
             <div 
+                onClick={() => handleGenerationTypeChange('edit-video')}
+                className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
+                  (pathname === '/edit-video' || pathname?.startsWith('/edit-video') || pathname?.includes('/EditVideo') || pathname?.includes('edit-video')) ? 'bg-white/10' : ''
+                }`}
+            >
+                <div className="w-[30px] h-[30px] bg-white/20 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-xs">🎬</span>
+                </div>
+                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Edit</span>
+            </div>
+        </div>
+        
+        <div>
+            <div 
                 onClick={() => handleGenerationTypeChange('text-to-music')}
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item ${
                   (pathname?.includes('/text-to-music')) ? 'bg-white/10' : ''

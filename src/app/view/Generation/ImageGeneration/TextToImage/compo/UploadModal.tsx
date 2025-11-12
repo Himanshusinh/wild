@@ -15,7 +15,7 @@ type UploadModalProps = {
 };
 
 const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
-  const [tab, setTab] = React.useState<'library' | 'computer'>('library');
+  const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
@@ -29,10 +29,37 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
     }
   }, [isOpen]);
 
+  // Filter history entries based on selected tab
+  const getFilteredHistoryEntries = () => {
+    if (tab === 'uploads') {
+      // Filter to show only user uploads - show entries that have inputImages or inputVideos
+      return historyEntries
+        .map((entry: any) => {
+          const inputImagesArr = (((entry as any).inputImages) || []) as any[];
+          const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
+          
+          // If no user uploads, skip this entry
+          if (inputImagesArr.length === 0 && inputVideosArr.length === 0) return null;
+          
+          // Return entry with inputImages and inputVideos as the media to display
+          return {
+            ...entry,
+            images: inputImagesArr,
+            videos: inputVideosArr,
+          };
+        })
+        .filter((entry: any) => entry !== null && ((entry.images && entry.images.length > 0) || ((entry as any).videos && (entry as any).videos.length > 0)));
+    }
+    // For 'library' tab, return all entries as-is
+    return historyEntries;
+  };
+
+  const filteredHistoryEntries = getFilteredHistoryEntries();
+
   if (!isOpen) return null;
 
   const handleAdd = () => {
-    if (tab === 'library') {
+    if (tab === 'library' || tab === 'uploads') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) onAdd(chosen);
       setSelection(new Set());
@@ -52,15 +79,21 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2">
               <button className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
+              <button className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'uploads' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('uploads')}>Your Uploads</button>
               <button className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
             </div>
             <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
           </div>
 
           <div className="p-4">
-            {tab === 'library' ? (
+            {tab === 'library' || tab === 'uploads' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3 ">Select up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
+                <div className="text-white/70 text-sm mb-3 ">
+                  {tab === 'uploads' 
+                    ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
+                    : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
+                  }
+                </div>
                 <div
                   ref={listRef}
                   onScroll={(e) => {
@@ -71,7 +104,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {historyEntries.flatMap((entry: any) => ((entry?.images || []).map((im: any) => ({ entry, im })))).map(({ entry, im }: any) => {
+                  {filteredHistoryEntries.flatMap((entry: any) => {
+                    // Include both images and videos for user uploads
+                    const mediaItems = [
+                      ...((entry?.images || []) as any[]),
+                      ...(((entry as any)?.videos || []) as any[]),
+                    ];
+                    return mediaItems.map((im: any) => ({ entry, im }));
+                  }).map(({ entry, im }: any) => {
                     const selected = selection.has(im.url);
                     const key = `${entry.id}-${im.id}`;
                     return (
@@ -80,7 +120,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                         if (selected) next.delete(im.url); else next.add(im.url);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        <Image src={im.thumbnailUrl || im.avifUrl || im.url} alt="library" fill className="object-cover" />
+                        <Image src={im.thumbnailUrl || im.avifUrl || im.url} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>

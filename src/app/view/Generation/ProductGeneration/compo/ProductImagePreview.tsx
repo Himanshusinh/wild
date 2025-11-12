@@ -28,6 +28,13 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
+  // Local state to track the current entry (updated after deletion)
+  const [currentEntry, setCurrentEntry] = useState<HistoryEntry>(entry);
+  
+  // Update currentEntry when entry prop changes
+  React.useEffect(() => {
+    setCurrentEntry(entry);
+  }, [entry.id, entry.images?.length]);
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -41,7 +48,9 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
   
   if (!isOpen) return null;
 
-  const selectedImage = entry.images[selectedImageIndex];
+  // Use currentEntry instead of entry so gallery updates after deletion
+  const entryToUse = currentEntry || entry;
+  const selectedImage = entryToUse.images[selectedImageIndex];
   
   // Update isPublicFlag based on selected image
   React.useEffect(() => {
@@ -158,8 +167,14 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
     const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, [isFsOpen]);
-  const goPrev = React.useCallback(() => { setSelectedImageIndex((idx)=>{ const total=(entry.images||[]).length; if(total<=1) return idx; return (idx-1+total)%total; }); }, [entry.images]);
-  const goNext = React.useCallback(() => { setSelectedImageIndex((idx)=>{ const total=(entry.images||[]).length; if(total<=1) return idx; return (idx+1)%total; }); }, [entry.images]);
+  const goPrev = React.useCallback(() => { 
+    const entryToUse = currentEntry || entry;
+    setSelectedImageIndex((idx)=>{ const total=(entryToUse.images||[]).length; if(total<=1) return idx; return (idx-1+total)%total; }); 
+  }, [currentEntry, entry]);
+  const goNext = React.useCallback(() => { 
+    const entryToUse = currentEntry || entry;
+    setSelectedImageIndex((idx)=>{ const total=(entryToUse.images||[]).length; if(total<=1) return idx; return (idx+1)%total; }); 
+  }, [currentEntry, entry]);
   const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault(); e.stopPropagation(); if (!fsContainerRef.current) return;
     if (fsScale <= fsFitScale + 0.001) { if (wheelNavCooldown.current) return; const dy=e.deltaY||0; const dx=e.deltaX||0; const d=Math.abs(dy)>Math.abs(dx)?dy:dx; if (d>20) goNext(); else if (d<-20) goPrev(); wheelNavCooldown.current=true; setTimeout(()=>{wheelNavCooldown.current=false;},250); return; }
@@ -194,13 +209,49 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
 
   const handleDelete = async () => {
     try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
-      onClose();
+      const imageToDelete = selectedImage;
+      if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
+      
+      // Get the current images - use entryToUse to get the most up-to-date images
+      const entryToUse = currentEntry || entry;
+      const currentImages = Array.isArray(entryToUse.images) ? entryToUse.images : [];
+      const remainingImages = currentImages.filter((img: any) => {
+        // Match by id, url, or storagePath
+        const matchesId = imageToDelete?.id && img.id === imageToDelete.id;
+        const matchesUrl = imageToDelete?.url && img.url === imageToDelete.url;
+        const matchesStoragePath = (imageToDelete as any)?.storagePath && img.storagePath === (imageToDelete as any).storagePath;
+        return !(matchesId || matchesUrl || matchesStoragePath);
+      });
+      
+      // If this is the last image, delete the entire entry
+      if (remainingImages.length === 0) {
+        await axiosInstance.delete(`/api/generations/${entry.id}`);
+        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        onClose();
+      } else {
+        // Otherwise, update the entry to remove just this image
+        await axiosInstance.patch(`/api/generations/${entry.id}`, {
+          images: remainingImages
+        });
+        // Update Redux store with the new images array
+        try {
+          dispatch(updateHistoryEntry({ id: entry.id, updates: { images: remainingImages } as any }));
+        } catch {}
+        // Update local entry state so the gallery updates immediately
+        setCurrentEntry({ ...entry, images: remainingImages } as any);
+        // Adjust the selected index - if we deleted the last image, go to the previous one
+        // If we deleted a middle image, stay at the same index (which will now show the next image)
+        const newIndex = Math.min(selectedImageIndex, remainingImages.length - 1);
+        if (newIndex >= 0 && newIndex < remainingImages.length) {
+          setSelectedImageIndex(newIndex);
+        } else {
+          // Shouldn't happen, but close if somehow no valid index
+          onClose();
+        }
+      }
     } catch (e) {
       console.error('Delete failed:', e);
-      alert('Failed to delete generation');
+      alert('Failed to delete image');
     }
   };
 
@@ -391,11 +442,11 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             </div>
 
             {/* Gallery */}
-            {entry.images.length > 1 && (
+            {entryToUse.images.length > 1 && (
               <div className="mb-4">
-                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Products ({entry.images.length})</div>
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Products ({entryToUse.images.length})</div>
                 <div className="grid grid-cols-4 gap-2">
-                  {entry.images.map((image, index) => (
+                  {entryToUse.images.map((image, index) => (
                     <button
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
@@ -429,7 +480,7 @@ const ProductImagePreview: React.FC<ProductImagePreviewProps> = ({
             <div className="absolute top-3 right-4 z-[90]">
               <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
             </div>
-            {(entry.images.length > 1) && (<>
+            {(entryToUse.images.length > 1) && (<>
               <button aria-label="Previous image" onClick={(e)=>{e.stopPropagation(); goPrev();}} onMouseDown={(e)=>e.stopPropagation()} type="button" className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
               <button aria-label="Next image" onClick={(e)=>{e.stopPropagation(); goNext();}} onMouseDown={(e)=>e.stopPropagation()} type="button" className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg></button>
             </>)}

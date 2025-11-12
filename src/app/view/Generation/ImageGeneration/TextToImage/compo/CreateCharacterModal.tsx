@@ -139,10 +139,30 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
       if (!result.images || result.images.length === 0) throw new Error("No character image generated");
 
+      // Wait a bit for Zata upload to complete, then fetch the updated history entry
+      // This ensures we get the Zata URL instead of the provider URL
+      let characterImageUrl = result.images[0].url;
+      try {
+        // Wait 2 seconds for background Zata upload
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Fetch the updated history entry to get Zata URL
+        if (result.historyId) {
+          const historyResponse = await api.get(`/api/generations/${result.historyId}`);
+          const historyEntry = historyResponse.data?.data || historyResponse.data;
+          if (historyEntry?.images?.[0]?.url) {
+            characterImageUrl = historyEntry.images[0].url;
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Failed to fetch updated history entry, using provider URL:', fetchErr);
+        // Continue with provider URL if fetch fails
+      }
+
       const character: Character = {
         id: result.historyId || `char-${Date.now()}`,
         name: name.trim(),
-        frontImageUrl: result.images[0].url,
+        frontImageUrl: characterImageUrl, // Use Zata URL if available
         leftImageUrl: leftImage || undefined,
         rightImageUrl: rightImage || undefined,
         createdAt: new Date().toISOString(),

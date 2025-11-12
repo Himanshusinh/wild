@@ -21,8 +21,11 @@ import {
   loadHistory,
   clearHistory,
   clearFilters,
+  removeHistoryEntry,
 } from "@/store/slices/historySlice";
-import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import axiosInstance from "@/lib/axiosInstance";
+import { Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -115,6 +118,21 @@ const InputBox = () => {
       try { 
         (await import('react-hot-toast')).default.error('Failed to copy'); 
       } catch {} 
+    }
+  };
+
+  // Delete handler - same logic as ImagePreviewModal
+  const handleDeleteImage = async (e: React.MouseEvent, entry: HistoryEntry) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      toast.success('Image deleted');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Failed to delete generation');
     }
   };
 
@@ -501,9 +519,9 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                               sizes="192px" 
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                            {/* Hover copy button overlay */}
-                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-full bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                            {/* Hover buttons overlay */}
+                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(localGeneratingEntries[0].prompt))} onMouseDown={(e) => e.stopPropagation()}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                               </button>
                             </div>
@@ -657,10 +675,18 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                               }}
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                            {/* Hover copy button overlay */}
-                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-full bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                            {/* Hover buttons overlay */}
+                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                              </button>
+                              <button
+                                aria-label="Delete image"
+                                className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                onClick={(e) => handleDeleteImage(e, entry)}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </div>

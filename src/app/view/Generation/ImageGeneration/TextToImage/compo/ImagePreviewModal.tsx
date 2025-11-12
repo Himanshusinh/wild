@@ -28,7 +28,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (urlOrPath.startsWith(ZATA_PREFIX)) {
       return urlOrPath.substring(ZATA_PREFIX.length);
     }
-    return urlOrPath;
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), return empty to indicate they should be used directly
+    return '';
   }, []);
 
   const toProxyResourceUrl = React.useCallback((urlOrPath: string | undefined) => {
@@ -44,6 +47,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
+  // Local state to track the current entry (updated after deletion)
+  const [currentEntry, setCurrentEntry] = React.useState<HistoryEntry | null>(preview?.entry || null);
+  
+  // Update currentEntry when preview changes
+  React.useEffect(() => {
+    if (preview?.entry) {
+      setCurrentEntry(preview.entry);
+    }
+  }, [preview?.entry?.id, preview?.entry?.images?.length]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -122,13 +134,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [isFsOpen]);
 
   // Build gallery from images in the SAME ENTRY (same generation run)
+  // Use currentEntry instead of preview.entry so it updates after deletion
   const sameDateGallery = React.useMemo(() => {
     try {
-      if (!preview?.entry) return [] as Array<{ entry: any, image: any }>;
-      const imgs = (preview.entry as any)?.images || [];
-      return imgs.map((im: any) => ({ entry: preview.entry, image: im }));
+      const entryToUse = currentEntry || preview?.entry;
+      if (!entryToUse) return [] as Array<{ entry: any, image: any }>;
+      const imgs = (entryToUse as any)?.images || [];
+      return imgs.map((im: any) => ({ entry: entryToUse, image: im }));
     } catch { return []; }
-  }, [preview]);
+  }, [currentEntry, preview]);
 
   const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
     try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
@@ -322,8 +336,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   // Helper to get media proxy URL
   const toMediaProxyUrl = React.useCallback((urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    // If it's already a full HTTP/HTTPS URL (external), use it directly
+    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+      return urlOrPath;
+    }
     const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+    // If path is empty, it means it's not a Zata URL - use original URL directly
+    if (!path) return urlOrPath;
+    // For Zata paths, use proxy
+    return `/api/proxy/media/${encodeURIComponent(path)}`;
   }, [toProxyPath]);
 
   React.useEffect(() => {
@@ -336,18 +358,30 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
         const selectedImage = selectedPair.image || preview.image;
-        // Use media proxy like SmartImage does (more reliable than resource proxy)
-        const url = toMediaProxyUrl(selectedImage?.url || preview.image.url);
+        const imageUrl = selectedImage?.url || preview.image.url;
+        if (!imageUrl) return;
+        
+        // Use media proxy for Zata URLs, direct URL for external URLs (FAL, etc.)
+        const url = toMediaProxyUrl(imageUrl);
         if (!url) return;
+        
+        // For external URLs (FAL), use CORS mode; for proxy URLs, use credentials
+        const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
         const res = await fetch(url, {
-          credentials: 'include'
+          credentials: isExternalUrl ? 'omit' : 'include',
+          mode: isExternalUrl ? 'cors' : 'same-origin'
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.warn('[ImagePreviewModal] Failed to fetch image:', url, res.status);
+          return;
+        }
         const blob = await res.blob();
         const obj = URL.createObjectURL(blob);
         revoke = obj;
         setObjectUrl(obj);
-      } catch {}
+      } catch (err) {
+        console.error('[ImagePreviewModal] Error loading image:', err);
+      }
     };
     run();
     return () => {
@@ -371,13 +405,51 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const handleDelete = async () => {
     try {
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${preview.entry.id}`);
-      try { dispatch(removeHistoryEntry(preview.entry.id)); } catch {}
-      onClose();
+      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+      const imageToDelete = selectedPair.image || preview?.image;
+      const entry = selectedPair.entry || preview?.entry;
+      
+      if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
+      
+      // Get the current entry to check how many images it has
+      const currentImages = Array.isArray((entry as any)?.images) ? (entry as any).images : [];
+      const remainingImages = currentImages.filter((img: any) => {
+        // Match by id, url, or storagePath
+        const matchesId = imageToDelete?.id && img.id === imageToDelete.id;
+        const matchesUrl = imageToDelete?.url && img.url === imageToDelete.url;
+        const matchesStoragePath = (imageToDelete as any)?.storagePath && img.storagePath === (imageToDelete as any).storagePath;
+        return !(matchesId || matchesUrl || matchesStoragePath);
+      });
+      
+      // If this is the last image, delete the entire entry
+      if (remainingImages.length === 0) {
+        await axiosInstance.delete(`/api/generations/${entry.id}`);
+        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        onClose();
+      } else {
+        // Otherwise, update the entry to remove just this image
+        await axiosInstance.patch(`/api/generations/${entry.id}`, {
+          images: remainingImages
+        });
+        // Update Redux store with the new images array
+        try {
+          dispatch(updateHistoryEntry({ id: entry.id, updates: { images: remainingImages } as any }));
+        } catch {}
+        // Update local entry state so the gallery updates immediately
+        setCurrentEntry({ ...entry, images: remainingImages } as any);
+        // Adjust the selected index - if we deleted the last image, go to the previous one
+        // If we deleted a middle image, stay at the same index (which will now show the next image)
+        const newIndex = Math.min(selectedIndex, remainingImages.length - 1);
+        if (newIndex >= 0 && newIndex < remainingImages.length) {
+          setSelectedIndex(newIndex);
+        } else {
+          // Shouldn't happen, but close if somehow no valid index
+          onClose();
+        }
+      }
     } catch (e) {
       console.error('Delete failed:', e);
-      alert('Failed to delete generation');
+      alert('Failed to delete image');
     }
   };
 
@@ -502,9 +574,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
+  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
   const selectedImage: any = selectedPair.image || preview?.image;
-  const selectedEntry: any = selectedPair.entry || preview?.entry;
+  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
   const isUserUploadSelected = false;
 
   // Helper function to calculate aspect ratio from dimensions
@@ -632,18 +704,34 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const handleCreateVideo = () => {
     try {
       // Navigate to Video Generation with the current image as input
+      // Use the same approach as Remix button - use storagePath to construct direct Zata URL
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         const original = selectedImage?.url || '';
         const pathCandidate = toProxyPath(original);
         return pathCandidate && pathCandidate !== original ? pathCandidate : '';
       })();
+      
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-      const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+      
+      // Use direct Zata URL (same as Remix button approach)
+      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+      let imgUrl = '';
+      
+      if (storagePath) {
+        // Construct direct Zata URL from storage path (same as Remix)
+        imgUrl = `${ZATA_PREFIX}${storagePath}`;
+      } else if (fallbackHttp) {
+        // If fallback is already a full Zata URL, use it directly
+        if (fallbackHttp.startsWith(ZATA_PREFIX)) {
+          imgUrl = fallbackHttp;
+        } else if (fallbackHttp.startsWith('http://') || fallbackHttp.startsWith('https://')) {
+          imgUrl = fallbackHttp;
+        }
+      }
       
       console.log('Create Video - ImagePreviewModal debug:', {
         selectedImage: selectedImage,
         storagePath: storagePath,
-        fallbackHttp: fallbackHttp,
         imgUrl: imgUrl
       });
       

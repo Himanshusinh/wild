@@ -62,6 +62,7 @@ export default function ArtStationPage() {
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
@@ -432,28 +433,42 @@ export default function ArtStationPage() {
       return true;
     });
 
-    if (activeCategory === 'All') return validItems;
-    const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
-    return validItems.filter(item => {
-      const type = item.generationType?.toLowerCase();
-      switch (activeCategory) {
-        case 'Images':
-          return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
-        case 'Videos':
-          return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
-        case 'Music':
-          return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
-        case 'Logos':
-          return type === 'logo';
-        case 'Stickers':
-          return type === 'sticker-generation';
-        case 'Products':
-          return type === 'product-generation';
-        default:
-          return true;
-      }
-    });
-  }, [items, activeCategory]);
+    // Apply category filter
+    let categoryFiltered = validItems;
+    if (activeCategory !== 'All') {
+      const typeIn = (t?: string, arr?: string[]) => (t ? arr?.includes(t.toLowerCase()) : false)
+      categoryFiltered = validItems.filter(item => {
+        const type = item.generationType?.toLowerCase();
+        switch (activeCategory) {
+          case 'Images':
+            return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
+          case 'Videos':
+            return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
+          case 'Music':
+            return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
+          case 'Logos':
+            return type === 'logo';
+          case 'Stickers':
+            return type === 'sticker-generation';
+          case 'Products':
+            return type === 'product-generation';
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      categoryFiltered = categoryFiltered.filter(item => {
+        const prompt = (item.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }
+
+    return categoryFiltered;
+  }, [items, activeCategory, searchQuery]);
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
@@ -684,6 +699,45 @@ export default function ArtStationPage() {
                   </button> 
                 ))}
 
+                {/* Search Input and Buttons */}
+                <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Search is already applied via filteredItems useMemo
+                        }
+                      }}
+                      placeholder="Search by prompt..."
+                      className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                    />
+                    <button
+                      onClick={() => {
+                        // Search is already applied via filteredItems useMemo
+                      }}
+                      className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                      aria-label="Search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -848,6 +902,7 @@ export default function ArtStationPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           {(() => {
                             const cb = item.createdBy || ({} as any)
+                            console.log('cb', cb)
                             const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
                             if (photo) {
                               const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
@@ -873,7 +928,7 @@ export default function ArtStationPage() {
                             aria-label={isLiked ? 'Unlike' : 'Like'}
                             title={isLiked ? 'Unlike' : 'Like'}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={ isLiked ?"red":"currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
                             </svg>
                           </button>
@@ -964,7 +1019,7 @@ export default function ArtStationPage() {
                 </div>
 
                 {/* Action buttons below close button */}
-                <div className="absolute top-12 right-8 z-20 flex items-center justify-between w-auto gap-2">
+                <div className="absolute top-12 right-8 z-20 flex items-center justify-between w-auto gap-2 ">
                   <div className="relative group">
                     <button
                       onClick={async () => {
@@ -1003,7 +1058,7 @@ export default function ArtStationPage() {
                           console.error('Download failed:', e);
                         }
                       }}
-                      className="w-[9vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                      className="w-[6vw]  flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                         <path d="M12 3v12" />
@@ -1029,7 +1084,7 @@ export default function ArtStationPage() {
                           alert('Link copied to clipboard!')
                         }
                       }}
-                      className="w-[9vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                      className="w-[6vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -1039,6 +1094,34 @@ export default function ArtStationPage() {
                     </button>
                     <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
                   </div>
+
+                  <div className="relative group ">
+                    {(() => {
+                      // Find the matching card to get the correct cardId
+                      const matchingCard = cards.find(({ item }) => item.id === preview.item.id);
+                      const previewCardId = matchingCard 
+                        ? `${preview.item.id}-${matchingCard.media?.id || '0'}-${cards.indexOf(matchingCard)}`
+                        : `${preview.item.id}-${preview.item.images?.[0]?.id || preview.item.videos?.[0]?.id || preview.item.audios?.[0]?.id || '0'}-0`;
+                      const previewIsLiked = likedCards.has(previewCardId);
+                      
+                      return (
+                        <button
+                          onClick={() => {
+                            toggleLike(previewCardId);
+                          }}
+                          className="w-[6vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill={previewIsLiked ? 'red' : 'none'} stroke={previewIsLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                          </svg>
+                        </button>
+                      );
+                    })()}
+                    <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Like</div>
+                  </div>
+                  
+
+
                 </div>
 
                 {/* Content */}

@@ -52,6 +52,7 @@
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | null>('desc');
     const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
     const [quickFilter, setQuickFilter] = useState<'all' | 'images' | 'videos' | 'music' | 'logo' | 'sticker' | 'product' | 'user-uploads'>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateInput, setDateInput] = useState<string>("");
     const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -104,6 +105,21 @@
         try {
           toast.error('Failed to copy');
         } catch {}
+      }
+    };
+
+    // Delete handler - same logic as ImagePreviewModal
+    const handleDeleteGeneration = async (e: React.MouseEvent, entry: HistoryEntry) => {
+      try {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+        await axiosInstance.delete(`/api/generations/${entry.id}`);
+        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        toast.success('Generation deleted');
+      } catch (err) {
+        console.error('Delete failed:', err);
+        toast.error('Failed to delete generation');
       }
     };
 
@@ -862,8 +878,18 @@
       return url.startsWith('data:audio') || /\.(mp3|wav|m4a|ogg|aac|flac)(\?|$)/i.test(url);
     };
 
+    // Filter entries by search query
+    const filteredEntries = useMemo(() => {
+      if (!searchQuery.trim()) return historyEntries;
+      const query = searchQuery.trim().toLowerCase();
+      return historyEntries.filter((entry: HistoryEntry) => {
+        const prompt = (entry.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }, [historyEntries, searchQuery]);
+
     // Group entries by date to mirror TextToImage UI
-    const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const groupedByDate = filteredEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
       const dateKey = new Date(entry.timestamp).toDateString();
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(entry);
@@ -1047,6 +1073,47 @@
               </div>
             )} */}
             </div>
+            
+            {/* Search Input and Buttons */}
+            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // Search is already applied via filteredEntries useMemo
+                    }
+                  }}
+                  placeholder="Search by prompt..."
+                  className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                />
+                <button
+                  onClick={() => {
+                    // Search is already applied via filteredEntries useMemo
+                  }}
+                  className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                  aria-label="Search"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                  </svg>
+                </button>
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                  aria-label="Clear search"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
             {/* Sort buttons */}
             <div className="ml-8 flex items-right justify-end  gap-2">
               <button
@@ -1533,7 +1600,7 @@
                                 </div>
                               )}
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
                                 {/* <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-xs text-white flex-1 leading-snug"
@@ -1548,11 +1615,19 @@
                                 </span> */}
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded-lg hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete generation"
+                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteGeneration(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>
@@ -1574,7 +1649,7 @@
                                 <span className="text-xs text-white">Audio</span>
                               </div>
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 rounded-3xl  right-0 bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-2 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
                                 {/* <span
                                   title={getCleanPrompt(entry.prompt)}
                                   className="text-xs text-white flex-1 leading-snug"
@@ -1589,11 +1664,19 @@
                                 </span> */}
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete generation"
+                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteGeneration(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={16} />
                                 </button>
                               </div>
                             </div>
@@ -1640,14 +1723,22 @@
                               )}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover prompt overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-white/15 backdrop-blur-3xl opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-2  z-20">
+                              <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto  rounded hover:bg-white/10 text-white/90"
+                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                                <button
+                                  aria-label="Delete generation"
+                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  onClick={(e) => handleDeleteGeneration(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>

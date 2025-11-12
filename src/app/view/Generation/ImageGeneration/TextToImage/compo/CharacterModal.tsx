@@ -113,10 +113,15 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     // Final fallback: use a generic name
     characterName = characterName || `Character ${entry.id.slice(-6)}`;
     
+    // For text-to-character, use the generated character image (first image in images array)
+    // NOT the input image. The generated character is what should be used.
+    const generatedCharacterImage = entry.images?.[0];
+    const frontImageUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl || '/styles/Logo.gif';
+    
     return {
       id: entry.id,
       name: characterName,
-      frontImageUrl: entry.images?.[0]?.url || entry.images?.[0]?.originalUrl || '/styles/Logo.gif',
+      frontImageUrl, // Use generated character image, not input image
       createdAt: entry.createdAt?.toDate?.()?.toISOString() || entry.createdAt || entry.timestamp || new Date().toISOString(),
     };
   });
