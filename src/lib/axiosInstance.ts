@@ -76,8 +76,8 @@ axiosInstance.interceptors.request.use(async (config) => {
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
-    // For backend data endpoints (credits, generations, auth/me), attach Bearer id token so backend accepts without cookies
-    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations') || url === '/api/auth/me') {
+  // For backend data endpoints (credits, generations, auth/me), attach Bearer id token so backend accepts without cookies
+  if (url.startsWith('/api/credits/') || url.startsWith('/api/generations') || url === '/api/auth/me') {
       // Gentle delay if session cookie is racing to be set after auth
       try {
         const hasHint = document.cookie.includes('auth_hint=')
@@ -93,6 +93,16 @@ axiosInstance.interceptors.request.use(async (config) => {
         headers['Authorization'] = `Bearer ${token}`
         config.headers = headers
       }
+      // Be explicit about no-cache for generations endpoints to avoid stale browser cache
+      try {
+        if (url.startsWith('/api/generations')) {
+          const headers: any = config.headers || {}
+          headers['Cache-Control'] = 'no-cache'
+          headers['Pragma'] = 'no-cache'
+          headers['Expires'] = '0'
+          config.headers = headers
+        }
+      } catch {}
       // Leave baseURL pointing to external backend (default)
     }
 
