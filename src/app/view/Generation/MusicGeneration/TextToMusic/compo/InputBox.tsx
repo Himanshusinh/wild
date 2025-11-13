@@ -12,7 +12,7 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MusicInputBox from './MusicInputBox';
-import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
@@ -42,25 +42,6 @@ const InputBox = () => {
   const [localMusicPreview, setLocalMusicPreview] = useState<any>(null);
   const todayKey = new Date().toDateString();
 
-  // Auto-fill viewport so the page mirrors image/video history behavior
-  const autoFillViewport = async () => {
-    try {
-      if (didAutoFillRef.current) return;
-      let attempts = 0;
-      while (
-        attempts < 3 &&
-        (document.documentElement.scrollHeight - window.innerHeight) < 200 &&
-        (storeHasMore && !storeLoading)
-      ) {
-        await (dispatch as any)(loadMoreHistory({
-          filters: { generationType: 'text-to-music' },
-          paginationParams: { limit: 10 }
-        } as any)).unwrap();
-        attempts += 1;
-      }
-      didAutoFillRef.current = true;
-    } catch {}
-  };
 
   // Auto-clear local preview after completion/failure
   useEffect(() => {
@@ -109,11 +90,9 @@ const InputBox = () => {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  // Initial history is loaded centrally by PageRouter; after it finishes, auto-fill if content is short
-  useEffect(() => {
-    // Trigger viewport top-up once when initial data arrives
-    autoFillViewport();
-  }, [historyEntries.length, storeHasMore, storeLoading]);
+  // Removed legacy auto-fill viewport logic to ensure pagination only occurs
+  // via explicit user-driven IntersectionObserver triggers. If initial content
+  // is shorter than viewport the sentinel will intersect once and load more.
 
   // Remove unused local loader; rely on Redux loadMoreHistory
 
@@ -125,9 +104,14 @@ const InputBox = () => {
   }, []);
 
   // Standardized intersection observer for music history
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
+  useBottomScrollPagination({
+    containerRef: undefined,
+    hasMore: storeHasMore,
+    loading: storeLoading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
@@ -135,16 +119,9 @@ const InputBox = () => {
           filters: { generationType: 'text-to-music' },
           paginationParams: { limit: 10 }
         } as any)).unwrap();
-      } catch (e: any) {
-        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
-          console.error('[Music] IO loadMore error', e);
-        }
-      }
-    },
-    storeHasMore,
-    storeLoading,
-    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
-  );
+      } catch {/* swallow */}
+    }
+  });
 
   const handleGenerate = async (payload: any) => {
     if (!payload.lyrics.trim()) {

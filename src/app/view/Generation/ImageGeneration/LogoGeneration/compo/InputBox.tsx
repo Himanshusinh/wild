@@ -34,7 +34,7 @@ const addHistoryEntry = (_: any) => ({ type: "history/noop" } as any);
 import ModelsDropdown from "./ModelsDropdown";
 import LogoCountDropdown from "./LogoCountDropdown";
 import LogoImagePreview from "./LogoImagePreview";
-import { useIntersectionObserverForRef } from "@/hooks/useInfiniteGenerations";
+import { useBottomScrollPagination } from "@/hooks/useBottomScrollPagination";
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -161,25 +161,23 @@ const InputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  // IntersectionObserver-based infinite scroll via shared hook
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
+  // Bottom scroll pagination (History-style) replaces IntersectionObserver
+  useBottomScrollPagination({
+    containerRef: undefined,
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'logo' },
           paginationParams: { limit: 10 }
         })).unwrap();
-      } catch (e: any) {
-        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
-          console.error('[INF_SCROLL] logo loadMore error', e);
-        }
-      }
-    },
-    hasMore,
-    loading,
-    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
-  );
+      } catch {/* swallow */}
+    }
+  });
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
