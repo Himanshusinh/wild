@@ -102,6 +102,10 @@ export const loadHistory = createAsyncThunk(
       if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
+      // Add search parameter if present
+      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
+        params.search = (filters as any).search.trim();
+      }
       if (paginationParams?.limit) params.limit = paginationParams.limit;
       if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
   // Use optimized backend pagination defaults (createdAt DESC) by omitting sortBy/sortOrder
@@ -284,6 +288,10 @@ export const loadMoreHistory = createAsyncThunk(
       if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
+      // Add search parameter if present
+      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
+        params.search = (filters as any).search.trim();
+      }
       // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
       if (nextPageParams.cursor?.timestamp) {
         try {
