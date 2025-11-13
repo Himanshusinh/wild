@@ -133,8 +133,30 @@ axiosInstance.interceptors.request.use(async (config) => {
     try {
       const raw = typeof config.url === 'string' ? config.url : ''
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
-      const full = new URL(raw, base)
-      const path = full.pathname || ''
+      
+      // Determine the path - handle both relative and absolute URLs
+      let path = ''
+      if (raw.startsWith('http://') || raw.startsWith('https://')) {
+        // Already a full URL, extract pathname directly
+        try {
+          const urlObj = new URL(raw)
+          path = urlObj.pathname || ''
+        } catch {
+          // Fallback: extract path from URL string
+          const match = raw.match(/https?:\/\/[^\/]+(\/.*)?$/)
+          path = match && match[1] ? match[1] : raw
+        }
+      } else {
+        // Relative URL, construct full URL with base
+        try {
+          const full = new URL(raw, base || 'http://localhost')
+          path = full.pathname || ''
+        } catch {
+          // Fallback: use raw as path if URL construction fails
+          path = raw.startsWith('/') ? raw : `/${raw}`
+        }
+      }
+      
       // Treat most backend routes as protected to reduce 401s in early post-auth; allow session creation route to go without bearer
       const isProtectedApi = path.startsWith('/api/') && path !== '/api/auth/session'
       // Gentle delay for protected APIs when auth just completed and Set-Cookie may lag
@@ -166,23 +188,42 @@ axiosInstance.interceptors.request.use(async (config) => {
           if (isApiDebugEnabled()) console.log('[API][attach-bearer][cached]', { path, hasToken: true })
         } else {
           if (isApiDebugEnabled()) console.log('[API][attach-bearer][missing]', { path })
+          // Log warning if token is missing for protected API
+          console.warn('[API][attach-bearer] No token available for protected API:', { path, url: raw, baseURL: base })
         }
       }
-    } catch {}
+    } catch (err) {
+      // Log error instead of silently failing
+      console.error('[API][attach-bearer] Error determining path or attaching token:', err, { 
+        url: typeof config.url === 'string' ? config.url : 'unknown',
+        baseURL: (config.baseURL as string) || axiosInstance.defaults.baseURL || 'unknown'
+      })
+    }
 
-    if (isApiDebugEnabled()) {
-      try {
-        const base = (config.baseURL as string) || axiosInstance.defaults.baseURL
-        const authHeader = (config.headers as any)?.Authorization
+    // Always log critical auth info (not just when debug is enabled)
+    try {
+      const base = (config.baseURL as string) || axiosInstance.defaults.baseURL
+      const authHeader = (headers as any)?.Authorization || (config.headers as any)?.Authorization
+      const hasAuth = Boolean(authHeader)
+      
+      if (isApiDebugEnabled()) {
         console.log('[API][request]', {
           method: (config.method || 'get').toUpperCase(),
           url,
           baseURL: base,
           withCredentials: config.withCredentials,
-          hasAuthorization: Boolean(authHeader),
+          hasAuthorization: hasAuth,
+          authHeaderLength: authHeader ? authHeader.length : 0,
         })
-      } catch {}
-    }
+      } else if (!hasAuth && url.includes('/api/') && !url.includes('/api/auth/session')) {
+        // Warn if auth is missing for protected routes (even when debug is off)
+        console.warn('[API][request] Missing Authorization header for protected route:', {
+          method: (config.method || 'get').toUpperCase(),
+          url,
+          baseURL: base,
+        })
+      }
+    } catch {}
 
     config.headers = headers
   } catch {}
@@ -452,4 +493,5 @@ axiosInstance.interceptors.response.use(
     }
   }
 )
+
 
