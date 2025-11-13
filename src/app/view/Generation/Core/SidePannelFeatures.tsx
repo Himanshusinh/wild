@@ -396,6 +396,25 @@ const SidePannelFeatures = ({
           </div>
         </div>
 
+        <div>
+          <div
+            onClick={() => {
+              // Check if we're in production by checking the hostname
+              const isProd = typeof window !== 'undefined' && 
+                (window.location.hostname === 'wildmindai.com' || 
+                 window.location.hostname === 'www.wildmindai.com');
+              const canvasUrl = isProd 
+                ? 'https://studio.wildmindai.com'
+                : 'http://localhost:3001';
+              window.open(canvasUrl, '_blank', 'noopener,noreferrer');
+            }}
+            className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
+          >
+            <Image src={imageRoutes.icons.canvas} alt="Canvas Studio" width={28} height={28} />
+            <span className={`text-white overflow-hidden transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2 ${isMobileMenuOpen ? 'w-auto' : 'w-0 group-hover:w-auto'}`}>Canvas Studio</span>
+          </div>
+        </div>
+
       
 
       {/* Wildmind Skit */}
