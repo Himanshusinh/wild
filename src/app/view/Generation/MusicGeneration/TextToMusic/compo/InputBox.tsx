@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { addHistoryEntry, updateHistoryEntry, loadHistory, clearFilters, loadMoreHistory } from '@/store/slices/historySlice';
+import { addHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store/slices/historySlice';
 import { addNotification } from '@/store/slices/uiSlice';
 import { uploadGeneratedAudio } from '@/lib/audioUpload';
 import { minimaxMusic } from '@/store/slices/generationsApi';
@@ -16,9 +16,12 @@ import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  // Self-manage history loads for music to avoid central duplicate requests
+  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-music' });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -320,11 +323,8 @@ const InputBox = () => {
         await handleGenerationSuccess(transactionId);
       }
 
-      // Refresh history to show the new music
-      dispatch(loadHistory({ 
-        filters: { generationType: 'text-to-music' }, 
-        paginationParams: { limit: 10 } 
-      }));
+      // Refresh history immediately to show the new music
+      refreshMusicHistoryImmediate();
 
       console.log('✅ Music generation completed successfully');
 

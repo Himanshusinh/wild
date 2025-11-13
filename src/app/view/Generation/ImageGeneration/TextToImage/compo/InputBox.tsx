@@ -27,11 +27,9 @@ import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenera
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
-  loadHistory,
-  setFilters,
-  clearHistory,
   removeHistoryEntry,
 } from "@/store/slices/historySlice";
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import toast from 'react-hot-toast';
 // Frontend history writes removed; rely on backend history service
@@ -139,46 +137,8 @@ const InputBox = () => {
     } catch {}
   }, [dispatch, searchParams]);
 
-  // Load history on mount (scoped to text-to-image) — single initial request, no auto-fill loop (match Sticker UX)
-  useEffect(() => {
-    console.log('[Image] useEffect: mount -> loading image history');
-    (async () => {
-      try {
-        // Skip if route already changed during navigation
-        if (typeof pathname === 'string' && !pathname.includes('/text-to-image')) {
-          console.log('[Image] initial load skipped: pathname not text-to-image', { pathname });
-          return;
-        }
-        if (loadLockRef.current) {
-          console.log('[Image] initial load skipped (lock)');
-          return;
-        }
-        loadLockRef.current = true;
-        
-        const baseFilters: any = { generationType: 'text-to-image' };
-        const debugTag = `page:image:${Date.now()}`;
-        // Set filters early so other observers (PageRouter) show correct type immediately
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        console.log('[Image] dispatch loadHistory', { baseFilters, limit: 50, debugTag });
-        await (dispatch as any)(loadHistory({ 
-          filters: baseFilters,
-          paginationParams: { limit: 50 },
-          requestOrigin: 'page',
-          expectedType: 'text-to-image',
-          debugTag
-        })).unwrap();
-        console.log('[Image] initial loadHistory fulfilled');
-      } catch (e: any) {
-        if (e && e.name === 'ConditionError') {
-          // benign: another in-flight request finished first
-        } else {
-          console.error('[Image] initial loadHistory error', e);
-        }
-      } finally {
-      }
-    })();
-  }, [dispatch, pathname]);
+  // Unified initial load (single guarded request) via custom hook
+  const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-image', initialLimit: 50 });
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
@@ -385,21 +345,9 @@ const InputBox = () => {
   };
 
   // Fetch only first page on mount; further pages load on scroll
-  const refreshAllHistory = async () => {
-    try {
-      await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
-    } catch { }
-  };
-
-  // Simple refresh function like Logo Generation
-  const refreshHistory = async () => {
-    try {
-      await (dispatch as any)(loadHistory({ 
-        filters: { generationType: 'text-to-image' }, 
-        paginationParams: { limit: 50 } 
-      })).unwrap();
-    } catch { }
-  };
+  // Replace legacy refresh helpers with hook-driven variants
+  const refreshHistory = () => refreshHistoryDebounced();
+  const refreshAllHistory = () => refreshHistoryImmediate();
 
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || "");

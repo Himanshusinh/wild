@@ -17,15 +17,12 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 // Replaced custom loader with Logo.gif
 import { 
   loadMoreHistory,
-  loadHistory,
-  clearHistory,
-  clearFilters,
   removeHistoryEntry,
 } from "@/store/slices/historySlice";
 import axiosInstance from "@/lib/axiosInstance";
 import { Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { setFilters } from '@/store/slices/historySlice';
+import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -66,6 +63,8 @@ const ProductWithModelPoseInputBox = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const loadLockRef = useRef(false);
+  // Unified history loader to avoid duplicate requests
+  const { refresh: refreshProductHistory, refreshImmediate: refreshProductHistoryImmediate } = useHistoryLoader({ generationType: 'product-generation' });
   // Safety: ensure overlay can't get stuck
   useEffect(() => {
     if (!initialLoading) return;
@@ -152,54 +151,13 @@ const ProductWithModelPoseInputBox = () => {
     console.log('✅ Set generation mode to: product-only');
   }, [selectedModel]);
 
-  // Load product-generation history on mount (scoped) — single initial request, no auto-fill loop
+  // Track initial load completion based on store loading state
   useEffect(() => {
-    console.log('[Product] useEffect: mount -> loading product history');
-    (async () => {
-      try {
-        // Skip if route already changed during navigation
-        if (typeof pathname === 'string' && !pathname.includes('/product-generation')) {
-          console.log('[Product] initial load skipped: pathname not product-generation', { pathname });
-          return;
-        }
-        // Skip if user navigated away during a concurrent transition
-        const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-        const cur = normalize(currentGenerationType);
-        if (cur !== 'product-generation' && cur !== 'product') {
-          console.log('[Product] initial load skipped: not on product page anymore', { currentGenerationType });
-          return;
-        }
-        if (loadLockRef.current) {
-          console.log('[Product] initial load skipped (lock)');
-          return;
-        }
-        loadLockRef.current = true;
-        setInitialLoading(true);
-        const baseFilters: any = { generationType: 'product-generation' };
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        const debugTag = `page:product:${Date.now()}`;
-        console.log('[Product] dispatch loadHistory', { filters: baseFilters, limit: 10, debugTag });
-        await (dispatch as any)(loadHistory({ 
-          filters: baseFilters,
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'product-generation',
-          debugTag,
-        })).unwrap();
-        console.log('[Product] initial loadHistory fulfilled');
-      } catch (e: any) {
-        if (e && e.name === 'ConditionError') {
-          // benign overlap
-        } else {
-          console.error('[Product] initial loadHistory error', e);
-        }
-      } finally {
-        setInitialLoading(false);
-        setHasInitiallyLoaded(true);
-      }
-    })();
-  }, [dispatch, currentGenerationType, pathname]);
+    if (!loading) {
+      setHasInitiallyLoaded(true);
+      setInitialLoading(false);
+    }
+  }, [loading]);
 
   // IntersectionObserver-based infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -458,17 +416,8 @@ GENERATOR HINTS:
       }
 
       // Refresh history to show the new product
-      {
-        const debugTag = `page:product:refresh:${Date.now()}`;
-        console.log('[Product] refresh loadHistory after generation', { debugTag });
-        dispatch(loadHistory({ 
-          filters: { generationType: 'product-generation' }, 
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'product-generation',
-          debugTag,
-        }));
-      }
+      // Refresh product history immediately to reflect the new images
+      refreshProductHistoryImmediate();
 
       // Reset local generation state
       setIsGeneratingLocally(false);

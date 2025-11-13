@@ -10,7 +10,8 @@ import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
-import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory } from '@/store/slices/historySlice';
+import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand';
@@ -188,12 +189,9 @@ const EditImageInterface: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize from query params: feature and image
+  // Initialize from query params: feature and image + self-managed history load for library images
+  useHistoryLoader({ generationType: 'text-to-image', initialLimit: 30 });
   useEffect(() => {
-    // Ensure we have some history for the upload modal library tab
-    (async () => {
-      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch { }
-    })();
     try {
       // Allow tab selection via query or path (for /edit-image/fill)
       const featureParam = (searchParams?.get('feature') || '').toLowerCase() || (typeof window !== 'undefined' && window.location.pathname.includes('/edit-image/fill') ? 'fill' : '');
