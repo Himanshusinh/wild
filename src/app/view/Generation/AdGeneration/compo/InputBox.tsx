@@ -11,7 +11,7 @@ import { bflGenerate, runwayVideo } from '@/store/slices/generationsApi';
 import { waitForRunwayVideoCompletion } from '@/lib/runwayVideoService';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 // setFilters/clearHistory no longer needed with unified loader
-import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 
 const AdGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -70,25 +70,19 @@ const AdGenerationInputBox: React.FC = () => {
   const { refresh: refreshHistoryDebounced } = useHistoryLoader({ generationType: 'ad-generation', initialLimit: 10 });
 
   // Standardized infinite scroll using shared hook
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
-      try {
-        await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e: any) {
-        // Only log a compact INF_SCROLL-tagged error; hook already logs lifecycle
-        console.log('[INF_SCROLL] ad loadMore error', e?.message || e);
-      }
-    },
+  useBottomScrollPagination({
+    containerRef: undefined, // window scroll context
     hasMore,
     loading,
-    {
-      root: null,
-      rootMargin: '0px 0px 400px 0px',
-      threshold: 0.1,
-      requireUserScrollRef: hasUserScrolledRef,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
+      try {
+        await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } })).unwrap();
+      } catch {/* swallow */}
     }
-  );
+  });
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

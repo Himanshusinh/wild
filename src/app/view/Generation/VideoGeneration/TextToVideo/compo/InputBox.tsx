@@ -45,7 +45,7 @@ import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
-import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 
 
 const InputBox = () => {
@@ -1197,38 +1197,22 @@ const InputBox = () => {
   }, [historyScrollElement]);
 
   // Standardized intersection observer for video history
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
+  // Replace IntersectionObserver with History-style bottom scroll pagination
+  useBottomScrollPagination({
+    containerRef: historyScrollElement ? { current: historyScrollElement } as any : undefined,
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e: any) {
-        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
-          console.error('[Video] IO loadMore error', e);
-        }
-      }
-    },
-    hasMore,
-    loading,
-    { root: null, rootMargin: '0px 0px 400px 0px', threshold: 0.1 }
-  );
-
-  // Removed user-scroll gating for video pagination; IO will load as soon as sentinel intersects.
-
-  // Auto-fill viewport if content is short (load more until we have enough content)
-  useEffect(() => {
-    const container = historyScrollElement || document.documentElement;
-    if (!container) return;
-    const viewportHeight = window.innerHeight || 0;
-    const contentHeight = container.scrollHeight || 0;
-    if (contentHeight < viewportHeight + 200 && hasMore && !loading && !loadingMoreRef.current) {
-      loadingMoreRef.current = true;
-      (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }))
-        .finally(() => { loadingMoreRef.current = false; });
+      } catch {/* swallow */}
     }
-  }, [historyEntries, hasMore, loading, dispatch, historyScrollElement]);
+  });
 
   // Handle references upload
   const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

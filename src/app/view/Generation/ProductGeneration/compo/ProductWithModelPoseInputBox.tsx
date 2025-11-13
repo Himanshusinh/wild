@@ -40,7 +40,7 @@ import ProductImagePreview from './ProductImagePreview';
 import GenerationModeDropdown from './GenerationModeDropdown';
 import { getApiClient } from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
-import { useIntersectionObserverForRef } from "@/hooks/useInfiniteGenerations";
+import { useBottomScrollPagination } from "@/hooks/useBottomScrollPagination";
 
 const ProductWithModelPoseInputBox = () => {
   const dispatch = useAppDispatch();
@@ -170,24 +170,23 @@ const ProductWithModelPoseInputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
+  // Replace intersection observer with History-style bottom scroll pagination
+  useBottomScrollPagination({
+    containerRef: undefined, // window scrolling for this page
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'product-generation' },
           paginationParams: { limit: 10 }
         })).unwrap();
-      } catch (e: any) {
-        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
-          console.error('[INF_SCROLL] product loadMore error', e);
-        }
-      }
-    },
-    hasMore,
-    loading,
-    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
-  );
+      } catch {/* swallow */}
+    }
+  });
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;

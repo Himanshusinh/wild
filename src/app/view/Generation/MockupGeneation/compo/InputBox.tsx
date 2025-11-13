@@ -11,7 +11,7 @@ import { HistoryEntry } from '@/types/history';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MockupImagePreview from '@/app/view/Generation/MockupGeneation/compo/MockupImagePreview';
-import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 
 const InputBox = () => {
@@ -59,21 +59,19 @@ const InputBox = () => {
   }, []);
 
   // Standardized intersection observer for mockup history
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
+  useBottomScrollPagination({
+    containerRef: undefined,
+    hasMore: hasMoreHistory,
+    loading: historyLoading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'mockup-generation' }, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e: any) {
-        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
-          console.error('[Mockup] IO: loadMore error', e);
-        }
-      }
-    },
-    hasMoreHistory,
-    historyLoading,
-    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
-  );
+      } catch {/* swallow */}
+    }
+  });
 
   const mockupHistoryEntries = historyEntries
     .filter((e: HistoryEntry) => e.generationType === 'mockup-generation')

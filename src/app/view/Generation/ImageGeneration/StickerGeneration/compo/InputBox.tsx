@@ -33,7 +33,7 @@ const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 import ModelsDropdown from './ModelsDropdown';
 import StickerCountDropdown from './StickerCountDropdown';
 import StickerImagePreview from './StickerImagePreview';
-import { useIntersectionObserverForRef } from "@/hooks/useInfiniteGenerations";
+import { useBottomScrollPagination } from "@/hooks/useBottomScrollPagination";
 // Replaced custom loader with Logo.gif
 
 const InputBox = () => {
@@ -144,25 +144,23 @@ const InputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  // Use shared IntersectionObserver helper for infinite scroll
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
+  // Bottom scroll pagination replacing IntersectionObserver to mirror History page
+  useBottomScrollPagination({
+    containerRef: undefined,
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'sticker-generation' },
           paginationParams: { limit: 10 }
         })).unwrap();
-      } catch (e: any) {
-        if (!(e?.message?.includes && e?.message?.includes('no more pages'))) {
-          console.error('[INF_SCROLL] sticker loadMore error', e);
-        }
-      }
-    },
-    hasMore,
-    loading,
-    { root: null, threshold: 0.1, requireUserScrollRef: hasUserScrolledRef }
-  );
+      } catch {/* swallow */}
+    }
+  });
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;

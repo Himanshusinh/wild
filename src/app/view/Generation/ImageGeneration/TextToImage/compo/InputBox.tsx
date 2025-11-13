@@ -56,7 +56,8 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
-import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
+// Replaced per-page IntersectionObserver with unified bottom scroll pagination
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
 
 const InputBox = () => {
@@ -345,9 +346,17 @@ const InputBox = () => {
   };
 
   // Fetch only first page on mount; further pages load on scroll
-  // Replace legacy refresh helpers with hook-driven variants
-  const refreshHistory = () => refreshHistoryDebounced();
+  // Replace legacy refresh helpers with hook-driven variants (wrapped with cooldown guard)
+  const rawRefreshHistory = () => refreshHistoryDebounced();
   const refreshAllHistory = () => refreshHistoryImmediate();
+  const lastRefreshTimeRef = useRef(0);
+  const REFRESH_COOLDOWN_MS = 2000; // suppress clustered refreshes that follow a generation completion
+  const refreshHistory = () => {
+    const now = Date.now();
+    if (now - lastRefreshTimeRef.current < REFRESH_COOLDOWN_MS) return; // skip redundant refresh within cooldown
+    lastRefreshTimeRef.current = now;
+    rawRefreshHistory();
+  };
 
   // Redux state
   const prompt = useAppSelector((state: any) => state.generation?.prompt || "");
@@ -386,12 +395,12 @@ const InputBox = () => {
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const loadingMoreRef = useRef(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
-  const hasUserScrolledRef = useRef(false);
-  // Store raw any events (including scroll-resume) but cast when passing to overlay (it ignores unknown types gracefully)
-  const ioEventsRef = useRef<any[]>([]);
-  const [ioEventsTick, setIoEventsTick] = useState(0);
+  const hasUserScrolledRef = useRef(false); // legacy reference (no longer used by IO, kept for compatibility)
+  // Block pagination while generation finishes & initial history refresh occurs
+  const postGenerationBlockRef = useRef(false);
+  // Debug event storage removed; bottom scroll pagination doesn't emit IO events
 
   // Memoize the filtered entries and group by date
   const historyEntries = useAppSelector(
@@ -770,23 +779,12 @@ const InputBox = () => {
 
 
 
-  // Mark when the user has actually scrolled (to avoid auto-draining pages on initial mount)
-  useEffect(() => {
-    const onAnyScroll = () => { hasUserScrolledRef.current = true; };
-    const el = scrollRootRef.current;
-    window.addEventListener('scroll', onAnyScroll, { passive: true });
-    if (el) el.addEventListener('scroll', onAnyScroll as any, { passive: true } as any);
-    return () => {
-      window.removeEventListener('scroll', onAnyScroll as any);
-      if (el) el.removeEventListener('scroll', onAnyScroll as any);
-    };
-  }, []);
-
-  // Use centralized intersection observer helper to enforce hasMore-first and local busy guard
-  useIntersectionObserverForRef(
-    sentinelRef,
-    async () => {
-      // increment page, dispatch loadMore (user-scroll gating is handled inside the hook)
+  // Bottom scroll pagination (History page style) with added post-load safeguards
+  const { userScrolledRef } = useBottomScrollPagination({
+    containerRef: scrollRootRef,
+    hasMore,
+    loading,
+    loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
@@ -795,92 +793,29 @@ const InputBox = () => {
           paginationParams: { limit: 10 }
         })).unwrap();
       } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-        } else {
-          // errors are surfaced via toasts/handlers; avoid noisy console
-        }
+        // swallow non-critical errors; backend handles end-of-pagination
       }
     },
-    hasMore,
-    loading,
-  { root: scrollRootRef.current, rootMargin: '0px 0px 400px 0px', threshold: 0.01, onEvent: (evt) => { try { ioEventsRef.current.push(evt); if (ioEventsRef.current.length > 50) ioEventsRef.current.shift(); setIoEventsTick(v => v + 1); } catch {} } }
-  );
+    bottomOffset: 800,
+    throttleMs: 250, // slightly higher throttle for heavier image grid
+    requireUserScroll: true,
+    requireScrollAfterLoad: true, // demand a real user scroll before another auto-trigger
+    postLoadCooldownMs: 1200, // suppress layout-driven immediate re-triggers
+    blockLoadRef: postGenerationBlockRef, // hard block during generation completion window
+  });
 
-  // Fallback scroll proximity loader: if sentinel remains intersecting (IO won't retrigger)
-  // and user scrolls near bottom, issue additional loadMore request respecting cooldown.
-  const lastManualLoadRef = useRef(0);
-  useEffect(() => {
-    const el = scrollRootRef.current;
-    if (!el) return;
-    const onScrollCheck = () => {
-      if (!hasMore || loading) return;
-      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-      // Trigger when within 800px of bottom
-      if (remaining > 800) return;
-      const now = Date.now();
-      // Cooldown (matches IO cooldown logic)
-      if (now - lastManualLoadRef.current < 800) return;
-      lastManualLoadRef.current = now;
-      (async () => {
-        try {
-          await (dispatch as any)(loadMoreHistory({
-            filters: { generationType: 'text-to-image' },
-            paginationParams: { limit: 10 }
-          })).unwrap();
-        } catch {}
-      })();
-    };
-    el.addEventListener('scroll', onScrollCheck, { passive: true } as any);
-    return () => { try { el.removeEventListener('scroll', onScrollCheck as any); } catch {} };
-  }, [dispatch, hasMore, loading]);
+  // IntersectionObserver removed; relying solely on bottom scroll pagination above.
 
-  // After a load completes, if the content still doesn't exceed the viewport
-  // (sentinel remains in view), proactively fetch the next page.
-  useEffect(() => {
-    if (loading) return;
-    if (!hasMore) return;
-    const el = scrollRootRef.current;
-    if (!el) return;
-    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (remaining > 800) return;
-    const now = Date.now();
-    if (now - lastManualLoadRef.current < 800) return;
-    lastManualLoadRef.current = now;
-    (async () => {
-      try {
-        await (dispatch as any)(loadMoreHistory({
-          filters: { generationType: 'text-to-image' },
-          paginationParams: { limit: 10 }
-        })).unwrap();
-      } catch {}
-    })();
-  }, [loading, hasMore, dispatch]);
-
-  // Auto-fill loop: if container height still doesn't require scroll after updates, drain more pages.
-  const autoFillCyclesRef = useRef(0);
-  useEffect(() => {
-    const el = scrollRootRef.current;
-    if (!el) return;
-    if (loading) return;
-    if (!hasMore) return;
-    // Prevent runaway loops: max 8 auto cycles per mount
-    if (autoFillCyclesRef.current >= 8) return;
-    // If content height <= viewport + threshold, fetch another page
-    const needsFill = el.scrollHeight <= (el.clientHeight + 400);
-    if (!needsFill) return;
-    autoFillCyclesRef.current += 1;
-    (async () => {
-      try {
-        await (dispatch as any)(loadMoreHistory({
-          filters: { generationType: 'text-to-image' },
-          paginationParams: { limit: 20 }
-        })).unwrap();
-      } catch {}
-    })();
-  }, [historyEntries.length, hasMore, loading, dispatch]);
+  // Removed legacy proactive loaders (scroll proximity, viewport deficiency, auto-fill loop)
+  // to prevent uncontrolled pagination bursts. IntersectionObserver above is now the sole
+  // trigger for pagination, honoring user scroll intent and existing hasMore/loading guards.
+  // If future UX requires prefetch, implement a lightweight, single-fire prefetch with strict
+  // cooldown and visibility metrics rather than looping effects.
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+    // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
+    postGenerationBlockRef.current = true;
 
     // Set local generation state immediately
     setIsGeneratingLocally(true);
@@ -2084,6 +2019,8 @@ const InputBox = () => {
     } finally {
       // Always reset local generation state
       setIsGeneratingLocally(false);
+      // Release pagination block after short cooldown so compressed refreshes don't trigger immediate loadMore
+      setTimeout(() => { postGenerationBlockRef.current = false; }, 2500);
       // Reset the base_resp toast guard for next run
       runwayBaseRespToastShownRef.current = false;
     }
