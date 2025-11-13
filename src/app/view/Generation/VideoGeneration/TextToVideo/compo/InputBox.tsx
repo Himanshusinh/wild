@@ -59,7 +59,7 @@ const InputBox = () => {
 
   // Video generation state
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gen4_turbo");
+  const [selectedModel, setSelectedModel] = useState("seedance-1.0-lite-t2v");
   const [frameSize, setFrameSize] = useState("16:9");
   const [duration, setDuration] = useState(6);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -243,10 +243,18 @@ const InputBox = () => {
       // WAN 2.5 supports both T2V and I2V
       capabilities.supportsTextToVideo = true;
       capabilities.supportsImageToVideo = true;
-    } else if (model.startsWith('kling-') && !model.includes('i2v')) {
-      // Kling supports both T2V and I2V
+    } else if (model.startsWith('kling-') && model.includes('v2.5')) {
+      // Kling 2.5 Turbo Pro supports both T2V and I2V
       capabilities.supportsTextToVideo = true;
       capabilities.supportsImageToVideo = true;
+    } else if (model.startsWith('kling-') && (model.includes('v2.1') || model.includes('master'))) {
+      // Kling 2.1 and 2.1 Master are I2V-only (require start_image)
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
+    } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
+      // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
     } else if (model.includes('seedance') && !model.includes('i2v')) {
       // Seedance supports both T2V and I2V
       capabilities.supportsTextToVideo = true;
@@ -355,8 +363,13 @@ const InputBox = () => {
     // Determine appropriate generation mode based on model capabilities only
     let newMode: "text_to_video" | "image_to_video" | "video_to_video" | null = null;
     
-    // Prefer text-to-video if model supports it (most models do)
-    if (caps.supportsTextToVideo) {
+    // Special handling for I2V-only models - they require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
+    if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
+        selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+      // These models require image, so force image-to-video mode
+      newMode = "image_to_video";
+    } else if (caps.supportsTextToVideo) {
+      // Prefer text-to-video if model supports it (most models do)
       newMode = "text_to_video";
     } else if (caps.supportsImageToVideo) {
       newMode = "image_to_video";
@@ -368,6 +381,7 @@ const InputBox = () => {
     if (newMode) {
       setGenerationMode(prevMode => {
         if (newMode !== prevMode) {
+          console.log(`🔄 Mode changed from ${prevMode} to ${newMode} for model ${selectedModel}`);
           return newMode;
         }
         return prevMode;
@@ -375,7 +389,7 @@ const InputBox = () => {
     }
   }, [selectedModel]);
 
-  // Auto-convert LTX V2 and WAN 2.5 models between t2v and i2v variants when switching modes
+  // Auto-convert LTX V2, WAN 2.5, and Kling models between t2v and i2v variants when switching modes
   useEffect(() => {
     // Convert LTX V2 models
     if (selectedModel.includes('ltx2')) {
@@ -417,12 +431,40 @@ const InputBox = () => {
         }
       }
     }
+    
+    // Convert Kling models (except v2.5 which supports both without conversion)
+    if (selectedModel.startsWith('kling-') && !selectedModel.includes('v2.5')) {
+      const isI2V = selectedModel.includes('i2v');
+      const isV21 = selectedModel.includes('v2.1');
+      const isMaster = selectedModel.includes('master');
+      
+      // Kling 2.1 and 2.1 Master require image (I2V only), so always use i2v variant
+      if (isV21 && !isI2V) {
+        // Switch from t2v to i2v variant for v2.1 models
+        const newModel = isMaster ? 'kling-v2.1-master-i2v' : 'kling-v2.1-i2v';
+        if (newModel !== selectedModel) {
+          console.log('🔄 Auto-converting Kling 2.1 from T2V to I2V variant:', newModel);
+          setSelectedModel(newModel);
+        }
+      } else if (generationMode === 'text_to_video' && isI2V && isV21) {
+        // If somehow in T2V mode with I2V variant, this shouldn't happen for v2.1, but handle it
+        // Actually, v2.1 can't do T2V, so don't convert back
+      } else if (generationMode === 'image_to_video' && !isI2V && isV21) {
+        // Ensure v2.1 uses i2v variant in image-to-video mode
+        const newModel = isMaster ? 'kling-v2.1-master-i2v' : 'kling-v2.1-i2v';
+        if (newModel !== selectedModel) {
+          console.log('🔄 Auto-converting Kling 2.1 to I2V variant for image-to-video mode:', newModel);
+          setSelectedModel(newModel);
+        }
+      }
+    }
   }, [generationMode, selectedModel]);
 
   // Clear camera movements when model changes (separate effect to avoid loop)
   useEffect(() => {
     setSelectedCameraMovements([]);
   }, [selectedModel]);
+
 
   // Reset fps/audio defaults when model changes
   useEffect(() => {
@@ -600,8 +642,9 @@ const InputBox = () => {
 
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, and Sora 2 models support this
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
+      // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
+      // Note: gen4_turbo, gen3a_turbo, and Kling 2.1/master are I2V-only and will auto-switch to image-to-video mode
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -655,9 +698,24 @@ const InputBox = () => {
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
+      } else if (newModel === "gen4_turbo" || newModel === "gen3a_turbo") {
+        // Gen-4 Turbo and Gen-3a Turbo are I2V-only, so switch to image-to-video mode
+        setGenerationMode("image_to_video");
+        setSelectedModel(newModel);
+        setDuration(5);
+        setFrameSize("16:9");
+        setSelectedCameraMovements([]);
+      } else if (newModel === "I2V-01-Director" || newModel === "S2V-01") {
+        // I2V-01-Director and S2V-01 are I2V-only, so switch to image-to-video mode
+        setGenerationMode("image_to_video");
+        setSelectedModel(newModel);
+        setSelectedResolution("720P");
+        setSelectedMiniMaxDuration(6);
+        setFrameSize("16:9");
+        setSelectedCameraMovements([]);
       } else {
-        // Runway models don't support text-to-video
-        console.warn('Runway models cannot be used for text-to-video generation');
+        // Model not supported for text-to-video
+        console.warn(`Model ${newModel} cannot be used for text-to-video generation`);
         return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
@@ -702,6 +760,10 @@ const InputBox = () => {
           setFrameSize("1280*720"); // Default 720p for WAN
         } else if (newModel.startsWith('kling-')) {
           setDuration(5);
+        } else if (newModel === "gen4_turbo" || newModel === "gen3a_turbo") {
+          // Gen-4 Turbo and Gen-3a Turbo: default duration 5s (only supports 5s and 10s)
+          setDuration(5);
+          setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
           // Seedance models: duration default 5s, resolution default 1080p
           setDuration(5);
@@ -1437,14 +1499,94 @@ const InputBox = () => {
     // Get current model capabilities
     const caps = currentModelCapabilities;
 
+    // Validate I2V-only models require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
+    if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
+        selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+      if (uploadedImages.length === 0 && references.length === 0) {
+        // Get model display name
+        let modelName = '';
+        if (selectedModel.startsWith('kling-')) {
+          if (selectedModel.includes('master')) {
+            modelName = 'Kling 2.1 Master';
+          } else if (selectedModel.includes('v2.1')) {
+            modelName = 'Kling 2.1';
+          }
+        } else if (selectedModel === 'gen4_turbo') {
+          modelName = 'Gen-4 Turbo';
+        } else if (selectedModel === 'gen3a_turbo') {
+          modelName = 'Gen-3a Turbo';
+        }
+        // Show toast with custom styling
+        toast.error(
+          <div className="flex items-start gap-3">
+            {/* <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg> */}
+            <div>
+              <p className="font-semibold text-white">{modelName} needs one image as input to generate video.</p>
+              <p className="text-sm text-white/70 mt-1">Please upload an image to continue.</p>
+            </div>
+          </div>,
+          {
+            duration: 8000, // 8 seconds
+            style: {
+              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(251, 146, 60, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              backdropFilter: 'blur(10px)',
+            },
+          } as any
+        );
+        setIsGenerating(false);
+        return;
+      }
+    }
+
     // Validate model requirements
-    // Only show error if model doesn't support text-to-video AND requires image
-    // If model supports both T2V and I2V, allow text-only generation
-    if (caps.requiresImage && !caps.supportsTextToVideo && uploadedImages.length === 0 && references.length === 0) {
+    // Check if model requires image (like Runway models)
+    // Note: I2V-only models (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo) are already handled above
+    if (caps.requiresImage && uploadedImages.length === 0 && references.length === 0) {
       if (selectedModel === "S2V-01") {
-        toast.error('A reference image is required to use S2V-01 model. Please upload a character reference image.');
+        // Show toast with custom styling for S2V-01
+        toast.error(
+          <div className="flex items-start gap-3">
+            <div>
+              <p className="font-semibold text-white">S2V-01 needs one image as input to generate video.</p>
+              <p className="text-sm text-white/70 mt-1">Please upload a character reference image to continue.</p>
+            </div>
+          </div>,
+          {
+            duration: 8000, // 8 seconds
+            style: {
+              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(251, 146, 60, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              backdropFilter: 'blur(10px)',
+            },
+          } as any
+        );
       } else if (selectedModel === "I2V-01-Director") {
-        toast.error('An input image is required to use I2V-01-Director model. Please upload a first frame image.');
+        // Show toast with custom styling for I2V-01-Director
+        toast.error(
+          <div className="flex items-start gap-3">
+            <div>
+              <p className="font-semibold text-white">I2V-01-Director needs one image as input to generate video.</p>
+              <p className="text-sm text-white/70 mt-1">Please upload a first frame image to continue.</p>
+            </div>
+          </div>,
+          {
+            duration: 8000, // 8 seconds
+            style: {
+              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(251, 146, 60, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              backdropFilter: 'blur(10px)',
+            },
+          } as any
+        );
       } else if (selectedModel.includes("veo3.1") && selectedModel.includes("i2v")) {
         toast.error('An input image is required to use Veo 3.1 image-to-video model. Please upload an image.');
       } else if (selectedModel.includes("veo3") && selectedModel.includes("i2v")) {
@@ -1513,16 +1655,49 @@ const InputBox = () => {
       let generationType: string;
       let apiEndpoint: string;
 
-      // Auto-determine mode for models that support both T2V and I2V
-      // If model supports both and image is uploaded, use image-to-video; otherwise use text-to-video
+      // Auto-determine mode based on model capabilities and user input
+      // Priority: If image is uploaded and model supports I2V, use I2V
+      // If only text is provided and model supports T2V, use T2V
       let actualGenerationMode = generationMode;
-      if (caps.supportsTextToVideo && caps.supportsImageToVideo) {
+      
+      const hasImage = uploadedImages.length > 0 || references.length > 0;
+      const hasText = prompt.trim().length > 0;
+      
+      // Smart mode detection:
+      // 1. If image is uploaded and model supports I2V -> use I2V
+      // 2. If only text and model supports T2V -> use T2V
+      // 3. If model only supports I2V (like Runway) -> use I2V (will validate image requirement)
+      // 4. If model supports both -> choose based on input
+      
+      if (hasImage && caps.supportsImageToVideo) {
+        // Image uploaded and model supports I2V -> use image-to-video
+        actualGenerationMode = "image_to_video";
+        console.log('🖼️ Image detected, switching to image-to-video mode');
+      } else if (hasText && !hasImage && caps.supportsTextToVideo) {
+        // Only text provided and model supports T2V -> use text-to-video
+        // But check if model requires image (like Kling 2.1)
+        if (caps.requiresImage && !caps.supportsTextToVideo) {
+          // Model requires image but user only provided text
+          toast.error('This model requires an input image. Please upload an image to use this model.');
+          setIsGenerating(false);
+          return;
+        }
+        actualGenerationMode = "text_to_video";
+        console.log('📝 Text only, using text-to-video mode');
+      } else if (caps.supportsTextToVideo && caps.supportsImageToVideo) {
         // Model supports both - check if image is uploaded
-        if (uploadedImages.length > 0 || references.length > 0) {
+        if (hasImage) {
           actualGenerationMode = "image_to_video";
+          console.log('🖼️ Model supports both, image provided -> using image-to-video');
         } else {
           actualGenerationMode = "text_to_video";
+          console.log('📝 Model supports both, no image -> using text-to-video');
         }
+      } else if (caps.supportsImageToVideo && !caps.supportsTextToVideo) {
+        // Model only supports I2V (like Runway models: gen4_turbo, gen3a_turbo)
+        actualGenerationMode = "image_to_video";
+        console.log('🎬 Model only supports I2V -> using image-to-video mode');
+        // Image requirement will be validated below
       }
 
       if (actualGenerationMode === "text_to_video") {
@@ -1590,24 +1765,30 @@ const InputBox = () => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
         } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
-          // Kling T2V - supports v2.5-turbo-pro, v2.1, and v2.1-master
+          // Kling T2V - only v2.5-turbo-pro supports pure T2V
+          // Kling v2.1 and v2.1-master require start_image (I2V only)
           const isV25 = selectedModel.includes('v2.5');
-          const isMaster = selectedModel.includes('master');
-          let modelName: string;
-          if (isV25) {
-            modelName = 'kwaivgi/kling-v2.5-turbo-pro';
-          } else if (isMaster) {
-            modelName = 'kwaivgi/kling-v2.1-master';
-          } else {
-            modelName = 'kwaivgi/kling-v2.1';
+          const isV21 = selectedModel.includes('v2.1');
+          
+          if (isV21) {
+            // Kling 2.1 and 2.1 Master require an image (start_image is required)
+            toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
+            setIsGenerating(false);
+            return;
+          }
+          
+          // Only v2.5 supports pure T2V
+          if (!isV25) {
+            toast.error('This Kling model requires an input image. Please upload an image or select Kling 2.5 Turbo Pro for text-to-video.');
+            setIsGenerating(false);
+            return;
           }
           
           requestBody = {
-            model: modelName,
+            model: 'kwaivgi/kling-v2.5-turbo-pro',
             prompt,
             duration,
             aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
-            mode: (!isV25 && !isMaster) ? klingMode : undefined, // Only send mode for base v2.1, not master or v2.5
             generationType: 'text-to-video',
             isPublic
           };
@@ -1676,10 +1857,35 @@ const InputBox = () => {
           return;
         }
       } else if (actualGenerationMode === "image_to_video") {
-        // Check if we need uploaded images (exclude S2V-01, Veo3, Veo 3.1, WAN, Seedance, PixVerse, and Sora 2 which only need references/images)
-        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && !selectedModel.includes("wan-2.5") && !selectedModel.includes('seedance') && !selectedModel.includes('pixverse') && !selectedModel.includes('sora2') && uploadedImages.length === 0) {
+        // Check if we need uploaded images
+        // S2V-01 uses references, others need uploadedImages
+        const needsImage = selectedModel !== "S2V-01" && 
+                          !selectedModel.includes("veo3") && 
+                          !selectedModel.includes("wan-2.5") && 
+                          !selectedModel.includes('seedance') && 
+                          !selectedModel.includes('pixverse') && 
+                          !selectedModel.includes('sora2') &&
+                          !selectedModel.includes('ltx2') &&
+                          !selectedModel.includes('kling-');
+        
+        if (needsImage && uploadedImages.length === 0) {
           setError("Please upload at least one image");
           return;
+        }
+        
+        // Validation: Ensure image is provided for I2V mode
+        // This should have been caught by mode detection, but double-check for safety
+        if (uploadedImages.length === 0 && references.length === 0) {
+          // If model supports both, we could fall back to T2V, but for I2V-only models we must error
+          if (!caps.supportsTextToVideo) {
+            setError("An input image is required for image-to-video generation with this model");
+            return;
+          } else {
+            // Model supports both but no image - should not happen due to mode detection, but handle gracefully
+            console.warn('⚠️ Image-to-video mode selected but no image provided, this should not happen');
+            setError("Please upload an image for image-to-video generation, or switch to text-to-video mode");
+            return;
+          }
         }
 
         if (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
@@ -1792,23 +1998,39 @@ const InputBox = () => {
           generationType = "image-to-video";
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
-        } else if (selectedModel.startsWith('kling-') && selectedModel.includes('i2v')) {
-          // Kling I2V
+        } else if (selectedModel.startsWith('kling-')) {
+          // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
+          // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
           if (uploadedImages.length === 0) {
-            setError("Kling image-to-video requires an input image");
+            const isV21 = selectedModel.includes('v2.1');
+            if (isV21) {
+              toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
+            } else {
+              toast.error('Kling image-to-video requires an input image. Please upload an image.');
+            }
+            setIsGenerating(false);
             return;
           }
           const isV25 = selectedModel.includes('v2.5');
           if (isV25) {
-            requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, image: uploadedImages[0], duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'image-to-video', isPublic };
+            // Kling 2.5 Turbo Pro - uses 'image' parameter for I2V
+            requestBody = { 
+              model: 'kwaivgi/kling-v2.5-turbo-pro', 
+              prompt, 
+              image: uploadedImages[0], 
+              duration, 
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), 
+              generationType: 'image-to-video', 
+              isPublic 
+            };
           } else {
-            // Kling v2.1 - check if it's master variant
+            // Kling v2.1 and v2.1-master - use 'start_image' parameter (required)
             const isMaster = selectedModel.includes('master');
             const modelName = isMaster ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.1';
             requestBody = {
               model: modelName,
               prompt,
-              start_image: uploadedImages[0],
+              start_image: uploadedImages[0], // Required for v2.1
               duration,
               aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
               mode: isMaster ? undefined : klingMode, // Only send mode for base v2.1, not master
@@ -1818,8 +2040,8 @@ const InputBox = () => {
           }
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/kling-i2v/submit';
-        } else if (selectedModel.includes('seedance') && selectedModel.includes('i2v')) {
-          // Seedance I2V
+        } else if (selectedModel.includes('seedance')) {
+          // Seedance I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("Seedance image-to-video requires an input image");
             return;
@@ -1839,8 +2061,8 @@ const InputBox = () => {
           } as any;
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/seedance-i2v/submit';
-        } else if (selectedModel.includes('pixverse') && selectedModel.includes('i2v')) {
-          // PixVerse I2V
+        } else if (selectedModel.includes('pixverse')) {
+          // PixVerse I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("PixVerse image-to-video requires an input image");
             return;
@@ -1857,8 +2079,8 @@ const InputBox = () => {
           };
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/pixverse-v5-i2v/submit';
-        } else if (selectedModel.includes('sora2') && selectedModel.includes('i2v')) {
-          // Sora 2 I2V
+        } else if (selectedModel.includes('sora2') && !selectedModel.includes('v2v')) {
+          // Sora 2 I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("Sora 2 image-to-video requires an input image");
             return;
@@ -1876,8 +2098,8 @@ const InputBox = () => {
           };
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/sora2/image-to-video/pro/submit' : '/api/fal/sora2/image-to-video/submit';
-        } else if (selectedModel.includes('ltx2') && selectedModel.includes('i2v')) {
-          // LTX V2 Image-to-Video (Pro/Fast)
+        } else if (selectedModel.includes('ltx2')) {
+          // LTX V2 Image-to-Video (Pro/Fast) - supports both t2v and i2v variants, use I2V when image is uploaded
           const isPro = selectedModel.includes('pro');
           const normalizedRes = (selectedResolution || '1080p').toLowerCase();
           const ratio = frameSize === '9:16' ? '9:16' : (frameSize === '16:9' ? '16:9' : 'auto');
@@ -1898,23 +2120,44 @@ const InputBox = () => {
           } as any;
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/ltx2/image-to-video/pro/submit' : '/api/fal/ltx2/image-to-video/fast/submit';
-        } else {
-          // Runway image to video
+        } else if (selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+          // Runway image to video - only for gen4_turbo and gen3a_turbo
+          // Ensure image is provided
+          if (uploadedImages.length === 0) {
+            setError("An input image is required for Runway image-to-video generation");
+            return;
+          }
+          
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
+          const imageToVideoBody = buildImageToVideoBody({
+            model: selectedModel as "gen4_turbo" | "gen3a_turbo",
+            ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
+            promptText: prompt,
+            duration: duration as 5 | 10,
+            promptImage: uploadedImages[0]
+          });
+          
+          console.log('🎬 Runway I2V payload:', {
+            mode: "image_to_video",
+            sku: runwaySku,
+            imageToVideo: {
+              ...imageToVideoBody,
+              promptImage: imageToVideoBody.promptImage ? 'provided' : 'missing'
+            }
+          });
+          
           requestBody = {
             mode: "image_to_video",
             sku: runwaySku,
-            imageToVideo: buildImageToVideoBody({
-              model: selectedModel as "gen4_turbo" | "gen3a_turbo",
-              ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-              promptText: prompt,
-              duration: duration as 5 | 10,
-              promptImage: uploadedImages[0]
-            }),
+            imageToVideo: imageToVideoBody,
             generationType: "image-to-video",
             isPublic,
           };
           apiEndpoint = '/api/runway/video';
+        } else {
+          // Unknown model for image-to-video mode
+          setError(`Model "${selectedModel}" does not support image-to-video generation. Please select a different model.`);
+          return;
         }
         generationType = "image-to-video";
       } else {
@@ -4277,9 +4520,11 @@ const InputBox = () => {
                   disabled={(() => {
                     const disabled = isGenerating || !prompt.trim() ||
                       // Mode-specific validations
-                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && uploadedImages.length === 0) ||
+                      // Note: gen4_turbo, gen3a_turbo, and Kling 2.1 validation is handled in handleGenerate with toast message, button stays enabled
+                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && uploadedImages.length === 0) ||
                       (generationMode === "video_to_video" && !uploadedVideo) ||
                       // Model-specific validations (only for image-to-video)
+                      // Note: Kling 2.1, Gen-4 Turbo, Gen-3a Turbo validation is handled in handleGenerate with toast message, button stays enabled
                       (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
                       (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
                       (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) ||

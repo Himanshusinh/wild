@@ -171,8 +171,16 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo") {
+      // Gen-4 Turbo and Gen-3a Turbo support only 5s and 10s (per backend validation)
+      return [
+        { value: 5, label: "5 seconds", description: "Short video" },
+        { value: 10, label: "10 seconds", description: "Standard length" }
+      ];
+    }
+    // Legacy check for other gen4/gen3a models (should not match gen4_turbo or gen3a_turbo)
     if (selectedModel?.includes("gen4") || selectedModel?.includes("gen3a")) {
-      // Runway models support 4s, 6s, and 10s
+      // Other Runway models (like gen4_aleph) may support different durations
       return [
         { value: 4, label: "4 seconds", description: "Quick video" },
         { value: 6, label: "6 seconds", description: "Short video" },
