@@ -165,7 +165,7 @@ const SidePannelFeatures = ({
       }}
     >
       {/* Logo at the top */}
-      <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:mb-4 mb-0  -ml-1">
+      <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0  -ml-1">
         <div
           onClick={() => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
