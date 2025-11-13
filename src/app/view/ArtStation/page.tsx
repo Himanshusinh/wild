@@ -93,6 +93,7 @@ export default function ArtStationPage() {
   const requestSeqRef = useRef(0)
   const inFlightRef = useRef<Promise<void> | null>(null)
   const queuedNextRef = useRef<{ reset: boolean } | null>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigateForType = (type?: string) => {
     const t = (type || '').toLowerCase()
     if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
@@ -196,21 +197,44 @@ export default function ArtStationPage() {
       setLoading(true)
       const seq = ++requestSeqRef.current
       const categoryAtStart = activeCategory
+      const searchAtStart = searchQuery
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
       const url = new URL(`${baseUrl}/api/feed`)
-      url.searchParams.set('limit', '20')
-      // Always request latest-first
+      
+      // Use same limit for both search and normal browsing - proper pagination
+      const hasSearch = searchQuery.trim().length > 0
+      url.searchParams.set('limit', '20') // Same limit for both search and normal browsing
       url.searchParams.set('sortBy', 'createdAt')
       url.searchParams.set('sortOrder', 'desc')
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
       if (q.mode) url.searchParams.set('mode', q.mode)
       if (q.generationType) url.searchParams.set('generationType', q.generationType)
+      // Add search query parameter - ALWAYS include it if there's a search query
+      if (hasSearch) {
+        url.searchParams.set('search', searchQuery.trim())
+      }
+      // Use cursor for pagination (works for both search and normal browsing)
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
 
-      console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
+      // Log the full URL to verify search parameter is included
+      const fullUrlString = url.toString()
+      console.log('[ArtStation] Fetching feed:', { 
+        reset, 
+        cursor, 
+        searchQuery, 
+        hasSearch: hasSearch,
+        hasSearchParam: url.searchParams.has('search'),
+        searchParamValue: url.searchParams.get('search'),
+        fullUrl: fullUrlString 
+      })
+      
+      // Double-check search parameter is in URL
+      if (hasSearch && !fullUrlString.includes('search=')) {
+        console.error('[ArtStation] ERROR: Search query present but not in URL!', { searchQuery, fullUrl: fullUrlString })
+      }
 
       const doFetch = async () => {
         const res = await fetch(url.toString(), { credentials: 'include' })
@@ -237,6 +261,11 @@ export default function ArtStationPage() {
       // Also ignore if the category changed mid-flight
       if (categoryAtStart !== activeCategory) {
         console.log('[ArtStation] Category changed from', categoryAtStart, 'to', activeCategory, '— ignoring response')
+        return
+      }
+      // Also ignore if the search query changed mid-flight
+      if (searchAtStart !== searchQuery) {
+        console.log('[ArtStation] Search query changed from', searchAtStart, 'to', searchQuery, '— ignoring response')
         return
       }
 
@@ -277,7 +306,9 @@ export default function ArtStationPage() {
         return Array.from(map.values())
       })
   setCursor(newCursor)
+      // Use same page limit for both search and normal browsing
       const pageLimit = 20
+      // Enable pagination for both search and normal browsing
       const inferredHasMore = typeof meta?.hasMore === 'boolean'
         ? meta.hasMore
         : (newItems.length >= pageLimit && Boolean(newCursor))
@@ -348,11 +379,49 @@ export default function ArtStationPage() {
     setItems([])
     setCursor(undefined)
     setHasMore(true)
+    // Note: fetchFeed will include searchQuery if present
     fetchFeed(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory])
 
+  // Refetch when search query changes (with debouncing)
+  useEffect(() => {
+    // Don't trigger on initial mount if search is empty
+    const isInitialMount = didFetchForCategoryRef.current === null;
+    if (isInitialMount && !searchQuery.trim()) {
+      return;
+    }
+    
+    // Clear any pending search timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // Debounce search to avoid too many API calls
+    // Shorter delay when searching (300ms) vs clearing (0ms)
+    const delay = searchQuery.trim() ? 300 : 0; // Reduced delay for better UX
+    searchTimeoutRef.current = setTimeout(() => {
+      // Reset and refetch when search changes
+      loadingMoreRef.current = false
+      try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+      initialLoadDoneRef.current = false
+      setItems([])
+      setCursor(undefined)
+      setHasMore(true)
+      console.log('[ArtStation] Search changed, refetching with query:', searchQuery)
+      fetchFeed(true)
+    }, delay);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery])
+
   // Infinite scroll observer — use the shared helper to ensure hasMore-first and local busy guards
+  // Use EXACT same settings for both search and normal browsing (same as original Art Station)
   useIntersectionObserverForRef(
     sentinelRef,
     async () => {
@@ -364,7 +433,12 @@ export default function ArtStationPage() {
     },
     hasMore,
     loading,
-    { root: null, rootMargin: '600px', threshold: 0.01, requireUserScrollRef: initialLoadDoneRef }
+    { 
+      root: null, 
+      rootMargin: '600px', // Same as normal Art Station
+      threshold: 0.01, // Same as normal Art Station
+      requireUserScrollRef: initialLoadDoneRef 
+    }
   )
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
@@ -458,15 +532,10 @@ export default function ArtStationPage() {
       });
     }
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      categoryFiltered = categoryFiltered.filter(item => {
-        const prompt = (item.prompt || '').toLowerCase();
-        return prompt.includes(query);
-      });
-    }
-
+    // Search is now handled server-side, so no client-side filtering needed
+    // But we keep this for backward compatibility if backend doesn't filter
+    // (Backend should handle search, so this is just a safety net)
+    
     return categoryFiltered;
   }, [items, activeCategory, searchQuery]);
 
@@ -670,10 +739,10 @@ export default function ArtStationPage() {
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-      <div className="flex pt-10 ml-[68px]">
+      <div className="flex ml-[68px]">
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className="sticky top-0 z-20 bg-[#07070B] pt-10">
+          <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
             <div className=" mb-2 md:mb-3">
               <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
                 Art Station
@@ -700,7 +769,7 @@ export default function ArtStationPage() {
                 ))}
 
                 {/* Search Input and Buttons */}
-                <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                <div className="ml-auto flex items-center gap-2 flex-shrink-0 p-1">
                   <div className="relative flex items-center">
                     <input
                       type="text"
@@ -713,30 +782,21 @@ export default function ArtStationPage() {
                         }
                       }}
                       placeholder="Search by prompt..."
-                      className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                      className={`px-4 py-2 rounded-lg text-sm bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
                     />
-                    <button
-                      onClick={() => {
-                        // Search is already applied via filteredItems useMemo
-                      }}
-                      className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
-                      aria-label="Search"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                      </svg>
-                    </button>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        aria-label="Clear search"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    )}
                   </div>
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-                      aria-label="Clear search"
-                    >
-                      Clear
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

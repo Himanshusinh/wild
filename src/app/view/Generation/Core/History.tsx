@@ -178,11 +178,13 @@
           if (viewMode === 'global') {
             const base: any = {};
             if (sortOrder) base.sortOrder = sortOrder;
+            if (searchQuery.trim()) base.search = searchQuery.trim();
             dispatch(setFilters(base));
             await loadFirstPage(base);
           } else {
             const f: any = { generationType: currentGenerationType };
             if (sortOrder) f.sortOrder = sortOrder;
+            if (searchQuery.trim()) f.search = searchQuery.trim();
             dispatch(setFilters(f));
             await loadFirstPage(f);
           }
@@ -194,8 +196,7 @@
         }
       };
       run();
-    }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
-
+    }, [dispatch, viewMode, currentGenerationType, searchQuery]); // Run on mount and when view mode or search changes
 
     // Removed fallback loader to prevent duplicate initial requests.
 
@@ -206,6 +207,7 @@
     const finalFilters = { ...filters } as any;
         if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
         if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
+        if (searchQuery.trim()) (finalFilters as any).search = searchQuery.trim();
         dispatch(setFilters(finalFilters));
         setOverlayLoading(true);
         try {
@@ -252,6 +254,7 @@
           setPage(nextPage);
           const baseFilters = { ...filters } as any;
           if (sortOrder) baseFilters.sortOrder = sortOrder;
+          if (searchQuery.trim()) baseFilters.search = searchQuery.trim();
           const limit = sortOrder === 'asc' ? 30 : 10;
           dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }))
             .then((result: any) => {
@@ -879,14 +882,13 @@
     };
 
     // Filter entries by search query
+    // Search is now handled server-side, so we can use historyEntries directly
+    // But keep this as a safety net for backward compatibility
     const filteredEntries = useMemo(() => {
-      if (!searchQuery.trim()) return historyEntries;
-      const query = searchQuery.trim().toLowerCase();
-      return historyEntries.filter((entry: HistoryEntry) => {
-        const prompt = (entry.prompt || '').toLowerCase();
-        return prompt.includes(query);
-      });
-    }, [historyEntries, searchQuery]);
+      // Backend should handle search, so just return entries as-is
+      // If backend doesn't filter, we can add client-side fallback here if needed
+      return historyEntries;
+    }, [historyEntries]);
 
     // Group entries by date to mirror TextToImage UI
     const groupedByDate = filteredEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -952,7 +954,9 @@
         ? 'Image Generation History'
         : `${getGenerationTypeLabel(currentGenerationType)} History`);
 
-    if (loading && historyEntries.length === 0 && !overlayLoading) {
+    // Only show full-screen loader on initial load, not during search
+    // If user is searching, don't show full-screen loader even if entries are empty
+    if (loading && historyEntries.length === 0 && !overlayLoading && !searchQuery.trim()) {
       return (
         <div className="flex items-center justify-center h-screen">
           <div className="flex flex-col items-center gap-4">
@@ -1084,38 +1088,29 @@
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      // Search is already applied via filteredEntries useMemo
+                      // Search is already applied via backend API
                     }
                   }}
                   placeholder="Search by prompt..."
-                  className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                  className={`px-4 py-2 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
                 />
-                <button
-                  onClick={() => {
-                    // Search is already applied via filteredEntries useMemo
-                  }}
-                  className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
-                  aria-label="Search"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                  </svg>
-                </button>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
               </div>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-                  aria-label="Clear search"
-                >
-                  Clear
-                </button>
-              )}
             </div>
             
             {/* Sort buttons */}
-            <div className="ml-8 flex items-right justify-end  gap-2">
+            <div className="ml-0 flex items-right justify-end  gap-2">
               <button
                 onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
                   className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
@@ -1364,14 +1359,7 @@
             className="space-y-8 relative min-h-[300px]"
             onClick={handleContainerClick}
           >
-            {overlayLoading && (
-              <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
-                  <div className="text-white text-lg">Loading generations...</div>
-                </div>
-              </div>
-            )}  
+            {/* Removed full-screen overlay - use bottom loading indicator instead */}  
             {sortedDates.map((dateKey) => {
               // Check if this date has any filtered items for the active category
               const hasFilteredItems = groupedByDate[dateKey].some((entry: HistoryEntry) => {
