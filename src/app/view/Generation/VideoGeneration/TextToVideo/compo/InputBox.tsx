@@ -217,28 +217,168 @@ const InputBox = () => {
     }
   }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration]);
 
-  // Auto-select model based onf generation mode (but preserve user's choice when possible)
-  useEffect(() => {
-    if (generationMode === "text_to_video") {
-      // Allow MiniMax, Veo3/3.1, WAN, Kling, Seedance, PixVerse, Sora2, LTX V2
-      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('sora2') || selectedModel.includes('ltx2'))) {
-        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for text→video
-      }
-    } else if (generationMode === "image_to_video") {
-      // Allow Runway, MiniMax, Veo3/3.1, WAN, Kling, Seedance, PixVerse, Sora2, LTX V2
-      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('sora2') || selectedModel.includes('ltx2'))) {
-        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for image→video
-      }
-    } else if (generationMode === "video_to_video") {
-      // Video→Video: Runway and Sora 2 models support this
-      if (selectedModel !== "gen4_aleph" && !selectedModel.includes('sora2-v2v')) {
-        setSelectedModel("gen4_aleph"); // Default to Runway model for video→video
-      }
+  // Helper function to determine model capabilities
+  const getModelCapabilities = (model: string) => {
+    const capabilities = {
+      supportsTextToVideo: false,
+      supportsImageToVideo: false,
+      supportsVideoToVideo: false,
+      requiresImage: false,
+      requiresFirstFrame: false,
+      requiresLastFrame: false,
+      requiresReferenceImage: false,
+      requiresVideo: false,
+    };
+
+    // Models that support both text-to-video and image-to-video
+    if (model.includes("veo3.1") && !model.includes("i2v")) {
+      // Veo 3.1 supports both T2V and I2V (when not explicitly i2v variant)
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes("veo3") && !model.includes("veo3.1") && !model.includes("i2v")) {
+      // Veo3 supports both T2V and I2V (when not explicitly i2v variant)
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes("wan-2.5") && !model.includes("i2v")) {
+      // WAN 2.5 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.startsWith('kling-') && !model.includes('i2v')) {
+      // Kling supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('seedance') && !model.includes('i2v')) {
+      // Seedance supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('pixverse') && !model.includes('i2v')) {
+      // PixVerse supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('sora2') && !model.includes('i2v') && !model.includes('v2v')) {
+      // Sora 2 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('ltx2') && !model.includes('i2v')) {
+      // LTX V2 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    }
+    
+    // Text-to-video only models
+    if (model === "T2V-01-Director") {
+      capabilities.supportsTextToVideo = true;
+    }
+    
+    // Image-to-video only models (explicit i2v variants or image-only models)
+    if (model === "I2V-01-Director" || 
+        model === "S2V-01" ||
+        model === "gen4_turbo" ||
+        model === "gen3a_turbo" ||
+        (model.includes("veo3") && model.includes("i2v")) ||
+        (model.includes("wan-2.5") && model.includes("i2v")) ||
+        (model.startsWith('kling-') && model.includes('i2v')) ||
+        (model.includes('seedance') && model.includes('i2v')) ||
+        (model.includes('pixverse') && model.includes('i2v')) ||
+        (model.includes('sora2') && model.includes('i2v'))) {
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
     }
 
-    // Clear camera movements when generation mode changes
+    // Video-to-video models
+    if (model === "gen4_aleph" || model.includes('sora2-v2v')) {
+      capabilities.supportsVideoToVideo = true;
+      capabilities.requiresVideo = true;
+    }
+
+    // Models that support both text and image
+    if (model === "MiniMax-Hailuo-02") {
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+      // Image is optional for text-to-video, required for 512P resolution
+    }
+
+    // Specific requirements
+    if (model === "I2V-01-Director") {
+      capabilities.requiresFirstFrame = true;
+    }
+    if (model === "S2V-01") {
+      capabilities.requiresReferenceImage = true;
+    }
+
+    return capabilities;
+  };
+
+  // Memoize current model capabilities to prevent recalculations during render
+  const currentModelCapabilities = useMemo(() => {
+    const caps = getModelCapabilities(selectedModel);
+    // MiniMax-Hailuo-02 requires first frame for 512P resolution
+    if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+      caps.requiresFirstFrame = true;
+    }
+    return caps;
+  }, [selectedModel, selectedResolution]);
+
+  // Extract primitive values for stable dependencies
+  const supportsTextToVideo = currentModelCapabilities.supportsTextToVideo;
+  const supportsImageToVideo = currentModelCapabilities.supportsImageToVideo;
+  const supportsVideoToVideo = currentModelCapabilities.supportsVideoToVideo;
+
+  // Memoize the computed mode to prevent unnecessary recalculations
+  const computedMode = useMemo(() => {
+    if (supportsVideoToVideo && uploadedVideo) {
+      return "video_to_video";
+    } else if (supportsImageToVideo && (uploadedImages.length > 0 || references.length > 0)) {
+      return "image_to_video";
+    } else if (supportsTextToVideo) {
+      return "text_to_video";
+    } else if (supportsImageToVideo) {
+      return "image_to_video";
+    } else if (supportsVideoToVideo) {
+      return "video_to_video";
+    }
+    return null;
+  }, [supportsTextToVideo, supportsImageToVideo, supportsVideoToVideo, uploadedImages.length, references.length, uploadedVideo]);
+
+  // Auto-determine generation mode based on model selection only (not content changes to prevent loops)
+  // Only update generation mode when model changes, not when content is uploaded
+  const prevModelForModeRef = useRef(selectedModel);
+  useEffect(() => {
+    // Only run if model actually changed
+    if (prevModelForModeRef.current === selectedModel) {
+      return;
+    }
+    prevModelForModeRef.current = selectedModel;
+
+    const caps = getModelCapabilities(selectedModel);
+    
+    // Determine appropriate generation mode based on model capabilities only
+    let newMode: "text_to_video" | "image_to_video" | "video_to_video" | null = null;
+    
+    // Prefer text-to-video if model supports it (most models do)
+    if (caps.supportsTextToVideo) {
+      newMode = "text_to_video";
+    } else if (caps.supportsImageToVideo) {
+      newMode = "image_to_video";
+    } else if (caps.supportsVideoToVideo) {
+      newMode = "video_to_video";
+    }
+
+    // Only update if mode actually changed
+    if (newMode) {
+      setGenerationMode(prevMode => {
+        if (newMode !== prevMode) {
+          return newMode;
+        }
+        return prevMode;
+      });
+    }
+  }, [selectedModel]);
+
+  // Clear camera movements when model changes (separate effect to avoid loop)
+  useEffect(() => {
     setSelectedCameraMovements([]);
-  }, [generationMode, selectedModel]);
+  }, [selectedModel]);
 
   // Reset fps/audio defaults when model changes
   useEffect(() => {
@@ -270,31 +410,44 @@ const InputBox = () => {
   }, [selectedModel, selectedMiniMaxDuration]);
 
   // Auto-adjust resolution when switching to text-to-video mode (512P not supported)
+  // Use ref to track previous generationMode to prevent loops
+  const prevGenerationModeRef = useRef(generationMode);
   useEffect(() => {
-    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
-      setSelectedResolution("768P"); // Switch to 768P for text-to-video
+    // Only run if generationMode actually changed
+    if (prevGenerationModeRef.current === generationMode) {
+      return;
     }
-  }, [generationMode, selectedModel, selectedResolution]);
+    prevGenerationModeRef.current = generationMode;
 
-  // Additional check to ensure 512P is not available for text-to-video
-  useEffect(() => {
-    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
-      setSelectedResolution("768P"); // Force switch to 768P
+    // Only adjust if switching to text-to-video and resolution is 512P
+    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02") {
+      setSelectedResolution(prev => {
+        if (prev === "512P") {
+          return "768P"; // Switch to 768P for text-to-video
+        }
+        return prev; // Keep current resolution if not 512P
+      });
     }
-  }, [generationMode, selectedModel, selectedResolution]);
+  }, [generationMode, selectedModel]); // Removed selectedResolution from deps to prevent loop
 
   // Auto-adjust resolution when duration changes for MiniMax-Hailuo-02
+  // Only update if resolution actually needs to change to prevent loops
   useEffect(() => {
-    if (selectedModel === "MiniMax-Hailuo-02") {
-      if (selectedMiniMaxDuration === 10 && selectedResolution === "1080P") {
-        // 10s doesn't support 1080P, switch to 768P
-        setSelectedResolution("768P");
-      }
+    if (selectedModel === "MiniMax-Hailuo-02" && selectedMiniMaxDuration === 10) {
+      setSelectedResolution(prev => prev === "1080P" ? "768P" : prev); // Only update if still 1080P
     }
-  }, [selectedMiniMaxDuration, selectedModel, selectedResolution]);
+  }, [selectedMiniMaxDuration, selectedModel]); // Removed selectedResolution from deps to prevent loop
 
   // Reset controls when switching between MiniMax and Runway models
+  // Use ref to track previous model to prevent unnecessary updates
+  const prevModelForResetRef = useRef(selectedModel);
   useEffect(() => {
+    // Only run if model actually changed
+    if (prevModelForResetRef.current === selectedModel) {
+      return;
+    }
+    prevModelForResetRef.current = selectedModel;
+
     if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
       // Reset Runway-specific controls when switching to MiniMax
       // Note: MiniMax models don't support custom aspect ratios - they use fixed resolutions
@@ -303,16 +456,16 @@ const InputBox = () => {
 
       // Set appropriate MiniMax defaults based on model
       if (selectedModel === "MiniMax-Hailuo-02") {
-        setSelectedResolution("1080P");
+        setSelectedResolution(prev => prev !== "1080P" ? "1080P" : prev);
         setSelectedMiniMaxDuration(6);
       } else {
         // T2V-01, I2V-01, S2V-01 have fixed settings
-        setSelectedResolution("720P");
+        setSelectedResolution(prev => prev !== "720P" ? "720P" : prev);
         setSelectedMiniMaxDuration(6);
       }
     } else {
       // Reset MiniMax-specific controls when switching to Runway
-      setSelectedResolution("1080P"); // Default resolution
+      setSelectedResolution(prev => prev !== "1080P" ? "1080P" : prev); // Only update if different
       setSelectedMiniMaxDuration(6); // Default duration
     }
   }, [selectedModel]);
@@ -1242,7 +1395,10 @@ const InputBox = () => {
 
   // Handle video generation
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt');
+      return;
+    }
 
     console.log('🚀 Starting video generation with:');
     console.log('🚀 - Selected model:', selectedModel);
@@ -1250,9 +1406,52 @@ const InputBox = () => {
     console.log('🚀 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
     console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
 
+    // Get current model capabilities
+    const caps = currentModelCapabilities;
+
+    // Validate model requirements
+    // Only show error if model doesn't support text-to-video AND requires image
+    // If model supports both T2V and I2V, allow text-only generation
+    if (caps.requiresImage && !caps.supportsTextToVideo && uploadedImages.length === 0 && references.length === 0) {
+      if (selectedModel === "S2V-01") {
+        toast.error('A reference image is required to use S2V-01 model. Please upload a character reference image.');
+      } else if (selectedModel === "I2V-01-Director") {
+        toast.error('An input image is required to use I2V-01-Director model. Please upload a first frame image.');
+      } else if (selectedModel.includes("veo3.1") && selectedModel.includes("i2v")) {
+        toast.error('An input image is required to use Veo 3.1 image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes("veo3") && selectedModel.includes("i2v")) {
+        toast.error('An input image is required to use Veo 3 image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes("wan-2.5") && selectedModel.includes("i2v")) {
+        toast.error('An input image is required to use WAN 2.5 image-to-video model. Please upload an image.');
+      } else if (selectedModel.startsWith('kling-') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use Kling image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes('seedance') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use Seedance image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes('pixverse') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use PixVerse image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes('sora2') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use Sora 2 image-to-video model. Please upload an image.');
+      } else if (selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo") {
+        toast.error('An input image is required to use this Runway model. Please upload an image.');
+      } else {
+        toast.error('An input image is required to use this model. Please upload an image.');
+      }
+      return;
+    }
+
+    if (caps.requiresReferenceImage && references.length === 0) {
+      toast.error('A reference image is required to use this model. Please upload a character reference image.');
+      return;
+    }
+
+    if (caps.requiresVideo && !uploadedVideo) {
+      toast.error('A source video is required to use this model. Please upload a video.');
+      return;
+    }
+
     // Validate model compatibility with generation mode
-    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('sora2') || selectedModel.includes('ltx2'))) {
-      setError("Text→Video mode supports MiniMax, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, Sora 2, and LTX V2 models. Please select a compatible model or switch to Image→Video mode.");
+    if (generationMode === "text_to_video" && !caps.supportsTextToVideo) {
+      toast.error('This model does not support text-to-video generation. An input image is required. Please upload an image or select a different model.');
       return;
     }
 
@@ -1286,7 +1485,19 @@ const InputBox = () => {
       let generationType: string;
       let apiEndpoint: string;
 
-      if (generationMode === "text_to_video") {
+      // Auto-determine mode for models that support both T2V and I2V
+      // If model supports both and image is uploaded, use image-to-video; otherwise use text-to-video
+      let actualGenerationMode = generationMode;
+      if (caps.supportsTextToVideo && caps.supportsImageToVideo) {
+        // Model supports both - check if image is uploaded
+        if (uploadedImages.length > 0 || references.length > 0) {
+          actualGenerationMode = "image_to_video";
+        } else {
+          actualGenerationMode = "text_to_video";
+        }
+      }
+
+      if (actualGenerationMode === "text_to_video") {
         // Text to video generation (MiniMax, Veo3, and WAN models)
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
           // Text-to-video: No image requirements (pure text generation)
@@ -1304,8 +1515,8 @@ const InputBox = () => {
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
-        } else if (selectedModel.includes("veo3.1")) {
-          // Veo 3.1 text-to-video generation
+        } else if (selectedModel.includes("veo3.1") && !selectedModel.includes("i2v")) {
+          // Veo 3.1 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
@@ -1320,7 +1531,7 @@ const InputBox = () => {
           };
           generationType = "text-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3_1/text-to-video/fast/submit' : '/api/fal/veo3_1/text-to-video/submit';
-        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && !selectedModel.includes("i2v")) {
           // Veo3 text-to-video generation
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
@@ -1336,8 +1547,8 @@ const InputBox = () => {
           };
           generationType = "text-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3/text-to-video/fast/submit' : '/api/fal/veo3/text-to-video/submit';
-        } else if (selectedModel.includes("wan-2.5")) {
-          // WAN 2.5 text-to-video generation
+        } else if (selectedModel.includes("wan-2.5") && !selectedModel.includes("i2v")) {
+          // WAN 2.5 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-t2v-fast" : "wan-video/wan-2.5-t2v",
@@ -1417,7 +1628,7 @@ const InputBox = () => {
           setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.");
           return;
         }
-      } else if (generationMode === "image_to_video") {
+      } else if (actualGenerationMode === "image_to_video") {
         // Check if we need uploaded images (exclude S2V-01, Veo3, Veo 3.1, WAN, Seedance, PixVerse, and Sora 2 which only need references/images)
         if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && !selectedModel.includes("wan-2.5") && !selectedModel.includes('seedance') && !selectedModel.includes('pixverse') && !selectedModel.includes('sora2') && uploadedImages.length === 0) {
           setError("Please upload at least one image");
@@ -1477,16 +1688,18 @@ const InputBox = () => {
           };
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
-        } else if (selectedModel.includes("veo3.1")) {
-          // Veo 3.1 image-to-video generation
-          if (uploadedImages.length === 0) {
+        } else if (selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
+          // Veo 3.1 image-to-video generation (i2v variant or when image is uploaded)
+          if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo 3.1 image-to-video requires an input image");
             return;
           }
           const isFast = selectedModel.includes("fast");
+          // Use uploaded image or reference image
+          const imageUrl = uploadedImages.length > 0 ? uploadedImages[0] : references[0];
           requestBody = {
             prompt: prompt,
-            image_url: uploadedImages[0], // Veo 3.1 expects a single image URL
+            image_url: imageUrl, // Veo 3.1 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
             duration: "8s", // Veo 3.1 I2V only supports 8s duration
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
@@ -1495,9 +1708,9 @@ const InputBox = () => {
           };
           generationType = "image-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3_1/image-to-video/fast/submit' : '/api/fal/veo3_1/image-to-video/submit';
-        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
-          // Veo3 image-to-video generation
-          if (uploadedImages.length === 0) {
+        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
+          // Veo3 image-to-video generation (i2v variant or when image is uploaded)
+          if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo3 image-to-video requires an input image");
             return;
           }
@@ -1797,23 +2010,65 @@ const InputBox = () => {
         const { data } = await api.post(apiEndpoint, requestBody);
         result = data?.data || data;
       } catch (e: any) {
+        // Check if this is a network error (no response from server)
+        const isNetworkError = !e?.response && (e?.code === 'ECONNABORTED' || e?.code === 'ERR_NETWORK' || e?.code === 'ETIMEDOUT' || e?.message?.includes('Network Error') || e?.message?.includes('Failed to fetch') || e?.message?.includes('timeout'));
+        
+        if (isNetworkError) {
+          const baseUrl = api.defaults.baseURL || 'the server';
+          const errorMsg = `Network error: Unable to connect to ${baseUrl}. Please check your internet connection and try again.`;
+          console.error('❌ Network error details:', {
+            code: e?.code,
+            message: e?.message,
+            endpoint: apiEndpoint,
+            baseURL: baseUrl,
+            stack: e?.stack
+          });
+          throw new Error(errorMsg);
+        }
+
         // Some providers may return 5xx while the task actually got queued; try to salvage known success fields
         const statusCode = e?.response?.status;
         const body = e?.response?.data;
         const msg = body?.message || e?.message || 'Request failed';
         const queuedRequestId = body?.data?.requestId || body?.requestId;
+        
         if (String(statusCode) === '413' || /request entity too large/i.test(String(msg))) {
           toast.error('Video too large for provider. Max 16MB. Please upload ≤ 14MB');
           console.error('❌ API 413 payload too large');
           throw new Error(`HTTP ${statusCode || 500}: ${msg}`);
         }
+        
         // If a requestId is present despite error status, proceed as submitted
         if (queuedRequestId) {
           console.warn('⚠️ Provider returned error but included requestId; proceeding as submitted', { statusCode, msg, queuedRequestId });
           result = { requestId: queuedRequestId, historyId: body?.data?.historyId || body?.historyId, status: 'submitted' };
         } else {
-          console.error('❌ API response not ok:', statusCode || '-', msg, body);
-          throw new Error(`HTTP ${statusCode || 500}: ${msg}`);
+          // Provide more detailed error information
+          const errorDetails = {
+            statusCode: statusCode || 'No status',
+            message: msg,
+            endpoint: apiEndpoint,
+            baseURL: api.defaults.baseURL,
+            responseData: body,
+            originalError: e?.message
+          };
+          console.error('❌ API response not ok:', errorDetails);
+          
+          // Create a more helpful error message
+          let userFriendlyMsg = msg;
+          if (statusCode === 401) {
+            userFriendlyMsg = 'Authentication failed. Please try logging out and back in.';
+          } else if (statusCode === 403) {
+            userFriendlyMsg = 'Access denied. You may not have permission to perform this action.';
+          } else if (statusCode === 404) {
+            userFriendlyMsg = `API endpoint not found: ${apiEndpoint}. Please contact support.`;
+          } else if (statusCode === 500 || statusCode === 502 || statusCode === 503) {
+            userFriendlyMsg = 'Server error. The service may be temporarily unavailable. Please try again in a few moments.';
+          } else if (!statusCode) {
+            userFriendlyMsg = `Request failed: ${msg}. Please check your connection and try again.`;
+          }
+          
+          throw new Error(userFriendlyMsg);
         }
       }
       console.log('📥 API response:', result);
@@ -2565,7 +2820,7 @@ const InputBox = () => {
           <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
             <div className="fixed top-0  left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
-              <h2 className="text-xl font-semibold text-white pl-0 ">Video Generation </h2>
+              <h2 className="text-2xl font-semibold text-white pl-0 ">Video Generation </h2>
             </div>
             {/* Spacer to keep content below fixed header */}
             <div className="h-0"></div>
@@ -2891,50 +3146,7 @@ const InputBox = () => {
 
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
-        {/* Tabs row - non-overlapping, right aligned */}
-        <div className="mb-1 flex justify-end">
-          <div className="flex bg-transparent backdrop-blur-3xl rounded-lg px-2 pt-2 pb-2 ring-1 ring-white/20 shadow-2xl">
-            <div className="relative group">
-              <button
-                onClick={() => setGenerationMode("text_to_video")}
-                className={`px-2 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "text_to_video"
-                  ? 'bg-white text-black '
-                  : 'text-white hover:bg-white/10'
-                  }`}
-                aria-label="Text to Video"
-              >
-                T → V
-              </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-11 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Text To Video</div>
-              </div>
-            <div className="relative group">
-              <button
-                onClick={() => setGenerationMode("image_to_video")}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "image_to_video"
-                  ? 'bg-white text-black'
-                  : 'text-white hover:bg-white/10'
-                  }`}
-                aria-label="Image to Video"
-              >
-                I → V
-              </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-11 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Image To Video</div>
-            </div>
-            <div className="relative group">
-              <button
-                onClick={() => setGenerationMode("video_to_video")}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${generationMode === "video_to_video"
-                  ? 'bg-white text-black'
-                  : 'text-white hover:bg-white/10'
-                  }`}
-                aria-label="Video to Video"
-              >
-                V → V
-              </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-11 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Video To Video</div>
-            </div>
-          </div>
-        </div>
+        {/* Toggle buttons removed - model selection determines input requirements */}
         <div
           className={`rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
             }`}
@@ -3105,7 +3317,7 @@ const InputBox = () => {
                     )}
 
                   {/* References Upload (for video-to-video and S2V-01 character reference) */}
-                  {(generationMode === "video_to_video" || (generationMode === "image_to_video" && selectedModel === "S2V-01")) && (
+                  {(currentModelCapabilities.requiresReferenceImage || (currentModelCapabilities.supportsVideoToVideo && uploadedVideo)) && (
                     <div className="relative">
                       <button
                         className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
@@ -3179,9 +3391,11 @@ const InputBox = () => {
                     </div>
                   )}
 
-                  {/* Image Upload for Runway and WAN Models (image-to-video only) */}
-                  {generationMode === "image_to_video" &&
-                    !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && (
+                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01 which have separate handlers) */}
+                  {currentModelCapabilities.supportsImageToVideo && 
+                   !selectedModel.includes("MiniMax") && 
+                   selectedModel !== "I2V-01-Director" && 
+                   selectedModel !== "S2V-01" && (
                       <div className="relative">
                         <button
                           className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3198,8 +3412,9 @@ const InputBox = () => {
                       </div>
                     )}
 
-                  {/* MiniMax Image Uploads - Consolidated (Image-to-Video only) */}
-                  {generationMode === "image_to_video" && (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "I2V-01-Director") && (
+                  {/* MiniMax/I2V-01-Director Image Uploads - Show when model requires first frame */}
+                  {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") && 
+                    (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
                     <div className="relative">
                       <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3231,7 +3446,9 @@ const InputBox = () => {
                   )}
 
                   {/* Arrow icon between first and last frame uploads */}
-                  {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                  {selectedModel === "MiniMax-Hailuo-02" && 
+                   (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                   currentModelCapabilities.supportsImageToVideo && (
                     <div className="flex items-center justify-center">
                       <Image
                         src="/icons/arrow-right-left.svg"
@@ -3243,8 +3460,10 @@ const InputBox = () => {
                     </div>
                   )}
 
-                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) - Image-to-Video only */}
-                  {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) */}
+                  {selectedModel === "MiniMax-Hailuo-02" && 
+                   (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                   currentModelCapabilities.supportsImageToVideo && (
                     <div className="relative ">
                       <label
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3288,8 +3507,8 @@ const InputBox = () => {
                     </div>
                   )}
 
-                  {/* Video Upload (only for video-to-video) */}
-                  {generationMode === "video_to_video" && (
+                  {/* Video Upload (for video-to-video models) */}
+                  {currentModelCapabilities.supportsVideoToVideo && (
                     <div className="relative">
                       <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
