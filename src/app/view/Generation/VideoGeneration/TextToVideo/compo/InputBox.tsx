@@ -375,6 +375,50 @@ const InputBox = () => {
     }
   }, [selectedModel]);
 
+  // Auto-convert LTX V2 and WAN 2.5 models between t2v and i2v variants when switching modes
+  useEffect(() => {
+    // Convert LTX V2 models
+    if (selectedModel.includes('ltx2')) {
+      const isI2V = selectedModel.includes('i2v');
+      const isPro = selectedModel.includes('pro');
+      const isFast = selectedModel.includes('fast');
+      
+      if (generationMode === 'text_to_video' && isI2V) {
+        // Switch from i2v to t2v variant
+        const newModel = isPro ? 'ltx2-pro-t2v' : (isFast ? 'ltx2-fast-t2v' : 'ltx2-pro-t2v');
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      } else if (generationMode === 'image_to_video' && !isI2V) {
+        // Switch from t2v to i2v variant
+        const newModel = isPro ? 'ltx2-pro-i2v' : (isFast ? 'ltx2-fast-i2v' : 'ltx2-pro-i2v');
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      }
+    }
+    
+    // Convert WAN 2.5 models
+    if (selectedModel.includes('wan-2.5') && !selectedModel.includes('v2v')) {
+      const isI2V = selectedModel.includes('i2v');
+      const isFast = selectedModel.includes('fast');
+      
+      if (generationMode === 'text_to_video' && isI2V) {
+        // Switch from i2v to t2v variant
+        const newModel = isFast ? 'wan-2.5-t2v-fast' : 'wan-2.5-t2v';
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      } else if (generationMode === 'image_to_video' && !isI2V) {
+        // Switch from t2v to i2v variant
+        const newModel = isFast ? 'wan-2.5-i2v-fast' : 'wan-2.5-i2v';
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      }
+    }
+  }, [generationMode, selectedModel]);
+
   // Clear camera movements when model changes (separate effect to avoid loop)
   useEffect(() => {
     setSelectedCameraMovements([]);
