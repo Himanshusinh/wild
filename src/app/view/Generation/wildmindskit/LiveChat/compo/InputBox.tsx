@@ -70,6 +70,25 @@ const LiveChatInputBox: React.FC = () => {
     }
   }, [dispatch]);
 
+  // Preserve sessionDocId from localStorage on mount (in case component re-renders)
+  useEffect(() => {
+    try {
+      const restoredSessionData = localStorage.getItem('livechat-restored-session');
+      if (restoredSessionData) {
+        const restoredSession = JSON.parse(restoredSessionData);
+        // Restore sessionDocId if it exists and is recent (within 30 seconds)
+        if (restoredSession.sessionDocId && restoredSession.restoredAt && (Date.now() - restoredSession.restoredAt) < 30000) {
+          if (!sessionDocId) {
+            setSessionDocId(restoredSession.sessionDocId);
+            console.log('[LiveChat] 🔄 Preserved sessionDocId from localStorage:', restoredSession.sessionDocId);
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+  }, []); // Only run on mount
+
   // Track if component has mounted to prevent auto-open on refresh
   const hasMountedRef = React.useRef(false);
   
@@ -90,15 +109,22 @@ const LiveChatInputBox: React.FC = () => {
         const restoredSessionData = localStorage.getItem('livechat-restored-session');
         if (restoredSessionData) {
           const restoredSession = JSON.parse(restoredSessionData);
-          // Only restore if restored within last 5 seconds (to avoid stale data)
-          if (restoredSession.restoredAt && (Date.now() - restoredSession.restoredAt) < 5000) {
+          // Restore if restored within last 30 seconds (increased timeout to allow user time to generate)
+          // This ensures we can continue the same session when clicking from history
+          if (restoredSession.restoredAt && (Date.now() - restoredSession.restoredAt) < 30000) {
             // Restore the original session ID
             setCurrentSessionId(restoredSession.sessionId);
             // Restore sessionDocId if available (from backend session)
+            // This is CRITICAL for continuing the same session when clicking from history
+            // Without this, we'll create a new session instead of continuing the existing one
             if (restoredSession.sessionDocId) {
               setSessionDocId(restoredSession.sessionDocId);
+              console.log('[LiveChat] ✅ Restored sessionDocId for continuation:', restoredSession.sessionDocId);
+              console.log('[LiveChat] Session will continue with existing array, not create new one');
             } else {
-              setSessionDocId(null); // Clear so it can be found/created fresh
+              // If no sessionDocId, we'll need to find it by sessionId when generating
+              console.log('[LiveChat] ⚠️ No sessionDocId in restored session, will find by sessionId');
+              setSessionDocId(null);
             }
             
             // Restore messages from entries (in reverse chronological order - newest first)
@@ -234,8 +260,10 @@ const LiveChatInputBox: React.FC = () => {
               }
             }
             
-            // Clear the restored session data after restoring
-            localStorage.removeItem('livechat-restored-session');
+            // DON'T clear the restored session data immediately - keep it for a while
+            // This ensures sessionDocId is preserved if user generates multiple times
+            // We'll clear it when the session is actually done (when user clicks Done)
+            // localStorage.removeItem('livechat-restored-session'); // Keep for continuation
           } else {
             // Stale data, create new session
       const sessionId = `session-${Date.now()}`;
@@ -540,31 +568,41 @@ const LiveChatInputBox: React.FC = () => {
               autoCapitalize="on"
             />
 
-            {/* Previews just to the left of upload */}
-            {uploadedImages.length > 0 && (
-              <div className="flex items-center gap-1.5 pr-1">
-                {uploadedImages.map((u: string, i: number) => (
-                  <div key={i} className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group">
+            {/* Preview: Show only the latest generated image (left side image) */}
+            {(() => {
+              // Get the latest image - prefer currentGeneration if available, otherwise last from uploadedImages
+              let latestImageUrl: string | null = null;
+              
+              if (currentGeneration?.status === 'completed' && currentGeneration.images.length > 0) {
+                // Latest generated image (left side in main display)
+                latestImageUrl = currentGeneration.images[0].url;
+              } else if (uploadedImages.length > 0) {
+                // Fallback to last image from uploadedImages (should be the latest generated)
+                latestImageUrl = uploadedImages[uploadedImages.length - 1];
+              }
+              
+              return latestImageUrl ? (
+                <div className="flex items-center gap-1.5 pr-1">
+                  <div className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={u} alt={`ref-${i}`} className="w-full h-full object-cover transition-opacity group-hover:opacity-30" />
+                    <img src={latestImageUrl} alt="Latest generated" className="w-full h-full object-cover transition-opacity group-hover:opacity-30" />
                     <button
                       aria-label="Remove reference"
                       className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
-                        dispatch(setUploadedImages(next));
-                        if (next.length === 0) {
-                          setCurrentSessionId(null);
-                        }
+                        // Clear all uploaded images when removing the latest
+                        dispatch(setUploadedImages([]));
+                        setCurrentSessionId(null);
+                        setCurrentGeneration(null);
                       }}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ) : null;
+            })()}
 
             {/* Upload button */}
             <div className="relative group">
@@ -661,10 +699,13 @@ const LiveChatInputBox: React.FC = () => {
                   if (!currentSessionId) setCurrentSessionId(sessionId);
                   if (!overlayOpen) setOverlayOpen(true);
                   
-                  // Find or create session in backend BEFORE generation
-                  // This ensures sessionDocId is available when adding images
+                  // CRITICAL: Use existing sessionDocId if available (from restored session)
+                  // This ensures we continue the same session array when clicking from history
+                  // If we have sessionDocId, we MUST use it directly - do NOT create a new session
                   let docId = sessionDocId;
                   if (!docId) {
+                    // Only create new session if we don't have an existing one
+                    // This happens when starting a fresh session (not from history)
                     try {
                       const { sessionDocId: newDocId } = await findOrCreateSession({
                         sessionId,
@@ -675,10 +716,16 @@ const LiveChatInputBox: React.FC = () => {
                       });
                       docId = newDocId;
                       setSessionDocId(newDocId);
+                      console.log('[LiveChat] 🆕 Created NEW session (fresh start):', newDocId);
                     } catch (e) {
                       console.error('[LiveChat] Failed to find or create session:', e);
                       // Continue anyway, but images won't be saved to backend
                     }
+                  } else {
+                    // We have an existing sessionDocId - this means we're continuing a session from history
+                    // The backend will append new images to the existing array automatically
+                    console.log('[LiveChat] ✅ CONTINUING existing session (from history):', docId);
+                    console.log('[LiveChat] New images will be appended to existing array in backend');
                   }
                   
                   // BEFORE starting new generation, shift current latest image to right side
@@ -731,9 +778,11 @@ const LiveChatInputBox: React.FC = () => {
                     dispatch(setUploadedImages([latest.url]));
                     
                     // Add message to backend session (use docId from above, or sessionDocId state)
+                    // This will append new images to the existing array in the backend
                     const currentDocId = docId || sessionDocId;
                     if (currentDocId) {
                       try {
+                        console.log('[LiveChat] 📤 Adding', result.images.length, 'image(s) to existing session array:', currentDocId);
                         await addMessageToSession(currentDocId, {
                           prompt: prompt,
                           images: result.images.map((img: any) => ({
@@ -745,12 +794,13 @@ const LiveChatInputBox: React.FC = () => {
                           })),
                           timestamp: new Date().toISOString(),
                         });
-                        console.log('[LiveChat] Successfully added', result.images.length, 'image(s) to session', currentDocId);
+                        console.log('[LiveChat] ✅ Successfully appended', result.images.length, 'image(s) to existing session array');
+                        console.log('[LiveChat] Backend will continue order numbers from last image in array');
                       } catch (e) {
-                        console.error('[LiveChat] Failed to add message to session:', e);
+                        console.error('[LiveChat] ❌ Failed to add message to session:', e);
                       }
                     } else {
-                      console.warn('[LiveChat] No sessionDocId available, images not saved to backend session');
+                      console.warn('[LiveChat] ⚠️ No sessionDocId available, images not saved to backend session');
                     }
                     
                     // Note: Image shifting to left already happened before generation started
@@ -993,6 +1043,8 @@ const LiveChatInputBox: React.FC = () => {
                     setSessionDocId(null); // Clear session document ID
                     // Clear uploaded images to exit live session
                     dispatch(setUploadedImages([]));
+                    // Clear restored session data when session is actually done
+                    localStorage.removeItem('livechat-restored-session');
                   }}
                   className="px-3 py-1.5 text-xs rounded-full bg-white text-black hover:bg-gray-200 transition"
                 >
@@ -1092,7 +1144,9 @@ const LiveChatInputBox: React.FC = () => {
                 })()}
                 
                 {/* Previous session images (right side) - all same size */}
-                {sessionImages
+                {/* Reverse the order so oldest is rightmost, newest is closest to latest (left) */}
+                {[...sessionImages]
+                  .reverse()
                   .filter((img) => {
                     // Don't show images that are currently in currentGeneration
                     const currentImageUrl = currentGeneration?.status === 'completed' && currentGeneration.images.length > 0 
