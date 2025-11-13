@@ -1194,7 +1194,9 @@ export default function ArtStationPage() {
                       const audios = (preview.item as any).audios || []
                       if (preview.kind === 'image') {
                         const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                        const src = toDirectUrl(img.url) || img.url
+                        // Prefer optimized AVIF when available; fall back to original
+                        const best = img.avifUrl || img.url
+                        const src = toDirectUrl(best) || best
                         return (
                           <div className="relative w-full h-full">
                             <Image src={src} alt={preview.item.prompt || ''} fill className="object-contain" priority fetchPriority="high" />
@@ -1304,7 +1306,7 @@ export default function ArtStationPage() {
                               onClick={() => setSelectedImageIndex(idx)}
                               className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                             >
-                              <img src={im.url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                              <img src={im.thumbnailUrl || im.avifUrl || im.url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
                             </button>
                           ))}
                         </div>
