@@ -55,6 +55,61 @@ const SidePannelFeatures = ({
 
 
 
+  // Helper function to get URL for a generation type
+  const getUrlForType = (type: GenerationType): string => {
+    switch (type) {
+      case 'text-to-image':
+        return '/text-to-image';
+      case 'text-to-video':
+        return '/text-to-video';
+      case 'text-to-music':
+        return '/text-to-music';
+      case 'edit-image':
+        return '/edit-image';
+      case 'edit-video':
+        return '/edit-video';
+      default:
+        return '/';
+    }
+  };
+
+  // Helper function to handle clicks with middle-click and Ctrl+click support
+  const handleClickWithNewTab = (
+    e: React.MouseEvent,
+    url: string,
+    onClickHandler?: () => void | Promise<void>
+  ) => {
+    // Check for middle-click (button === 1) or Ctrl+click (metaKey for Mac, ctrlKey for Windows/Linux)
+    const isMiddleClick = e.button === 1;
+    const isCtrlClick = e.ctrlKey || e.metaKey;
+
+    if (isMiddleClick || isCtrlClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Open in new tab
+      window.open(url, '_blank');
+      return;
+    }
+
+    // Normal click - execute the handler
+    if (onClickHandler && e.button === 0) {
+      onClickHandler();
+    }
+  };
+
+  // Prevent default middle-click scroll behavior on sidebar items
+  React.useEffect(() => {
+    const handleAuxClick = (e: MouseEvent) => {
+      // Middle-click (button 1) on sidebar items
+      if (e.button === 1 && sidebarRef.current?.contains(e.target as Node)) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('auxclick', handleAuxClick);
+    return () => document.removeEventListener('auxclick', handleAuxClick);
+  }, []);
+
   const navigateForType = async (type: GenerationType) => {
     try {
       const sessionReady = await ensureSessionReady(600)
@@ -64,25 +119,8 @@ const SidePannelFeatures = ({
     }
 
     // Always proceed with navigation - middleware will handle auth with Bearer token if session cookie is missing
-    switch (type) {
-      case 'text-to-image':
-        router.push('/text-to-image');
-        return;
-      case 'text-to-video':
-        router.push('/text-to-video');
-        return;
-      case 'text-to-music':
-        router.push('/text-to-music');
-        return;
-      case 'edit-image':
-        router.push('/edit-image');
-        return;
-      case 'edit-video':
-        router.push('/edit-video');
-        return;
-      default:
-        return;
-    }
+    const url = getUrlForType(type);
+    router.push(url);
   };
 
   const handleGenerationTypeChange = async (type: GenerationType) => {
@@ -167,11 +205,18 @@ const SidePannelFeatures = ({
       {/* Logo at the top */}
       <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0  -ml-1">
         <div
-          onClick={() => {
+          onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
             try { dispatch(setCurrentView('landing')); } catch { }
             // Force hard navigation to avoid race conditions
             try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
+          })}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
+              try { dispatch(setCurrentView('landing')); } catch { }
+              try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
+            }
           }}
           className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
           <Image
@@ -184,7 +229,14 @@ const SidePannelFeatures = ({
           />
         </div>
         <span
-          onClick={() => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } }}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } })}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }
+              try { dispatch(setCurrentView('landing')); } catch { }
+              try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
+            }
+          }}
           className='text-white md:w-[34px] md:h-[34px] w-[25px] h-[25px] text-3xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
           <Image src="/icons/wildmind_text_whitebg (2).svg" alt="Wild Mind Logo" width={32} height={32} className="w-auto h-full" />
         </span>
@@ -192,13 +244,27 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={async () => {
+          onMouseDown={(e) => handleClickWithNewTab(e, APP_ROUTES.HOME, async () => {
             try {
               await ensureSessionReady(600)
             } catch (error) {
               // Silent fail
             }
             router.push(APP_ROUTES.HOME)
+          })}
+          onClick={(e) => {
+            // Handle normal left-click (button 0)
+            if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              (async () => {
+                try {
+                  await ensureSessionReady(600)
+                } catch (error) {
+                  // Silent fail
+                }
+                router.push(APP_ROUTES.HOME)
+              })();
+            }
           }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
@@ -209,7 +275,12 @@ const SidePannelFeatures = ({
 
       <div className="relative">
         <div
-          onClick={handleImageGenerationClick}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleImageGenerationClick();
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
             }`}
         >
@@ -220,7 +291,12 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => handleGenerationTypeChange('edit-image')}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('edit-image');
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
             }`}
         >
@@ -231,7 +307,12 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => handleGenerationTypeChange('text-to-video')}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('text-to-video');
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
             }`}
         >
@@ -242,7 +323,12 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => handleGenerationTypeChange('edit-video')}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('edit-video');
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
             }`}
         >
@@ -253,7 +339,12 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => handleGenerationTypeChange('text-to-music')}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('text-to-music');
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
             }`}
         >
@@ -264,7 +355,12 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => router.push(NAV_ROUTES.LIVE_CHAT)}
+          onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.LIVE_CHAT, () => router.push(NAV_ROUTES.LIVE_CHAT))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              router.push(NAV_ROUTES.LIVE_CHAT);
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/20' : ''
             }`}
         >
@@ -300,7 +396,23 @@ const SidePannelFeatures = ({
       <div className="relative">
         <div
           ref={brandingRef}
-          onClick={toggleBrandingDropdown}
+          onMouseDown={(e) => {
+            // For branding dropdown, only open in new tab if middle-click or Ctrl+click
+            // Otherwise toggle the dropdown
+            const isMiddleClick = e.button === 1;
+            const isCtrlClick = e.ctrlKey || e.metaKey;
+            
+            if (isMiddleClick || isCtrlClick) {
+              e.preventDefault();
+              e.stopPropagation();
+              // Open first branding option in new tab (Logo Generation)
+              window.open('/logo-generation', '_blank');
+              return;
+            }
+            
+            // Normal click - toggle dropdown
+            toggleBrandingDropdown();
+          }}
           className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isBrandingActive ? 'bg-white/20' : ''
             }`}
         >
@@ -318,7 +430,12 @@ const SidePannelFeatures = ({
             </div>
 
             <div
-              onClick={() => router.push('/logo-generation')}
+              onMouseDown={(e) => handleClickWithNewTab(e, '/logo-generation', () => router.push('/logo-generation'))}
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  router.push('/logo-generation');
+                }
+              }}
               className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'logo' ? 'bg-white/15' : ''
                 }`}
             >
@@ -326,7 +443,12 @@ const SidePannelFeatures = ({
             </div>
 
             <div
-              onClick={() => router.push('/sticker-generation')}
+              onMouseDown={(e) => handleClickWithNewTab(e, '/sticker-generation', () => router.push('/sticker-generation'))}
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  router.push('/sticker-generation');
+                }
+              }}
               className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'sticker-generation' ? 'bg-white/15' : ''
                 }`}
             >
@@ -343,7 +465,12 @@ const SidePannelFeatures = ({
                     </div> */}
 
             <div
-              onClick={() => router.push('/product-generation')}
+              onMouseDown={(e) => handleClickWithNewTab(e, '/product-generation', () => router.push('/product-generation'))}
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  router.push('/product-generation');
+                }
+              }}
               className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${currentGenerationType === 'product-generation' ? 'bg-white/15' : ''
                 }`}
             >
@@ -356,7 +483,12 @@ const SidePannelFeatures = ({
       {/* Art Station */}
       <div>
         <div
-          onClick={() => router.push('/view/ArtStation')}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              router.push('/view/ArtStation');
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
             }`}
         >
@@ -374,7 +506,12 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => router.push(NAV_ROUTES.PRICING)}
+          onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              router.push(NAV_ROUTES.PRICING);
+            }
+          }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
             }`}
         >
@@ -387,7 +524,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
-          onClick={() => {
+          onMouseDown={(e) => handleClickWithNewTab(e, '/history', () => {
             try {
               if (onViewChange && typeof onViewChange === 'function') {
                 onViewChange('history');
@@ -396,6 +533,18 @@ const SidePannelFeatures = ({
               console.error('Error in history click handler:', error);
             }
             router.push('/history');
+          })}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              try {
+                if (onViewChange && typeof onViewChange === 'function') {
+                  onViewChange('history');
+                }
+              } catch (error) {
+                console.error('Error in history click handler:', error);
+              }
+              router.push('/history');
+            }
           }}
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
         >
@@ -436,7 +585,12 @@ const SidePannelFeatures = ({
         <div className='flex items-center gap-2 px-2'>
           
           <div
-            onClick={() => router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)}
+            onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.ACCOUNT_MANAGEMENT, () => router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
+              }
+            }}
             className={`flex items-center gap-2 p-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
             role='button'
             aria-label='Profile'
