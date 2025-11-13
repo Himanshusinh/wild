@@ -89,6 +89,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3-t2v-8s", label: "Veo3", description: "Google's video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3-fast-t2v-8s", label: "Veo3 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
+        { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video, 5s/10s, 720p/1080p (standard/pro mode)", provider: "replicate" },
+        { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Text→Video, 5s/10s, 1080p (highest quality)", provider: "replicate" },
         { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
         { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
         { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },

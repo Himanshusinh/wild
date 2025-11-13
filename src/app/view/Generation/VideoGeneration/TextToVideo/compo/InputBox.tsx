@@ -1562,8 +1562,27 @@ const InputBox = () => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
         } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
-          // Kling T2V - only v2.5-turbo-pro supports text-to-video
-          requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'text-to-video', isPublic };
+          // Kling T2V - supports v2.5-turbo-pro, v2.1, and v2.1-master
+          const isV25 = selectedModel.includes('v2.5');
+          const isMaster = selectedModel.includes('master');
+          let modelName: string;
+          if (isV25) {
+            modelName = 'kwaivgi/kling-v2.5-turbo-pro';
+          } else if (isMaster) {
+            modelName = 'kwaivgi/kling-v2.1-master';
+          } else {
+            modelName = 'kwaivgi/kling-v2.1';
+          }
+          
+          requestBody = {
+            model: modelName,
+            prompt,
+            duration,
+            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+            mode: (!isV25 && !isMaster) ? klingMode : undefined, // Only send mode for base v2.1, not master or v2.5
+            generationType: 'text-to-video',
+            isPublic
+          };
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
