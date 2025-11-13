@@ -358,7 +358,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
         const selectedImage = selectedPair.image || preview.image;
-        const imageUrl = selectedImage?.url || preview.image.url;
+        // Prefer optimized AVIF when available
+        const imageUrl = (selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url;
         if (!imageUrl) return;
         
         // Use media proxy for Zata URLs, direct URL for external URLs (FAL, etc.)
@@ -785,10 +786,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         <div className=" md:flex md:flex-row md:gap-0">
           {/* Media */}
           <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center ">
-            {selectedImage?.url && (
+            { (selectedImage?.avifUrl || selectedImage?.url) && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
-                  src={objectUrl || toMediaProxyUrl(selectedImage.url)}
+                  src={objectUrl || toMediaProxyUrl((selectedImage as any)?.avifUrl || selectedImage.url)}
                   alt=""
                   aria-hidden="true"
                   decoding="async"
@@ -826,7 +827,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">
                 <button
-                  onClick={() => downloadImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => downloadImage((selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -840,7 +841,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
               <div className="relative group flex-1">
                 <button
-                  onClick={() => shareImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => shareImage((selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <Share className="h-4 w-4" />
@@ -963,7 +964,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
-                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt="" aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
+                      {(() => {
+                        const thumbBest = (pair.image?.thumbnailUrl || pair.image?.avifUrl || pair.image?.url);
+                        const thumbSrc = toMediaProxyUrl(thumbBest) || thumbBest;
+                        return <img src={thumbSrc} alt="" aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
+                      })()}
                     </button>
                   ))}
                 </div>
@@ -1102,7 +1107,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               }}
             >
               <img
-                src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
+                src={objectUrl || toMediaProxyUrl((selectedImage as any)?.avifUrl || selectedImage?.url) || toMediaProxyUrl((preview.image as any)?.avifUrl || preview.image.url)}
                 alt=""
                 aria-hidden="true"
                 decoding="async"
