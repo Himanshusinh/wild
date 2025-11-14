@@ -30,11 +30,33 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
 
         // For models that use dynamic pricing (like Seedance, WAN, Kling, PixVerse, Veo 3.1, Gen-4 Turbo, Gen-3a Turbo), use getCreditsForModel
         // This handles models with duration/resolution variants that might not be in creditDistributionData
+        // Kling Lip Sync uses per-second pricing (2 credits per second)
+        if (frontendModel === 'kling-lip-sync') {
+          // Kling Lip Sync: $0.014 per second = 2 credits per second (rounded up)
+          const durationSeconds = duration || 5;
+          const costPerSecond = 2;
+          const totalCost = Math.ceil(durationSeconds * costPerSecond);
+          const finalCost = Math.max(2, totalCost); // Minimum 2 credits
+          console.log(`Kling Lip Sync cost: ${finalCost} credits for ${durationSeconds} seconds`);
+          return finalCost;
+        }
         if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2') || frontendModel === 'gen4_turbo' || frontendModel === 'gen3a_turbo') {
-          const cost = getCreditsForModel(frontendModel, duration ? `${duration}s` : undefined, resolution);
+          // Use default values if not provided for WAN models to avoid "Unknown model" error
+          const defaultDuration = duration || 5;
+          const defaultResolution = resolution || '720p';
+          const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution);
           if (cost !== null && cost > 0) {
             console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
             return cost;
+          }
+          // If still no cost found, try with just the base model name (without duration/resolution)
+          // This provides a fallback to avoid "Unknown model" error
+          if (frontendModel.includes('wan-2.5')) {
+            const baseCost = getCreditsForModel(frontendModel, '5s', '720p');
+            if (baseCost !== null && baseCost > 0) {
+              console.log(`Found fallback cost via getCreditsForModel: ${baseCost} for model: ${frontendModel}`);
+              return baseCost;
+            }
           }
         }
 

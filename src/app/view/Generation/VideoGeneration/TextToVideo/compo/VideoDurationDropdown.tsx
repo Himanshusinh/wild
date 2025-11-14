@@ -164,6 +164,20 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel === "kling-lip-sync") {
+      // Kling Lip Sync supports 2-10 seconds
+      return [
+        { value: 2, label: "2 seconds", description: "Very short" },
+        { value: 3, label: "3 seconds", description: "Short" },
+        { value: 4, label: "4 seconds", description: "Quick video" },
+        { value: 5, label: "5 seconds", description: "Standard short" },
+        { value: 6, label: "6 seconds", description: "Medium" },
+        { value: 7, label: "7 seconds", description: "Medium long" },
+        { value: 8, label: "8 seconds", description: "Long" },
+        { value: 9, label: "9 seconds", description: "Very long" },
+        { value: 10, label: "10 seconds", description: "Maximum length" }
+      ];
+    }
     if (selectedModel?.includes("wan-2.5")) {
       // WAN 2.5 models support 5s and 10s
       return [

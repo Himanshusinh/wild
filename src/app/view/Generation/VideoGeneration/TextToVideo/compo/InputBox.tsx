@@ -20,7 +20,7 @@ import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
-import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2 } from 'lucide-react';
+import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { getApiClient } from "@/lib/axiosInstance";
@@ -48,7 +48,13 @@ import { toThumbUrl } from '@/lib/thumb';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 
 
-const InputBox = () => {
+interface InputBoxProps {
+  placeholder?: string;
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'UGC';
+}
+
+const InputBox = (props: InputBoxProps = {}) => {
+  const { placeholder = "Type your video prompt...", activeFeature = 'Video' } = props;
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -70,6 +76,7 @@ const InputBox = () => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
+  const [uploadedAudio, setUploadedAudio] = useState<string>(""); // For WAN models audio file
   const [sourceHistoryEntryId, setSourceHistoryEntryId] = useState<string>(""); // For Sora 2 Remix source video
   const [references, setReferences] = useState<string[]>([]);
   const [generationMode, setGenerationMode] = useState<"text_to_video" | "image_to_video" | "video_to_video">("text_to_video");
@@ -294,6 +301,12 @@ const InputBox = () => {
     }
 
     // Video-to-video models
+    if (model === "kling-lip-sync") {
+      capabilities.supportsVideoToVideo = true;
+      capabilities.requiresVideo = true;
+      capabilities.supportsTextToVideo = false;
+      capabilities.supportsImageToVideo = false;
+    }
     if (model === "gen4_aleph" || model.includes('sora2-v2v')) {
       capabilities.supportsVideoToVideo = true;
       capabilities.requiresVideo = true;
@@ -672,29 +685,55 @@ const InputBox = () => {
           // WAN 2.5 models: Set default duration and frame size
           setDuration(5); // Default 5s for WAN
           setFrameSize("1280*720"); // Default 720p for WAN
+          // Keep audio if switching between WAN models
         } else if (newModel.startsWith('kling-')) {
           // Kling models: duration default 5s; aspect via frame dropdown not used (we use separate aspect for kling)
           setDuration(5);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('seedance')) {
           // Seedance models: duration default 5s, resolution default 1080p, aspect ratio default 16:9
           setDuration(5);
           setSeedanceResolution("1080p");
           setFrameSize("16:9"); // For T2V aspect ratio
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('pixverse')) {
           // PixVerse models: duration default 5s, quality default 720p, aspect ratio default 16:9
           setDuration(5);
           setPixverseQuality("720p");
           setFrameSize("16:9");
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('sora2')) {
           // Sora 2 models: duration default 8s, aspect ratio default 16:9, quality default 720p (or 1080p for Pro)
           setDuration(8); // Default 8s for Sora 2
           setFrameSize("16:9"); // Default aspect ratio
           setSelectedQuality(newModel.includes('pro') ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('ltx2')) {
           // LTX V2 T2V: default resolution 1080p, duration 6s, 16:9 fixed
           setDuration(6);
           setFrameSize("16:9");
           setSelectedResolution("1080p" as any);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
+        } else {
+          // Clear audio when switching away from WAN models to any other model
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -758,8 +797,13 @@ const InputBox = () => {
           // WAN 2.5 models: Set default duration and frame size
           setDuration(5); // Default 5s for WAN
           setFrameSize("1280*720"); // Default 720p for WAN
+          // Keep audio if switching between WAN models
         } else if (newModel.startsWith('kling-')) {
           setDuration(5);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel === "gen4_turbo" || newModel === "gen3a_turbo") {
           // Gen-4 Turbo and Gen-3a Turbo: default duration 5s (only supports 5s and 10s)
           setDuration(5);
@@ -770,11 +814,19 @@ const InputBox = () => {
           setSeedanceResolution("1080p");
           // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
           setFrameSize("16:9");
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('pixverse')) {
           // PixVerse models: duration default 5s, quality default 720p
           setDuration(5);
           setPixverseQuality("720p");
           setFrameSize("16:9");
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('sora2')) {
           // Sora 2 models: duration default 8s, aspect ratio default auto (for I2V) or 16:9 (for T2V), quality default 720p (or 1080p for Pro)
           if (generationMode === "image_to_video") {
@@ -785,11 +837,24 @@ const InputBox = () => {
             setFrameSize("16:9"); // Default aspect ratio for Sora 2 T2V
           }
           setSelectedQuality(newModel.includes('pro') ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('ltx2')) {
           // LTX V2 I2V: default resolution 1080p, duration 6s, aspect ratio 16:9 (can change)
           setDuration(6);
           setFrameSize("16:9");
           setSelectedResolution("1080p" as any);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
+        } else {
+          // Clear audio when switching away from WAN models to any other model
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -1483,6 +1548,60 @@ const InputBox = () => {
     event.target.value = '';
   };
 
+  // Handle audio upload for WAN models
+  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const file = files[0];
+    // Validate file type and size (wav/mp3, ≤15MB, 3-30s)
+    const allowedMimes = new Set([
+      'audio/wav',
+      'audio/wave',
+      'audio/x-wav',
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/mpeg3',
+      'audio/x-mpeg-3',
+    ]);
+
+    const maxBytes = 15 * 1024 * 1024; // 15MB max
+    if (!allowedMimes.has(file.type) && !file.name.match(/\.(wav|mp3)$/i)) {
+      toast.error('Unsupported audio type. Use WAV or MP3 format');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > maxBytes) {
+      toast.error('Audio file too large. Please upload an audio file ≤ 15MB');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.type.startsWith('audio/') || file.name.match(/\.(wav|mp3)$/i)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setUploadedAudio(result);
+          toast.success('Audio file uploaded successfully');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
+  // Helper function to get the prompt for API (with hardcoded prefix for Lipsync)
+  const getApiPrompt = (originalPrompt: string): string => {
+    // For Lipsync feature with uploaded image, add hardcoded prefix
+    if (activeFeature === 'Lipsync' && uploadedImages.length > 0) {
+      return `The model or person in the uploaded image will speak this: ${originalPrompt}`;
+    }
+    return originalPrompt;
+  };
+
   // Handle video generation
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -1722,8 +1841,10 @@ const InputBox = () => {
           // Veo 3.1 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
@@ -1738,8 +1859,10 @@ const InputBox = () => {
           // Veo3 text-to-video generation
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality
@@ -1753,11 +1876,14 @@ const InputBox = () => {
         } else if (selectedModel.includes("wan-2.5") && !selectedModel.includes("i2v")) {
           // WAN 2.5 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-t2v-fast" : "wan-video/wan-2.5-t2v",
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration: duration, // 5 or 10 seconds
             size: frameSize, // WAN uses specific size format like "1280*720"
+            ...(uploadedAudio && { audio: uploadedAudio }), // Include audio if uploaded
             generationType: "text-to-video",
             isPublic,
           };
@@ -1784,9 +1910,11 @@ const InputBox = () => {
             return;
           }
           
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'kwaivgi/kling-v2.5-turbo-pro',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
             generationType: 'text-to-video',
@@ -1797,9 +1925,11 @@ const InputBox = () => {
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
           // Seedance T2V
           const isLite = selectedModel.includes('lite');
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             resolution: seedanceResolution,
             aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
@@ -1810,9 +1940,11 @@ const InputBox = () => {
           apiEndpoint = '/api/replicate/seedance-t2v/submit';
         } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
           // PixVerse T2V
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'pixverse/pixverse-v5',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             quality: pixverseQuality,
             aspect_ratio: frameSize, // PixVerse supports 16:9, 9:16, 1:1
@@ -1824,14 +1956,46 @@ const InputBox = () => {
         } else if (selectedModel.includes('sora2') && !selectedModel.includes('i2v') && !selectedModel.includes('v2v')) {
           // Sora 2 T2V
           const isPro = selectedModel.includes('pro');
+          const apiPrompt = getApiPrompt(prompt);
+          
+          // Ensure duration is a number and one of [4, 8, 12]
+          let soraDuration = duration;
+          if (typeof duration !== 'number') {
+            soraDuration = parseInt(String(duration), 10) || 8;
+          }
+          // Clamp to valid values: 4, 8, or 12
+          if (![4, 8, 12].includes(soraDuration)) {
+            // Round to nearest valid value
+            if (soraDuration < 6) soraDuration = 4;
+            else if (soraDuration < 10) soraDuration = 8;
+            else soraDuration = 12;
+          }
+          
+          // Ensure resolution is valid
+          let soraResolution = selectedQuality || '720p';
+          if (isPro) {
+            // Pro supports 720p or 1080p
+            if (soraResolution !== '720p' && soraResolution !== '1080p') {
+              soraResolution = '1080p'; // Default to 1080p for Pro
+            }
+          } else {
+            // Standard only supports 720p
+            soraResolution = '720p';
+          }
+          
+          // Ensure aspect_ratio is valid
+          const soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "16:9");
+          
+          // Sora 2 validator only expects: prompt, resolution (optional), aspect_ratio (optional), duration (optional), api_key (optional)
+          // Backend service also uses isPublic for history, so we include it
+          // Do NOT send: generate_audio (not supported by Sora 2)
           requestBody = {
-            prompt,
-            resolution: selectedQuality, // 720p for standard, 720p/1080p for Pro
-            aspect_ratio: frameSize === "16:9" ? "16:9" : "9:16", // Sora 2 T2V supports 16:9, 9:16
-            duration, // 4, 8, or 12 seconds
-            generate_audio: generateAudio,
-            generationType: 'text-to-video',
-            isPublic,
+            prompt: apiPrompt,
+            resolution: soraResolution,
+            aspect_ratio: soraAspectRatio,
+            duration: soraDuration,
+            originalPrompt: prompt, // Backend uses this for history display
+            isPublic, // Backend uses this for history
           };
           generationType = 'text-to-video';
           apiEndpoint = isPro ? '/api/fal/sora2/text-to-video/pro/submit' : '/api/fal/sora2/text-to-video/submit';
@@ -1839,8 +2003,10 @@ const InputBox = () => {
           // LTX V2 Text-to-Video (Pro/Fast)
           const isPro = selectedModel.includes('pro');
           const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             resolution: normalizedRes,
             aspect_ratio: '16:9',
             duration,
@@ -1909,9 +2075,11 @@ const InputBox = () => {
             return;
           }
 
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: selectedModel,
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             // MiniMax-Hailuo-02: Include duration and resolution, first_frame_image based on requirements
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
@@ -1950,11 +2118,14 @@ const InputBox = () => {
           const isFast = selectedModel.includes("fast");
           // Use uploaded image or reference image
           const imageUrl = uploadedImages.length > 0 ? uploadedImages[0] : references[0];
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image_url: imageUrl, // Veo 3.1 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
-            duration: "8s", // Veo 3.1 I2V only supports 8s duration
+            duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
             generate_audio: true,
             isPublic
@@ -1968,11 +2139,14 @@ const InputBox = () => {
             return;
           }
           const isFast = selectedModel.includes("fast");
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0], // Veo3 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
-            duration: "8s", // Veo3 I2V only supports 8s duration
+            duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
             isPublic
@@ -1986,12 +2160,15 @@ const InputBox = () => {
             return;
           }
           const isFast = selectedModel.includes("fast");
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-i2v-fast" : "wan-video/wan-2.5-i2v",
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0], // WAN expects image URL
             duration: duration, // 5 or 10 seconds
             resolution: frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p",
+            ...(uploadedAudio && { audio: uploadedAudio }), // Include audio if uploaded
             generationType: "image-to-video",
             isPublic,
           };
@@ -2014,9 +2191,11 @@ const InputBox = () => {
           const isV25 = selectedModel.includes('v2.5');
           if (isV25) {
             // Kling 2.5 Turbo Pro - uses 'image' parameter for I2V
+            const apiPrompt = getApiPrompt(prompt);
             requestBody = { 
               model: 'kwaivgi/kling-v2.5-turbo-pro', 
-              prompt, 
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
               image: uploadedImages[0], 
               duration, 
               aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), 
@@ -2027,9 +2206,11 @@ const InputBox = () => {
             // Kling v2.1 and v2.1-master - use 'start_image' parameter (required)
             const isMaster = selectedModel.includes('master');
             const modelName = isMaster ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.1';
+            const apiPrompt = getApiPrompt(prompt);
             requestBody = {
               model: modelName,
-              prompt,
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
               start_image: uploadedImages[0], // Required for v2.1
               duration,
               aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
@@ -2047,9 +2228,11 @@ const InputBox = () => {
             return;
           }
           const isLite = selectedModel.includes('lite');
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             resolution: seedanceResolution,
@@ -2067,9 +2250,11 @@ const InputBox = () => {
             setError("PixVerse image-to-video requires an input image");
             return;
           }
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'pixverse/pixverse-v5',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             quality: pixverseQuality,
@@ -2086,15 +2271,46 @@ const InputBox = () => {
             return;
           }
           const isPro = selectedModel.includes('pro');
+          const apiPrompt = getApiPrompt(prompt);
+          
+          // Ensure duration is a number and one of [4, 8, 12]
+          let soraDuration = duration;
+          if (typeof duration !== 'number') {
+            soraDuration = parseInt(String(duration), 10) || 8;
+          }
+          // Clamp to valid values: 4, 8, or 12
+          if (![4, 8, 12].includes(soraDuration)) {
+            // Round to nearest valid value
+            if (soraDuration < 6) soraDuration = 4;
+            else if (soraDuration < 10) soraDuration = 8;
+            else soraDuration = 12;
+          }
+          
+          // Ensure resolution is valid for I2V
+          let soraResolution = selectedQuality || 'auto';
+          if (isPro) {
+            // Pro supports auto, 720p, or 1080p
+            if (soraResolution !== 'auto' && soraResolution !== '720p' && soraResolution !== '1080p') {
+              soraResolution = 'auto'; // Default to auto for Pro I2V
+            }
+          } else {
+            // Standard supports auto or 720p
+            if (soraResolution !== 'auto' && soraResolution !== '720p') {
+              soraResolution = 'auto'; // Default to auto for Standard I2V
+            }
+          }
+          
+          // Ensure aspect_ratio is valid
+          let soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "auto");
+          
           requestBody = {
-            prompt,
+            prompt: apiPrompt,
             image_url: uploadedImages[0], // Sora 2 expects image_url
-            resolution: selectedQuality === "auto" ? "auto" : selectedQuality, // auto/720p for standard, auto/720p/1080p for Pro
-            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto", // Sora 2 I2V supports auto, 16:9, 9:16
-            duration, // 4, 8, or 12 seconds
-            generate_audio: generateAudio,
-            generationType: 'image-to-video',
-            isPublic,
+            resolution: soraResolution,
+            aspect_ratio: soraAspectRatio,
+            duration: soraDuration,
+            originalPrompt: prompt, // Backend uses this for history display
+            isPublic, // Backend uses this for history
           };
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/sora2/image-to-video/pro/submit' : '/api/fal/sora2/image-to-video/submit';
@@ -2107,8 +2323,10 @@ const InputBox = () => {
             setError('LTX V2 image-to-video requires an input image');
             return;
           }
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0],
             resolution: normalizedRes,
             aspect_ratio: ratio,
@@ -2129,10 +2347,11 @@ const InputBox = () => {
           }
           
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
+          const apiPrompt = getApiPrompt(prompt);
           const imageToVideoBody = buildImageToVideoBody({
             model: selectedModel as "gen4_turbo" | "gen3a_turbo",
             ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-            promptText: prompt,
+            promptText: apiPrompt,
             duration: duration as 5 | 10,
             promptImage: uploadedImages[0]
           });
@@ -2150,6 +2369,7 @@ const InputBox = () => {
             mode: "image_to_video",
             sku: runwaySku,
             imageToVideo: imageToVideoBody,
+            originalPrompt: prompt, // Store original prompt for display
             generationType: "image-to-video",
             isPublic,
           };
@@ -2219,6 +2439,33 @@ const InputBox = () => {
           };
           generationType = 'video-to-video';
           apiEndpoint = '/api/fal/sora2/video-to-video/remix/submit';
+        } else if (selectedModel === "kling-lip-sync") {
+          // Kling Lipsync - requires video_url or video_id, and text or audio_file
+          if (!uploadedVideo && !sourceHistoryEntryId) {
+            setError("Kling Lip Sync requires a video input. Please upload a video or select a source video.");
+            setIsGenerating(false);
+            return;
+          }
+          if (!prompt.trim() && !uploadedAudio) {
+            setError("Kling Lip Sync requires either text or audio file input.");
+            setIsGenerating(false);
+            return;
+          }
+          
+          requestBody = {
+            model: 'kwaivgi/kling-lip-sync',
+            video_url: uploadedVideo || undefined, // Use video_url if uploaded
+            video_id: sourceHistoryEntryId || undefined, // Use video_id if from history
+            text: prompt.trim() || undefined, // Text for lip sync
+            audio_file: uploadedAudio || undefined, // Audio file if uploaded
+            voice_id: 'en_AOT', // Default voice_id (can be made configurable later)
+            voice_speed: 1, // Default voice speed (can be made configurable later)
+            generationType: 'video-to-video',
+            isPublic,
+            originalPrompt: prompt.trim() || '', // Store original prompt for display
+          };
+          generationType = 'video-to-video';
+          apiEndpoint = '/api/replicate/kling-lipsync/submit';
         } else if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("wan-2.5")) {
           // MiniMax and WAN models don't support video to video
           setError("MiniMax and WAN models don't support video to video generation");
@@ -3106,27 +3353,7 @@ const InputBox = () => {
   return (
     <React.Fragment>
       {
-        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
-          <div className="py-6 pl-4 ">
-            {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0  left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
-              <h2 className="text-2xl font-semibold text-white pl-0 ">Video Generation </h2>
-            </div>
-            {/* Spacer to keep content below fixed header */}
-            <div className="h-0"></div>
-
-            {/* Main Loader */}
-            {loading && historyEntries.length === 0 && (
-              <div className="flex items-center justify-center h-screen">
-                <div className="flex flex-col items-center gap-4">
-                  <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
-                  <div className="text-white text-lg text-center">Loading your generation history...</div>
-                </div>
-              </div>
-            )}
-
-
-            {/* History Entries - Grouped by Date */}
+        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6  overflow-y-auto no-scrollbar z-0 ">
             <div className="space-y-8">
               {/* If there's a local preview and no row for today, render a dated block for today */}
               {localVideoPreview && !groupedByDate[todayKey] && (
@@ -3141,7 +3368,7 @@ const InputBox = () => {
                       {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                     </h3>
                   </div>
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="flex flex-wrap gap-3 ml-0">
                     <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                       {localVideoPreview.status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -3198,7 +3425,7 @@ const InputBox = () => {
                   </div>
 
                   {/* All Videos for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 ml-9">
+                  <div className="flex flex-wrap gap-3 ml-0">
                     {/* Prepend local video preview to today's row to push existing items right */}
                     {date === todayKey && localVideoPreview && (
                       <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
@@ -3430,7 +3657,6 @@ const InputBox = () => {
               {/* Sentinel for IO-based infinite scroll */}
               <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
             </div>
-          </div>
         </div>
       }
 
@@ -3458,7 +3684,7 @@ const InputBox = () => {
             <div className="flex-1 flex items-start  gap-2 bg-transparent rounded-lg pr-0">
               <textarea
                 ref={inputEl}
-                placeholder="Type your video prompt..."
+                placeholder={placeholder}
                 value={prompt}
                 onChange={(e) => {
                   setPrompt(e.target.value);
@@ -3940,6 +4166,7 @@ const InputBox = () => {
                   generationMode={generationMode}
                   selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
                   selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
+                  activeFeature={activeFeature}
                   onCloseOtherDropdowns={() => {
                     // Close frame size dropdown
                     setCloseFrameSizeDropdown(true);
@@ -4291,6 +4518,36 @@ const InputBox = () => {
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
+                        {/* Audio Upload - Only for WAN models */}
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-wan"
+                          />
+                          <label
+                            htmlFor="audio-upload-wan"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                          >
+                            <Music className="w-4 h-4" />
+                            {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
+                          </label>
+                          {uploadedAudio && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedAudio("");
+                                toast.success('Audio file removed');
+                              }}
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                              title="Remove audio"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   }

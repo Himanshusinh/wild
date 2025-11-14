@@ -370,6 +370,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate',
     options: { duration: [5, 10] }
   },
+  {
+    frontendValue: 'kling-lip-sync',
+    creditModelName: 'Kling Lip Sync',
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10] // Supports 2-10 seconds
+    }
+  },
   
   // WAN 2.5 Fast Models
   {

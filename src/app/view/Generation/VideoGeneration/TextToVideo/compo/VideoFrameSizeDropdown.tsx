@@ -160,6 +160,17 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
       }
     } else if (selectedModel?.includes("wan-2.5")) {
       // WAN 2.5 models support specific size formats
+      // WAN 2.5 Fast only supports 720p and 1080p (no 480p)
+      const isFast = selectedModel.includes("fast");
+      if (isFast) {
+        return [
+          { value: "1280*720", label: "720p", description: "1280×720 landscape", icon: "landscape" },
+          { value: "720*1280", label: "720p", description: "720×1280 portrait", icon: "portrait" },
+          { value: "1920*1080", label: "1080p", description: "1920×1080 landscape", icon: "landscape" },
+          { value: "1080*1920", label: "1080p", description: "1080×1920 portrait", icon: "portrait" }
+        ];
+      }
+      // Standard WAN 2.5 supports all resolutions including 480p
       return [
         { value: "832*480", label: "480p", description: "832×480 landscape", icon: "landscape" },
         { value: "480*832", label: "480p", description: "480×832 portrait", icon: "portrait" },

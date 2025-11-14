@@ -6,6 +6,7 @@ import TextToImageInputBox from '../ImageGeneration/TextToImage/compo/InputBox';
 import LogoGenerationInputBox from '../ImageGeneration/LogoGeneration/compo/InputBox';
 import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/compo/InputBox';
+import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
 import TextToMusicInputBox from '../MusicGeneration/TextToMusic/compo/InputBox';
 import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';
 import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithModelPoseInputBox';
@@ -32,8 +33,8 @@ const generators: GeneratorComponentMap = {
   'sticker-generation': StickerGenerationInputBox,
   
   // Video Generation Features
-  'text-to-video': TextToVideoInputBox,
-  'image-to-video': TextToVideoInputBox, // Uses same component as text-to-video (supports image-to-video mode)
+  'text-to-video': VideoGenerationPage,
+  'image-to-video': VideoGenerationPage, // Uses same component as text-to-video (supports image-to-video mode)
   
   // Music Generation Features
   'text-to-music': TextToMusicInputBox,

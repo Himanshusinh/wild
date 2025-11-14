@@ -172,7 +172,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       
       await navigator.share({
         title: 'Wild Mind AI Generated Video',
-        text: `Check out this AI-generated video!\n${getCleanPrompt(preview.entry.prompt).substring(0, 100)}...`,
+        text: `Check out this AI-generated video!\n${getCleanPrompt((preview.entry as any).originalPrompt || preview.entry.prompt).substring(0, 100)}...`,
         files: [file]
       });
       
@@ -217,7 +217,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     } catch {}
   };
 
-  const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
+  const displayedStyle = preview.entry.style || extractStyleFromPrompt((preview.entry as any).originalPrompt || preview.entry.prompt) || '—';
   const displayedAspect = preview.entry.frameSize || '16:9';
 
   // Extract video URL and route through proxy for cross-origin safety
@@ -264,7 +264,16 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   console.log('Extracted video URL:', videoUrl);
   console.log('Original video object:', preview.video);
 
-  const cleanPrompt = getCleanPrompt(preview.entry.prompt);
+  // Use originalPrompt if available (for Lipsync with hardcoded prefix), otherwise use prompt
+  // Prioritize originalPrompt from entry, then check video object, then fallback to prompt
+  const displayPrompt = (preview.entry as any).originalPrompt || (preview.video as any)?.originalPrompt || preview.entry.prompt;
+  // Debug: Log which prompt is being used
+  if ((preview.entry as any).originalPrompt) {
+    console.log('[VideoPreviewModal] Using originalPrompt:', (preview.entry as any).originalPrompt);
+  } else {
+    console.log('[VideoPreviewModal] originalPrompt not found, using prompt:', preview.entry.prompt);
+  }
+  const cleanPrompt = getCleanPrompt(displayPrompt);
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
