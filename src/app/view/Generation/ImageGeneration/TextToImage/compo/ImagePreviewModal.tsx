@@ -1003,9 +1003,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 onClick={() => {
                   try {
                     const storagePath = (selectedImage as any)?.storagePath || (() => {
-                      const original = selectedImage?.url || '';
-                      const pathCandidate = toProxyPath(original);
-                      return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+                      try {
+                        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+                        const original = selectedImage?.url || '';
+                        if (!original) return '';
+                        if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+                      } catch {}
+                      return '';
                     })();
                     const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
                     const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
