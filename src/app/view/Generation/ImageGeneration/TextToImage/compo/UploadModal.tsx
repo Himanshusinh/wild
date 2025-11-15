@@ -110,17 +110,56 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                       ...((entry?.images || []) as any[]),
                       ...(((entry as any)?.videos || []) as any[]),
                     ];
+                    // Debug logging for library tab (only log first few to avoid spam)
+                    if (tab === 'library' && mediaItems.length > 0 && filteredHistoryEntries.indexOf(entry) < 3) {
+                      const firstMedia = mediaItems[0];
+                      console.log('[UploadModal] Processing entry (sample):', {
+                        entryId: entry.id,
+                        imagesCount: entry?.images?.length || 0,
+                        videosCount: (entry as any)?.videos?.length || 0,
+                        mediaItemsCount: mediaItems.length,
+                        firstMediaItem: firstMedia ? {
+                          id: firstMedia.id,
+                          hasUrl: !!firstMedia.url,
+                          url: firstMedia.url?.substring(0, 100),
+                          hasFirebaseUrl: !!firstMedia.firebaseUrl,
+                          hasOriginalUrl: !!firstMedia.originalUrl,
+                          hasThumbnailUrl: !!firstMedia.thumbnailUrl,
+                          hasAvifUrl: !!firstMedia.avifUrl,
+                          allKeys: Object.keys(firstMedia),
+                          fullObject: firstMedia
+                        } : null
+                      });
+                    }
                     return mediaItems.map((im: any) => ({ entry, im }));
                   }).map(({ entry, im }: any) => {
                     const selected = selection.has(im.url);
                     const key = `${entry.id}-${im.id}`;
+                    const imageSrc = im.thumbnailUrl || im.avifUrl || im.url || im.firebaseUrl || im.originalUrl;
+                    
+                    // Debug: Log if image source is missing
+                    if (!imageSrc && tab === 'library') {
+                      console.warn('[UploadModal] ⚠️ Image missing URL:', {
+                        entryId: entry.id,
+                        imageId: im.id,
+                        imageKeys: Object.keys(im),
+                        image: im
+                      });
+                    }
+                    
                     return (
                       <button key={key} onClick={() => {
                         const next = new Set(selection);
                         if (selected) next.delete(im.url); else next.add(im.url);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        <Image src={im.thumbnailUrl || im.avifUrl || im.url} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
+                        {imageSrc ? (
+                          <Image src={imageSrc} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
+                            No image
+                          </div>
+                        )}
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>
