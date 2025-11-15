@@ -11,8 +11,8 @@ const toProxyPath = (urlOrPath: string | undefined) => {
   // Decode URL-encoded paths first (e.g., users%2Fvivek%2Fvideo%2F... -> users/vivek/video/...)
   let decoded = urlOrPath;
   try {
-    // Only decode if it looks like a URL-encoded path
-    if (urlOrPath.includes('%2F') || urlOrPath.includes('%20')) {
+    // Always try to decode if it contains encoded characters
+    if (urlOrPath.includes('%')) {
       decoded = decodeURIComponent(urlOrPath);
     }
   } catch (e) {
@@ -21,17 +21,25 @@ const toProxyPath = (urlOrPath: string | undefined) => {
   }
   
   const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-  if (decoded.startsWith(ZATA_PREFIX)) return decoded.substring(ZATA_PREFIX.length);
+  if (decoded.startsWith(ZATA_PREFIX)) {
+    return decoded.substring(ZATA_PREFIX.length);
+  }
   
   // Allow direct storagePath-like values (users/...)
-  if (/^users\//.test(decoded)) return decoded;
+  if (/^users\//.test(decoded)) {
+    return decoded;
+  }
   
-  // Also check if it's already a URL-encoded users path
-  if (/^users%2F/.test(urlOrPath)) {
+  // Also check if it's already a URL-encoded users path (users%2F...)
+  // This handles cases where the API returns already-encoded paths
+  if (/^users%2F/i.test(urlOrPath)) {
     try {
-      return decodeURIComponent(urlOrPath);
-    } catch {
-      return '';
+      const decodedPath = decodeURIComponent(urlOrPath);
+      if (/^users\//.test(decodedPath)) {
+        return decodedPath;
+      }
+    } catch (e) {
+      // Decoding failed, continue
     }
   }
   
@@ -42,17 +50,26 @@ const toProxyPath = (urlOrPath: string | undefined) => {
 const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   if (!urlOrPath) return '';
   
-  const path = toProxyPath(urlOrPath);
-  if (!path) {
-    // If it's already a full HTTP/HTTPS URL, use it directly
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
-      return urlOrPath;
-    }
-    return '';
+  // If it's already a full HTTP/HTTPS URL, use it directly
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    return urlOrPath;
   }
   
-  // Encode the path for the proxy URL
-  return `/api/proxy/media/${encodeURIComponent(path)}`;
+  // If it's already a proxy URL, use it directly (don't double-encode)
+  if (urlOrPath.startsWith('/api/proxy/media/')) {
+    return urlOrPath;
+  }
+  
+  const path = toProxyPath(urlOrPath);
+  if (!path) {
+    // If toProxyPath returned empty, it might be an external URL - return as-is
+    return urlOrPath;
+  }
+  
+  // Path from toProxyPath is always decoded (users/vivek/video/...)
+  // Encode it once for the proxy URL
+  const encodedPath = encodeURIComponent(path);
+  return `/api/proxy/media/${encodedPath}`;
 };
 
 type VideoUploadModalProps = {
@@ -185,12 +202,16 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
                     
                     // Get video source URL with proxy support (exact same logic as InputBox.tsx)
-                    // Prioritize firebaseUrl, then url, then originalUrl
-                    const mediaUrl = video.firebaseUrl || video.url || video.originalUrl;
+                    // Prioritize storagePath, then firebaseUrl, then url, then originalUrl
+                    const mediaUrl = (video as any)?.storagePath 
+                      || video.firebaseUrl 
+                      || video.url 
+                      || video.originalUrl;
                     const proxied = toFrontendProxyMediaUrl(mediaUrl);
                     // If proxy URL is available, use it; otherwise fall back to original URL
                     // But if original URL is a storage path (starts with users/), we must use proxy
-                    const vsrc = proxied || (mediaUrl && !mediaUrl.startsWith('users/') && !mediaUrl.startsWith('users%2F') ? mediaUrl : '');
+                    // Only use direct URL if it's a full HTTP/HTTPS URL
+                    const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
                     
                     // Debug logging for troubleshooting
                     if (!vsrc && mediaUrl) {

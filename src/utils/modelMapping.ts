@@ -210,6 +210,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'runway'
   },
   {
+    frontendValue: 'runway-act-two',
+    creditModelName: 'Runway Character Performance (Act Two)', // Will use SKU-based pricing from backend
+    generationType: 'video',
+    provider: 'runway',
+    options: {
+      resolution: ['1280:720', '720:1280', '960:960', '1104:832', '832:1104', '1584:672']
+    }
+  },
+  {
     frontendValue: 'veo3-t2v-4s',
     creditModelName: 'veo3 t2v 4s',
     generationType: 'video',

@@ -59,6 +59,15 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           console.log(`WAN 2.2 Animate Animation cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
           return finalCost;
         }
+        // Runway Character Performance (act_two) - uses SKU-based pricing from backend
+        // Frontend shows estimated cost, actual cost calculated by backend
+        if (frontendModel === 'runway-act-two') {
+          // Estimate: similar to other Runway video models, use a default estimate
+          // Actual cost will be determined by backend using SKU
+          const estimatedCost = 50; // Placeholder estimate - backend will calculate actual cost
+          console.log(`Runway Character Performance estimated cost: ${estimatedCost} credits (actual cost calculated by backend)`);
+          return estimatedCost;
+        }
         if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2') || frontendModel === 'gen4_turbo' || frontendModel === 'gen3a_turbo') {
           // Use default values if not provided for WAN models to avoid "Unknown model" error
           const defaultDuration = duration || 5;

@@ -83,11 +83,12 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   // Get available models - always return all 20 models for consistent visibility
   // Models will auto-convert between t2v/i2v variants based on mode and user input
   const getAvailableModels = () => {
-    // For Animate feature, show WAN 2.2 Animate models (check this FIRST)
+    // For Animate feature, show WAN 2.2 Animate models and Runway Character Performance (check this FIRST)
     if (activeFeature === 'Animate') {
       return [
         { value: "wan-2.2-animate-replace", label: "WAN Animate Replace", description: "Replace character in video with uploaded image, 480p/720p, 5-60fps", provider: "replicate" },
-        { value: "wan-2.2-animate-animation", label: "WAN Animate Animation", description: "Animate character image using video motion reference, 480p/720p, 5-60fps", provider: "replicate" }
+        { value: "wan-2.2-animate-animation", label: "WAN Animate Animation", description: "Animate character image using video motion reference, 480p/720p, 5-60fps", provider: "replicate" },
+        { value: "runway-act-two", label: "Runway Character Performance", description: "Control character expressions and movements using reference video, 1280:720/720:1280/960:960", provider: "runway" }
       ];
     }
     

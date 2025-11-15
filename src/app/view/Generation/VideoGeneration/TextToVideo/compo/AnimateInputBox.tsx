@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
-import { FilePlay, FilePlus2 } from 'lucide-react';
+import { FilePlay, FilePlus2, Trash2, ChevronUp } from 'lucide-react';
 import { getApiClient } from "@/lib/axiosInstance";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
@@ -66,6 +66,23 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = useState<boolean>(true);
   const [wanAnimateFps, setWanAnimateFps] = useState<number>(24);
   const [wanAnimateSeed, setWanAnimateSeed] = useState<number | undefined>(undefined);
+  
+  // Runway Character Performance (act_two) parameters
+  const [runwayActTwoRatio, setRunwayActTwoRatio] = useState<"1280:720" | "720:1280" | "960:960" | "1104:832" | "832:1104" | "1584:672">("1280:720");
+  const [runwayActTwoCharacterType, setRunwayActTwoCharacterType] = useState<"image" | "video">("image");
+  const [runwayActTwoSeed, setRunwayActTwoSeed] = useState<number | undefined>(undefined);
+  const [runwayActTwoBodyControl, setRunwayActTwoBodyControl] = useState<boolean>(false);
+  const [runwayActTwoExpressionIntensity, setRunwayActTwoExpressionIntensity] = useState<number>(3);
+  
+  // Dropdown states
+  const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false);
+  const [refFramesDropdownOpen, setRefFramesDropdownOpen] = useState(false);
+  const [runwayRatioDropdownOpen, setRunwayRatioDropdownOpen] = useState(false);
+  const [runwayCharacterTypeDropdownOpen, setRunwayCharacterTypeDropdownOpen] = useState(false);
+  const resolutionDropdownRef = useRef<HTMLDivElement>(null);
+  const refFramesDropdownRef = useRef<HTMLDivElement>(null);
+  const runwayRatioDropdownRef = useRef<HTMLDivElement>(null);
+  const runwayCharacterTypeDropdownRef = useRef<HTMLDivElement>(null);
 
   // Upload modals
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -945,6 +962,35 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [dispatch]);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!event.target) return;
+      const target = event.target as Element;
+      
+      if (resolutionDropdownRef.current && !resolutionDropdownRef.current.contains(target)) {
+        setResolutionDropdownOpen(false);
+      }
+      
+      if (refFramesDropdownRef.current && !refFramesDropdownRef.current.contains(target)) {
+        setRefFramesDropdownOpen(false);
+      }
+      
+      if (runwayRatioDropdownRef.current && !runwayRatioDropdownRef.current.contains(target)) {
+        setRunwayRatioDropdownOpen(false);
+      }
+      
+      if (runwayCharacterTypeDropdownRef.current && !runwayCharacterTypeDropdownRef.current.contains(target)) {
+        setRunwayCharacterTypeDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Handle generate
   const handleGenerate = useCallback(async () => {
     if (!uploadedVideo) {
@@ -952,9 +998,29 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       return;
     }
 
-    if (!uploadedCharacterImage) {
-      toast.error("Character image upload is mandatory");
-      return;
+    const isRunwayModel = selectedModel === 'runway-act-two';
+    
+    // For Runway Character Performance, character can be image or video
+    if (isRunwayModel) {
+      if (runwayActTwoCharacterType === 'image' && !uploadedCharacterImage) {
+        toast.error("Character image upload is mandatory");
+        return;
+      }
+      if (runwayActTwoCharacterType === 'video' && !uploadedCharacterImage) {
+        toast.error("Character video upload is mandatory (use character upload button)");
+        return;
+      }
+      // Reference video is always required for Runway
+      if (!uploadedVideo) {
+        toast.error("Reference video upload is mandatory");
+        return;
+      }
+    } else {
+      // For WAN models, character image is always required
+      if (!uploadedCharacterImage) {
+        toast.error("Character image upload is mandatory");
+        return;
+      }
     }
 
     if (credits < liveCreditCost) {
@@ -968,6 +1034,172 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     try {
       const api = getApiClient();
       
+      // Handle Runway Character Performance model
+      if (isRunwayModel) {
+        const requestBody = {
+          model: 'act_two',
+          character: {
+            type: runwayActTwoCharacterType,
+            uri: uploadedCharacterImage, // Character can be image or video (both uploaded via character upload button)
+          },
+          reference: {
+            type: 'video',
+            uri: uploadedVideo, // Reference video is always the uploaded video
+          },
+          ratio: runwayActTwoRatio,
+          ...(runwayActTwoSeed !== undefined && { seed: runwayActTwoSeed }),
+          ...(runwayActTwoBodyControl !== undefined && { bodyControl: runwayActTwoBodyControl }),
+          ...(runwayActTwoExpressionIntensity !== undefined && { expressionIntensity: runwayActTwoExpressionIntensity }),
+          generationType: 'video-to-video',
+          isPublic: false,
+          promptText: 'Character Performance generation',
+        };
+
+        console.log('Submitting Runway Character Performance request:', requestBody);
+
+        const { data } = await api.post('/api/runway/character-performance', requestBody);
+        const result = data?.data || data;
+
+        if (result?.taskId) {
+          toast.success("Generation started! Polling for results...");
+          
+          // Create local preview entry
+          setLocalVideoPreview({
+            id: `runway-act-two-loading-${Date.now()}`,
+            prompt: "Character Performance generation",
+            model: 'runway_act_two',
+            generationType: "video-to-video" as any,
+            images: [{ id: 'video-loading', url: '', originalUrl: '' }] as any,
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount: 1,
+            status: 'generating',
+          } as any);
+          
+          // Poll for results using Runway status endpoint
+          let pollCount = 0;
+          const maxPolls = 900; // 15 minutes max
+          const pollInterval = 2000; // 2 seconds for Runway
+
+          const pollForResult = async () => {
+            try {
+              const statusRes = await api.get(`/api/runway/status/${result.taskId}`);
+              const status = statusRes.data?.data || statusRes.data;
+              const statusValue = String(status?.status || '').toUpperCase();
+
+              if (statusValue === 'SUCCEEDED') {
+                // Get the result from status response
+                const outputs = status?.outputs || status?.output || [];
+                let videoUrl = '';
+                
+                if (Array.isArray(outputs) && outputs.length > 0) {
+                  videoUrl = outputs[0];
+                } else if (typeof outputs === 'string') {
+                  videoUrl = outputs;
+                }
+
+                if (videoUrl) {
+                  setIsGenerating(false);
+                  toast.success("Generation completed!");
+                  
+                  // Update local preview to completed state
+                  setLocalVideoPreview(prev => prev ? ({
+                    ...prev,
+                    status: 'completed',
+                    images: [{ id: 'video-thumb', url: videoUrl, originalUrl: videoUrl, firebaseUrl: videoUrl }] as any,
+                    timestamp: new Date().toISOString(),
+                    createdAt: new Date().toISOString(),
+                  } as any) : prev);
+                  
+                  // Fetch the actual entry from backend
+                  if (result.historyId) {
+                    try {
+                      const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                      const historyData = historyRes.data?.data || historyRes.data;
+                      
+                      if (historyData) {
+                        const backendEntry: HistoryEntry = {
+                          ...historyData,
+                          id: historyData.id || result.historyId,
+                          prompt: historyData.prompt || "Character Performance generation",
+                          model: historyData.model || 'runway_act_two',
+                          frameSize: historyData.frameSize || "16:9",
+                          images: historyData.images || historyData.videos || [{ 
+                            id: `video-${Date.now()}`, 
+                            url: videoUrl, 
+                            originalUrl: videoUrl, 
+                            firebaseUrl: videoUrl 
+                          }],
+                          videos: historyData.videos || [],
+                          status: historyData.status || "completed",
+                          timestamp: historyData.timestamp || historyData.createdAt || new Date().toISOString(),
+                          createdAt: historyData.createdAt || new Date().toISOString(),
+                          imageCount: historyData.imageCount || (historyData.images?.length || historyData.videos?.length || 1),
+                          generationType: historyData.generationType || "video-to-video",
+                        } as any;
+                        
+                        dispatch(addHistoryEntry(backendEntry));
+                        
+                        // Refresh history
+                        setTimeout(() => {
+                          try {
+                            dispatch(loadHistory({ 
+                              filters: { mode: 'video' } as any, 
+                              paginationParams: { limit: 50 },
+                              requestOrigin: 'page',
+                              expectedType: 'video-to-video',
+                              debugTag: `AnimateInputBox:post-gen:runway:${Date.now()}`
+                            } as any));
+                          } catch (e) {
+                            // swallow
+                          }
+                        }, 500);
+                      }
+                    } catch (fetchError) {
+                      console.error("Failed to fetch history entry from backend:", fetchError);
+                    }
+                  }
+                  
+                  setUploadedVideo("");
+                  setUploadedCharacterImage("");
+                  return;
+                }
+              } else if (statusValue === 'FAILED' || statusValue === 'CANCELLED') {
+                setIsGenerating(false);
+                toast.error(status?.error || "Generation failed");
+                setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
+                return;
+              }
+
+              pollCount++;
+              if (pollCount < maxPolls) {
+                setTimeout(pollForResult, pollInterval);
+              } else {
+                setIsGenerating(false);
+                toast.error("Generation timed out. Please check your history.");
+                setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
+              }
+            } catch (pollError: any) {
+              console.error("Polling error:", pollError);
+              pollCount++;
+              if (pollCount < maxPolls) {
+                setTimeout(pollForResult, pollInterval);
+              } else {
+                setIsGenerating(false);
+                toast.error("Failed to check generation status");
+                setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
+              }
+            }
+          };
+
+          setTimeout(pollForResult, pollInterval);
+        } else {
+          throw new Error("Invalid response from server");
+        }
+        return;
+      }
+      
+      // Handle WAN models (existing logic)
       // Determine API endpoint and model name based on selected model
       const isAnimationModel = selectedModel === 'wan-2.2-animate-animation';
       const apiEndpoint = isAnimationModel 
@@ -1235,6 +1467,12 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     credits,
     liveCreditCost,
     dispatch,
+    selectedModel,
+    runwayActTwoRatio,
+    runwayActTwoCharacterType,
+    runwayActTwoSeed,
+    runwayActTwoBodyControl,
+    runwayActTwoExpressionIntensity,
   ]);
 
   return (
@@ -1521,14 +1759,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       )}
 
       {/* Input Box - Fixed at bottom like original InputBox */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0] rounded-2xl bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-4">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[60%] z-[0] rounded-2xl bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-0 px-2 py-4">
         {/* Top row: upload buttons */}
         <div className="flex items-start gap-3 mb-3">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-row gap-0">
             {/* Video Upload Button */}
             <div className="relative">
               <button
-                className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                className="p-0 pl-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                 onClick={() => {
                   setUploadModalType('video');
                   setIsUploadModalOpen(true);
@@ -1549,7 +1787,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             {/* Character Image Upload Button */}
             <div className="relative">
               <button
-                className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                className="p-0 pl-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                 onClick={() => {
                   console.log('[AnimateInputBox] 🖼️ Upload character image button clicked');
                   setUploadModalType('image');
@@ -1573,213 +1811,445 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
         {/* Uploaded Content Display */}
         <div className="px-3 pb-3">
-          {/* Uploaded Video */}
-          {uploadedVideo && (
-            <div className="mb-3">
-              <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
-              <div className="relative group">
-                <div
-                  className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                  onClick={() => {
-                    const previewEntry: HistoryEntry = {
-                      id: "preview-video",
-                      prompt: "Uploaded Video",
-                      model: "preview",
-                      frameSize: "16:9",
-                      images: [{ id: "video-1", url: uploadedVideo, originalUrl: uploadedVideo, firebaseUrl: uploadedVideo }],
-                      status: "completed",
-                      timestamp: new Date().toISOString(),
-                      createdAt: new Date().toISOString(),
-                      imageCount: 1,
-                      generationType: "text-to-video",
-                    };
-                    setPreview({ entry: previewEntry, video: uploadedVideo });
-                  }}
-                >
-                  <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+          {/* Uploaded Video and Character Image - Side by Side */}
+          {(uploadedVideo || uploadedCharacterImage) && (
+            <div className="mb-3 flex items-start gap-3">
+              {/* Uploaded Video */}
+              {uploadedVideo && (
+                <div className="flex-shrink-0">
+                  <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
+                  <div className="relative group">
+                    <div
+                      className="w-auto  h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer relative"
+                      // onClick={() => {
+                      //   const previewEntry: HistoryEntry = {
+                      //     id: "preview-video",
+                      //     prompt: "Uploaded Video",
+                      //     model: "preview",
+                      //     frameSize: "16:9",
+                      //     images: [{ id: "video-1", url: uploadedVideo, originalUrl: uploadedVideo, firebaseUrl: uploadedVideo }],
+                      //     status: "completed",
+                      //     timestamp: new Date().toISOString(),
+                      //     createdAt: new Date().toISOString(),
+                      //     imageCount: 1,
+                      //     generationType: "text-to-video",
+                      //   };
+                      //   setPreview({ entry: previewEntry, video: uploadedVideo });
+                      // }}
+                    >
+                      {/* Video element with hover play */}
+                      {(() => {
+                        // Use proxy URL if it's a storage path, otherwise use the URL directly
+                        const proxied = toFrontendProxyMediaUrl(uploadedVideo);
+                        const videoSrc = proxied || (uploadedVideo && (uploadedVideo.startsWith('http://') || uploadedVideo.startsWith('https://')) ? uploadedVideo : uploadedVideo);
+                        
+                        return (
+                          <video
+                            src={videoSrc}
+                            className="w-full h-full object-cover transition-opacity duration-200"
+                            muted
+                            playsInline
+                            loop
+                            preload="metadata"
+                            onMouseEnter={async (e) => {
+                              try {
+                                await (e.currentTarget as HTMLVideoElement).play();
+                              } catch (err) {
+                                // Silent fail
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              const v = e.currentTarget as HTMLVideoElement;
+                              try {
+                                v.pause();
+                                v.currentTime = 0;
+                              } catch (err) {
+                                // Silent fail
+                              }
+                            }}
+                            onError={(e) => {
+                              console.error('[AnimateInputBox] Video load error:', {
+                                src: videoSrc,
+                                originalUrl: uploadedVideo,
+                                proxied,
+                                error: e
+                              });
+                            }}
+                          />
+                        );
+                      })()}
+                      {/* Remove button */}
+                      <button
+                        aria-label="Remove video"
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white backdrop-blur-sm z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadedVideo("");
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    aria-label="Remove video"
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setUploadedVideo("");
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Uploaded Character Image */}
-          {uploadedCharacterImage && (
-            <div className="mb-3">
-              <div className="text-xs text-white/60 mb-2">Character Image</div>
-              <div className="relative group">
-                <div
-                  className="w-32 h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                  onClick={() => {
-                    const previewEntry: HistoryEntry = {
-                      id: "preview-character",
-                      prompt: "Character Image",
-                      model: "preview",
-                      frameSize: "1:1",
-                      images: [{ id: "char-1", url: uploadedCharacterImage, originalUrl: uploadedCharacterImage, firebaseUrl: uploadedCharacterImage }],
-                      status: "completed",
-                      timestamp: new Date().toISOString(),
-                      createdAt: new Date().toISOString(),
-                      imageCount: 1,
-                      generationType: "text-to-image",
-                    };
-                    setPreview({ entry: previewEntry, video: uploadedCharacterImage });
-                  }}
-                >
-                  <img
-                    src={uploadedCharacterImage}
-                    alt="Character"
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    aria-label="Remove character image"
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow bg-black/40"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setUploadedCharacterImage("");
-                    }}
-                  >
-                    ×
-                  </button>
+              {/* Uploaded Character Image */}
+              {uploadedCharacterImage && (
+                <div className="flex-shrink-0">
+                  <div className="text-xs text-white/60 mb-2">Character Image</div>
+                  <div className="relative group">
+                    <div
+                      className="w-auto  h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer relative"
+                      // onClick={() => {
+                      //   const previewEntry: HistoryEntry = {
+                      //     id: "preview-character",
+                      //     prompt: "Character Image",
+                      //     model: "preview",
+                      //     frameSize: "1:1",
+                      //     images: [{ id: "char-1", url: uploadedCharacterImage, originalUrl: uploadedCharacterImage, firebaseUrl: uploadedCharacterImage }],
+                      //     status: "completed",
+                      //     timestamp: new Date().toISOString(),
+                      //     createdAt: new Date().toISOString(),
+                      //     imageCount: 1,
+                      //     generationType: "text-to-image",
+                      //   };
+                      //   setPreview({ entry: previewEntry, video: uploadedCharacterImage });
+                      // }}
+                    >
+                      <img
+                        src={uploadedCharacterImage}
+                        alt="Character"
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Remove button */}
+                      <button
+                        aria-label="Remove character image"
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white backdrop-blur-sm z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadedCharacterImage("");
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Bottom row: model selector, parameters, and generate button */}
-        <div className="flex justify-between items-center gap-2 px-3 pb-3">
+        <div className="flex justify-between items-end gap-2 px-3 ">
           <div className="flex flex-col gap-3 flex-wrap">
             {/* Model selector - Only WAN Animate Replace */}
-            <VideoModelsDropdown
-              selectedModel={selectedModel}
-              onModelChange={handleModelChange}
-              generationMode="video_to_video"
-              selectedDuration="5s"
-              activeFeature="Animate"
-              onCloseOtherDropdowns={() => {}}
-            />
+            
 
-            {/* WAN 2.2 Animate Replace Parameters */}
+            {/* Model Parameters - Conditional based on selected model */}
             <div className="flex flex-col gap-3">
               <div className="flex flex-row gap-2 flex-wrap">
-                {/* Resolution Dropdown - 480 or 720 ONLY */}
-                <div className="relative">
-                  <select
-                    value={wanAnimateResolution}
-                    onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
-                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                <VideoModelsDropdown
+                  selectedModel={selectedModel}
+                  onModelChange={handleModelChange}
+                  generationMode="video_to_video"
+                  selectedDuration="5s"
+                  activeFeature="Animate"
+                  onCloseOtherDropdowns={() => {}}
+                />
+                
+                {/* WAN 2.2 Animate Parameters - Only show for WAN models */}
+                {selectedModel !== 'runway-act-two' && (
+                  <>
+                    {/* Resolution Dropdown - 480 or 720 ONLY */}
+                    <div className="relative" ref={resolutionDropdownRef}>
+                  <button
+                    onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
+                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
                   >
-                    <option value="720">720p</option>
-                    <option value="480">480p</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </div>
+                    <span>{wanAnimateResolution}p</span>
+                    <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {resolutionDropdownOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                      <button
+                        onClick={() => {
+                          setWanAnimateResolution("720");
+                          setResolutionDropdownOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                          wanAnimateResolution === "720" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>720p</span>
+                        {wanAnimateResolution === "720" && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setWanAnimateResolution("480");
+                          setResolutionDropdownOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                          wanAnimateResolution === "480" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>480p</span>
+                        {wanAnimateResolution === "480" && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {/* Refert Num - 1 or 5 */}
-                <div className="relative">
-                  <select
-                    value={wanAnimateRefertNum}
-                    onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
-                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                <div className="relative" ref={refFramesDropdownRef}>
+                  <button
+                    onClick={() => setRefFramesDropdownOpen(!refFramesDropdownOpen)}
+                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
                   >
-                    <option value="1">Ref Frames: 1</option>
-                    <option value="5">Ref Frames: 5</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
+                    <span>Ref Frames: {wanAnimateRefertNum}</span>
+                    <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${refFramesDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {refFramesDropdownOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                      <button
+                        onClick={() => {
+                          setWanAnimateRefertNum(1);
+                          setRefFramesDropdownOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                          wanAnimateRefertNum === 1 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>Ref Frames: 1</span>
+                        {wanAnimateRefertNum === 1 && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setWanAnimateRefertNum(5);
+                          setRefFramesDropdownOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                          wanAnimateRefertNum === 5 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>Ref Frames: 5</span>
+                        {wanAnimateRefertNum === 5 && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                    {/* Seed Input (Optional) */}
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={wanAnimateSeed || ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                          if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
+                            setWanAnimateSeed(val);
+                          }
+                        }}
+                        placeholder="Seed (optional)"
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
+                      />
+                    </div>
+                  </>
+                )}
+                
+                {/* Runway Character Performance Parameters - Only show for Runway model */}
+                {selectedModel === 'runway-act-two' && (
+                  <>
+                    {/* Ratio Dropdown */}
+                    <div className="relative" ref={runwayRatioDropdownRef}>
+                      <button
+                        onClick={() => setRunwayRatioDropdownOpen(!runwayRatioDropdownOpen)}
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
+                      >
+                        <span>{runwayActTwoRatio}</span>
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${runwayRatioDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {runwayRatioDropdownOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                          {(['1280:720', '720:1280', '960:960', '1104:832', '832:1104', '1584:672'] as const).map((ratio) => (
+                            <button
+                              key={ratio}
+                              onClick={() => {
+                                setRunwayActTwoRatio(ratio);
+                                setRunwayRatioDropdownOpen(false);
+                              }}
+                              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                                runwayActTwoRatio === ratio ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              }`}
+                            >
+                              <span>{ratio}</span>
+                              {runwayActTwoRatio === ratio && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Character Type Dropdown */}
+                    <div className="relative" ref={runwayCharacterTypeDropdownRef}>
+                      <button
+                        onClick={() => setRunwayCharacterTypeDropdownOpen(!runwayCharacterTypeDropdownOpen)}
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
+                      >
+                        <span>Character: {runwayActTwoCharacterType === 'image' ? 'Image' : 'Video'}</span>
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${runwayCharacterTypeDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {runwayCharacterTypeDropdownOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                          {(['image', 'video'] as const).map((type) => (
+                            <button
+                              key={type}
+                              onClick={() => {
+                                setRunwayActTwoCharacterType(type);
+                                setRunwayCharacterTypeDropdownOpen(false);
+                              }}
+                              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+                                runwayActTwoCharacterType === type ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              }`}
+                            >
+                              <span>{type === 'image' ? 'Image' : 'Video'}</span>
+                              {runwayActTwoCharacterType === type && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Seed Input (Optional) */}
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={runwayActTwoSeed || ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                          if (val === undefined || (!isNaN(val) && Number.isInteger(val) && val >= 0 && val <= 4294967295)) {
+                            setRunwayActTwoSeed(val);
+                          }
+                        }}
+                        placeholder="Seed (optional)"
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {/* WAN 2.2 Animate Checkboxes and FPS - Only show for WAN models */}
+              {selectedModel !== 'runway-act-two' && (
+                <>
+                  <div className="flex flex-row gap-4 items-center">
+                    {/* Go Fast Checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={wanAnimateGoFast}
+                        onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                      />
+                      <span className="text-sm text-white/80">Go fast</span>
+                      <span className="text-xs text-white/50">(Default: true)</span>
+                    </label>
+                    {/* Merge Audio Checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={wanAnimateMergeAudio}
+                        onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                      />
+                      <span className="text-sm text-white/80">Merge audio</span>
+                      <span className="text-xs text-white/50">(Default: true)</span>
+                    </label>
                   </div>
-                </div>
-                {/* Seed Input (Optional) */}
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={wanAnimateSeed || ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
-                      if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
-                        setWanAnimateSeed(val);
-                      }
-                    }}
-                    placeholder="Seed (optional)"
-                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-row gap-4 items-center">
-                {/* Go Fast Checkbox */}
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={wanAnimateGoFast}
-                    onChange={(e) => setWanAnimateGoFast(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                  />
-                  <span className="text-sm text-white/80">Go fast</span>
-                  <span className="text-xs text-white/50">(Default: true)</span>
-                </label>
-                {/* Merge Audio Checkbox */}
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={wanAnimateMergeAudio}
-                    onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                  />
-                  <span className="text-sm text-white/80">Merge audio</span>
-                  <span className="text-xs text-white/50">(Default: true)</span>
-                </label>
-              </div>
-              {/* FPS Input with Slider */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-white/80">Frames per second:</label>
-                  <input
-                    type="number"
-                    min={5}
-                    max={60}
-                    value={wanAnimateFps}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val) && val >= 5 && val <= 60) {
-                        setWanAnimateFps(val);
-                      }
-                    }}
-                    className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
-                  />
-                  <span className="text-xs text-white/50">(min: 5, max: 60)</span>
-                </div>
-                <input
-                  type="range"
-                  min={5}
-                  max={60}
-                  value={wanAnimateFps}
-                  onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
-                  style={{
-                    background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
-                  }}
-                />
-              </div>
+                  {/* FPS Input with Slider */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-white/80">Frames per second:</label>
+                      <input
+                        type="number"
+                        min={5}
+                        max={60}
+                        value={wanAnimateFps}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val) && val >= 5 && val <= 60) {
+                            setWanAnimateFps(val);
+                          }
+                        }}
+                        className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
+                      />
+                      <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={60}
+                      value={wanAnimateFps}
+                      onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                      style={{
+                        background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+              
+              {/* Runway Character Performance Checkboxes and Slider - Only show for Runway model */}
+              {selectedModel === 'runway-act-two' && (
+                <>
+                  <div className="flex flex-row gap-4 items-center">
+                    {/* Body Control Checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={runwayActTwoBodyControl}
+                        onChange={(e) => setRunwayActTwoBodyControl(e.target.checked)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                      />
+                      <span className="text-sm text-white/80">Body control</span>
+                      <span className="text-xs text-white/50">(Enable body movements)</span>
+                    </label>
+                  </div>
+                  {/* Expression Intensity Slider */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-white/80">Expression intensity:</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={runwayActTwoExpressionIntensity}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val) && val >= 1 && val <= 5) {
+                            setRunwayActTwoExpressionIntensity(val);
+                          }
+                        }}
+                        className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
+                      />
+                      <span className="text-xs text-white/50">(min: 1, max: 5, default: 3)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      value={runwayActTwoExpressionIntensity}
+                      onChange={(e) => setRunwayActTwoExpressionIntensity(parseInt(e.target.value, 10))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                      style={{
+                        background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((runwayActTwoExpressionIntensity - 1) / (5 - 1)) * 100}%, rgba(255,255,255,0.1) ${((runwayActTwoExpressionIntensity - 1) / (5 - 1)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
+            
           </div>
 
           <div className="flex flex-col items-end gap-2 mt-2">
