@@ -50,6 +50,15 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           console.log(`WAN 2.2 Animate Replace cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
           return finalCost;
         }
+        if (frontendModel === 'wan-2.2-animate-animation') {
+          // WAN 2.2 Animate Animation: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second
+          const runtimeSeconds = duration || 5; // Estimate based on input video duration
+          const costPerSecond = 1;
+          const totalCost = Math.ceil(runtimeSeconds * costPerSecond);
+          const finalCost = Math.max(1, totalCost); // Minimum 1 credit
+          console.log(`WAN 2.2 Animate Animation cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
+          return finalCost;
+        }
         if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2') || frontendModel === 'gen4_turbo' || frontendModel === 'gen3a_turbo') {
           // Use default values if not provided for WAN models to avoid "Unknown model" error
           const defaultDuration = duration || 5;

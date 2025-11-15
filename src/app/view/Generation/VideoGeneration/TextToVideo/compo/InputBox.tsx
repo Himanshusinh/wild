@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
-import { addHistoryEntry, loadMoreHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
+import { addHistoryEntry, loadHistory, loadMoreHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import { Trash2 } from 'lucide-react';
@@ -151,6 +151,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [wanAnimateGoFast, setWanAnimateGoFast] = useState<boolean>(true); // For WAN Animate Replace go_fast
   const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = useState<boolean>(true); // For WAN Animate Replace merge_audio
   const [wanAnimateFps, setWanAnimateFps] = useState<number>(24); // For WAN Animate Replace frames_per_second
+  const [wanAnimateSeed, setWanAnimateSeed] = useState<number | undefined>(undefined); // For WAN Animate Replace seed (optional)
   // LTX and audio controls
   const [fps, setFps] = useState<25 | 50>(25);
   const [generateAudio, setGenerateAudio] = useState<boolean>(true);
@@ -926,14 +927,54 @@ const InputBox = (props: InputBoxProps = {}) => {
     const urlVideoTypes = allEntries.filter((entry: any) =>
       Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
     );
+    
+    // Also get entries that have videos array with video URLs
+    const videosArrayTypes = allEntries.filter((entry: any) =>
+      entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl))
+    );
 
-    // Merge both sets, removing duplicates by ID
+    // Merge all sets, removing duplicates by ID
     const byId: Record<string, any> = {};
-    [...declaredVideoTypes, ...urlVideoTypes].forEach((e: any) => {
+    [...declaredVideoTypes, ...urlVideoTypes, ...videosArrayTypes].forEach((e: any) => {
       byId[e.id] = e;
     });
 
     const mergedEntries = Object.values(byId);
+    
+    // Debug: Log all video entries and specifically animate entries
+    const animateEntries = mergedEntries.filter((e: any) => {
+      const model = String(e?.model || '').toLowerCase();
+      return model.includes('wan-2.2-animate') || model.includes('wan-video/wan-2.2-animate');
+    });
+    if (animateEntries.length > 0) {
+      console.log('[InputBox] ✅ Found animate entries in video history:', animateEntries.length, animateEntries.map((e: any) => ({
+        id: e.id,
+        model: e.model,
+        generationType: e.generationType,
+        status: e.status
+      })));
+    }
+    
+    // Debug: Log video-to-video entries to ensure they're being included
+    const videoToVideoEntries = mergedEntries.filter((e: any) => {
+      const normalizedType = normalizeGenerationType(e?.generationType);
+      return normalizedType === 'video-to-video';
+    });
+    const videoToVideoInAll = allEntries.filter((e: any) => {
+      const normalizedType = normalizeGenerationType(e?.generationType);
+      return normalizedType === 'video-to-video';
+    });
+    console.log('[InputBox] Video-to-video entries:', {
+      inAllEntries: videoToVideoInAll.length,
+      inMergedEntries: videoToVideoEntries.length,
+      sample: videoToVideoInAll.slice(0, 2).map((e: any) => ({
+        id: e.id,
+        model: e.model,
+        generationType: e.generationType,
+        hasImages: !!(e.images?.length),
+        hasVideos: !!(e.videos?.length)
+      }))
+    });
 
     // Count entries by normalized generationType for debugging
     const countsAll = allEntries.reduce((acc: any, e: any) => {
@@ -949,8 +990,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       return acc;
     }, {} as Record<string, number>);
 
-    /* Debug removed for cleanliness
-    console.log('[VideoPage] history totals:', {
+    // Debug: Log history totals to diagnose missing entries
+    console.log('[InputBox] History totals:', {
       all: allEntries.length,
       textToVideo: countsAll['text-to-video'] || 0,
       imageToVideo: countsAll['image-to-video'] || 0,
@@ -958,9 +999,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       filtered: mergedEntries.length,
       declaredVideoTypes: declaredVideoTypes.length,
       urlVideoTypes: urlVideoTypes.length,
+      videosArrayTypes: videosArrayTypes.length,
       rawGenerationTypes,
       normalizedCounts: countsAll,
-    });*/
+    });
 
     // Debug: Show which entries are being filtered and why
     if (mergedEntries.length < allEntries.length) {
@@ -1357,21 +1399,26 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
   const didInitialLoadRef = useRef(false);
-  // Unified loader hook (declare once near top). Use alias to avoid conflicts.
-  const { refresh: refreshVideoHistory } = useHistoryLoader({ generationType: 'text-to-video', initialLimit: 50 });
+  // Use mode: 'video' to load ALL video types at once (same as History.tsx)
+  // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
   useEffect(() => {
     if (didInitialLoadRef.current) return;
-    // If we don't have any entries yet, proactively load video history for this page
-    const anyEntries = Array.isArray(historyEntries) && historyEntries.length > 0;
-    if (!anyEntries && !loading) {
-      didInitialLoadRef.current = true;
-      try {
-  refreshVideoHistory();
-      } catch (e) {
-        // swallow
-      }
+    // Load all video types using mode: 'video' (backend handles this correctly)
+    didInitialLoadRef.current = true;
+    try {
+      // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
+      // This is the same approach History.tsx uses and ensures all video types are loaded
+      dispatch(loadHistory({ 
+        filters: { mode: 'video' } as any, 
+        paginationParams: { limit: 50 },
+        requestOrigin: 'page',
+        expectedType: 'text-to-video',
+        debugTag: `InputBox:video-mode:${Date.now()}`
+      } as any));
+    } catch (e) {
+      // swallow
     }
-  }, [dispatch, loading, historyEntries]);
+  }, [dispatch]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -1395,6 +1442,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
+        // Use mode: 'video' which backend converts to all video types including video-to-video
         await (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } })).unwrap();
       } catch {/* swallow */}
     }
@@ -1442,7 +1490,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Handle image/video upload from UploadModal
   const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
     if (uploadModalType === 'image') {
-      setUploadedImages(prev => [...prev, ...urls]);
+      // For WAN 2.2 Animate Replace, set character image instead of uploaded images
+      if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
+        setUploadedCharacterImage(urls[0] || "");
+      } else {
+        setUploadedImages(prev => [...prev, ...urls]);
+      }
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
     } else if (uploadModalType === 'video') {
@@ -2526,12 +2579,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel === "wan-2.2-animate-replace") {
           // WAN 2.2 Animate Replace - requires video and character_image
           if (!uploadedVideo) {
-            setError("WAN Animate Replace requires a video input. Please upload a video.");
+            toast.error("Video upload is mandatory");
             setIsGenerating(false);
             return;
           }
           if (!uploadedCharacterImage && uploadedImages.length === 0) {
-            setError("WAN Animate Replace requires a character image. Please upload a character image.");
+            toast.error("Character image upload is mandatory");
             setIsGenerating(false);
             return;
           }
@@ -2547,6 +2600,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             go_fast: wanAnimateGoFast,
             merge_audio: wanAnimateMergeAudio,
             frames_per_second: wanAnimateFps,
+            ...(wanAnimateSeed !== undefined && { seed: wanAnimateSeed }),
             generationType: 'video-to-video',
             isPublic,
             originalPrompt: prompt.trim() || '', // Store original prompt for display
@@ -3476,7 +3530,14 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Schedule a debounced history refresh instead of immediate duplicate fetches
   dispatch(clearFilters());
-  refreshVideoHistory();
+  // Refresh using mode: 'video' to get ALL video types (same as History.tsx)
+  dispatch(loadHistory({ 
+    filters: { mode: 'video' } as any, 
+    paginationParams: { limit: 50 },
+    requestOrigin: 'page',
+    expectedType: 'text-to-video',
+    debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+  } as any));
 
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -4220,7 +4281,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   )}
 
                   {/* Video Upload (for video-to-video models) */}
-                  {currentModelCapabilities.supportsVideoToVideo && (
+                  {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
                     <div className="relative">
                       <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -4234,54 +4295,34 @@ const InputBox = (props: InputBoxProps = {}) => {
                             size={30}
                             className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
                           />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload video</div>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {selectedModel === "wan-2.2-animate-replace" && activeFeature === 'Animate' ? 'Upload video (mandatory)' : 'Upload video'}
+                          </div>
                         </div>
                       </button>
                     </div>
                   )}
 
                   {/* Character Image Upload (for WAN 2.2 Animate Replace) */}
-                  {selectedModel === "wan-2.2-animate-replace" && (
+                  {(selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) && (
                     <div className="relative">
-                      <label className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative">
+                      <button
+                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        onClick={() => {
+                          setUploadModalType('image');
+                          setIsUploadModalOpen(true);
+                        }}
+                      >
                         <div className="relative">
                           <FilePlus2
                             size={30}
-                            className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-green-300 group-hover:scale-110"
+                            className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110"
                           />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Character Image</div>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/webp"
-                          className="hidden"
-                          onChange={handleCharacterImageUpload}
-                        />
-                      </label>
-                      {/* Character Image Preview */}
-                      {uploadedCharacterImage && (
-                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
-                          <div className="text-xs text-white/60 mb-2">Character Image</div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                              <img
-                                src={uploadedCharacterImage}
-                                alt="Character"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <span className="text-xs text-white/80 flex-1">Character</span>
-                            <button
-                              onClick={() => setUploadedCharacterImage("")}
-                              className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                              </svg>
-                            </button>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            Upload character
                           </div>
                         </div>
-                      )}
+                      </button>
                     </div>
                   )}
 
@@ -4466,57 +4507,117 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 {/* Dynamic Controls Based on Model Capabilities */}
                 {(() => {
-                  // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS
-                  if (selectedModel === "wan-2.2-animate-replace") {
+                  // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
+                  // MUST BE FIRST CHECK to prevent other controls from showing
+                  const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" || 
+                                              (activeFeature === 'Animate' && selectedModel && 
+                                               (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
+                  
+                  if (isWanAnimateReplace) {
                     return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Resolution - 480 or 720 */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setWanAnimateResolution(prev => prev === "720" ? "480" : "720")}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
-                          >
-                            Resolution: {wanAnimateResolution}p
-                          </button>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-row gap-2 flex-wrap">
+                          {/* Resolution Dropdown - 480 or 720 ONLY */}
+                          <div className="relative">
+                            <select
+                              value={wanAnimateResolution}
+                              onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
+                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                            >
+                              <option value="720">720p</option>
+                              <option value="480">480p</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </div>
+                          </div>
+                          {/* Refert Num - 1 or 5 */}
+                          <div className="relative">
+                            <select
+                              value={wanAnimateRefertNum}
+                              onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
+                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                            >
+                              <option value="1">Ref Frames: 1</option>
+                              <option value="5">Ref Frames: 5</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </div>
+                          </div>
+                          {/* Seed Input (Optional) */}
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={wanAnimateSeed || ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                                if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
+                                  setWanAnimateSeed(val);
+                                }
+                              }}
+                              placeholder="Seed (optional)"
+                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
+                            />
+                          </div>
                         </div>
-                        {/* Refert Num - 1 or 5 */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setWanAnimateRefertNum(prev => prev === 1 ? 5 : 1)}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
-                          >
-                            Ref Frames: {wanAnimateRefertNum}
-                          </button>
+                        <div className="flex flex-row gap-4 items-center">
+                          {/* Go Fast Checkbox */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={wanAnimateGoFast}
+                              onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                              className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-white/80">Go fast</span>
+                            <span className="text-xs text-white/50">(Default: true)</span>
+                          </label>
+                          {/* Merge Audio Checkbox */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={wanAnimateMergeAudio}
+                              onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                              className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-white/80">Merge audio</span>
+                            <span className="text-xs text-white/50">(Default: true)</span>
+                          </label>
                         </div>
-                        {/* Go Fast Toggle */}
-                        <button
-                          onClick={() => setWanAnimateGoFast(prev => !prev)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${wanAnimateGoFast ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          Fast: {wanAnimateGoFast ? 'On' : 'Off'}
-                        </button>
-                        {/* Merge Audio Toggle */}
-                        <button
-                          onClick={() => setWanAnimateMergeAudio(prev => !prev)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${wanAnimateMergeAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
-                        >
-                          Audio: {wanAnimateMergeAudio ? 'On' : 'Off'}
-                        </button>
-                        {/* FPS Input */}
-                        <div className="relative">
+                        {/* FPS Input with Slider */}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-white/80">Frames per second:</label>
+                            <input
+                              type="number"
+                              min={5}
+                              max={60}
+                              value={wanAnimateFps}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (!isNaN(val) && val >= 5 && val <= 60) {
+                                  setWanAnimateFps(val);
+                                }
+                              }}
+                              className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
+                            />
+                            <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                          </div>
                           <input
-                            type="number"
+                            type="range"
                             min={5}
                             max={60}
                             value={wanAnimateFps}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10);
-                              if (!isNaN(val) && val >= 5 && val <= 60) {
-                                setWanAnimateFps(val);
-                              }
+                            onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
+                            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                            style={{
+                              background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
                             }}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-24 text-center"
-                            placeholder="FPS"
                           />
                         </div>
                       </div>
@@ -4824,8 +4925,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                     );
                   }
 
-                  // WAN 2.5 Models: Full customization
-                  if (selectedModel.includes("wan-2.5")) {
+                  // WAN 2.5 Models: Full customization (exclude wan-2.2-animate-replace)
+                  if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
                     return (
                       <div className="flex flex-row gap-2 flex-wrap">
                         {/* Aspect Ratio - Always shown for WAN models */}
@@ -5020,8 +5121,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                     );
                   }
 
-                  // Runway Models: Full customization
-                  if (selectedModel.includes("gen4") || selectedModel.includes("gen3a")) {
+                  // Runway Models: Full customization (exclude wan-2.2-animate-replace)
+                  if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) && 
+                      selectedModel !== "wan-2.2-animate-replace" && 
+                      !selectedModel.includes("wan-2.2-animate")) {
                     return (
                       <div className="flex flex-row gap-2 flex-wrap">
                         {/* Aspect Ratio - Always shown for Runway models */}
@@ -5169,7 +5272,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           onAdd={handleImageUploadFromModal}
           historyEntries={libraryImageEntries.length > 0 ? libraryImageEntries : imageHistoryEntries}
           remainingSlots={uploadModalType === 'image' ?
-            (selectedModel === "S2V-01" ? 0 : 1) : // S2V-01 doesn't use uploadedImages
+            // For WAN 2.2 Animate Replace character image, only 1 slot
+            ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
+            (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
             (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
           }
           onLoadMore={async () => { await fetchLibraryImages(false); }}

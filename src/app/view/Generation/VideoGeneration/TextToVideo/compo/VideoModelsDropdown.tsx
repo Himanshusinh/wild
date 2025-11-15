@@ -83,11 +83,11 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   // Get available models - always return all 20 models for consistent visibility
   // Models will auto-convert between t2v/i2v variants based on mode and user input
   const getAvailableModels = () => {
-    // Handle video-to-video mode separately
-    if (generationMode === "video_to_video") {
+    // For Animate feature, show WAN 2.2 Animate models (check this FIRST)
+    if (activeFeature === 'Animate') {
       return [
-        { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
-        { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
+        { value: "wan-2.2-animate-replace", label: "WAN Animate Replace", description: "Replace character in video with uploaded image, 480p/720p, 5-60fps", provider: "replicate" },
+        { value: "wan-2.2-animate-animation", label: "WAN Animate Animation", description: "Animate character image using video motion reference, 480p/720p, 5-60fps", provider: "replicate" }
       ];
     }
     
@@ -102,10 +102,11 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ];
     }
     
-    // For Animate feature, only show WAN 2.2 Animate Replace
-    if (activeFeature === 'Animate') {
+    // Handle video-to-video mode separately (but not for Animate feature)
+    if (generationMode === "video_to_video") {
       return [
-        { value: "wan-2.2-animate-replace", label: "WAN Animate Replace", description: "Replace character in video with uploaded image, 480p/720p, 5-60fps", provider: "replicate" }
+        { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
+        { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
       ];
     }
     

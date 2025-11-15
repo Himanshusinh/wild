@@ -22,7 +22,9 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 
   // Get available resolutions based on model
   const getAvailableResolutions = () => {
-    if (selectedModel?.includes("seedance")) {
+    if (selectedModel === "wan-2.2-animate-replace") {
+      return ["480p", "720p"]; // WAN 2.2 Animate Replace only supports 480p and 720p
+    } else if (selectedModel?.includes("seedance")) {
       return ["480p", "720p", "1080p"];
     } else if (selectedModel === "MiniMax-Hailuo-02") {
       return ["768P", "1080P"];

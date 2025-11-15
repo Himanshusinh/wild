@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import InputBox from './TextToVideo/compo/InputBox';
+import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 
 type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'UGC';
 
@@ -45,10 +46,16 @@ export default function VideoGenerationPage() {
 
                     {/* Input Box Section - Show for all features, in scrollable area */}
                     <div className="mb-6">
-                        <InputBox 
-                            placeholder={activeFeature === 'Lipsync' ? "What should the character say?" : "Type your video prompt..."}
-                            activeFeature={activeFeature}
-                        />
+                        {activeFeature === 'Animate' ? (
+                            <AnimateInputBox 
+                                placeholder="Type your video prompt..."
+                            />
+                        ) : (
+                            <InputBox 
+                                placeholder={activeFeature === 'Lipsync' ? "What should the character say?" : "Type your video prompt..."}
+                                activeFeature={activeFeature}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
