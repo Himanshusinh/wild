@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { toMediaProxy, toZataPath } from '@/lib/thumb';
+import { toMediaProxy, toResourceProxy } from '@/lib/thumb';
 import { X, Download, ExternalLink, Copy, Check, Share, MessageCircle, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -84,34 +84,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
-  const toProxyPath = (urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    return urlOrPath;
-  };
-
-  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  };
-
-  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
-  };
-
-  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
-
-  const toMediaProxyUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
+  // Use centralized helpers
 
   if (!isOpen) return null;
 
@@ -128,8 +101,15 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     setIsPublicFlag(isPublic);
   }, [selectedImage]);
   const isUserUploadSelected = selectedImageIndex < inputImages.length;
-  const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
-  const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
+  const selectedImagePath = (selectedImage as any)?.storagePath || (() => {
+    try {
+      const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+      const original = selectedImage?.url || '';
+      if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+    } catch {}
+    return '';
+  })();
+  const selectedImageProxyUrl = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
   const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
 
   // ---- Fullscreen helpers ----
@@ -211,7 +191,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     const controller = new AbortController();
     const doFetch = async () => {
       try {
-        const url = toProxyResourceUrl(selectedImagePath);
+        const url = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
         if (!url) return;
         const res = await fetch(url, { credentials: 'include', signal: controller.signal });
         if (!res.ok) return;
@@ -295,7 +275,10 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     try {
       // Get username from user state or fallback to 'user'
       const username = user?.username || user?.displayName || null;
-      await downloadFileWithNaming(selectedImagePath, username, 'image', 'sticker');
+      // Prefer the absolute/original URL for download; downloadUtils will convert to resource proxy when needed
+      const downloadUrl = selectedImage?.url || selectedImagePath;
+      if (!downloadUrl) return;
+      await downloadFileWithNaming(downloadUrl, username, 'image', 'sticker');
     } catch (error) {
       console.error('Download failed:', error);
     }
@@ -459,7 +442,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
           <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
-                src={selectedImageObjectUrl || toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                src={selectedImageObjectUrl || (toMediaProxy(selectedImage?.url) || selectedImage?.url)}
                 alt={entry.prompt}
                 fill
                 className="object-contain"
@@ -615,7 +598,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       <Image
-                        src={toMediaProxyUrl((image as any)?.url) || (image as any)?.url}
+                        src={toMediaProxy((image as any)?.url) || (image as any)?.url}
                         alt={`Sticker ${index + 1}`}
                         fill
                         className="object-cover"
@@ -663,7 +646,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             >
               <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
                 <img
-                  src={selectedImageObjectUrl || toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                  src={selectedImageObjectUrl || (toMediaProxy(selectedImage?.url) || selectedImage?.url)}
                   alt={entry.prompt}
                   onLoad={(e) => { const img = e.currentTarget as HTMLImageElement; setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight }); }}
                   className="max-w-full max-h-full object-contain select-none"

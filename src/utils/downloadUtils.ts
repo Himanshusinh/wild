@@ -162,6 +162,8 @@ export function getFileType(media: any, url: string): 'image' | 'video' | 'audio
   return 'image';
 }
 
+import { toResourceProxy } from '@/lib/thumb';
+
 /**
  * Downloads a file with proper naming convention
  * @param url - The file URL to download
@@ -232,20 +234,8 @@ export async function downloadFileWithNaming(
       console.log('[DownloadUtils] Updated extension for image:', extension);
     }
     
-    // Convert to proxy URL to avoid CORS issues
-    const toProxyDownloadUrl = (urlOrPath: string) => {
-      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-      if (urlOrPath.startsWith(ZATA_PREFIX)) {
-        const path = urlOrPath.substring(ZATA_PREFIX.length);
-        return `/api/proxy/download/${encodeURIComponent(path)}`;
-      }
-      if (/^users\//.test(urlOrPath)) {
-        return `/api/proxy/download/${encodeURIComponent(urlOrPath)}`;
-      }
-      return urlOrPath; // External URL, use as-is
-    };
-    
-    const proxyUrl = toProxyDownloadUrl(url);
+    // Convert to proxy URL to avoid CORS issues. Use resource proxy (original file)
+    const proxyUrl = toResourceProxy(url) || url;
     
     console.log(`Downloading: ${proxyUrl} (original: ${url})`);
     

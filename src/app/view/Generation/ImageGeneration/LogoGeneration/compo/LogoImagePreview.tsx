@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { X, Download, ExternalLink, Copy, Check, Share, Trash2 } from 'lucide-react';
+import { toMediaProxy, toResourceProxy } from '@/lib/thumb';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateHistoryEntry } from '@/store/slices/historySlice';
@@ -85,31 +86,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
-  const toProxyPath = (urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    // Prefer storagePath if provided
-    // If full Zata URL, strip prefix to get storagePath
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    return urlOrPath;
-  };
-
-  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  };
-
-  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
-  };
-
-  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  };
+  // Use centralized helpers for proxying resources
 
   if (!isOpen) return null;
 
@@ -126,8 +103,15 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     setIsPublicFlag(isPublic);
   }, [selectedImage]);
   const isUserUploadSelected = selectedImageIndex < inputImages.length;
-  const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
-  const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
+  const selectedImagePath = (selectedImage as any)?.storagePath || (() => {
+    try {
+      const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+      const original = selectedImage?.url || '';
+      if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+    } catch {}
+    return '';
+  })();
+  const selectedImageProxyUrl = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
   const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
 
   // ---- Fullscreen helpers (unconditional hooks) ----
@@ -281,7 +265,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     const controller = new AbortController();
     const doFetch = async () => {
       try {
-        const url = toProxyResourceUrl(selectedImagePath);
+        const url = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
         if (!url) return;
         const res = await fetch(url, { credentials: 'include', signal: controller.signal });
         if (!res.ok) return;
@@ -368,7 +352,9 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
       console.log('[LogoImagePreview] User state:', user);
       console.log('[LogoImagePreview] Username:', username);
       console.log('[LogoImagePreview] Selected image path:', selectedImagePath);
-      await downloadFileWithNaming(selectedImagePath, username, 'image', 'logo');
+      const downloadUrl = selectedImage?.url || selectedImagePath;
+      if (!downloadUrl) return;
+      await downloadFileWithNaming(downloadUrl, username, 'image', 'logo');
     } catch (error) {
       console.error('Download failed:', error);
     }
@@ -382,10 +368,10 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
         return;
       }
 
-      const downloadUrl = toProxyDownloadUrl(selectedImagePath);
-      if (!downloadUrl) return;
+      const resourceUrl = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
+      if (!resourceUrl) return;
 
-      const response = await fetch(downloadUrl, {
+      const response = await fetch(resourceUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
@@ -482,7 +468,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
           <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
-                src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
+                src={selectedImageObjectUrl || (toMediaProxy(selectedImage?.url) || selectedImage?.url) || selectedImageProxyUrl}
                 alt={entry.prompt}
                 fill
                 className="object-contain"
@@ -673,7 +659,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
             >
               <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
                 <img
-                  src={selectedImageObjectUrl || selectedImage?.url || selectedImageProxyUrl}
+                  src={selectedImageObjectUrl || (toMediaProxy(selectedImage?.url) || selectedImage?.url) || selectedImageProxyUrl}
                   alt={entry.prompt}
                   onLoad={(e) => {
                     const img = e.currentTarget as HTMLImageElement;
