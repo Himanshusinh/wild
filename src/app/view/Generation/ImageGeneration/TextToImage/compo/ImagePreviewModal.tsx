@@ -10,8 +10,20 @@ import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
-import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
+import { toResourceProxy, toMediaProxy, toZataPath } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
+
+// Helper function to extract proxy path (same as other components)
+const toProxyPath = (urlOrPath: string | undefined): string => {
+  if (!urlOrPath) return '';
+  return toZataPath(urlOrPath);
+};
+
+// Helper function for frontend proxy resource URL
+const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
+  if (!urlOrPath) return '';
+  return toResourceProxy(urlOrPath);
+};
 
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
