@@ -83,24 +83,30 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   // Get available models - always return all 20 models for consistent visibility
   // Models will auto-convert between t2v/i2v variants based on mode and user input
   const getAvailableModels = () => {
-    // Handle video-to-video mode separately
-    if (generationMode === "video_to_video") {
+    // For Animate feature, show WAN 2.2 Animate models (check this FIRST)
+    if (activeFeature === 'Animate') {
       return [
-        { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
-        { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
+        { value: "wan-2.2-animate-replace", label: "WAN Animate Replace", description: "Replace character in video with uploaded image, 480p/720p, 5-60fps", provider: "replicate" },
+        { value: "wan-2.2-animate-animation", label: "WAN Animate Animation", description: "Animate character image using video motion reference, 480p/720p, 5-60fps", provider: "replicate" }
       ];
     }
     
     // For Lipsync feature, only show specific models
     if (activeFeature === 'Lipsync') {
       return [
-        { value: "sora2-t2v", label: "Sora 2", description: "OpenAI's Sora 2, 4s/8s/12s, 720p, 16:9/9:16", provider: "fal" },
-        { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
         { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 Speak", description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast Speak", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
         { value: "kling-v2.5-turbo-pro-t2v", label: "Kling Lipsync", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" }
+      ];
+    }
+    
+    // Handle video-to-video mode separately (but not for Animate feature)
+    if (generationMode === "video_to_video") {
+      return [
+        { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
+        { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
       ];
     }
     
