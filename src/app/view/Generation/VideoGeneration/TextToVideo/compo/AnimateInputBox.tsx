@@ -27,6 +27,22 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const { placeholder = "Type your video prompt...", showHistory = true } = props;
   const dispatch = useAppDispatch();
   const inputEl = useRef<HTMLTextAreaElement>(null);
+  
+  // Helper functions for proxy URLs (same as History.tsx)
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), do not proxy
+    return '';
+  };
+
+  const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+  };
 
   // State
   const [prompt, setPrompt] = useState("");
@@ -54,6 +70,21 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   // Upload modals
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<'image' | 'video'>('video');
+
+  // Local state for image library (to avoid affecting video history in Redux)
+  const [libraryImageEntries, setLibraryImageEntries] = useState<any[]>([]);
+  const [libraryImageHasMore, setLibraryImageHasMore] = useState<boolean>(true);
+  const [libraryImageLoading, setLibraryImageLoading] = useState<boolean>(false);
+  const libraryImageNextCursorRef = useRef<string | undefined>(undefined);
+  const libraryImageInitRef = useRef<boolean>(false);
+  const libraryImageLoadingRef = useRef<boolean>(false);
+
+  // Local state for video library (to avoid affecting video history in Redux)
+  const [libraryVideoEntries, setLibraryVideoEntries] = useState<any[]>([]);
+  const [libraryVideoHasMore, setLibraryVideoHasMore] = useState<boolean>(true);
+  const [libraryVideoLoading, setLibraryVideoLoading] = useState<boolean>(false);
+  const libraryVideoNextCursorRef = useRef<string | undefined>(undefined);
+  const libraryVideoInitRef = useRef<boolean>(false);
 
   // History - ALL video entries (for VideoUploadModal)
   const allVideoHistoryEntries = useAppSelector((state: any) => {
@@ -338,12 +369,479 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     }
   }, [localVideoPreview, historyEntries]);
 
+  // Get image history entries from Redux (fallback only - we use local state for modal)
   const imageHistoryEntries = useAppSelector((state: any) => {
     const entries = state.history?.entries || [];
     return entries.filter((entry: HistoryEntry) => 
       entry.generationType === 'text-to-image'
     );
   }, shallowEqual);
+
+  // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
+  // This uses local state to avoid affecting video history in Redux
+  const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
+    try {
+      // Use ref to check loading state to avoid stale closure issues
+      if (libraryImageLoadingRef.current) {
+        return;
+      }
+      // For non-initial loads, check if we have a cursor (hasMore) and modal is open
+      if (!initial) {
+        if (!libraryImageNextCursorRef.current) {
+          setLibraryImageHasMore(false);
+          return;
+        }
+        if (!isUploadModalOpen || uploadModalType !== 'image') {
+          return;
+        }
+      }
+      libraryImageLoadingRef.current = true;
+      setLibraryImageLoading(true);
+      
+      const api = getApiClient();
+      const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
+      if (!initial && libraryImageNextCursorRef.current) {
+        params.cursor = libraryImageNextCursorRef.current;
+      }
+      params.sortBy = 'createdAt';
+      
+      // PAGINATION DEBUG: Log request details
+      const cursorStr = params.cursor ? (typeof params.cursor === 'string' ? `${params.cursor.substring(0, 30)}...` : String(params.cursor)) : 'none';
+      console.log('[PAGINATION] Request:', {
+        initial,
+        cursor: cursorStr,
+        currentEntriesCount: libraryImageEntries.length
+      });
+      
+      const res = await api.get('/api/generations', { params });
+      const payload = res.data?.data || res.data || {};
+      const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+      const nextCursor: string | number | undefined = payload.nextCursor;
+      
+      // PAGINATION DEBUG: Log response details
+      const nextCursorStr = nextCursor ? (typeof nextCursor === 'string' ? `${nextCursor.substring(0, 30)}...` : String(nextCursor)) : 'null';
+      const requestedCursorStr = params.cursor ? (typeof params.cursor === 'string' ? `${params.cursor.substring(0, 30)}...` : String(params.cursor)) : 'none';
+      console.log('[PAGINATION] Response:', {
+        itemsCount: items.length,
+        firstItemId: items[0]?.id,
+        lastItemId: items[items.length - 1]?.id,
+        allItemIds: items.map((item: any) => item?.id),
+        nextCursor: nextCursorStr,
+        nextCursorType: typeof nextCursor,
+        requestedCursor: requestedCursorStr
+      });
+
+      // Ensure all items have the images array properly structured
+      const normalizedItems = items.map((item: any) => {
+        // Clone the item to avoid mutating the original
+        const normalized = { ...item };
+        
+        // If item doesn't have images array, try to extract from other properties
+        if (!Array.isArray(normalized.images) || normalized.images.length === 0) {
+          // Some APIs might return images in a different structure
+          if (normalized.media && Array.isArray(normalized.media)) {
+            normalized.images = normalized.media.filter((m: any) => m.type === 'image' || !m.type);
+          }
+        }
+        // Ensure images is always an array (even if empty)
+        if (!Array.isArray(normalized.images)) {
+          normalized.images = [];
+        }
+        
+        // Ensure each image has required properties
+        // Match InputBox.tsx implementation - don't filter out images, let UploadModal handle it
+        if (Array.isArray(normalized.images)) {
+          normalized.images = normalized.images.map((img: any) => {
+            if (typeof img === 'string') {
+              // If image is just a URL string, convert to object
+              return { url: img, id: img };
+            }
+            // Return image as-is - UploadModal will handle missing URLs
+            return img;
+          });
+        }
+        
+        return normalized;
+      });
+
+      // Merge uniquely by id using functional update to avoid stale closure
+      // Always create a new array reference to ensure React detects the change
+      setLibraryImageEntries((prevEntries) => {
+        // If this is an initial load, replace all entries (don't merge with old data)
+        if (initial) {
+          const sorted = normalizedItems.sort((a: any, b: any) => {
+            const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+            const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+            return timeB - timeA; // Descending (newest first)
+          });
+          return [...sorted];
+        }
+        
+        // For pagination loads, merge with existing entries
+        // IMPORTANT: Check if items are actually new by comparing IDs
+        const existingIds = new Set(prevEntries.map((e: any) => e?.id).filter(Boolean));
+        const newItems = normalizedItems.filter((item: any) => item?.id && !existingIds.has(item.id));
+        const existingItems = normalizedItems.filter((item: any) => item?.id && existingIds.has(item.id));
+        
+        // PAGINATION DEBUG: Check if we're getting duplicates
+        console.log('[PAGINATION] Duplicate Check:', {
+          previousCount: prevEntries.length,
+          newItemsReceived: normalizedItems.length,
+          actuallyNew: newItems.length,
+          duplicates: existingItems.length,
+          existingItemIds: Array.from(existingIds).slice(0, 5),
+          newItemIds: newItems.slice(0, 5).map((e: any) => e.id),
+          duplicateItemIds: existingItems.slice(0, 5).map((e: any) => e.id),
+          isSameItems: existingItems.length === normalizedItems.length && normalizedItems.length > 0
+        });
+        
+        if (newItems.length === 0) {
+          console.warn('[PAGINATION] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.');
+          return [...prevEntries];
+        }
+        
+        const existingById: Record<string, any> = {};
+        // Add existing entries first
+        prevEntries.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Then add only NEW entries (avoid unnecessary updates)
+        newItems.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Create a new array and sort by createdAt (newest first)
+        const merged = Object.values(existingById).sort((a: any, b: any) => {
+          const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+          const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+          return timeB - timeA; // Descending (newest first)
+        });
+
+        // PAGINATION DEBUG: Log merge result
+        console.log('[PAGINATION] Merge Result:', {
+          previousCount: prevEntries.length,
+          newItemsAdded: newItems.length,
+          finalCount: merged.length
+        });
+
+        return [...merged];
+      });
+      
+      // Update cursor and hasMore after state update
+      const previousCursor = libraryImageNextCursorRef.current;
+      // Convert cursor to string if it's a number (API might return number cursor)
+      libraryImageNextCursorRef.current = nextCursor ? String(nextCursor) : undefined;
+      const hasMoreItems = Boolean(nextCursor);
+      
+      // PAGINATION DEBUG: Log cursor update
+      const prevCursorStr = previousCursor ? (typeof previousCursor === 'string' ? `${previousCursor.substring(0, 30)}...` : String(previousCursor)) : 'none';
+      const newCursorStr = nextCursor ? (typeof nextCursor === 'string' ? `${nextCursor.substring(0, 30)}...` : String(nextCursor)) : 'null';
+      console.log('[PAGINATION] Cursor Update:', {
+        previousCursor: prevCursorStr,
+        previousCursorType: typeof previousCursor,
+        newCursor: newCursorStr,
+        newCursorType: typeof nextCursor,
+        cursorChanged: previousCursor !== nextCursor,
+        hasMore: hasMoreItems
+      });
+      
+      setLibraryImageHasMore(hasMoreItems);
+    } catch (e) {
+      console.error('[AnimateInputBox] Failed to fetch library images:', e);
+    } finally {
+      libraryImageLoadingRef.current = false;
+      setLibraryImageLoading(false);
+    }
+  }, [isUploadModalOpen, uploadModalType]);
+
+  // When opening the UploadModal for images, ensure initial image library is loaded
+  // IMPORTANT: Always fetch fresh data when modal opens to show newly generated images
+  useEffect(() => {
+    const needsLibrary = isUploadModalOpen && uploadModalType === 'image';
+    if (needsLibrary) {
+      // Always fetch images when modal opens to ensure we get the latest images
+      // Use fetchLibraryImages which uses local state and doesn't affect Redux video history
+      // Reset pagination state when opening modal to ensure fresh load
+      libraryImageNextCursorRef.current = undefined;
+      libraryImageLoadingRef.current = false; // Reset loading ref
+      setLibraryImageHasMore(true);
+      setLibraryImageEntries([]); // Clear previous entries for fresh load
+      setLibraryImageLoading(false); // Ensure loading state is reset
+      // Call fetchLibraryImages and handle any errors
+      // Use setTimeout to ensure state updates are processed first
+      const fetchPromise = fetchLibraryImages(true);
+      fetchPromise
+        .then(() => {
+          console.log('[AnimateInputBox] ✅ Successfully fetched library images');
+        })
+        .catch((error) => {
+          console.error('[AnimateInputBox] ❌ Error fetching library images on modal open:', error);
+          toast.error('Failed to load image library. Please try again.');
+          libraryImageLoadingRef.current = false;
+          setLibraryImageLoading(false);
+        });
+      // Don't call loadHistory here - it would replace all Redux entries and clear video history!
+      // Instead, rely on fetchLibraryImages (local state) and imageHistoryEntries (already in Redux)
+    } else {
+      // When modal closes, reset the guard so it can fetch fresh next time
+      libraryImageInitRef.current = false;
+    }
+    // Deliberately not depending on fetchLibraryImages to avoid re-running when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUploadModalOpen, uploadModalType]);
+
+
+  // Fetch user's video history for the VideoUploadModal when needed (local pagination/state)
+  // This uses local state to avoid affecting video history in Redux
+  const fetchLibraryVideos = useCallback(async (initial: boolean = false) => {
+    try {
+      if (libraryVideoLoading) {
+        console.log('[AnimateInputBox] fetchLibraryVideos: Already loading, skipping');
+        return;
+      }
+      // For non-initial loads, check if we have a cursor (hasMore) and modal is open
+      if (!initial) {
+        if (!libraryVideoNextCursorRef.current) {
+          console.log('[AnimateInputBox] fetchLibraryVideos: No nextCursor, no more items');
+          setLibraryVideoHasMore(false);
+          return;
+        }
+        if (!isUploadModalOpen || uploadModalType !== 'video') {
+          console.log('[AnimateInputBox] fetchLibraryVideos: Modal not open or not video type, skipping');
+          return;
+        }
+      }
+      setLibraryVideoLoading(true);
+      const api = getApiClient();
+      // Fetch all video types: text-to-video, image-to-video, video-to-video
+      const params: any = { 
+        mode: 'video', // Backend converts this to ['text-to-video', 'image-to-video', 'video-to-video']
+        limit: 30, 
+        sortBy: 'createdAt' 
+      };
+      if (!initial && libraryVideoNextCursorRef.current) {
+        params.cursor = libraryVideoNextCursorRef.current;
+      }
+      // Ensure createdAt ordering always requested
+      params.sortBy = 'createdAt';
+      const res = await api.get('/api/generations', { params });
+      const payload = res.data?.data || res.data || {};
+      const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+      const nextCursor: string | undefined = payload.nextCursor;
+
+      // Filter and normalize video entries
+      const normalizedItems = items
+        .filter((item: any) => {
+          // Check if entry has videos
+          if (item.videos && Array.isArray(item.videos) && item.videos.length > 0) {
+            return true;
+          }
+          // Check if entry has video URLs in images array (fallback)
+          if (item.images && Array.isArray(item.images)) {
+            return item.images.some((img: any) => {
+              const url = img.url || img.firebaseUrl || img.originalUrl;
+              return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+            });
+          }
+          return false;
+        })
+        .map((item: any) => {
+          // Clone the item to avoid mutating the original
+          const normalized = { ...item };
+          
+          // Ensure videos array exists
+          if (!Array.isArray(normalized.videos)) {
+            normalized.videos = [];
+          }
+          
+          // Collect all videos from both videos and images arrays
+          const allVideos: any[] = [];
+          
+          // First, add videos from videos array (if exists)
+          if (normalized.videos && Array.isArray(normalized.videos)) {
+            normalized.videos.forEach((video: any) => {
+              if (video) {
+                // Preserve all properties from the video object
+                allVideos.push({
+                  ...video,
+                  // Ensure we have at least one URL property
+                  url: video.url || video.firebaseUrl || video.originalUrl,
+                  firebaseUrl: video.firebaseUrl || video.url,
+                  originalUrl: video.originalUrl || video.url || video.firebaseUrl,
+                  // Preserve thumbnail properties
+                  thumbnailUrl: video.thumbnailUrl,
+                  avifUrl: video.avifUrl,
+                  // Ensure id exists
+                  id: video.id || video.url || video.firebaseUrl || video.originalUrl
+                });
+              }
+            });
+          }
+          
+          // Then, add videos from images array (if they're actually videos)
+          if (normalized.images && Array.isArray(normalized.images)) {
+            normalized.images.forEach((img: any) => {
+              if (img) {
+                const url = img.url || img.firebaseUrl || img.originalUrl;
+                // Check if this is a video
+                if (url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url))) {
+                  // Check if we already have this video (avoid duplicates)
+                  const existingVideo = allVideos.find((v: any) => 
+                    (v.url === url) || (v.firebaseUrl === url) || (v.originalUrl === url)
+                  );
+                  if (!existingVideo) {
+                    // Convert image object to video object, preserving all properties
+                    allVideos.push({
+                      ...img,
+                      // Ensure we have at least one URL property
+                      url: img.url || img.firebaseUrl || img.originalUrl,
+                      firebaseUrl: img.firebaseUrl || img.url,
+                      originalUrl: img.originalUrl || img.url || img.firebaseUrl,
+                      // Preserve thumbnail properties
+                      thumbnailUrl: img.thumbnailUrl,
+                      avifUrl: img.avifUrl,
+                      // Ensure id exists
+                      id: img.id || img.url || img.firebaseUrl || img.originalUrl
+                    });
+                  }
+                }
+              }
+            });
+          }
+          
+          // Update normalized entry with all collected videos
+          normalized.videos = allVideos;
+          
+          // Also preserve images array for backward compatibility (but filter out videos)
+          if (normalized.images && Array.isArray(normalized.images)) {
+            normalized.images = normalized.images.filter((img: any) => {
+              const url = img.url || img.firebaseUrl || img.originalUrl;
+              // Keep only non-video images
+              return !url || (!url.startsWith('data:video') && !/(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+            });
+          }
+          
+          return normalized;
+        });
+
+      console.log('[AnimateInputBox] fetchLibraryVideos API response:', {
+        payloadKeys: Object.keys(payload),
+        itemsCount: items.length,
+        normalizedItemsCount: normalizedItems.length,
+        itemsSample: normalizedItems.slice(0, 2).map((item: any) => ({
+          id: item.id,
+          generationType: item.generationType,
+          videosCount: item.videos?.length || 0,
+          hasVideosArray: Array.isArray(item.videos),
+          videos: item.videos?.slice(0, 1).map((video: any) => ({
+            id: video.id,
+            url: video.url?.substring(0, 50) + '...',
+            firebaseUrl: video.firebaseUrl?.substring(0, 50) + '...' || 'missing',
+            originalUrl: video.originalUrl?.substring(0, 50) + '...' || 'missing',
+            thumbnailUrl: video.thumbnailUrl ? (video.thumbnailUrl.substring(0, 50) + '...') : 'missing',
+            avifUrl: video.avifUrl ? (video.avifUrl.substring(0, 50) + '...') : 'missing'
+          }))
+        })),
+        nextCursor: nextCursor ? 'present' : 'null'
+      });
+
+      // Merge uniquely by id using functional update to avoid stale closure
+      // Always create a new array reference to ensure React detects the change
+      setLibraryVideoEntries((prevEntries) => {
+        const existingById: Record<string, any> = {};
+        // Add existing entries first
+        prevEntries.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Add/update with new items
+        normalizedItems.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Create a new array and sort by createdAt (newest first)
+        const merged = Object.values(existingById).sort((a: any, b: any) => {
+          const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+          const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+          return timeB - timeA; // Descending (newest first)
+        });
+
+        console.log('[AnimateInputBox] fetchLibraryVideos after merge:', {
+          previousCount: prevEntries.length,
+          newItemsCount: normalizedItems.length,
+          mergedCount: merged.length,
+          actuallyNew: normalizedItems.filter((item: any) => !prevEntries.some((prev: any) => prev.id === item.id)).length,
+          mergedSample: merged.slice(0, 2).map((e: any) => ({
+            id: e.id,
+            generationType: e.generationType,
+            videosCount: e.videos?.length || 0,
+            hasVideos: Array.isArray(e.videos) && e.videos.length > 0,
+            videos: e.videos?.slice(0, 1).map((video: any) => ({
+              id: video.id,
+              url: video.url?.substring(0, 50) + '...',
+              thumbnailUrl: video.thumbnailUrl ? 'present' : 'missing',
+              avifUrl: video.avifUrl ? 'present' : 'missing'
+            }))
+          }))
+        });
+
+        // Always return a new array reference (even if contents are the same)
+        return [...merged];
+      });
+      
+      // Update cursor and hasMore after state update
+      libraryVideoNextCursorRef.current = nextCursor;
+      // Set hasMore: if there's a nextCursor, we definitely have more items to load
+      // The presence of nextCursor is the definitive indicator from the backend
+      const hasMoreItems = Boolean(nextCursor);
+      console.log('[AnimateInputBox] fetchLibraryVideos result:', { 
+        itemsCount: items.length, 
+        requested: params.limit || 30, 
+        nextCursor: nextCursor ? 'present' : 'null', 
+        hasMoreItems
+      });
+      setLibraryVideoHasMore(hasMoreItems);
+    } catch (e) {
+      console.error('[AnimateInputBox] Failed to fetch library videos:', e);
+    } finally {
+      setLibraryVideoLoading(false);
+    }
+  }, [libraryVideoLoading, isUploadModalOpen, uploadModalType]);
+
+  // When opening the VideoUploadModal, ensure initial video library is loaded
+  // IMPORTANT: Videos are ONLY loaded when the modal opens, not before
+  useEffect(() => {
+    const needsLibrary = isUploadModalOpen && uploadModalType === 'video';
+    if (needsLibrary) {
+      // Always fetch videos when modal opens
+      // Use fetchLibraryVideos which uses local state and doesn't affect Redux video history
+      if (!libraryVideoInitRef.current) {
+        console.log('[AnimateInputBox] Video upload modal opened - fetching videos...');
+        libraryVideoInitRef.current = true;
+        // Reset pagination state when opening modal to ensure fresh load
+        libraryVideoNextCursorRef.current = undefined;
+        setLibraryVideoHasMore(true);
+        setLibraryVideoEntries([]); // Clear previous entries for fresh load
+        setLibraryVideoLoading(false); // Ensure loading state is reset
+        fetchLibraryVideos(true);
+      }
+      // Don't call loadHistory here - it would replace all Redux entries and clear video history!
+      // Instead, rely on fetchLibraryVideos (local state) and allVideoHistoryEntries (already in Redux)
+    } else {
+      // Reset guard when modal closes or type changes so it can fetch fresh next time
+      if (libraryVideoInitRef.current) {
+        console.log('[AnimateInputBox] Video upload modal closed - resetting state');
+      }
+      libraryVideoInitRef.current = false;
+    }
+    // Deliberately not depending on fetchLibraryVideos or entries length to avoid re-running
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUploadModalOpen, uploadModalType]);
 
   // Credits
   const credits = useAppSelector((state: any) => state.credits?.credits || 0);
@@ -449,11 +947,6 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
   // Handle generate
   const handleGenerate = useCallback(async () => {
-    if (!prompt.trim()) {
-      toast.error("Please enter a prompt");
-      return;
-    }
-
     if (!uploadedVideo) {
       toast.error("Video upload is mandatory");
       return;
@@ -497,7 +990,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         ...(wanAnimateSeed !== undefined && { seed: wanAnimateSeed }),
         generationType: 'video-to-video',
         isPublic: false,
-        originalPrompt: prompt.trim() || '',
+        originalPrompt: '',
+        prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
       };
 
       console.log(`Submitting WAN 2.2 Animate ${isAnimationModel ? 'Animation' : 'Replace'} request:`, requestBody);
@@ -511,7 +1005,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         // Create local preview entry (history-style) to show generating tile in today's row
         setLocalVideoPreview({
           id: `animate-loading-${Date.now()}`,
-          prompt: prompt.trim(),
+          prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
           model: modelName,
           generationType: "text-to-video" as any,
           images: [{ id: 'video-loading', url: '', originalUrl: '' }] as any,
@@ -576,7 +1070,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       const backendEntry: HistoryEntry = {
                         ...historyData,
                         id: historyData.id || result.historyId,
-                        prompt: historyData.prompt || prompt.trim(),
+                        prompt: historyData.prompt || (isAnimationModel ? "Animate Animation generation" : "Animate Replace generation"),
                         model: historyData.model || modelName,
                         frameSize: historyData.frameSize || "16:9",
                         images: historyData.images || historyData.videos || [{ 
@@ -614,7 +1108,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       // Fallback to local entry if backend fetch fails
                       const historyEntry: HistoryEntry = {
                         id: result.historyId,
-                        prompt: prompt.trim(),
+                        prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
                         model: modelName,
                         frameSize: "16:9",
                         images: [{ 
@@ -636,8 +1130,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     // Fallback to local entry
                     const historyEntry: HistoryEntry = {
                       id: result.historyId,
-                      prompt: prompt.trim(),
-                      model: "wan-video/wan-2.2-animate-replace",
+                      prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
+                      model: modelName,
                       frameSize: "16:9",
                       images: [{ 
                         id: `video-${Date.now()}`, 
@@ -657,8 +1151,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   // No historyId, create local entry
                   const historyEntry: HistoryEntry = {
                     id: `animate-${Date.now()}`,
-                    prompt: prompt.trim(),
-                    model: "wan-video/wan-2.2-animate-replace",
+                    prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
+                    model: modelName,
                     frameSize: "16:9",
                     images: [{ 
                       id: `video-${Date.now()}`, 
@@ -675,7 +1169,6 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   dispatch(addHistoryEntry(historyEntry));
                 }
                 
-                setPrompt("");
                 setUploadedVideo("");
                 setUploadedCharacterImage("");
                 return;
@@ -933,72 +1426,53 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                               </div>
                             </div>
                           ) : (
-                            // Completed video thumbnail with shimmer loading
+                            // Completed video thumbnail (exact same as History.tsx)
                             <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                               {(video.firebaseUrl || video.url) ? (
-                                <div className="relative w-full h-full">
-                                  {(() => {
-                                    const raw = (video.firebaseUrl || video.url) as string;
-                                    const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
-                                    const path = raw?.startsWith(ZATA_PREFIX) ? raw.substring(ZATA_PREFIX.length) : raw;
-                                    const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                    return (
-                                      <video
-                                        src={proxied}
-                                        className="w-full h-full object-cover transition-opacity duration-200"
-                                        crossOrigin="anonymous"
-                                        muted
-                                        playsInline
-                                        loop
-                                        preload="metadata"
-                                        poster={toThumbUrl(raw, { w: 640, q: 60 }) || undefined}
-                                        onLoadedData={(e) => {
-                                          // Create a thumbnail poster if none available (non-Zata sources)
-                                          const videoElement = e.target as HTMLVideoElement;
+                                (() => {
+                                  const mediaUrl = video.firebaseUrl || video.url;
+                                  const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                  const vsrc = proxied || mediaUrl;
+                                  return (
+                                    <video 
+                                      src={vsrc} 
+                                      className="w-full h-full object-cover transition-opacity duration-200" 
+                                      muted 
+                                      playsInline 
+                                      loop 
+                                      preload="metadata"
+                                      poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
+                                      onMouseEnter={async (e) => { 
+                                        try { 
+                                          await (e.currentTarget as HTMLVideoElement).play();
+                                        } catch { } 
+                                      }}
+                                      onMouseLeave={(e) => { 
+                                        const v = e.currentTarget as HTMLVideoElement; 
+                                        try { v.pause(); v.currentTime = 0 } catch { }
+                                      }}
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const videoEl = e.currentTarget;
+                                        
+                                        if (videoEl.paused) {
                                           try {
-                                            const needsPoster = !videoElement.poster || videoElement.poster.trim() === '';
-                                            if (needsPoster) {
-                                              const capture = () => {
-                                                if (!videoElement.videoWidth || !videoElement.videoHeight) return;
-                                                const canvas = document.createElement('canvas');
-                                                canvas.width = videoElement.videoWidth;
-                                                canvas.height = videoElement.videoHeight;
-                                                const ctx = canvas.getContext('2d');
-                                                if (ctx) {
-                                                  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                                                  try {
-                                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                                                    if (dataUrl) videoElement.poster = dataUrl;
-                                                  } catch { }
-                                                }
-                                              };
-                                              if (videoElement.readyState >= 2) {
-                                                // Seek a tiny offset to ensure frame is decodable on some browsers
-                                                const target = Math.min(0.1, Math.max(0.01, (videoElement.duration || 0.2) / 20));
-                                                const onSeeked = () => { videoElement.removeEventListener('seeked', onSeeked); capture(); };
-                                                videoElement.addEventListener('seeked', onSeeked, { once: true });
-                                                try { videoElement.currentTime = target; } catch { capture(); }
-                                              } else {
-                                                const onLoaded = () => { videoElement.removeEventListener('loadedmetadata', onLoaded); capture(); };
-                                                videoElement.addEventListener('loadedmetadata', onLoaded, { once: true });
-                                              }
-                                            }
-                                          } catch { }
-
-                                          // Remove shimmer when video loads
-                                          setTimeout(() => {
-                                            const shimmer = document.querySelector(`[data-video-id="${entry.id}-${video.id}"] .shimmer`) as HTMLElement;
-                                            if (shimmer) {
-                                              shimmer.style.opacity = '0';
-                                            }
-                                          }, 100);
-                                        }}
-                                      />
-                                    );
-                                  })()}
-                                  {/* Shimmer loading effect */}
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                </div>
+                                            await videoEl.play();
+                                          } catch (error) {
+                                            // silent
+                                          }
+                                        } else {
+                                          videoEl.pause();
+                                          videoEl.currentTime = 0;
+                                        }
+                                      }}
+                                      onLoadStart={() => { /* silent */ }}
+                                      onLoadedData={() => { /* silent */ }}
+                                      onCanPlay={() => { /* silent */ }}
+                                    />
+                                  );
+                                })()
                               ) : (
                                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                   <span className="text-gray-400 text-xs">Video not available</span>
@@ -1048,21 +1522,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
       {/* Input Box - Fixed at bottom like original InputBox */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0] rounded-2xl bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-4">
-        {/* Top row: textarea and upload buttons */}
+        {/* Top row: upload buttons */}
         <div className="flex items-start gap-3 mb-3">
-          <textarea
-            ref={inputEl}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={placeholder}
-            className="flex-1 min-h-[120px] bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-white/20"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                handleGenerate();
-              }
-            }}
-          />
-
           <div className="flex flex-col gap-2">
             {/* Video Upload Button */}
             <div className="relative">
@@ -1090,8 +1551,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               <button
                 className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                 onClick={() => {
+                  console.log('[AnimateInputBox] 🖼️ Upload character image button clicked');
                   setUploadModalType('image');
                   setIsUploadModalOpen(true);
+                  console.log('[AnimateInputBox] 🖼️ Modal state updated:', { type: 'image', open: true });
                 }}
               >
                 <div className="relative">
@@ -1327,7 +1790,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             </div>
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim() || !uploadedVideo || !uploadedCharacterImage}
+              disabled={isGenerating || !uploadedVideo || !uploadedCharacterImage}
               className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
             >
               {isGenerating ? "Generating..." : "Generate Video"}
@@ -1344,32 +1807,109 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       )}
 
       {/* UploadModal for character image uploads */}
-      {uploadModalType === 'image' && (
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onAdd={handleCharacterImageUploadFromModal}
-          historyEntries={imageHistoryEntries}
-          remainingSlots={1}
-          onLoadMore={async () => {}}
-          hasMore={false}
-          loading={false}
-        />
-      )}
+      {uploadModalType === 'image' && (() => {
+        // When modal is open, always use libraryImageEntries (even if empty initially)
+        // This ensures we show the fetched data once it loads
+        // Only fall back to imageHistoryEntries if modal is closed (shouldn't happen, but safety check)
+        const modalHistoryEntries = isUploadModalOpen 
+          ? [...libraryImageEntries] 
+          : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
+        
+        
+        return (
+          <UploadModal
+            key={`upload-modal-${libraryImageEntries.length}-${isUploadModalOpen}`}
+            isOpen={isUploadModalOpen}
+            onClose={() => {
+              setIsUploadModalOpen(false);
+            }}
+            onAdd={handleCharacterImageUploadFromModal}
+            historyEntries={modalHistoryEntries}
+            remainingSlots={1}
+            onLoadMore={async () => {
+              // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
+              // This ensures video history remains intact
+              // Only check loading state - fetchLibraryImages will handle hasMore check internally
+              if (!libraryImageLoading && isUploadModalOpen && uploadModalType === 'image') {
+                try {
+                  await fetchLibraryImages(false);
+                } catch (error) {
+                  console.error('[AnimateInputBox] Error in onLoadMore:', error);
+                }
+              } else {
+                console.log('[AnimateInputBox] onLoadMore blocked:', { libraryImageLoading, isUploadModalOpen, uploadModalType });
+              }
+            }}
+            hasMore={isUploadModalOpen && uploadModalType === 'image' ? libraryImageHasMore : false}
+            loading={isUploadModalOpen && uploadModalType === 'image' ? libraryImageLoading : false}
+          />
+        );
+      })()}
 
       {/* VideoUploadModal for video uploads */}
-      {uploadModalType === 'video' && (
-        <VideoUploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onAdd={handleVideoUploadFromModal}
-          historyEntries={allVideoHistoryEntries}
-          remainingSlots={1}
-          onLoadMore={async () => {}}
-          hasMore={false}
-          loading={false}
-        />
-      )}
+      {uploadModalType === 'video' && (() => {
+        // Use libraryVideoEntries if available, otherwise fall back to allVideoHistoryEntries
+        // Create a new array reference to ensure React detects changes
+        const modalHistoryEntries = libraryVideoEntries.length > 0 
+          ? [...libraryVideoEntries] 
+          : [...allVideoHistoryEntries];
+        
+        // Log what's being passed to the modal (only when modal is open to avoid spam)
+        if (isUploadModalOpen && libraryVideoEntries.length > 0) {
+          console.log('[AnimateInputBox] VideoUploadModal historyEntries prop:', {
+            source: 'libraryVideoEntries',
+            count: modalHistoryEntries.length,
+            libraryVideoEntriesCount: libraryVideoEntries.length,
+            allVideoHistoryEntriesCount: allVideoHistoryEntries.length,
+            entriesWithVideos: modalHistoryEntries.filter((e: any) => {
+              const hasVideos = e.videos && Array.isArray(e.videos) && e.videos.length > 0;
+              const hasVideoImages = e.images && Array.isArray(e.images) && e.images.some((img: any) => {
+                const url = img.url || img.firebaseUrl || img.originalUrl;
+                return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+              });
+              return hasVideos || hasVideoImages;
+            }).length,
+            sample: modalHistoryEntries.slice(0, 3).map((e: any) => ({
+              id: e.id,
+              videosCount: e.videos?.length || 0,
+              hasVideos: Array.isArray(e.videos) && e.videos.length > 0,
+              firstVideoUrl: e.videos?.[0]?.url?.substring(0, 50) + '...'
+            }))
+          });
+        }
+        
+        return (
+          <VideoUploadModal
+            key={`video-upload-modal-${libraryVideoEntries.length}`}
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onAdd={handleVideoUploadFromModal}
+            historyEntries={modalHistoryEntries}
+            remainingSlots={1}
+            onLoadMore={async () => {
+              // Always use fetchLibraryVideos for pagination - it uses local state and doesn't affect Redux
+              // This ensures video history remains intact
+              console.log('[AnimateInputBox] onLoadMore called for videos:', { 
+                libraryVideoLoading, 
+                libraryVideoHasMore, 
+                isUploadModalOpen, 
+                uploadModalType,
+                entriesCount: libraryVideoEntries.length,
+                nextCursor: libraryVideoNextCursorRef.current ? 'present' : 'null'
+              });
+              // Only check loading state - fetchLibraryVideos will handle hasMore check internally
+              if (!libraryVideoLoading && isUploadModalOpen && uploadModalType === 'video') {
+                console.log('[AnimateInputBox] Fetching more library videos...');
+                await fetchLibraryVideos(false);
+              } else {
+                console.log('[AnimateInputBox] onLoadMore blocked for videos:', { libraryVideoLoading, isUploadModalOpen, uploadModalType });
+              }
+            }}
+            hasMore={isUploadModalOpen && uploadModalType === 'video' ? libraryVideoHasMore : false}
+            loading={isUploadModalOpen && uploadModalType === 'video' ? libraryVideoLoading : false}
+          />
+        );
+      })()}
     </React.Fragment>
   );
 };

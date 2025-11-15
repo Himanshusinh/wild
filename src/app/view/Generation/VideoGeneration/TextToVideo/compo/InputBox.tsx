@@ -63,6 +63,22 @@ const InputBox = (props: InputBoxProps = {}) => {
     video: any;
   } | null>(null);
   const inputEl = useRef<HTMLTextAreaElement>(null);
+  
+  // Helper functions for proxy URLs (same as History.tsx)
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), do not proxy
+    return '';
+  };
+
+  const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+  };
 
   // Video generation state
   const [prompt, setPrompt] = useState("");
@@ -1064,8 +1080,22 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
   const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
     try {
-      if (libraryImageLoading) return;
-      if (!initial && (!libraryImageHasMore || !isUploadModalOpen)) return;
+      if (libraryImageLoading) {
+        console.log('[VideoPage] fetchLibraryImages: Already loading, skipping');
+        return;
+      }
+      // For non-initial loads, check if we have a cursor (hasMore) and modal is open
+      if (!initial) {
+        if (!libraryImageNextCursorRef.current) {
+          console.log('[VideoPage] fetchLibraryImages: No nextCursor, no more items');
+          setLibraryImageHasMore(false);
+          return;
+        }
+        if (!isUploadModalOpen) {
+          console.log('[VideoPage] fetchLibraryImages: Modal not open, skipping');
+          return;
+        }
+      }
       setLibraryImageLoading(true);
       const api = getApiClient();
   const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
@@ -1074,45 +1104,242 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
   // Ensure createdAt ordering always requested
   params.sortBy = 'createdAt';
-  const res = await api.get('/api/generations', { params });
+      const res = await api.get('/api/generations', { params });
       const payload = res.data?.data || res.data || {};
       const items: any[] = Array.isArray(payload.items) ? payload.items : [];
-      const nextCursor: string | undefined = payload.nextCursor;
+      const nextCursor: string | number | undefined = payload.nextCursor;
 
-      // Merge uniquely by id
-      const existingById: Record<string, any> = {};
-      libraryImageEntries.forEach((e: any) => { existingById[e.id] = e; });
-      items.forEach((e: any) => { existingById[e.id] = e; });
-      const merged = Object.values(existingById);
+      // Ensure all items have the images array properly structured
+      const normalizedItems = items.map((item: any) => {
+        // Clone the item to avoid mutating the original
+        const normalized = { ...item };
+        
+        // If item doesn't have images array, try to extract from other properties
+        if (!Array.isArray(normalized.images) || normalized.images.length === 0) {
+          // Some APIs might return images in a different structure
+          if (normalized.media && Array.isArray(normalized.media)) {
+            normalized.images = normalized.media.filter((m: any) => m.type === 'image' || !m.type);
+          }
+        }
+        // Ensure images is always an array (even if empty) - don't filter out items
+        // The UploadModal will handle empty arrays gracefully
+        if (!Array.isArray(normalized.images)) {
+          normalized.images = [];
+        }
+        
+        // Ensure each image has required properties
+        if (Array.isArray(normalized.images)) {
+          normalized.images = normalized.images.map((img: any) => {
+            if (typeof img === 'string') {
+              // If image is just a URL string, convert to object
+              return { url: img, id: img };
+            }
+            return img;
+          });
+        }
+        
+        return normalized;
+      });
 
-  setLibraryImageEntries(merged);
-  libraryImageNextCursorRef.current = nextCursor;
-  // Infer hasMore from returned items count vs requested limit to avoid false-positives when
-  // backend incorrectly includes a nextCursor on the last page.
-  const requested = params.limit || 30;
-  setLibraryImageHasMore((items.length >= requested) && Boolean(nextCursor));
+      console.log('[VideoPage] fetchLibraryImages API response:', {
+        payloadKeys: Object.keys(payload),
+        itemsCount: items.length,
+        normalizedItemsCount: normalizedItems.length,
+        itemsSample: normalizedItems.slice(0, 2).map((item: any) => ({
+          id: item.id,
+          generationType: item.generationType,
+          imagesCount: item.images?.length || 0,
+          hasImagesArray: Array.isArray(item.images),
+          images: item.images?.slice(0, 1).map((img: any) => ({
+            id: img.id,
+            url: img.url?.substring(0, 50) + '...',
+            thumbnailUrl: img.thumbnailUrl ? 'present' : 'missing',
+            avifUrl: img.avifUrl ? 'present' : 'missing'
+          }))
+        })),
+        nextCursor: nextCursor ? 'present' : 'null'
+      });
+
+      // Merge uniquely by id using functional update to avoid stale closure
+      // Always create a new array reference to ensure React detects the change
+      setLibraryImageEntries((prevEntries) => {
+        // If this is an initial load, replace all entries (don't merge with old data)
+        if (initial) {
+          console.log('[VideoPage] fetchLibraryImages initial load - replacing all entries');
+          const sorted = normalizedItems.sort((a: any, b: any) => {
+            const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+            const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+            return timeB - timeA; // Descending (newest first)
+          });
+          console.log('[VideoPage] fetchLibraryImages initial load result:', {
+            itemsCount: normalizedItems.length,
+            sortedCount: sorted.length,
+            sample: sorted.slice(0, 2).map((e: any) => ({
+              id: e.id,
+              generationType: e.generationType,
+              imagesCount: e.images?.length || 0,
+              hasImages: Array.isArray(e.images) && e.images.length > 0
+            }))
+          });
+          // Always return a new array reference
+          return [...sorted];
+        }
+        
+        // For pagination loads, merge with existing entries
+        const existingById: Record<string, any> = {};
+        // Add existing entries first
+        prevEntries.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Add/update with new items
+        normalizedItems.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Create a new array and sort by createdAt (newest first)
+        const merged = Object.values(existingById).sort((a: any, b: any) => {
+          const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+          const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+          return timeB - timeA; // Descending (newest first)
+        });
+
+        console.log('[VideoPage] fetchLibraryImages after merge:', {
+          previousCount: prevEntries.length,
+          newItemsCount: normalizedItems.length,
+          mergedCount: merged.length,
+          actuallyNew: normalizedItems.filter((item: any) => !prevEntries.some((prev: any) => prev.id === item.id)).length,
+          mergedSample: merged.slice(0, 2).map((e: any) => ({
+            id: e.id,
+            generationType: e.generationType,
+            imagesCount: e.images?.length || 0,
+            hasImages: Array.isArray(e.images) && e.images.length > 0,
+            images: e.images?.slice(0, 1).map((img: any) => ({
+              id: img.id,
+              url: img.url?.substring(0, 50) + '...',
+              thumbnailUrl: img.thumbnailUrl ? 'present' : 'missing',
+              avifUrl: img.avifUrl ? 'present' : 'missing'
+            }))
+          }))
+        });
+
+        // Always return a new array reference (even if contents are the same)
+        return [...merged];
+      });
+      
+      // Update cursor and hasMore after state update
+      // Convert cursor to string if it's a number (API might return number cursor)
+      libraryImageNextCursorRef.current = nextCursor ? String(nextCursor) : undefined;
+      // Set hasMore: if there's a nextCursor, we definitely have more items to load
+      // The presence of nextCursor is the definitive indicator from the backend
+      const hasMoreItems = Boolean(nextCursor);
+      console.log('[VideoPage] fetchLibraryImages result:', { 
+        itemsCount: items.length, 
+        requested: params.limit || 30, 
+        nextCursor: nextCursor ? 'present' : 'null',
+        nextCursorValue: nextCursor,
+        hasMoreItems,
+        currentEntriesCount: libraryImageEntries.length
+      });
+      setLibraryImageHasMore(hasMoreItems);
     } catch (e) {
       console.error('[VideoPage] Failed to fetch library images:', e);
     } finally {
       setLibraryImageLoading(false);
     }
-  }, [libraryImageEntries, libraryImageHasMore, libraryImageLoading, isUploadModalOpen]);
+  }, [libraryImageLoading, isUploadModalOpen]);
 
-  // When opening the UploadModal for images/references in image_to_video mode, ensure initial image library is loaded
+  // Debug: Log when libraryImageEntries changes to verify state updates
   useEffect(() => {
-    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference') && generationMode === 'image_to_video';
+    if (isUploadModalOpen) {
+      console.log('[VideoPage] libraryImageEntries state updated:', {
+        count: libraryImageEntries.length,
+        sampleEntries: libraryImageEntries.slice(0, 3).map((e: any) => ({
+          id: e.id,
+          generationType: e.generationType,
+          imagesCount: e.images?.length || 0,
+          hasImages: Array.isArray(e.images) && e.images.length > 0,
+          firstImage: e.images?.[0] ? {
+            id: e.images[0].id,
+            url: e.images[0].url?.substring(0, 50) + '...',
+            thumbnailUrl: e.images[0].thumbnailUrl ? 'present' : 'missing'
+          } : null
+        })),
+        allEntriesWithImages: libraryImageEntries.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
+      });
+    }
+  }, [libraryImageEntries, isUploadModalOpen]);
+
+  // When opening the UploadModal for images/references, ensure initial image library is loaded
+  // IMPORTANT: Always fetch fresh data when modal opens to show newly generated images
+  // Load ALL images by fetching pages until there's no more cursor (like image generation)
+  useEffect(() => {
+    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference');
     if (needsLibrary) {
-      if (!libraryImageInitRef.current) {
-        libraryImageInitRef.current = true;
-        fetchLibraryImages(true);
-      }
+      // Reset pagination state when opening modal to ensure fresh load
+      libraryImageNextCursorRef.current = undefined;
+      setLibraryImageHasMore(true);
+      setLibraryImageEntries([]); // Clear previous entries for fresh load
+      setLibraryImageLoading(false); // Ensure loading state is reset
+      
+      // Load all images by fetching pages until there's no more cursor
+      const loadAllImages = async () => {
+        let pageCount = 0;
+        const maxPages = 50; // Safety limit to prevent infinite loops
+        
+        // First page (initial load)
+        console.log('[VideoPage] Loading initial page...');
+        await fetchLibraryImages(true);
+        pageCount++;
+        
+        // Wait for state to update
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Continue fetching pages until there's no more cursor
+        while (pageCount < maxPages) {
+          // Check if we have more to load
+          const currentCursor = libraryImageNextCursorRef.current;
+          if (!currentCursor) {
+            console.log('[VideoPage] No more cursor, finished loading all pages');
+            break; // No more pages
+          }
+          
+          // Wait for any previous loading to complete
+          while (libraryImageLoading) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          console.log('[VideoPage] Loading page', pageCount + 1, 'with cursor:', currentCursor.substring(0, 20) + '...');
+          
+          // Fetch next page (not initial)
+          await fetchLibraryImages(false);
+          pageCount++;
+          
+          // Wait for state to update before checking cursor again
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        // Final wait to ensure all state updates are complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        console.log('[VideoPage] Finished loading all images. Total pages:', pageCount);
+      };
+      
+      // Use setTimeout to ensure state updates are processed first
+      setTimeout(() => {
+        loadAllImages().catch((error) => {
+          console.error('[VideoPage] Error loading all images:', error);
+        });
+      }, 100);
     } else {
-      // Reset guard when modal closes or mode/type changes
+      // When modal closes, reset the guard so it can fetch fresh next time
       libraryImageInitRef.current = false;
     }
     // Deliberately not depending on fetchLibraryImages or entries length to avoid re-running
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUploadModalOpen, uploadModalType, generationMode]);
+  }, [isUploadModalOpen, uploadModalType]);
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -3784,78 +4011,53 @@ const InputBox = (props: InputBoxProps = {}) => {
                               </div>
                             </div>
                           ) : (
-                            // Completed video thumbnail with shimmer loading
+                            // Completed video thumbnail (exact same as History.tsx)
                             <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                               {(video.firebaseUrl || video.url) ? (
-                                <div className="relative w-full h-full">
-                                  {(() => {
-                                    const raw = (video.firebaseUrl || video.url) as string;
-                                    const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
-                                    const path = raw?.startsWith(ZATA_PREFIX) ? raw.substring(ZATA_PREFIX.length) : raw;
-                                    const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                    return (
-                                      <video
-                                        src={proxied}
-                                        className="w-full h-full object-cover transition-opacity duration-200"
-                                        crossOrigin="anonymous"
-                                        muted
-                                        playsInline
-                                        loop
-                                        preload="metadata"
-                                        poster={toThumbUrl(raw, { w: 640, q: 60 }) || undefined}
-                                        onLoadedData={(e) => {
-                                          // Create a thumbnail poster if none available (non-Zata sources)
-                                          const videoElement = e.target as HTMLVideoElement;
+                                (() => {
+                                  const mediaUrl = video.firebaseUrl || video.url;
+                                  const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                  const vsrc = proxied || mediaUrl;
+                                  return (
+                                    <video 
+                                      src={vsrc} 
+                                      className="w-full h-full object-cover transition-opacity duration-200" 
+                                      muted 
+                                      playsInline 
+                                      loop 
+                                      preload="metadata"
+                                      poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
+                                      onMouseEnter={async (e) => { 
+                                        try { 
+                                          await (e.currentTarget as HTMLVideoElement).play();
+                                        } catch { } 
+                                      }}
+                                      onMouseLeave={(e) => { 
+                                        const v = e.currentTarget as HTMLVideoElement; 
+                                        try { v.pause(); v.currentTime = 0 } catch { }
+                                      }}
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const videoEl = e.currentTarget;
+                                        
+                                        if (videoEl.paused) {
                                           try {
-                                            const needsPoster = !videoElement.poster || videoElement.poster.trim() === '';
-                                            if (needsPoster) {
-                                              const capture = () => {
-                                                if (!videoElement.videoWidth || !videoElement.videoHeight) return;
-                                                const canvas = document.createElement('canvas');
-                                                canvas.width = videoElement.videoWidth;
-                                                canvas.height = videoElement.videoHeight;
-                                                const ctx = canvas.getContext('2d');
-                                                if (ctx) {
-                                                  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                                                  try {
-                                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                                                    if (dataUrl) videoElement.poster = dataUrl;
-                                                  } catch { }
-                                                }
-                                              };
-                                              if (videoElement.readyState >= 2) {
-                                                // Seek a tiny offset to ensure frame is decodable on some browsers
-                                                const target = Math.min(0.1, Math.max(0.01, (videoElement.duration || 0.2) / 20));
-                                                const onSeeked = () => { videoElement.removeEventListener('seeked', onSeeked); capture(); };
-                                                videoElement.addEventListener('seeked', onSeeked, { once: true });
-                                                try { videoElement.currentTime = target; } catch { capture(); }
-                                              } else {
-                                                const onLoaded = () => { videoElement.removeEventListener('loadedmetadata', onLoaded); capture(); };
-                                                videoElement.addEventListener('loadedmetadata', onLoaded, { once: true });
-                                              }
-                                            }
-                                          } catch { }
-
-                                          // Remove shimmer when video loads
-                                          setTimeout(() => {
-                                            const shimmer = document.querySelector(`[data-video-id="${entry.id}-${video.id}"] .shimmer`) as HTMLElement;
-                                            if (shimmer) {
-                                              shimmer.style.opacity = '0';
-                                            }
-                                          }, 100);
-
-                                          console.log('🎥 VIDEO DATA LOADED (InputBox):', {
-                                            videoId: `${entry.id}-${video.id}`,
-                                            videoDuration: videoElement.duration,
-                                            videoReadyState: videoElement.readyState
-                                          });
-                                        }}
-                                      />
-                                    );
-                                  })()}
-                                  {/* Shimmer loading effect */}
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                </div>
+                                            await videoEl.play();
+                                          } catch (error) {
+                                            // silent
+                                          }
+                                        } else {
+                                          videoEl.pause();
+                                          videoEl.currentTime = 0;
+                                        }
+                                      }}
+                                      onLoadStart={() => { /* silent */ }}
+                                      onLoadedData={() => { /* silent */ }}
+                                      onCanPlay={() => { /* silent */ }}
+                                    />
+                                  );
+                                })()
                               ) : (
                                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                   <span className="text-gray-400 text-xs">Video not available</span>
@@ -5265,23 +5467,66 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* UploadModal for image and reference uploads */}
-      {uploadModalType !== 'video' && (
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onAdd={handleImageUploadFromModal}
-          historyEntries={libraryImageEntries.length > 0 ? libraryImageEntries : imageHistoryEntries}
-          remainingSlots={uploadModalType === 'image' ?
-            // For WAN 2.2 Animate Replace character image, only 1 slot
-            ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
-            (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
-            (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
-          }
-          onLoadMore={async () => { await fetchLibraryImages(false); }}
-          hasMore={libraryImageEntries.length > 0 ? libraryImageHasMore : hasMore}
-          loading={libraryImageEntries.length > 0 ? libraryImageLoading : loading}
-        />
-      )}
+      {uploadModalType !== 'video' && (() => {
+        // Use libraryImageEntries if available, otherwise fall back to imageHistoryEntries
+        // Create a new array reference to ensure React detects changes
+        const modalHistoryEntries = libraryImageEntries.length > 0 
+          ? [...libraryImageEntries] 
+          : [...imageHistoryEntries];
+        
+        // Log what's being passed to the modal (only when modal is open to avoid spam)
+        if (isUploadModalOpen && libraryImageEntries.length > 0) {
+          console.log('[VideoPage] UploadModal historyEntries prop:', {
+            source: 'libraryImageEntries',
+            count: modalHistoryEntries.length,
+            libraryImageEntriesCount: libraryImageEntries.length,
+            imageHistoryEntriesCount: imageHistoryEntries.length,
+            entriesWithImages: modalHistoryEntries.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length,
+            sample: modalHistoryEntries.slice(0, 3).map((e: any) => ({
+              id: e.id,
+              imagesCount: e.images?.length || 0,
+              hasImages: Array.isArray(e.images) && e.images.length > 0,
+              firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...'
+            }))
+          });
+        }
+        
+        return (
+          <UploadModal
+            key={`upload-modal-${libraryImageEntries.length}-${isUploadModalOpen}`}
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onAdd={handleImageUploadFromModal}
+            historyEntries={modalHistoryEntries}
+            remainingSlots={uploadModalType === 'image' ?
+              // For WAN 2.2 Animate Replace character image, only 1 slot
+              ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
+              (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
+              (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
+            }
+            onLoadMore={async () => {
+              // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
+              // This ensures video history remains intact
+              console.log('[VideoPage] onLoadMore called:', { 
+                libraryImageLoading, 
+                libraryImageHasMore, 
+                isUploadModalOpen, 
+                entriesCount: libraryImageEntries.length,
+                nextCursor: libraryImageNextCursorRef.current ? 'present' : 'null'
+              });
+              // Only check loading state - fetchLibraryImages will handle hasMore check internally
+              if (!libraryImageLoading && isUploadModalOpen) {
+                console.log('[VideoPage] Fetching more library images...');
+                await fetchLibraryImages(false);
+              } else {
+                console.log('[VideoPage] onLoadMore blocked:', { libraryImageLoading, isUploadModalOpen });
+              }
+            }}
+            hasMore={isUploadModalOpen ? libraryImageHasMore : false}
+            loading={isUploadModalOpen ? libraryImageLoading : false}
+          />
+        );
+      })()}
 
       {/* VideoUploadModal for video uploads */}
       {uploadModalType === 'video' && (
