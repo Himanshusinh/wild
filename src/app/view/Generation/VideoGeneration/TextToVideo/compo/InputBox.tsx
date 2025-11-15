@@ -51,10 +51,11 @@ import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 interface InputBoxProps {
   placeholder?: string;
   activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'UGC';
+  showHistory?: boolean; // Control whether to show the history section
 }
 
 const InputBox = (props: InputBoxProps = {}) => {
-  const { placeholder = "Type your video prompt...", activeFeature = 'Video' } = props;
+  const { placeholder = "Type your video prompt...", activeFeature = 'Video', showHistory = true } = props;
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -77,6 +78,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
   const [uploadedAudio, setUploadedAudio] = useState<string>(""); // For WAN models audio file
+  const [uploadedCharacterImage, setUploadedCharacterImage] = useState<string>(""); // For WAN 2.2 Animate Replace character image
   const [sourceHistoryEntryId, setSourceHistoryEntryId] = useState<string>(""); // For Sora 2 Remix source video
   const [references, setReferences] = useState<string[]>([]);
   const [generationMode, setGenerationMode] = useState<"text_to_video" | "image_to_video" | "video_to_video">("text_to_video");
@@ -143,6 +145,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [seedanceResolution, setSeedanceResolution] = useState("1080p"); // For Seedance resolution (480p/720p/1080p)
   // PixVerse specific state
   const [pixverseQuality, setPixverseQuality] = useState("720p"); // For PixVerse quality (360p/540p/720p/1080p)
+  // WAN 2.2 Animate Replace specific state
+  const [wanAnimateResolution, setWanAnimateResolution] = useState<"720" | "480">("720"); // For WAN Animate Replace resolution
+  const [wanAnimateRefertNum, setWanAnimateRefertNum] = useState<1 | 5>(1); // For WAN Animate Replace reference frames
+  const [wanAnimateGoFast, setWanAnimateGoFast] = useState<boolean>(true); // For WAN Animate Replace go_fast
+  const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = useState<boolean>(true); // For WAN Animate Replace merge_audio
+  const [wanAnimateFps, setWanAnimateFps] = useState<number>(24); // For WAN Animate Replace frames_per_second
   // LTX and audio controls
   const [fps, setFps] = useState<25 | 50>(25);
   const [generateAudio, setGenerateAudio] = useState<boolean>(true);
@@ -304,6 +312,13 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (model === "kling-lip-sync") {
       capabilities.supportsVideoToVideo = true;
       capabilities.requiresVideo = true;
+      capabilities.supportsTextToVideo = false;
+      capabilities.supportsImageToVideo = false;
+    }
+    if (model === "wan-2.2-animate-replace") {
+      capabilities.supportsVideoToVideo = true;
+      capabilities.requiresVideo = true;
+      capabilities.requiresImage = true; // Requires character_image
       capabilities.supportsTextToVideo = false;
       capabilities.supportsImageToVideo = false;
     }
@@ -1593,6 +1608,48 @@ const InputBox = (props: InputBoxProps = {}) => {
     event.target.value = '';
   };
 
+  // Handle character image upload for WAN 2.2 Animate Replace
+  const handleCharacterImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const file = files[0];
+    // Validate file type and size
+    const allowedMimes = new Set([
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+    ]);
+
+    const maxBytes = 10 * 1024 * 1024; // 10MB max
+    if (!allowedMimes.has(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
+      toast.error('Unsupported image type. Use JPG, PNG, or WebP format');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > maxBytes) {
+      toast.error('Image file too large. Please upload an image ≤ 10MB');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setUploadedCharacterImage(result);
+          toast.success('Character image uploaded successfully');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
   // Helper function to get the prompt for API (with hardcoded prefix for Lipsync)
   const getApiPrompt = (originalPrompt: string): string => {
     // For Lipsync feature with uploaded image, add hardcoded prefix
@@ -2466,6 +2523,36 @@ const InputBox = (props: InputBoxProps = {}) => {
           };
           generationType = 'video-to-video';
           apiEndpoint = '/api/replicate/kling-lipsync/submit';
+        } else if (selectedModel === "wan-2.2-animate-replace") {
+          // WAN 2.2 Animate Replace - requires video and character_image
+          if (!uploadedVideo) {
+            setError("WAN Animate Replace requires a video input. Please upload a video.");
+            setIsGenerating(false);
+            return;
+          }
+          if (!uploadedCharacterImage && uploadedImages.length === 0) {
+            setError("WAN Animate Replace requires a character image. Please upload a character image.");
+            setIsGenerating(false);
+            return;
+          }
+          
+          const characterImage = uploadedCharacterImage || uploadedImages[0];
+          
+          requestBody = {
+            model: 'wan-video/wan-2.2-animate-replace',
+            video: uploadedVideo,
+            character_image: characterImage,
+            resolution: wanAnimateResolution,
+            refert_num: wanAnimateRefertNum,
+            go_fast: wanAnimateGoFast,
+            merge_audio: wanAnimateMergeAudio,
+            frames_per_second: wanAnimateFps,
+            generationType: 'video-to-video',
+            isPublic,
+            originalPrompt: prompt.trim() || '', // Store original prompt for display
+          };
+          generationType = 'video-to-video';
+          apiEndpoint = '/api/replicate/wan-2-2-animate-replace/submit';
         } else if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("wan-2.5")) {
           // MiniMax and WAN models don't support video to video
           setError("MiniMax and WAN models don't support video to video generation");
@@ -2661,6 +2748,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (selectedModel.startsWith('kling-') && !result.requestId) {
         console.error('❌ Kling API response missing requestId:', result);
         throw new Error('Kling API response missing requestId');
+      }
+
+      // Validate that we have a requestId for WAN 2.2 Animate Replace
+      if (selectedModel === "wan-2.2-animate-replace" && !result.requestId) {
+        console.error('❌ WAN Animate Replace API response missing requestId:', result);
+        throw new Error('WAN Animate Replace API response missing requestId');
       }
 
       // Validate that we have a requestId for Sora 2 models
@@ -2981,6 +3074,109 @@ const InputBox = (props: InputBoxProps = {}) => {
           console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
           console.error('❌ Expected videos array or video object with URL');
           throw new Error('WAN 2.5 video generation did not complete in time');
+        }
+      } else if (selectedModel === "wan-2.2-animate-replace") {
+        // WAN 2.2 Animate Replace flow - queue-based polling (same as WAN 2.5)
+        console.log('🎬 WAN 2.2 Animate Replace video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        // Poll for completion using Replicate queue status
+        let videoResult: any;
+        const maxAttempts = 900; // 15 minutes max for WAN models
+        console.log(`🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`);
+
+        for (let attempts = 0; attempts < maxAttempts; attempts++) {
+          try {
+            console.log(`🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`);
+            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
+            const statusRes = await api.get('/api/replicate/queue/status', {
+              params: { requestId: result.requestId }
+            });
+            console.log(`🎬 Raw status response:`, statusRes.data);
+            const status = statusRes.data?.data || statusRes.data;
+
+            console.log(`🎬 WAN 2.2 Animate Replace status check result:`, status);
+            // Normalize status for robust comparisons
+            const statusValue = String(status?.status || '').toLowerCase();
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
+              console.log('✅ WAN 2.2 Animate Replace generation completed, fetching result...');
+              // Get the result
+              const resultRes = await api.get('/api/replicate/queue/result', {
+                params: { requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              console.log('✅ WAN 2.2 Animate Replace result fetched:', videoResult);
+              break;
+            }
+            if (statusValue === 'failed' || statusValue === 'error') {
+              console.error('❌ WAN 2.2 Animate Replace generation failed with status:', status);
+              throw new Error('WAN 2.2 Animate Replace video generation failed');
+            }
+
+            // Handle other possible statuses
+            if (statusValue === 'processing' || statusValue === 'pending') {
+              console.log(`🎬 WAN 2.2 Animate Replace status: ${status.status} - continuing to poll...`);
+            } else if (statusValue) {
+              console.log(`🎬 WAN 2.2 Animate Replace unknown status: ${status.status} - continuing to poll...`);
+            } else {
+              console.log('🎬 WAN 2.2 Animate Replace no status returned - continuing to poll...');
+            }
+
+            // Log progress every 30 seconds
+            if (attempts % 30 === 0 && attempts > 0) {
+              console.log(`🎬 WAN 2.2 Animate Replace still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+
+              // Fallback: Check if video is available in history after 2 minutes
+              if (attempts >= 120 && result.historyId) {
+                try {
+                  console.log(`🎬 Fallback: Checking history entry for completed video...`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyData = historyRes.data?.data || historyRes.data;
+
+                  if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
+                    const completedVideo = historyData.videos.find((v: any) => v.status === 'completed' || v.url);
+                    if (completedVideo?.url) {
+                      console.log('✅ WAN 2.2 Animate Replace video found in history:', completedVideo);
+                      videoResult = { videos: [completedVideo] };
+                      break;
+                    }
+                  }
+                } catch (historyError) {
+                  console.log('🎬 Fallback history check failed:', historyError);
+                }
+              }
+            }
+          } catch (statusError) {
+            console.error('❌ WAN 2.2 Animate Replace status check failed:', statusError);
+            if (attempts === maxAttempts - 1) {
+              console.error('❌ WAN 2.2 Animate Replace polling exhausted all attempts');
+              throw statusError;
+            }
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL:', videoUrl);
+        } else if (videoResult?.video && videoResult.video?.url) {
+          // Fallback: check for single video object
+          videoUrl = videoResult.video.url;
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL (fallback):', videoUrl);
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          // Replicate-like payload where 'output' is a direct URL
+          videoUrl = videoResult.output;
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL (output string):', videoUrl);
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          // Replicate-like payload where 'output' is an array of URLs
+          videoUrl = videoResult.output[0];
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL (output array):', videoUrl);
+        } else {
+          console.error('❌ WAN 2.2 Animate Replace video generation did not complete properly');
+          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
+          console.error('❌ Expected videos array or video object with URL');
+          throw new Error('WAN 2.2 Animate Replace video generation did not complete in time');
         }
       } else if (selectedModel.startsWith('kling-')) {
         // Kling flow - queue-based polling via replicate queue endpoints
@@ -3352,7 +3548,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   return (
     <React.Fragment>
-      {
+      {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-6  overflow-y-auto no-scrollbar z-0 ">
             <div className="space-y-8">
               {/* If there's a local preview and no row for today, render a dated block for today */}
@@ -3658,7 +3854,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
             </div>
         </div>
-      }
+      )}
 
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
@@ -4044,6 +4240,51 @@ const InputBox = (props: InputBoxProps = {}) => {
                     </div>
                   )}
 
+                  {/* Character Image Upload (for WAN 2.2 Animate Replace) */}
+                  {selectedModel === "wan-2.2-animate-replace" && (
+                    <div className="relative">
+                      <label className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative">
+                        <div className="relative">
+                          <FilePlus2
+                            size={30}
+                            className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-green-300 group-hover:scale-110"
+                          />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Character Image</div>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleCharacterImageUpload}
+                        />
+                      </label>
+                      {/* Character Image Preview */}
+                      {uploadedCharacterImage && (
+                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
+                          <div className="text-xs text-white/60 mb-2">Character Image</div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
+                              <img
+                                src={uploadedCharacterImage}
+                                alt="Character"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <span className="text-xs text-white/80 flex-1">Character</span>
+                            <button
+                              onClick={() => setUploadedCharacterImage("")}
+                              className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               </div>
 
@@ -4153,6 +4394,50 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
               </div>
             )}
+
+            {/* Uploaded Character Image (for WAN 2.2 Animate Replace) */}
+            {uploadedCharacterImage && (
+              <div className="mb-3">
+                <div className="text-xs text-white/60 mb-2">Character Image</div>
+                <div className="relative group">
+                  <div
+                    className="w-32 h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                    onClick={() => {
+                      const previewEntry: HistoryEntry = {
+                        id: "preview-character",
+                        prompt: "Character Image",
+                        model: "preview",
+                        frameSize: "1:1",
+                        images: [{ id: "char-1", url: uploadedCharacterImage, originalUrl: uploadedCharacterImage, firebaseUrl: uploadedCharacterImage }],
+                        status: "completed",
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: 1,
+                        generationType: "text-to-video" as const,
+                        style: undefined
+                      };
+                      setPreview({ entry: previewEntry, video: uploadedCharacterImage });
+                    }}
+                  >
+                    <img
+                      src={uploadedCharacterImage}
+                      alt="Character"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      aria-label="Remove character image"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow bg-black/40"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedCharacterImage("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom row: pill options */}
@@ -4181,6 +4466,63 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 {/* Dynamic Controls Based on Model Capabilities */}
                 {(() => {
+                  // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS
+                  if (selectedModel === "wan-2.2-animate-replace") {
+                    return (
+                      <div className="flex flex-row gap-2 flex-wrap">
+                        {/* Resolution - 480 or 720 */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setWanAnimateResolution(prev => prev === "720" ? "480" : "720")}
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
+                          >
+                            Resolution: {wanAnimateResolution}p
+                          </button>
+                        </div>
+                        {/* Refert Num - 1 or 5 */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setWanAnimateRefertNum(prev => prev === 1 ? 5 : 1)}
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
+                          >
+                            Ref Frames: {wanAnimateRefertNum}
+                          </button>
+                        </div>
+                        {/* Go Fast Toggle */}
+                        <button
+                          onClick={() => setWanAnimateGoFast(prev => !prev)}
+                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${wanAnimateGoFast ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                        >
+                          Fast: {wanAnimateGoFast ? 'On' : 'Off'}
+                        </button>
+                        {/* Merge Audio Toggle */}
+                        <button
+                          onClick={() => setWanAnimateMergeAudio(prev => !prev)}
+                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${wanAnimateMergeAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                        >
+                          Audio: {wanAnimateMergeAudio ? 'On' : 'Off'}
+                        </button>
+                        {/* FPS Input */}
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={5}
+                            max={60}
+                            value={wanAnimateFps}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val) && val >= 5 && val <= 60) {
+                                setWanAnimateFps(val);
+                              }
+                            }}
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-24 text-center"
+                            placeholder="FPS"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
                   if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
                     return (
