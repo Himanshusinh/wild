@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface VideoPreviewModalProps {
@@ -32,34 +33,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
 
-  const toProxyPath = (urlOrPath: any): string => {
-    if (!urlOrPath) return '';
-    if (typeof urlOrPath !== 'string') return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
-    // If it's already a storagePath-like value, return as-is
-    if (/^users\//.test(urlOrPath)) return urlOrPath;
-    // Otherwise, external URL – do not proxy
-    return '';
-  };
-
-  const toProxyResourceUrl = (urlOrPath: any) => {
-    const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS (Zata only)
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
-
-  const toProxyDownloadUrl = (urlOrPath: any) => {
-    const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS (Zata only)
-    return path ? `/api/proxy/download/${encodeURIComponent(path)}` : '';
-  };
-
-  const toFrontendProxyResourceUrl = (urlOrPath: any) => {
-    if (!urlOrPath || typeof urlOrPath !== 'string') return '';
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
+  // Use shared helpers `toMediaProxy` and `toResourceProxy` from '@/lib/thumb' for proxying
 
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
     const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
@@ -155,15 +129,15 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         return;
       }
 
-      const path = toProxyPath((preview.video as any)?.storagePath || url);
-      const downloadUrl = toProxyDownloadUrl(path || url);
-      if (!downloadUrl) return;
-      
-      const response = await fetch(downloadUrl, {
+      const path = (preview.video as any)?.storagePath || url;
+      const resourceUrl = toResourceProxy(path || url) || url;
+      if (!resourceUrl) return;
+
+      const response = await fetch(resourceUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
       const baseName = (path || 'video').split('/').pop() || `video-${Date.now()}.mp4`;
       const fileName = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `video-${Date.now()}.mp4`;
@@ -255,7 +229,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
   } else {
     const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-    const proxied = toProxyResourceUrl(videoPath);
+    const proxied = toMediaProxy(videoPath) || '';
     videoUrl = proxied || rawVideoUrl;
   }
 

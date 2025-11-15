@@ -19,6 +19,7 @@
   // Replaced custom loader with Logo.gif
   import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
   import { getCreditsForModel } from '@/utils/modelCredits';
+  import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 
   const History = () => {
     const dispatch = useAppDispatch();
@@ -672,25 +673,14 @@
     };
 
     // Helper functions to convert URLs to proxy URLs (like preview modals)
-    const toProxyPath = (urlOrPath: string | undefined) => {
-      if (!urlOrPath) return '';
-      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-      if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
-      // Allow direct storagePath-like values (users/...)
-      if (/^users\//.test(urlOrPath)) return urlOrPath;
-      // For external URLs (fal.media, etc.), do not proxy
-      return '';
-    };
-
     const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
-      const path = toProxyPath(urlOrPath);
-      return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+      if (!urlOrPath) return '';
+      return toResourceProxy(urlOrPath) || '';
     };
 
     const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
-      const path = toProxyPath(urlOrPath);
-      return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+      if (!urlOrPath) return '';
+      return toMediaProxy(urlOrPath) || '';
     };
 
     // Helper function to download single file using proxy URLs

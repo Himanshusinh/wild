@@ -10,6 +10,7 @@ import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface ImagePreviewModalProps {
@@ -22,23 +23,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
-  const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    // Allow direct storagePath-like values (users/...)
-    if (/^users\//.test(urlOrPath)) return urlOrPath;
-    // For external URLs (fal.media, etc.), return empty to indicate they should be used directly
-    return '';
-  }, []);
-
-  const toProxyResourceUrl = React.useCallback((urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    // Use frontend Next.js proxy instead of backend API to avoid SSL issues
-    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  }, [toProxyPath]);
+  // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
   
   // Move all hooks to the top before any conditional returns
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
@@ -334,19 +319,18 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     };
   }, [preview]);
 
-  // Helper to get media proxy URL
+  // Helper to get media proxy URL using shared helper
   const toMediaProxyUrl = React.useCallback((urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
-    // If it's already a full HTTP/HTTPS URL (external), use it directly
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    // If it's already an absolute URL, return it
+    try {
+      const u = new URL(urlOrPath);
       return urlOrPath;
+    } catch {
+      // Not an absolute URL - let toMediaProxy handle Zata-style paths
+      return toMediaProxy(urlOrPath) || urlOrPath;
     }
-    const path = toProxyPath(urlOrPath);
-    // If path is empty, it means it's not a Zata URL - use original URL directly
-    if (!path) return urlOrPath;
-    // For Zata paths, use proxy
-    return `/api/proxy/media/${encodeURIComponent(path)}`;
-  }, [toProxyPath]);
+  }, []);
 
   React.useEffect(() => {
     if (!preview) return;
@@ -362,18 +346,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         const imageUrl = (selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url;
         if (!imageUrl) return;
         
-        // Use media proxy for Zata URLs, direct URL for external URLs (FAL, etc.)
-        const url = toMediaProxyUrl(imageUrl);
-        if (!url) return;
-        
-        // For external URLs (FAL), use CORS mode; for proxy URLs, use credentials
-        const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
-        const res = await fetch(url, {
+        // Prefer media proxy for Zata paths; fall back to original absolute URLs
+        const proxyUrl = toMediaProxy(imageUrl) || imageUrl;
+
+        // For external absolute URLs, use CORS omit credentials; for proxy URLs, include credentials
+        const isExternalUrl = proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://');
+        const res = await fetch(proxyUrl, {
           credentials: isExternalUrl ? 'omit' : 'include',
           mode: isExternalUrl ? 'cors' : 'same-origin'
         });
         if (!res.ok) {
-          console.warn('[ImagePreviewModal] Failed to fetch image:', url, res.status);
+          console.warn('[ImagePreviewModal] Failed to fetch image:', proxyUrl, res.status);
           return;
         }
         const blob = await res.blob();
@@ -393,8 +376,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   if (!preview) return null;
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+    return toResourceProxy(urlOrPath || '') || '';
   };
 
   // removed earlier duplicate definition; using single helper below near navigation
@@ -512,18 +494,24 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         return;
       }
 
-      // Fetch the image as a blob
-      const downloadUrl = toProxyDownloadUrl(url);
-      if (!downloadUrl) return;
-      
-      const response = await fetch(downloadUrl, {
+      // Fetch the original resource (use resource proxy for Zata paths)
+      const resourceUrl = toResourceProxy(url) || url;
+      const response = await fetch(resourceUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
-      const fileName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-      
+      let fileName = 'generated-image.jpg';
+      try {
+        const storagePath = (selectedImage as any)?.storagePath || '';
+        if (storagePath) fileName = storagePath.split('/').pop() || fileName;
+        else {
+          const parsed = new URL(url);
+          fileName = parsed.pathname.split('/').pop() || fileName;
+        }
+      } catch {}
+
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
       
@@ -657,8 +645,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
 
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
+    return toResourceProxy(urlOrPath || '') || '';
   };
 
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
@@ -666,9 +653,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const navigateToEdit = (feature: 'upscale' | 'remove-bg' | 'resize') => {
     try {
       const storagePath = (selectedImage as any)?.storagePath || (() => {
-        const original = selectedImage?.url || '';
-        const pathCandidate = toProxyPath(original);
-        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = selectedImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
       })();
 
       // Prefer stable frontend proxy from storagePath; fallback to http(s) url; never use blob:/data:
@@ -688,9 +679,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     try {
       // Navigate to Live Canvas with the current image
       const storagePath = (selectedImage as any)?.storagePath || (() => {
-        const original = selectedImage?.url || '';
-        const pathCandidate = toProxyPath(original);
-        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = selectedImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
       })();
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
       const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
@@ -709,9 +704,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       // Navigate to Video Generation with the current image as input
       // Use the same approach as Remix button - use storagePath to construct direct Zata URL
       const storagePath = (selectedImage as any)?.storagePath || (() => {
-        const original = selectedImage?.url || '';
-        const pathCandidate = toProxyPath(original);
-        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = selectedImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
       })();
       
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
@@ -789,7 +788,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             { (selectedImage?.avifUrl || selectedImage?.url) && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
-                  src={objectUrl || toMediaProxyUrl((selectedImage as any)?.avifUrl || selectedImage.url)}
+                  src={objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage.url) || (selectedImage as any)?.avifUrl || selectedImage.url)}
                   alt=""
                   aria-hidden="true"
                   decoding="async"
@@ -827,7 +826,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">
                 <button
-                  onClick={() => downloadImage((selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url)}
+                  onClick={() => downloadImage((selectedImage as any)?.url || (preview.image as any)?.url || (selectedImage as any)?.avifUrl || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -841,7 +840,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
               <div className="relative group flex-1">
                 <button
-                  onClick={() => shareImage((selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url)}
+                  onClick={() => shareImage((selectedImage as any)?.url || (preview.image as any)?.url || (selectedImage as any)?.avifUrl || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <Share className="h-4 w-4" />
@@ -966,7 +965,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     >
                       {(() => {
                         const thumbBest = (pair.image?.thumbnailUrl || pair.image?.avifUrl || pair.image?.url);
-                        const thumbSrc = toMediaProxyUrl(thumbBest) || thumbBest;
+                        const thumbSrc = toMediaProxy(thumbBest) || thumbBest;
                         return <img src={thumbSrc} alt="" aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
                       })()}
                     </button>
@@ -1107,7 +1106,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               }}
             >
               <img
-                src={objectUrl || toMediaProxyUrl((selectedImage as any)?.avifUrl || selectedImage?.url) || toMediaProxyUrl((preview.image as any)?.avifUrl || preview.image.url)}
+                src={objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage?.url) || (selectedImage as any)?.avifUrl || selectedImage?.url) || (toMediaProxy((preview.image as any)?.avifUrl || preview.image.url) || (preview.image as any)?.avifUrl || preview.image.url)}
                 alt=""
                 aria-hidden="true"
                 decoding="async"
