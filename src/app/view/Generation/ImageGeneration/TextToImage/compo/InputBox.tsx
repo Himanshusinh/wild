@@ -103,12 +103,21 @@ const InputBox = () => {
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
+      
+      // Handle image upload - prioritize sp (storage path) over image URL
       if (sp) {
-        const proxied = `/api/proxy/resource/${encodeURIComponent(sp)}`;
-        dispatch(setUploadedImages([proxied] as any));
+        const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const directUrl = `${zataBase}${decodedPath}`;
+        dispatch(setUploadedImages([directUrl] as any));
       } else if (img) {
-        dispatch(setUploadedImages([img] as any));
+        // Ensure the image URL is valid and not a blob/data URL
+        const imageUrl = img.trim();
+        if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+          dispatch(setUploadedImages([imageUrl] as any));
+        }
       }
+      
       if (prm) dispatch(setPrompt(prm));
       if (mdl) {
         const mapIncomingModel = (m: string): string => {
@@ -136,7 +145,7 @@ const InputBox = () => {
         window.history.replaceState({}, '', current.toString());
       }
     } catch {}
-  }, [dispatch, searchParams]);
+  }, [dispatch, searchParams, pathname]);
 
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-image', initialLimit: 50 });

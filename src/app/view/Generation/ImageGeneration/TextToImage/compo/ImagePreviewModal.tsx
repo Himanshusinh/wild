@@ -1055,13 +1055,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       return '';
                     })();
                     const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-                    const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+                    // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+                    const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
                     const qs = new URLSearchParams();
                     // Use userPrompt for remix if available, otherwise use cleanPrompt
                     const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
                     qs.set('prompt', remixPrompt);
-                    if (imgUrl) qs.set('image', imgUrl);
-                    if (storagePath) qs.set('sp', storagePath);
+                    // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+                    if (storagePath) {
+                      qs.set('sp', storagePath);
+                    } else if (imgUrl) {
+                      // If no storagePath, set image URL directly
+                      qs.set('image', imgUrl);
+                    }
                     // also pass model, frameSize and style for preselection
                     console.log('preview.entry', selectedEntry);
                     if (selectedEntry?.model) {
