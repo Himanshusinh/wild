@@ -90,6 +90,74 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
 
+  // Remember scroll positions so switching tabs preserves where user was
+  const scrollPositionsRef = React.useRef<{ [k in 'library' | 'computer']?: number }>({});
+  const STORAGE_KEY = 'wm_video_upload_modal_scroll_positions';
+  const prevTabRef = React.useRef<typeof tab | null>(null);
+  const visitedTabsRef = React.useRef<Record<string, boolean>>({});
+
+  // Load persisted scroll positions (if any) from sessionStorage on mount
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw || '{}');
+        if (parsed && typeof parsed === 'object') {
+          scrollPositionsRef.current = parsed;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Persist scroll positions to sessionStorage when unmounting
+  React.useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {}));
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
+
+  // Save previous tab scroll and restore per-tab scroll when modal opens or tab changes.
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const el = listRef.current;
+
+    // Save previous tab's scrollTop so it can be restored when user navigates back
+    const prev = prevTabRef.current;
+    if (prev && el) {
+      try { scrollPositionsRef.current[prev as 'library' | 'computer'] = el.scrollTop; } catch {}
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
+    }
+
+    // Only restore for library/computer list (drop area uses dropRef)
+    if (tab !== 'library' && tab !== 'computer') {
+      prevTabRef.current = tab;
+      return;
+    }
+
+    // Restore the saved position, or if this tab hasn't been visited yet, go to top
+    requestAnimationFrame(() => {
+      if (!el) return;
+      const saved = scrollPositionsRef.current[tab as 'library' | 'computer'];
+      const visited = visitedTabsRef.current[tab];
+      if (typeof saved === 'number' && visited) {
+        el.scrollTop = saved;
+      } else {
+        // first time visiting this tab during this modal open -> top
+        el.scrollTop = 0;
+      }
+      visitedTabsRef.current[tab] = true;
+    });
+
+    prevTabRef.current = tab;
+  }, [tab, isOpen]);
+
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
@@ -191,6 +259,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   ref={listRef}
                   onScroll={(e) => {
                     const el = e.currentTarget as HTMLDivElement;
+                    try { 
+                      scrollPositionsRef.current[tab] = el.scrollTop; 
+                      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
+                    } catch {}
                     if (!onLoadMore || loading) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
                     if (nearBottom && hasMore && !loading) onLoadMore();

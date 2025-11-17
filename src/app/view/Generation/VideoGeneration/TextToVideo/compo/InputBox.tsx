@@ -1106,7 +1106,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
       const currentCursor = libraryImageNextCursorRef.current;
       if (!initial && currentCursor) {
-        params.cursor = currentCursor;
+        // Backend expects `nextCursor` for pagination; using `cursor` causes first page to repeat
+        params.nextCursor = currentCursor;
         console.log('[VideoPage] 🔄 Pagination request with cursor:', {
           cursor: currentCursor,
           cursorType: typeof currentCursor,
@@ -5560,7 +5561,6 @@ const InputBox = (props: InputBoxProps = {}) => {
         
         return (
           <UploadModal
-            key={`upload-modal-${libraryImageEntries.length}-${isUploadModalOpen}`}
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={handleImageUploadFromModal}
