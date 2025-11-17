@@ -893,43 +893,52 @@ export default function ArtStationPage() {
                         ) : (
                           <div className="relative w-full h-full">
                             {media.thumbnailUrl || media.avifUrl ? (
-                              <Image
-                                src={media.thumbnailUrl || media.avifUrl || media.url}
-                                alt={item.prompt || ''}
-                                fill
-                                sizes={sizes}
-                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                                placeholder="blur"
-                                blurDataURL={media.blurDataUrl || blur}
-                                priority={isPriority}
-                                fetchPriority={isPriority ? 'high' : 'auto'}
-                                onLoadingComplete={(img) => {
-                                  try {
-                                    const el = img as unknown as HTMLImageElement
-                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                  } catch { }
-                                  markTileLoaded(cardId)
-                                }}
-                              />
+                              <div
+                                className="relative w-full h-full"
+                                style={(!loadedTiles.has(cardId) && (media.blurDataUrl || blur)) ? { backgroundImage: `url(${media.blurDataUrl || blur})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                              >
+                                <Image
+                                  src={media.thumbnailUrl || media.avifUrl || media.url}
+                                  alt={item.prompt || ''}
+                                  fill
+                                  sizes={sizes}
+                                  className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01] absolute inset-0 w-full h-full"
+                                  // manage blur via wrapper background to avoid double placeholders
+                                  placeholder="empty"
+                                  priority={isPriority}
+                                  fetchPriority={isPriority ? 'high' : 'auto'}
+                                  onLoadingComplete={(img) => {
+                                    try {
+                                      const el = img as unknown as HTMLImageElement
+                                      if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                    } catch { }
+                                    markTileLoaded(cardId)
+                                  }}
+                                />
+                              </div>
                             ) : (
-                              <Image
-                                src={media.url}
-                                alt={item.prompt || ''}
-                                fill
-                                sizes={sizes}
-                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                                placeholder="blur"
-                                blurDataURL={blur}
-                                priority={isPriority}
-                                fetchPriority={isPriority ? 'high' : 'auto'}
-                                onLoadingComplete={(img) => {
-                                  try {
-                                    const el = img as unknown as HTMLImageElement
-                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                  } catch { }
-                                  markTileLoaded(cardId)
-                                }}
-                              />
+                              <div
+                                className="relative w-full h-full"
+                                style={(!loadedTiles.has(cardId) && blur) ? { backgroundImage: `url(${blur})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                              >
+                                <Image
+                                  src={media.url}
+                                  alt={item.prompt || ''}
+                                  fill
+                                  sizes={sizes}
+                                  className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01] absolute inset-0 w-full h-full"
+                                  placeholder="empty"
+                                  priority={isPriority}
+                                  fetchPriority={isPriority ? 'high' : 'auto'}
+                                  onLoadingComplete={(img) => {
+                                    try {
+                                      const el = img as unknown as HTMLImageElement
+                                      if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                    } catch { }
+                                    markTileLoaded(cardId)
+                                  }}
+                                />
+                              </div>
                             )}
                           </div>
                         )

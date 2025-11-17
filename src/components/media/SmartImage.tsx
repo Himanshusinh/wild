@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image, { ImageProps } from 'next/image';
 import { toThumbUrl } from '@/lib/thumb';
 
@@ -69,28 +69,71 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	// Use pre-generated blur placeholder if available, otherwise use default
 	const finalBlurDataUrl = blurDataUrl || BLUR_PLACEHOLDER;
 
+	const [loaded, setLoaded] = useState(false);
+
 	// Use empty alt if decorative or alt not provided to prevent caption flashes on load
 	const finalAlt = decorative ? '' : (typeof alt === 'string' ? alt : '');
 	// Default loading behavior: lazy unless explicitly prioritized
 	const loading = (rest as any).loading ?? (priority ? 'eager' : 'lazy');
 
+	// If optimized is an absolute external URL (not a proxied/thumb URL), render a plain <img>
+	// This avoids Next/Image domain/optimization issues for third-party sources and makes
+	// thumbnails visible immediately in the home grid.
+	let isExternalAbsolute = false;
+	try {
+		const u = new URL(optimized);
+		// Treat same-origin or proxy paths as non-external
+		const origin = typeof window !== 'undefined' ? window.location.origin : '';
+		if (u.protocol.startsWith('http') && u.origin !== origin) isExternalAbsolute = true;
+	} catch {}
+
+	const wrapperStyle = finalBlurDataUrl && !loaded
+		? { backgroundImage: `url(${finalBlurDataUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+		: undefined;
+
 	return (
-		<Image
-			src={optimized}
-			alt={finalAlt}
-			className={className}
-			sizes={sizes}
-			{...(fill ? { fill: true } : { width, height })}
-			placeholder="blur"
-			blurDataURL={finalBlurDataUrl}
-			priority={priority}
-			fetchPriority={fetchPriority}
-			loading={loading}
-			onLoadingComplete={(img) => {
-				try { onLoadingComplete && onLoadingComplete(img); } catch {}
-			}}
-			{...rest}
-		/>
+		<div className={`relative overflow-hidden`} style={wrapperStyle}>
+			{isExternalAbsolute ? (
+				<img
+					src={optimized}
+					alt={finalAlt}
+					decoding="async"
+					loading={(loading as any) || 'lazy'}
+					className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'} ${className || ''}`}
+					style={{ objectFit: (fill ? undefined : undefined) }}
+					onLoad={(e) => {
+						try {
+							setLoaded(true);
+							onLoadingComplete && onLoadingComplete(e.currentTarget as HTMLImageElement);
+						} catch {}
+					}}
+					onError={() => {
+						try { setLoaded(true); } catch {}
+					}}
+					{...(rest as any)}
+				/>
+			) : (
+				<Image
+					src={optimized}
+					alt={finalAlt}
+					sizes={sizes}
+					{...(fill ? { fill: true } : { width, height })}
+					// We manage the blur background manually to avoid double-placeholder flicker
+					placeholder="empty"
+					priority={priority}
+					fetchPriority={fetchPriority}
+					loading={loading}
+					className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'} ${className || ''}`}
+					onLoadingComplete={(img) => {
+						try {
+							setLoaded(true);
+							onLoadingComplete && onLoadingComplete(img as HTMLImageElement);
+						} catch {}
+					}}
+					{...rest}
+				/>
+			)}
+		</div>
 	);
 };
 

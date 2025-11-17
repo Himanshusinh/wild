@@ -47,12 +47,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // Local state to track the current entry (updated after deletion)
   const [currentEntry, setCurrentEntry] = React.useState<HistoryEntry | null>(preview?.entry || null);
   
-  // Update currentEntry when preview changes
+  // Update currentEntry and reset selected state immediately when preview changes
   React.useEffect(() => {
-    if (preview?.entry) {
-      setCurrentEntry(preview.entry);
-    }
-  }, [preview?.entry?.id, preview?.entry?.images?.length]);
+    // Reset local view state synchronously so we don't show stale media
+    setCurrentEntry(preview?.entry || null);
+    // compute index within the new entry's images if available
+    try {
+      const imgs = (preview?.entry as any)?.images || [];
+      const mId = (preview?.image as any)?.id;
+      const mUrl = (preview?.image as any)?.url;
+      let idx = 0;
+      if (imgs && imgs.length > 0) {
+        const found = imgs.findIndex((im: any) => (mId && im.id === mId) || (mUrl && im.url === mUrl));
+        if (found >= 0) idx = found;
+      }
+      setSelectedIndex(idx);
+    } catch {}
+    setObjectUrl('');
+    setImageDimensions(null);
+  }, [preview?.entry?.id, preview?.image?.id]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -344,26 +357,36 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   }, []);
 
+  // Abortable image fetch: cancel previous fetch when preview or selectedIndex changes
+  const fetchAbortRef = React.useRef<AbortController | null>(null);
+  const fetchTokenRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!preview) return;
-    
+
+    // Cancel previous fetch
+    try { fetchAbortRef.current?.abort(); } catch {}
+    fetchAbortRef.current = new AbortController();
+    const signal = fetchAbortRef.current.signal;
+
+    // Track a token to guard late responses
+    const currentToken = `${preview.entry?.id || 'noentry'}::${preview.image?.id || preview.image?.url || selectedIndex}`;
+    fetchTokenRef.current = currentToken;
+
     let revoke: string | null = null;
     setObjectUrl('');
     setImageDimensions(null); // Reset dimensions when image changes
+
     const run = async () => {
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
         const selectedImage = selectedPair.image || preview.image;
-        // Prefer optimized AVIF when available
         const imageUrl = (selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url;
         if (!imageUrl) return;
-        
-        // Prefer media proxy for Zata paths; fall back to original absolute URLs
         const proxyUrl = toMediaProxy(imageUrl) || imageUrl;
 
-        // For external absolute URLs, use CORS omit credentials; for proxy URLs, include credentials
         const isExternalUrl = proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://');
         const res = await fetch(proxyUrl, {
+          signal,
           credentials: isExternalUrl ? 'omit' : 'include',
           mode: isExternalUrl ? 'cors' : 'same-origin'
         });
@@ -373,17 +396,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         }
         const blob = await res.blob();
         const obj = URL.createObjectURL(blob);
+        // Ensure this response is still relevant (user may have clicked another preview)
+        if (fetchTokenRef.current !== currentToken) {
+          URL.revokeObjectURL(obj);
+          return;
+        }
         revoke = obj;
         setObjectUrl(obj);
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return; // expected on cancel
         console.error('[ImagePreviewModal] Error loading image:', err);
       }
     };
     run();
     return () => {
+      try { fetchAbortRef.current?.abort(); } catch {}
       if (revoke) URL.revokeObjectURL(revoke);
+      fetchTokenRef.current = null;
     };
-  }, [selectedIndex, preview, sameDateGallery, toMediaProxyUrl]);
+  }, [selectedIndex, preview?.entry?.id, preview?.image?.id, sameDateGallery, toMediaProxyUrl]);
 
   if (!preview) return null;
 
