@@ -535,6 +535,16 @@ const EditImageInterface: React.FC = () => {
     setOffset({ x: 0, y: 0 });
   }, [outputs[selectedFeature]]);
 
+  // Debug: Log when outputs change
+  useEffect(() => {
+    console.log('[EditImage] outputs changed:', { 
+      selectedFeature, 
+      'remove-bg': outputs['remove-bg'],
+      outputs: outputs[selectedFeature],
+      allOutputs: outputs 
+    });
+  }, [outputs, selectedFeature]);
+
   // Recompute fit scale when container resizes or natural size changes
   useEffect(() => {
     if (!imageContainerRef.current || !naturalSize.width || !naturalSize.height) return;
@@ -1896,10 +1906,33 @@ const EditImageInterface: React.FC = () => {
             displayUrl = decodedPath ? `${ZATA_PREFIX}${decodedPath}` : out;
           }
           
-          console.log('[EditImage] remove-bg output URL:', { original: out, displayUrl, imageData });
-          setOutputs((prev) => ({ ...prev, ['remove-bg']: displayUrl }));
+          console.log('[EditImage] remove-bg output URL:', { original: out, displayUrl, imageData, selectedFeature });
+          
+          // Set output immediately - use functional update to ensure state is set correctly
+          setOutputs((prev) => {
+            const updated = { ...prev, ['remove-bg']: displayUrl };
+            console.log('[EditImage] remove-bg setOutputs:', { 
+              prev, 
+              updated, 
+              'remove-bg': updated['remove-bg'],
+              'prev-remove-bg': prev['remove-bg'],
+              selectedFeature 
+            });
+            // Force a re-render by ensuring the state is different
+            if (prev['remove-bg'] !== displayUrl) {
+              console.log('[EditImage] remove-bg: State changed, will trigger re-render');
+            }
+            return updated;
+          });
+          
+          // Ensure processing is set to false
+          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+          
+          // Note: setTimeout closure will have old outputs value, but state should be updated
+          // The useEffect hook will log the updated state
         } else {
           console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
+          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
         }
       } else if (false) {
         // Route to provider based on selected model
@@ -3301,6 +3334,19 @@ const EditImageInterface: React.FC = () => {
                               fill
                               className="object-contain object-center"
                               style={{ objectPosition: 'center 55%' }}
+                              onError={(e) => {
+                                console.error('[EditImage] Output image failed to load:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e
+                                });
+                              }}
+                              onLoad={() => {
+                                console.log('[EditImage] Output image loaded successfully:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature
+                                });
+                              }}
                             />
                           </div>
                           <div className="absolute inset-0">
@@ -3349,6 +3395,18 @@ const EditImageInterface: React.FC = () => {
                             onLoad={(e) => {
                               const img = e.target as HTMLImageElement;
                               setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                              console.log('[EditImage] Zoom mode output image loaded:', {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                              });
+                            }}
+                            onError={(e) => {
+                              console.error('[EditImage] Zoom mode output image failed to load:', {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                error: e
+                              });
                             }}
                             onClick={handleImageClick}
                           />
@@ -3420,6 +3478,18 @@ const EditImageInterface: React.FC = () => {
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
                           setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                          console.log('[EditImage] No-input mode output image loaded:', {
+                            src: outputs[selectedFeature],
+                            selectedFeature,
+                            dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                          });
+                        }}
+                        onError={(e) => {
+                          console.error('[EditImage] No-input mode output image failed to load:', {
+                            src: outputs[selectedFeature],
+                            selectedFeature,
+                            error: e
+                          });
                         }}
                         onClick={handleImageClick}
                       />

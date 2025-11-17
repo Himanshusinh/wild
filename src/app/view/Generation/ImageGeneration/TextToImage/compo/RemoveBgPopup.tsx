@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import { X } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setUploadedImages } from '@/store/slices/generationSlice';
 
 interface RemoveBgPopupProps {
   isOpen: boolean;
@@ -22,6 +24,8 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
   const [backgroundType, setBackgroundType] = useState<string>('rgba');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dispatch = useAppDispatch();
+  const uploadedImages = useAppSelector((s: any) => s.generation?.uploadedImages || []);
 
   useEffect(() => { if (defaultImage) setImage(defaultImage); }, [defaultImage]);
   // Lock background scroll while modal is open (skip for inline)
@@ -47,7 +51,27 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
       if (reverse) body.reverse = true;
       if (threshold) body.threshold = threshold;
       if (backgroundType) body.background_type = backgroundType;
-      await axiosInstance.post('/api/replicate/remove-bg', body);
+
+      const res = await axiosInstance.post('/api/replicate/remove-bg', body);
+      console.log('[RemoveBgPopup] response', res?.data);
+      const imageData = res?.data?.data?.images?.[0];
+      const rawOut = imageData?.url || imageData?.storagePath || res?.data?.data?.url || res?.data?.data?.image || res?.data?.url || res?.data?.image || '';
+      if (rawOut) {
+        // Normalize to full CDN URL if backend returned a storage path
+        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        let displayUrl = rawOut;
+        if (!(rawOut.startsWith('http://') || rawOut.startsWith('https://'))) {
+          const decoded = decodeURIComponent(rawOut).replace(/^\/+/, '');
+          if (decoded) displayUrl = `${ZATA_PREFIX}${decoded}`;
+        }
+        console.log('[RemoveBgPopup] output URL normalized', { rawOut, displayUrl });
+        // Prepend to uploaded images (limit 10 as elsewhere)
+        const next = [displayUrl, ...uploadedImages].slice(0, 10);
+        dispatch(setUploadedImages(next));
+        setImage(displayUrl); // Update local preview immediately
+      } else {
+        console.warn('[RemoveBgPopup] No output URL found in response');
+      }
       if (onCompleted) onCompleted();
       onClose();
     } catch (e: any) {
