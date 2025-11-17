@@ -707,28 +707,40 @@ const Recentcreation: React.FC = () => {
                     </div>
                   </div>
                 ) : item.src && item.src.trim() !== '' ? (
-                  <div className="absolute inset-0">
-                    <SmartImage
-                      src={item.src}
-                      alt={item.title}
-                      fill
-                      className="object-cover"
-                      sizes="250px"
-                      thumbWidth={480}
-                      thumbQuality={60}
-                      decorative
-                      onLoadingComplete={(img) => {
-                        try {
-                          const w = img.naturalWidth || 1;
-                          const h = img.naturalHeight || 1;
-                          const g = gcd(w, h);
-                          const rw = Math.round(w / g);
-                          const rh = Math.round(h / g);
-                          setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
-                        } catch {}
-                      }}
-                    />
-                  </div>
+                  (() => {
+                    // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
+                    const imgObj = (item.entry.images || []).find((im: any) => (im.url || im.firebaseUrl) === item.src || im.url === item.src) || {};
+                    const thumb = imgObj.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
+                    const avif = imgObj.avifUrl || undefined;
+                    const blur = imgObj.blurDataUrl || undefined;
+                    return (
+                      <div className="absolute inset-0">
+                        <SmartImage
+                          src={item.src}
+                          alt={item.title}
+                          fill
+                          className="object-cover"
+                          sizes="250px"
+                          thumbWidth={480}
+                          thumbQuality={60}
+                          thumbnailUrl={thumb}
+                          avifUrl={avif}
+                          blurDataUrl={blur}
+                          decorative
+                          onLoadingComplete={(img) => {
+                            try {
+                              const w = (img as any).naturalWidth || 1;
+                              const h = (img as any).naturalHeight || 1;
+                              const g = gcd(w, h);
+                              const rw = Math.round(w / g);
+                              const rh = Math.round(h / g);
+                              setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
+                            } catch {}
+                          }}
+                        />
+                      </div>
+                    )
+                  })()
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center">
                     <div className="text-center">
