@@ -709,10 +709,10 @@ const Recentcreation: React.FC = () => {
                 ) : item.src && item.src.trim() !== '' ? (
                   (() => {
                     // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
-                    const imgObj = (item.entry.images || []).find((im: any) => (im.url || im.firebaseUrl) === item.src || im.url === item.src) || {};
-                    const thumb = imgObj.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
-                    const avif = imgObj.avifUrl || undefined;
-                    const blur = imgObj.blurDataUrl || undefined;
+                    const imgObj: any = ((item.entry.images || []) as any).find((im: any) => (im.url || im.firebaseUrl) === item.src || im.url === item.src) || ({} as any);
+                    const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
+                    const avif: string | undefined = imgObj?.avifUrl || undefined;
+                    const blur: string | undefined = imgObj?.blurDataUrl || undefined;
                     return (
                       <div className="absolute inset-0">
                         <SmartImage
