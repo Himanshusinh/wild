@@ -20,7 +20,7 @@ import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
-import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X } from 'lucide-react';
+import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { getApiClient } from "@/lib/axiosInstance";
@@ -144,6 +144,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [libraryImageHasMore, setLibraryImageHasMore] = useState<boolean>(true);
   const [libraryImageLoading, setLibraryImageLoading] = useState<boolean>(false);
   const libraryImageNextCursorRef = useRef<string | undefined>(undefined);
+  const libraryImageLoadingRef = useRef<boolean>(false);
   const libraryImageInitRef = useRef<boolean>(false);
 
   // MiniMax specific state
@@ -1080,7 +1081,8 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
   const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
     try {
-      if (libraryImageLoading) {
+      // Use ref to check loading state to avoid stale closure issues
+      if (libraryImageLoadingRef.current) {
         console.log('[VideoPage] fetchLibraryImages: Already loading, skipping');
         return;
       }
@@ -1096,11 +1098,34 @@ const InputBox = (props: InputBoxProps = {}) => {
           return;
         }
       }
+      libraryImageLoadingRef.current = true;
       setLibraryImageLoading(true);
       const api = getApiClient();
-  const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
-      if (!initial && libraryImageNextCursorRef.current) {
-        params.cursor = libraryImageNextCursorRef.current;
+      const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
+      // For pagination, use the cursor from the previous response
+      // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
+      const currentCursor = libraryImageNextCursorRef.current;
+      if (!initial && currentCursor) {
+        params.cursor = currentCursor;
+        console.log('[VideoPage] 🔄 Pagination request with cursor:', {
+          cursor: currentCursor,
+          cursorType: typeof currentCursor,
+          cursorLength: String(currentCursor).length,
+          isInitial: initial,
+          currentEntriesCount: libraryImageEntries.length
+        });
+      } else if (initial) {
+        // Ensure no cursor is sent for initial load
+        console.log('[VideoPage] 🆕 Initial load (no cursor)', {
+          currentCursor: currentCursor ? 'present but ignored' : 'none',
+          currentEntriesCount: libraryImageEntries.length
+        });
+      } else {
+        console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available!', {
+          currentCursor,
+          hasMore: libraryImageHasMore,
+          currentEntriesCount: libraryImageEntries.length
+        });
       }
   // Ensure createdAt ordering always requested
   params.sortBy = 'createdAt';
@@ -1186,6 +1211,25 @@ const InputBox = (props: InputBoxProps = {}) => {
         }
         
         // For pagination loads, merge with existing entries
+        // IMPORTANT: Check if items are actually new by comparing IDs
+        const existingIds = new Set(prevEntries.map((e: any) => e?.id).filter(Boolean));
+        const newItems = normalizedItems.filter((item: any) => item?.id && !existingIds.has(item.id));
+        const existingItems = normalizedItems.filter((item: any) => item?.id && existingIds.has(item.id));
+        
+        console.log('[VideoPage] fetchLibraryImages pagination merge:', {
+          previousCount: prevEntries.length,
+          newItemsReceived: normalizedItems.length,
+          actuallyNew: newItems.length,
+          duplicates: existingItems.length,
+          newItemIds: newItems.slice(0, 5).map((e: any) => e.id),
+          newItemsWithImages: newItems.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
+        });
+        
+        if (newItems.length === 0) {
+          console.warn('[VideoPage] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.');
+          return [...prevEntries];
+        }
+        
         const existingById: Record<string, any> = {};
         // Add existing entries first
         prevEntries.forEach((e: any) => { 
@@ -1193,8 +1237,8 @@ const InputBox = (props: InputBoxProps = {}) => {
             existingById[e.id] = e; 
           }
         });
-        // Add/update with new items
-        normalizedItems.forEach((e: any) => { 
+        // Then add only NEW entries (avoid unnecessary updates)
+        newItems.forEach((e: any) => { 
           if (e?.id) {
             existingById[e.id] = e; 
           }
@@ -1209,19 +1253,16 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('[VideoPage] fetchLibraryImages after merge:', {
           previousCount: prevEntries.length,
           newItemsCount: normalizedItems.length,
+          newItemsAdded: newItems.length,
           mergedCount: merged.length,
-          actuallyNew: normalizedItems.filter((item: any) => !prevEntries.some((prev: any) => prev.id === item.id)).length,
-          mergedSample: merged.slice(0, 2).map((e: any) => ({
+          mergedEntriesWithImages: merged.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length,
+          mergedSample: merged.slice(0, 3).map((e: any) => ({
             id: e.id,
             generationType: e.generationType,
             imagesCount: e.images?.length || 0,
             hasImages: Array.isArray(e.images) && e.images.length > 0,
-            images: e.images?.slice(0, 1).map((img: any) => ({
-              id: img.id,
-              url: img.url?.substring(0, 50) + '...',
-              thumbnailUrl: img.thumbnailUrl ? 'present' : 'missing',
-              avifUrl: img.avifUrl ? 'present' : 'missing'
-            }))
+            firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...',
+            firstImageThumbnail: e.images?.[0]?.thumbnailUrl ? 'present' : 'missing'
           }))
         });
 
@@ -1229,27 +1270,52 @@ const InputBox = (props: InputBoxProps = {}) => {
         return [...merged];
       });
       
-      // Update cursor and hasMore after state update
+      // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
+      // This ensures the cursor is available for the next pagination request
+      const previousCursor = libraryImageNextCursorRef.current;
       // Convert cursor to string if it's a number (API might return number cursor)
-      libraryImageNextCursorRef.current = nextCursor ? String(nextCursor) : undefined;
+      // Handle both string and number cursors from API
+      // IMPORTANT: Store the cursor immediately so it's available for the next request
+      const newCursor = nextCursor ? (typeof nextCursor === 'string' ? nextCursor : String(nextCursor)) : undefined;
+      libraryImageNextCursorRef.current = newCursor;
+      
+      // Log cursor update immediately
+      console.log('[VideoPage] 📥 Cursor updated in ref:', {
+        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
+        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'none',
+        cursorChanged: previousCursor !== newCursor,
+        itemsReceived: items.length
+      });
+      
       // Set hasMore: if there's a nextCursor, we definitely have more items to load
       // The presence of nextCursor is the definitive indicator from the backend
       const hasMoreItems = Boolean(nextCursor);
-      console.log('[VideoPage] fetchLibraryImages result:', { 
+      
+      console.log('[VideoPage] 📥 fetchLibraryImages response received:', { 
         itemsCount: items.length, 
         requested: params.limit || 30, 
-        nextCursor: nextCursor ? 'present' : 'null',
-        nextCursorValue: nextCursor,
+        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
+        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'null',
+        newCursorType: typeof nextCursor,
+        newCursorFull: newCursor,
+        cursorChanged: previousCursor !== newCursor,
         hasMoreItems,
         currentEntriesCount: libraryImageEntries.length
       });
+      
+      // If cursor didn't change and we got items, it means we're getting duplicates
+      if (!initial && previousCursor === newCursor && items.length > 0) {
+        console.warn('[VideoPage] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.');
+      }
+      
       setLibraryImageHasMore(hasMoreItems);
     } catch (e) {
       console.error('[VideoPage] Failed to fetch library images:', e);
     } finally {
+      libraryImageLoadingRef.current = false;
       setLibraryImageLoading(false);
     }
-  }, [libraryImageLoading, isUploadModalOpen]);
+  }, [isUploadModalOpen]);
 
   // Debug: Log when libraryImageEntries changes to verify state updates
   useEffect(() => {
@@ -1280,59 +1346,22 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (needsLibrary) {
       // Reset pagination state when opening modal to ensure fresh load
       libraryImageNextCursorRef.current = undefined;
+      libraryImageLoadingRef.current = false; // Reset loading ref
       setLibraryImageHasMore(true);
       setLibraryImageEntries([]); // Clear previous entries for fresh load
       setLibraryImageLoading(false); // Ensure loading state is reset
       
-      // Load all images by fetching pages until there's no more cursor
-      const loadAllImages = async () => {
-        let pageCount = 0;
-        const maxPages = 50; // Safety limit to prevent infinite loops
-        
-        // First page (initial load)
-        console.log('[VideoPage] Loading initial page...');
-        await fetchLibraryImages(true);
-        pageCount++;
-        
-        // Wait for state to update
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Continue fetching pages until there's no more cursor
-        while (pageCount < maxPages) {
-          // Check if we have more to load
-          const currentCursor = libraryImageNextCursorRef.current;
-          if (!currentCursor) {
-            console.log('[VideoPage] No more cursor, finished loading all pages');
-            break; // No more pages
-          }
-          
-          // Wait for any previous loading to complete
-          while (libraryImageLoading) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          
-          console.log('[VideoPage] Loading page', pageCount + 1, 'with cursor:', currentCursor.substring(0, 20) + '...');
-          
-          // Fetch next page (not initial)
-          await fetchLibraryImages(false);
-          pageCount++;
-          
-          // Wait for state to update before checking cursor again
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-        
-        // Final wait to ensure all state updates are complete
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log('[VideoPage] Finished loading all images. Total pages:', pageCount);
-      };
-      
-      // Use setTimeout to ensure state updates are processed first
-      setTimeout(() => {
-        loadAllImages().catch((error) => {
-          console.error('[VideoPage] Error loading all images:', error);
+      // Only load the first page when modal opens - pagination will happen on scroll
+      const fetchPromise = fetchLibraryImages(true);
+      fetchPromise
+        .then(() => {
+          console.log('[VideoPage] ✅ Successfully fetched initial library images');
+        })
+        .catch((error) => {
+          console.error('[VideoPage] ❌ Error fetching library images:', error);
+          libraryImageLoadingRef.current = false;
+          setLibraryImageLoading(false);
         });
-      }, 100);
     } else {
       // When modal closes, reset the guard so it can fetch fresh next time
       libraryImageInitRef.current = false;
@@ -4891,9 +4920,18 @@ const InputBox = (props: InputBoxProps = {}) => {
                         {/* Audio toggle for Sora 2 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                         >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
                         </button>
                       </div>
                     );
@@ -4943,7 +4981,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <div className="relative">
                           <button
                             onClick={() => {/* simple toggle between 25 and 50 */ setFps(prev => prev === 25 ? 50 : 25); }}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent  text-white"
                           >
                             FPS: {fps}
                           </button>
@@ -4951,9 +4989,18 @@ const InputBox = (props: InputBoxProps = {}) => {
                         {/* Audio toggle for LTX V2 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                         >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
                         </button>
                       </div>
                     );
@@ -5006,9 +5053,18 @@ const InputBox = (props: InputBoxProps = {}) => {
                         {/* Audio toggle for Veo 3.1 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                         >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
                         </button>
                       </div>
                     );
@@ -5061,9 +5117,18 @@ const InputBox = (props: InputBoxProps = {}) => {
                         {/* Audio toggle for Veo 3 */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 ${generateAudio ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                         >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
                         </button>
                       </div>
                     );
@@ -5469,10 +5534,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       {/* UploadModal for image and reference uploads */}
       {uploadModalType !== 'video' && (() => {
         // Use libraryImageEntries if available, otherwise fall back to imageHistoryEntries
-        // Create a new array reference to ensure React detects changes
-        const modalHistoryEntries = libraryImageEntries.length > 0 
+        // Always create a new array reference to ensure React detects changes
+        // When modal is open, always use libraryImageEntries (even if empty initially)
+        // This ensures we show the fetched data once it loads
+        const modalHistoryEntries = isUploadModalOpen 
           ? [...libraryImageEntries] 
-          : [...imageHistoryEntries];
+          : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
         
         // Log what's being passed to the modal (only when modal is open to avoid spam)
         if (isUploadModalOpen && libraryImageEntries.length > 0) {
@@ -5507,19 +5574,36 @@ const InputBox = (props: InputBoxProps = {}) => {
             onLoadMore={async () => {
               // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
               // This ensures video history remains intact
+              const currentCursor = libraryImageNextCursorRef.current;
               console.log('[VideoPage] onLoadMore called:', { 
-                libraryImageLoading, 
+                libraryImageLoading: libraryImageLoadingRef.current, 
                 libraryImageHasMore, 
                 isUploadModalOpen, 
                 entriesCount: libraryImageEntries.length,
-                nextCursor: libraryImageNextCursorRef.current ? 'present' : 'null'
+                nextCursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'null',
+                cursorType: typeof currentCursor
               });
-              // Only check loading state - fetchLibraryImages will handle hasMore check internally
-              if (!libraryImageLoading && isUploadModalOpen) {
-                console.log('[VideoPage] Fetching more library images...');
+              // Only check loading state using ref - fetchLibraryImages will handle hasMore check internally
+              // IMPORTANT: Also check that we have a cursor for pagination (unless it's the first load)
+              if (!libraryImageLoadingRef.current && isUploadModalOpen && libraryImageHasMore) {
+                // For pagination, we must have a cursor (initial load doesn't need one)
+                if (libraryImageEntries.length > 0 && !currentCursor) {
+                  console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available! Setting hasMore to false.');
+                  setLibraryImageHasMore(false);
+                  return;
+                }
+                console.log('[VideoPage] ✅ Fetching more library images...', {
+                  hasCursor: !!currentCursor,
+                  cursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'none'
+                });
                 await fetchLibraryImages(false);
               } else {
-                console.log('[VideoPage] onLoadMore blocked:', { libraryImageLoading, isUploadModalOpen });
+                console.log('[VideoPage] onLoadMore blocked:', { 
+                  loading: libraryImageLoadingRef.current, 
+                  isUploadModalOpen, 
+                  hasMore: libraryImageHasMore,
+                  hasCursor: !!currentCursor
+                });
               }
             }}
             hasMore={isUploadModalOpen ? libraryImageHasMore : false}

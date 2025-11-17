@@ -98,6 +98,28 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     }
   }, [isOpen]);
 
+  // Lock background scroll when modal is open
+  React.useEffect(() => {
+    if (isOpen) {
+      // Save current overflow values
+      const prevBodyOverflow = document.body.style.overflow;
+      const prevHtmlOverflow = (document.documentElement as HTMLElement).style.overflow;
+      const prevOverscrollBehavior = (document.documentElement as HTMLElement).style.overscrollBehavior;
+      
+      // Lock scrolling
+      document.body.style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+      
+      // Restore on cleanup
+      return () => {
+        document.body.style.overflow = prevBodyOverflow;
+        (document.documentElement as HTMLElement).style.overflow = prevHtmlOverflow;
+        (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscrollBehavior;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleAdd = () => {

@@ -46,6 +46,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
   // State
   const [prompt, setPrompt] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // Search query for filtering history
   const [selectedModel, setSelectedModel] = useState("wan-2.2-animate-replace");
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
@@ -87,6 +88,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   // Upload modals
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<'image' | 'video'>('video');
+  const [isVideoModalForCharacter, setIsVideoModalForCharacter] = useState(false);
 
   // Local state for image library (to avoid affecting video history in Redux)
   const [libraryImageEntries, setLibraryImageEntries] = useState<any[]>([]);
@@ -210,8 +212,24 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     // Check if entry is related to animate feature - match exact model from dropdown
     // The dropdown shows "wan-2.2-animate-replace" but backend saves as "wan-video/wan-2.2-animate-replace"
+    // Also includes Runway Character Performance (act_two) model
     const isAnimateEntry = (entry: any): boolean => {
       const model = String(entry?.model || '').toLowerCase();
+      
+      // Check for Runway Character Performance (act_two) model
+      const isRunwayActTwo = 
+        model === 'act_two' ||
+        model === 'runway_act_two' ||
+        model === 'runway-act-two' ||
+        model.includes('act_two') ||
+        model.includes('act-two') ||
+        model.includes('character-performance') ||
+        model.includes('character_performance');
+      
+      if (isRunwayActTwo) {
+        console.log('[AnimateInputBox] ✅ Runway act_two match found:', { id: entry.id, model: entry.model });
+        return true;
+      }
       
       // Primary check: exact matches for the animate models (backend saves as "wan-video/wan-2.2-animate-replace" or "wan-video/wan-2.2-animate-animation")
       const exactMatches = 
@@ -344,8 +362,18 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       return true;
     });
 
+    // Apply search query filter if provided
+    const searchFilteredEntries = searchQuery.trim() 
+      ? filteredEntries.filter((entry: any) => {
+          const query = searchQuery.toLowerCase();
+          const promptMatch = entry.prompt?.toLowerCase().includes(query);
+          const modelMatch = entry.model?.toLowerCase().includes(query);
+          return promptMatch || modelMatch;
+        })
+      : filteredEntries;
+
     // Sort by timestamp (newest first)
-    const sortedEntries = filteredEntries.sort((a: any, b: any) => {
+    const sortedEntries = searchFilteredEntries.sort((a: any, b: any) => {
       const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
       const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
       return timestampB - timestampA; // Descending order (newest first)
@@ -417,8 +445,25 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       
       const api = getApiClient();
       const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
-      if (!initial && libraryImageNextCursorRef.current) {
-        params.cursor = libraryImageNextCursorRef.current;
+      // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
+      const currentCursor = libraryImageNextCursorRef.current;
+      if (!initial && currentCursor) {
+        params.cursor = currentCursor;
+        console.log('[AnimateInputBox] 🔄 Pagination request with cursor:', {
+          cursor: currentCursor ? `${String(currentCursor).substring(0, 30)}...` : 'none',
+          cursorType: typeof currentCursor,
+          isInitial: initial,
+          currentEntriesCount: libraryImageEntries.length
+        });
+      } else if (initial) {
+        console.log('[AnimateInputBox] 🆕 Initial load (no cursor)', {
+          currentCursor: currentCursor ? 'present but ignored' : 'none'
+        });
+      } else {
+        console.warn('[AnimateInputBox] ⚠️ Pagination requested but no cursor available!', {
+          currentCursor,
+          hasMore: libraryImageHasMore
+        });
       }
       params.sortBy = 'createdAt';
       
@@ -547,23 +592,42 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         return [...merged];
       });
       
-      // Update cursor and hasMore after state update
+      // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
+      // This ensures the cursor is available for the next pagination request
       const previousCursor = libraryImageNextCursorRef.current;
       // Convert cursor to string if it's a number (API might return number cursor)
-      libraryImageNextCursorRef.current = nextCursor ? String(nextCursor) : undefined;
+      // Handle both string and number cursors from API
+      // IMPORTANT: Store the cursor immediately so it's available for the next request
+      const newCursor = nextCursor ? (typeof nextCursor === 'string' ? nextCursor : String(nextCursor)) : undefined;
+      libraryImageNextCursorRef.current = newCursor;
+      
+      // Log cursor update immediately
+      console.log('[AnimateInputBox] 📥 Cursor updated in ref:', {
+        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
+        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'none',
+        cursorChanged: previousCursor !== newCursor,
+        itemsReceived: items.length
+      });
       const hasMoreItems = Boolean(nextCursor);
       
       // PAGINATION DEBUG: Log cursor update
       const prevCursorStr = previousCursor ? (typeof previousCursor === 'string' ? `${previousCursor.substring(0, 30)}...` : String(previousCursor)) : 'none';
-      const newCursorStr = nextCursor ? (typeof nextCursor === 'string' ? `${nextCursor.substring(0, 30)}...` : String(nextCursor)) : 'null';
-      console.log('[PAGINATION] Cursor Update:', {
+      const newCursorStr = newCursor ? (typeof newCursor === 'string' ? `${newCursor.substring(0, 30)}...` : String(newCursor)) : 'null';
+      console.log('[PAGINATION] 📥 Response received - Cursor Update:', {
         previousCursor: prevCursorStr,
         previousCursorType: typeof previousCursor,
         newCursor: newCursorStr,
         newCursorType: typeof nextCursor,
-        cursorChanged: previousCursor !== nextCursor,
-        hasMore: hasMoreItems
+        newCursorFull: newCursor,
+        cursorChanged: previousCursor !== newCursor,
+        hasMore: hasMoreItems,
+        itemsReceived: items.length
       });
+      
+      // If cursor didn't change and we got items, it means we're getting duplicates
+      if (!initial && previousCursor === newCursor && items.length > 0) {
+        console.warn('[AnimateInputBox] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.');
+      }
       
       setLibraryImageHasMore(hasMoreItems);
     } catch (e) {
@@ -887,6 +951,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     toast.success("Character image uploaded successfully");
   }, []);
 
+  // Handle character video upload from modal (for Runway model when character type is video)
+  const handleCharacterVideoUploadFromModal = useCallback((urls: string[]) => {
+    setUploadedCharacterImage(urls[0] || "");
+    setIsUploadModalOpen(false);
+    toast.success("Character video uploaded successfully");
+  }, []);
+
   // Group history by date
   const groupedByDate = useMemo(() => {
     const groups: { [key: string]: HistoryEntry[] } = {};
@@ -1089,11 +1160,22 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
               if (statusValue === 'SUCCEEDED') {
                 // Get the result from status response
-                const outputs = status?.outputs || status?.output || [];
+                // Check for videos array first (from history), then outputs/output (from task)
+                let outputs = status?.videos || status?.outputs || status?.output || [];
                 let videoUrl = '';
                 
+                // If outputs is an array of objects, extract the URL
                 if (Array.isArray(outputs) && outputs.length > 0) {
-                  videoUrl = outputs[0];
+                  const firstOutput = outputs[0];
+                  if (typeof firstOutput === 'string') {
+                    videoUrl = firstOutput;
+                  } else if (firstOutput?.url) {
+                    videoUrl = firstOutput.url;
+                  } else if (firstOutput?.originalUrl) {
+                    videoUrl = firstOutput.originalUrl;
+                  } else if (firstOutput?.firebaseUrl) {
+                    videoUrl = firstOutput.firebaseUrl;
+                  }
                 } else if (typeof outputs === 'string') {
                   videoUrl = outputs;
                 }
@@ -1480,6 +1562,29 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       {/* History Section - Videos displayed above input box */}
       {showHistory && (
         <div className="mb-6 inset-0 pl-[0] pr-6 overflow-y-auto no-scrollbar z-0 pb-96">
+          {/* Search Input */}
+          {/* <div className="mb-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search videos by prompt or model..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div> */}
           <div className="space-y-8">
             {/* If there's a local preview and no row for today, render a dated block for today */}
             {localVideoPreview && !groupedByDate[todayKey] && (
@@ -1759,7 +1864,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       )}
 
       {/* Input Box - Fixed at bottom like original InputBox */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[60%] z-[0] rounded-2xl bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-0 px-2 py-4">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[45%] z-[0] rounded-2xl bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-0 px-2 py-4">
         {/* Top row: upload buttons */}
         <div className="flex items-start gap-3 mb-3">
           <div className="flex flex-row gap-0">
@@ -1768,6 +1873,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               <button
                 className="p-0 pl-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                 onClick={() => {
+                  setIsVideoModalForCharacter(false);
                   setUploadModalType('video');
                   setIsUploadModalOpen(true);
                 }}
@@ -1784,15 +1890,25 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               </button>
             </div>
 
-            {/* Character Image Upload Button */}
+            {/* Character Upload Button - Image or Video based on model and character type */}
             <div className="relative">
               <button
                 className="p-0 pl-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                 onClick={() => {
-                  console.log('[AnimateInputBox] 🖼️ Upload character image button clicked');
-                  setUploadModalType('image');
-                  setIsUploadModalOpen(true);
-                  console.log('[AnimateInputBox] 🖼️ Modal state updated:', { type: 'image', open: true });
+                  // For Runway model, check character type to determine modal type
+                  if (selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video') {
+                    console.log('[AnimateInputBox] 🎥 Upload character video button clicked');
+                    setIsVideoModalForCharacter(true);
+                    setUploadModalType('video');
+                    setIsUploadModalOpen(true);
+                    console.log('[AnimateInputBox] 🎥 Modal state updated:', { type: 'video', open: true, forCharacter: true });
+                  } else {
+                    console.log('[AnimateInputBox] 🖼️ Upload character image button clicked');
+                    setIsVideoModalForCharacter(false);
+                    setUploadModalType('image');
+                    setIsUploadModalOpen(true);
+                    console.log('[AnimateInputBox] 🖼️ Modal state updated:', { type: 'image', open: true });
+                  }
                 }}
               >
                 <div className="relative">
@@ -1801,7 +1917,9 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110"
                   />
                   <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                    Upload character
+                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video' 
+                      ? 'Upload character video' 
+                      : 'Upload character'}
                   </div>
                 </div>
               </button>
@@ -1894,46 +2012,66 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 </div>
               )}
 
-              {/* Uploaded Character Image */}
+              {/* Uploaded Character Image or Video */}
               {uploadedCharacterImage && (
                 <div className="flex-shrink-0">
-                  <div className="text-xs text-white/60 mb-2">Character Image</div>
+                  <div className="text-xs text-white/60 mb-2">
+                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video' 
+                      ? 'Character Video' 
+                      : 'Character Image'}
+                  </div>
                   <div className="relative group">
-                    <div
-                      className="w-auto  h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer relative"
-                      // onClick={() => {
-                      //   const previewEntry: HistoryEntry = {
-                      //     id: "preview-character",
-                      //     prompt: "Character Image",
-                      //     model: "preview",
-                      //     frameSize: "1:1",
-                      //     images: [{ id: "char-1", url: uploadedCharacterImage, originalUrl: uploadedCharacterImage, firebaseUrl: uploadedCharacterImage }],
-                      //     status: "completed",
-                      //     timestamp: new Date().toISOString(),
-                      //     createdAt: new Date().toISOString(),
-                      //     imageCount: 1,
-                      //     generationType: "text-to-image",
-                      //   };
-                      //   setPreview({ entry: previewEntry, video: uploadedCharacterImage });
-                      // }}
-                    >
-                      <img
-                        src={uploadedCharacterImage}
-                        alt="Character"
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Remove button */}
-                      <button
-                        aria-label="Remove character image"
-                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white backdrop-blur-sm z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUploadedCharacterImage("");
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video' ? (
+                      // Show video player for character video
+                      <div className="w-auto h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer relative">
+                        <video
+                          src={uploadedCharacterImage}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          onMouseEnter={(e) => {
+                            const video = e.currentTarget;
+                            video.play();
+                          }}
+                          onMouseLeave={(e) => {
+                            const video = e.currentTarget;
+                            video.pause();
+                            video.currentTime = 0;
+                          }}
+                        />
+                        {/* Remove button */}
+                        <button
+                          aria-label="Remove character video"
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white backdrop-blur-sm z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedCharacterImage("");
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      // Show image for character image
+                      <div className="w-auto h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer relative">
+                        <img
+                          src={uploadedCharacterImage}
+                          alt="Character"
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Remove button */}
+                        <button
+                          aria-label="Remove character image"
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white backdrop-blur-sm z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedCharacterImage("");
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1966,7 +2104,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     <div className="relative" ref={resolutionDropdownRef}>
                   <button
                     onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
-                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
+                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                   >
                     <span>{wanAnimateResolution}p</span>
                     <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
@@ -2004,7 +2142,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 <div className="relative" ref={refFramesDropdownRef}>
                   <button
                     onClick={() => setRefFramesDropdownOpen(!refFramesDropdownOpen)}
-                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
+                    className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                   >
                     <span>Ref Frames: {wanAnimateRefertNum}</span>
                     <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${refFramesDropdownOpen ? 'rotate-180' : ''}`} />
@@ -2039,7 +2177,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   )}
                 </div>
                     {/* Seed Input (Optional) */}
-                    <div className="relative">
+                    {/* <div className="relative">
                       <input
                         type="number"
                         value={wanAnimateSeed || ''}
@@ -2052,7 +2190,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         placeholder="Seed (optional)"
                         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
                       />
-                    </div>
+                    </div> */}
                   </>
                 )}
                 
@@ -2063,26 +2201,40 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     <div className="relative" ref={runwayRatioDropdownRef}>
                       <button
                         onClick={() => setRunwayRatioDropdownOpen(!runwayRatioDropdownOpen)}
-                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                       >
                         <span>{runwayActTwoRatio}</span>
                         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${runwayRatioDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
                       {runwayRatioDropdownOpen && (
-                        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-                          {(['1280:720', '720:1280', '960:960', '1104:832', '832:1104', '1584:672'] as const).map((ratio) => (
+                        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-0 pt-0 z-50">
+                          {([
+                            { value: '1280:720', label: '720P', description: 'HD Quality (1280x720)' },
+                            { value: '720:1280', label: '1080P', description: 'HD Quality (720x1280)' },
+                            { value: '960:960', label: '640P', description: 'Square Quality (960x960)' },
+                            { value: '1104:832', label: '720P', description: 'HD Quality (1104x832)' },
+                            { value: '832:1104', label: '720P', description: 'HD Quality (832x1104)' },
+                            { value: '1584:672', label: '1080P', description: 'Full HD Quality (1584x672)' },
+                          ] as const).map((ratio) => (
                             <button
-                              key={ratio}
+                              key={ratio.value}
                               onClick={() => {
-                                setRunwayActTwoRatio(ratio);
+                                setRunwayActTwoRatio(ratio.value as any);
                                 setRunwayRatioDropdownOpen(false);
                               }}
-                              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                runwayActTwoRatio === ratio ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              className={`w-full px-4 py-2 text-left transition-all duration-200  flex items-center justify-between ${
+                                runwayActTwoRatio === ratio.value
+                                  ? 'bg-white'
+                                  : 'hover:bg-white/10'
                               }`}
                             >
-                              <span>{ratio}</span>
-                              {runwayActTwoRatio === ratio && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                              <div className="flex flex-col items-start">
+                                <span className={`font-medium text-sm ${runwayActTwoRatio === ratio.value ? 'text-black' : 'text-white/90'}`}>{ratio.label}</span>
+                                <span className={`text-xs ${runwayActTwoRatio === ratio.value ? 'text-black/80' : 'text-white/60'}`}>{ratio.description}</span>
+                              </div>
+                              {runwayActTwoRatio === ratio.value && (
+                                <div className="w-2 h-2 bg-black rounded-full"></div>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -2093,17 +2245,21 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     <div className="relative" ref={runwayCharacterTypeDropdownRef}>
                       <button
                         onClick={() => setRunwayCharacterTypeDropdownOpen(!runwayCharacterTypeDropdownOpen)}
-                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white cursor-pointer"
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                       >
                         <span>Character: {runwayActTwoCharacterType === 'image' ? 'Image' : 'Video'}</span>
                         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${runwayCharacterTypeDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
                       {runwayCharacterTypeDropdownOpen && (
-                        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30  z-50">
                           {(['image', 'video'] as const).map((type) => (
                             <button
                               key={type}
                               onClick={() => {
+                                // Clear uploaded character when switching types
+                                if (runwayActTwoCharacterType !== type) {
+                                  setUploadedCharacterImage("");
+                                }
                                 setRunwayActTwoCharacterType(type);
                                 setRunwayCharacterTypeDropdownOpen(false);
                               }}
@@ -2120,7 +2276,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     </div>
                     
                     {/* Seed Input (Optional) */}
-                    <div className="relative">
+                    {/* <div className="relative">
                       <input
                         type="number"
                         value={runwayActTwoSeed || ''}
@@ -2133,7 +2289,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         placeholder="Seed (optional)"
                         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
                       />
-                    </div>
+                    </div> */}
                   </>
                 )}
               </div>
@@ -2141,48 +2297,25 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               {/* WAN 2.2 Animate Checkboxes and FPS - Only show for WAN models */}
               {selectedModel !== 'runway-act-two' && (
                 <>
-                  <div className="flex flex-row gap-4 items-center">
-                    {/* Go Fast Checkbox */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={wanAnimateGoFast}
-                        onChange={(e) => setWanAnimateGoFast(e.target.checked)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                      />
-                      <span className="text-sm text-white/80">Go fast</span>
-                      <span className="text-xs text-white/50">(Default: true)</span>
-                    </label>
-                    {/* Merge Audio Checkbox */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={wanAnimateMergeAudio}
-                        onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                      />
-                      <span className="text-sm text-white/80">Merge audio</span>
-                      <span className="text-xs text-white/50">(Default: true)</span>
-                    </label>
-                  </div>
+                 <div className="flex flex-row gap-2">
                   {/* FPS Input with Slider */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2  mb-2">
                     <div className="flex items-center gap-2">
                       <label className="text-sm text-white/80">Frames per second:</label>
-                      <input
-                        type="number"
-                        min={5}
-                        max={60}
-                        value={wanAnimateFps}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val) && val >= 5 && val <= 60) {
-                            setWanAnimateFps(val);
-                          }
-                        }}
-                        className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
-                      />
-                      <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                       <input
+                         type="number"
+                         min={5}
+                         max={60}
+                         value={wanAnimateFps}
+                         onChange={(e) => {
+                           const val = parseInt(e.target.value, 10);
+                           if (!isNaN(val) && val >= 5 && val <= 60) {
+                             setWanAnimateFps(val);
+                           }
+                         }}
+                         className="h-[28px] rounded-lg text-[13px] font-medium border border-white/10 bg-transparwnr text-white/80 w-16 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                       />
+                      {/* <span className="text-xs text-white/50">(min: 5, max: 60)</span> */}
                     </div>
                     <input
                       type="range"
@@ -2196,29 +2329,74 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       }}
                     />
                   </div>
+                  {/* Go Fast Checkbox */}
+                  <div className="flex flex-row gap-4 pt-6">
+                  <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={wanAnimateGoFast}
+                          onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                          className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
+                        />
+                        {wanAnimateGoFast && (
+                          <svg
+                            className="absolute w-3 h-3 text-black pointer-events-none"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="3"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">Go fast </span>
+                      </div>
+                    </label>
+                    {/* Merge Audio Checkbox */}
+                    <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={wanAnimateMergeAudio}
+                          onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                          className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
+                        />
+                        {wanAnimateMergeAudio && (
+                          <svg
+                            className="absolute w-3 h-3 text-black pointer-events-none"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="3"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">Merge audio </span>
+                      </div>
+                    </label>
+                    </div>
+                    </div>
                 </>
               )}
               
               {/* Runway Character Performance Checkboxes and Slider - Only show for Runway model */}
               {selectedModel === 'runway-act-two' && (
                 <>
-                  <div className="flex flex-row gap-4 items-center">
-                    {/* Body Control Checkbox */}
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={runwayActTwoBodyControl}
-                        onChange={(e) => setRunwayActTwoBodyControl(e.target.checked)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                      />
-                      <span className="text-sm text-white/80">Body control</span>
-                      <span className="text-xs text-white/50">(Enable body movements)</span>
-                    </label>
-                  </div>
+                  <div className="flex flex-row gap-5">
                   {/* Expression Intensity Slider */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <label className="text-sm text-white/80">Expression intensity:</label>
+                      <label className="text-sm text-white/80">Expression Intensity:</label>
                       <input
                         type="number"
                         min={1}
@@ -2230,9 +2408,9 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                             setRunwayActTwoExpressionIntensity(val);
                           }
                         }}
-                        className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
+                        className="h-[28px] rounded-lg text-[13px] font-medium border border-white/10 bg-transparent text-white/80 w-14 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
-                      <span className="text-xs text-white/50">(min: 1, max: 5, default: 3)</span>
+                      {/* <span className="text-xs text-white/50">(min: 1, max: 5, default: 3)</span> */}
                     </div>
                     <input
                       type="range"
@@ -2246,6 +2424,36 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       }}
                     />
                   </div>
+
+                   {/* Body Control Checkbox */}
+                   <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity pt-7">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={runwayActTwoBodyControl}
+                          onChange={(e) => setRunwayActTwoBodyControl(e.target.checked)}
+                          className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
+                        />
+                        {runwayActTwoBodyControl && (
+                          <svg
+                            className="absolute w-3 h-3 text-black pointer-events-none"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="3"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">Body control  <span className="text-xs text-white/50">(Enable body movements)</span> </span>
+
+                      </div>
+                    </label>
+                    </div>
                 </>
               )}
             </div>
@@ -2276,8 +2484,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         />
       )}
 
-      {/* UploadModal for character image uploads */}
-      {uploadModalType === 'image' && (() => {
+      {/* UploadModal for character image uploads - only show when character type is image for Runway model */}
+      {uploadModalType === 'image' && 
+       !(selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video') && 
+       (() => {
         // When modal is open, always use libraryImageEntries (even if empty initially)
         // This ensures we show the fetched data once it loads
         // Only fall back to imageHistoryEntries if modal is closed (shouldn't happen, but safety check)
@@ -2299,15 +2509,42 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             onLoadMore={async () => {
               // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
               // This ensures video history remains intact
-              // Only check loading state - fetchLibraryImages will handle hasMore check internally
-              if (!libraryImageLoading && isUploadModalOpen && uploadModalType === 'image') {
+              const currentCursor = libraryImageNextCursorRef.current;
+              console.log('[AnimateInputBox] onLoadMore called:', { 
+                libraryImageLoading: libraryImageLoadingRef.current, 
+                libraryImageHasMore, 
+                isUploadModalOpen, 
+                uploadModalType,
+                entriesCount: libraryImageEntries.length,
+                nextCursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'null',
+                cursorType: typeof currentCursor
+              });
+              // Only check loading state using ref - fetchLibraryImages will handle hasMore check internally
+              // IMPORTANT: Also check that we have a cursor for pagination (unless it's the first load)
+              if (!libraryImageLoadingRef.current && isUploadModalOpen && uploadModalType === 'image' && libraryImageHasMore) {
+                // For pagination, we must have a cursor (initial load doesn't need one)
+                if (libraryImageEntries.length > 0 && !currentCursor) {
+                  console.warn('[AnimateInputBox] ⚠️ Pagination requested but no cursor available! Setting hasMore to false.');
+                  setLibraryImageHasMore(false);
+                  return;
+                }
                 try {
+                  console.log('[AnimateInputBox] ✅ Fetching more library images...', {
+                    hasCursor: !!currentCursor,
+                    cursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'none'
+                  });
                   await fetchLibraryImages(false);
                 } catch (error) {
                   console.error('[AnimateInputBox] Error in onLoadMore:', error);
                 }
               } else {
-                console.log('[AnimateInputBox] onLoadMore blocked:', { libraryImageLoading, isUploadModalOpen, uploadModalType });
+                console.log('[AnimateInputBox] onLoadMore blocked:', { 
+                  loading: libraryImageLoadingRef.current, 
+                  isUploadModalOpen, 
+                  uploadModalType,
+                  hasMore: libraryImageHasMore,
+                  hasCursor: !!currentCursor
+                });
               }
             }}
             hasMore={isUploadModalOpen && uploadModalType === 'image' ? libraryImageHasMore : false}
@@ -2352,8 +2589,16 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           <VideoUploadModal
             key={`video-upload-modal-${libraryVideoEntries.length}`}
             isOpen={isUploadModalOpen}
-            onClose={() => setIsUploadModalOpen(false)}
-            onAdd={handleVideoUploadFromModal}
+            onClose={() => {
+              setIsUploadModalOpen(false);
+              setIsVideoModalForCharacter(false);
+            }}
+            onAdd={
+              // Use character video handler if this modal was opened for character video upload
+              isVideoModalForCharacter && selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video'
+                ? handleCharacterVideoUploadFromModal
+                : handleVideoUploadFromModal
+            }
             historyEntries={modalHistoryEntries}
             remainingSlots={1}
             onLoadMore={async () => {
