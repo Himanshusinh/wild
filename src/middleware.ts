@@ -78,7 +78,8 @@ export function middleware(req: NextRequest) {
     '/view/home', // we'll treat any /view/home/* as blocked
     '/$'
   ];
-  // If request matches a blocked path, rewrite to the 404 page
+  // If request matches a blocked path, rewrite to the app's `/404` route
+  // so Next.js renders its default 404 handling (do not return custom HTML).
   if (
     blocked404.some((p) => {
       if (p === '/view/home') return pathname.startsWith('/view/home');
