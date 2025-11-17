@@ -156,18 +156,18 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
                 onQualityChange(quality.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-3 text-left transition-all duration-200 rounded-lg ${
+              className={`w-full px-4 py-2 text-left transition-all duration-200 flex items-center justify-between ${
                 selectedQuality === quality.value
-                  ? 'bg-white/20'
+                  ? 'bg-white'
                   : 'hover:bg-white/10'
               }`}
             >
               <div className="flex flex-col items-start">
-                <span className={`font-medium text-sm ${selectedQuality === quality.value ? 'text-white' : 'text-white/90'}`}>{quality.label}</span>
-                <span className={`text-xs ${selectedQuality === quality.value ? 'text-white/80' : 'text-white/60'}`}>{quality.description}</span>
+                <span className={`font-medium text-sm ${selectedQuality === quality.value ? 'text-black' : 'text-white/90'}`}>{quality.label}</span>
+                <span className={`text-xs ${selectedQuality === quality.value ? 'text-black/80 ' : 'text-white/60'}`}>{quality.description} </span>
               </div>
               {selectedQuality === quality.value && (
-                <div className="w-2 h-2 bg-white rounded-full"></div>
+                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
               )}
             </button>
           ))}

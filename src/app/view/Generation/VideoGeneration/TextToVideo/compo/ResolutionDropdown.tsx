@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Monitor } from "lucide-react";
 
 interface ResolutionDropdownProps {
   selectedModel: string;
@@ -110,7 +110,8 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         }`}
       >
-        <span>Resolution {selectedResolution ? selectedResolution : ''}</span>
+        <Monitor className="w-4 h-4 mr-1" />
+        {selectedResolution || 'Resolution'}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
