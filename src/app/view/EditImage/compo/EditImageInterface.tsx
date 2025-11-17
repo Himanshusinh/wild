@@ -1874,7 +1874,11 @@ const EditImageInterface: React.FC = () => {
         }
         const res = await axiosInstance.post('/api/replicate/remove-bg', body);
         console.log('[EditImage] remove-bg.res', res?.data);
-        const out = res?.data?.data?.url || res?.data?.data?.image || res?.data?.data?.images?.[0]?.url || res?.data?.url || res?.data?.image || '';
+        
+        // Extract URL from response - backend returns { data: { images: [{ url, storagePath }] } }
+        const imageData = res?.data?.data?.images?.[0];
+        const out = imageData?.url || imageData?.storagePath || res?.data?.data?.url || res?.data?.data?.image || res?.data?.data?.images?.[0]?.url || res?.data?.url || res?.data?.image || '';
+        
         if (out) {
           // Convert output URL to displayable format
           let displayUrl = out;
@@ -1891,7 +1895,11 @@ const EditImageInterface: React.FC = () => {
             const decodedPath = decodeURIComponent(out).replace(/^\/+/, '');
             displayUrl = decodedPath ? `${ZATA_PREFIX}${decodedPath}` : out;
           }
+          
+          console.log('[EditImage] remove-bg output URL:', { original: out, displayUrl, imageData });
           setOutputs((prev) => ({ ...prev, ['remove-bg']: displayUrl }));
+        } else {
+          console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
         }
       } else if (false) {
         // Route to provider based on selected model
