@@ -761,9 +761,10 @@ const InputBox = () => {
   });
 
   // Function to clear input after successful generation
-  // Note: Selected characters are NOT cleared - they remain like the prompt
+  // Note: Selected characters and uploaded images are NOT cleared - they remain for easy remixing
   const clearInputs = () => {
-    dispatch(setUploadedImages([]));
+    // Don't clear uploadedImages - keep them for easy remixing
+    // dispatch(setUploadedImages([]));
     // Don't clear selectedCharacters - they should remain like the prompt
     // dispatch(clearSelectedCharacters());
     // Reset file input
