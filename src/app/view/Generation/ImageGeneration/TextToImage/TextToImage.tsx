@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import InputBox from './TextToImage';
+import InputBox from './compo/Inputbox';
 
 const TextToImage = () => {
   return (
