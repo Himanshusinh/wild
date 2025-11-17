@@ -1885,51 +1885,16 @@ const EditImageInterface: React.FC = () => {
         const res = await axiosInstance.post('/api/replicate/remove-bg', body);
         console.log('[EditImage] remove-bg.res', res?.data);
         
-        // Extract URL from response - backend returns { data: { images: [{ url, storagePath }] } }
-        const imageData = res?.data?.data?.images?.[0];
-        const out = imageData?.url || imageData?.storagePath || res?.data?.data?.url || res?.data?.data?.image || res?.data?.data?.images?.[0]?.url || res?.data?.url || res?.data?.image || '';
+        // Extract URL from response - match upscale pattern exactly
+        // Backend returns { data: { images: [{ url, storagePath }] } }
+        const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
         
-        if (out) {
-          // Convert output URL to displayable format
-          let displayUrl = out;
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
-          
-          // If it's already a full HTTP/HTTPS URL, use it directly
-          if (out.startsWith('http://') || out.startsWith('https://')) {
-            displayUrl = out;
-          } else if (out.startsWith(ZATA_PREFIX)) {
-            // Already a Zata CDN URL, use as-is
-            displayUrl = out;
-          } else {
-            // Assume it's a storage path (users/...), convert to Zata CDN URL
-            const decodedPath = decodeURIComponent(out).replace(/^\/+/, '');
-            displayUrl = decodedPath ? `${ZATA_PREFIX}${decodedPath}` : out;
-          }
-          
-          console.log('[EditImage] remove-bg output URL:', { original: out, displayUrl, imageData, selectedFeature });
-          
-          // Set output immediately - use functional update to ensure state is set correctly
-          setOutputs((prev) => {
-            const updated = { ...prev, ['remove-bg']: displayUrl };
-            console.log('[EditImage] remove-bg setOutputs:', { 
-              prev, 
-              updated, 
-              'remove-bg': updated['remove-bg'],
-              'prev-remove-bg': prev['remove-bg'],
-              selectedFeature 
-            });
-            // Force a re-render by ensuring the state is different
-            if (prev['remove-bg'] !== displayUrl) {
-              console.log('[EditImage] remove-bg: State changed, will trigger re-render');
-            }
-            return updated;
-          });
-          
+        if (first) {
+          console.log('[EditImage] remove-bg output URL:', { first, selectedFeature });
+          // Set output directly like upscale does - no URL conversion needed since backend returns full URL
+          setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
           // Ensure processing is set to false
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
-          
-          // Note: setTimeout closure will have old outputs value, but state should be updated
-          // The useEffect hook will log the updated state
         } else {
           console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
