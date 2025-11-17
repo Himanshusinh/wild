@@ -67,6 +67,26 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/public/')
   );
+
+  // Explicitly make some legacy/unrendered routes return the 404 page
+  // (these routes are known to exist in sitemap/history but do not have
+  // a proper UI implementation and should not be discoverable).
+  const blocked404 = [
+    '/view/video-generation',
+    '/view/imagegeneration',
+    '/view/Blogger',
+    '/view/home', // we'll treat any /view/home/* as blocked
+    '/$'
+  ];
+  // If request matches a blocked path, rewrite to the 404 page
+  if (
+    blocked404.some((p) => {
+      if (p === '/view/home') return pathname.startsWith('/view/home');
+      return pathname === p;
+    })
+  ) {
+    return NextResponse.rewrite(new URL('/404', req.url));
+  }
   // If root path and unauthenticated, force redirect to landing with toast
   if (pathname === '/') {
     const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
