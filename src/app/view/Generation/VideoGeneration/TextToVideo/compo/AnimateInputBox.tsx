@@ -448,7 +448,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
       const currentCursor = libraryImageNextCursorRef.current;
       if (!initial && currentCursor) {
-        params.cursor = currentCursor;
+        // Use correct backend pagination parameter
+        params.nextCursor = currentCursor;
         console.log('[AnimateInputBox] 🔄 Pagination request with cursor:', {
           cursor: currentCursor ? `${String(currentCursor).substring(0, 30)}...` : 'none',
           cursorType: typeof currentCursor,
@@ -468,7 +469,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       params.sortBy = 'createdAt';
       
       // PAGINATION DEBUG: Log request details
-      const cursorStr = params.cursor ? (typeof params.cursor === 'string' ? `${params.cursor.substring(0, 30)}...` : String(params.cursor)) : 'none';
+      const reqCursorVal: any = (params as any).nextCursor ?? (params as any).cursor;
+      const cursorStr = reqCursorVal ? (typeof reqCursorVal === 'string' ? `${reqCursorVal.substring(0, 30)}...` : String(reqCursorVal)) : 'none';
       console.log('[PAGINATION] Request:', {
         initial,
         cursor: cursorStr,
@@ -482,7 +484,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       
       // PAGINATION DEBUG: Log response details
       const nextCursorStr = nextCursor ? (typeof nextCursor === 'string' ? `${nextCursor.substring(0, 30)}...` : String(nextCursor)) : 'null';
-      const requestedCursorStr = params.cursor ? (typeof params.cursor === 'string' ? `${params.cursor.substring(0, 30)}...` : String(params.cursor)) : 'none';
+      const reqCur: any = (params as any).nextCursor ?? (params as any).cursor;
+      const requestedCursorStr = reqCur ? (typeof reqCur === 'string' ? `${reqCur.substring(0, 30)}...` : String(reqCur)) : 'none';
       console.log('[PAGINATION] Response:', {
         itemsCount: items.length,
         firstItemId: items[0]?.id,
@@ -704,7 +707,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         sortBy: 'createdAt' 
       };
       if (!initial && libraryVideoNextCursorRef.current) {
-        params.cursor = libraryVideoNextCursorRef.current;
+        // Use correct backend pagination parameter
+        params.nextCursor = libraryVideoNextCursorRef.current;
       }
       // Ensure createdAt ordering always requested
       params.sortBy = 'createdAt';
@@ -2498,7 +2502,6 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         
         return (
           <UploadModal
-            key={`upload-modal-${libraryImageEntries.length}-${isUploadModalOpen}`}
             isOpen={isUploadModalOpen}
             onClose={() => {
               setIsUploadModalOpen(false);
@@ -2587,7 +2590,6 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         
         return (
           <VideoUploadModal
-            key={`video-upload-modal-${libraryVideoEntries.length}`}
             isOpen={isUploadModalOpen}
             onClose={() => {
               setIsUploadModalOpen(false);
