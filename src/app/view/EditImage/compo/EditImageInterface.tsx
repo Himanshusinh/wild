@@ -2404,7 +2404,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'vectorizeModel' && (
-                      <div className={`absolute top-full mt-2 z-70 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full mt-2 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {[
                           { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
                           { label: 'Image to SVG', value: 'fal-ai/image2svg' },
@@ -2557,8 +2557,9 @@ const EditImageInterface: React.FC = () => {
                                   { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
                             ]
                           : [
-                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+                                  
                                   { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                                   { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
                             ]
                         ).map((opt) => (
@@ -2905,7 +2906,7 @@ const EditImageInterface: React.FC = () => {
                   {model === 'nightmareai/real-esrgan' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale (0-10)</label>
                         <input
                           type="number"
                           min={0}
@@ -2933,7 +2934,7 @@ const EditImageInterface: React.FC = () => {
                       {model === 'philz1337x/crystal-upscaler' && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale factor (1-6)</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale factor (1-6)</label>
                             <input
                               type="number"
                               min={1}
@@ -2945,7 +2946,7 @@ const EditImageInterface: React.FC = () => {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Output format</label>
                             <div className="relative edit-dropdown">
                               <button
                                 onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
@@ -2975,7 +2976,7 @@ const EditImageInterface: React.FC = () => {
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Model</label>
                               <div className="relative edit-dropdown">
                                 <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
                                   <span className="truncate">{topazModel}</span>
@@ -2991,7 +2992,7 @@ const EditImageInterface: React.FC = () => {
                               </div>
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Upscale factor</label>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Upscale factor</label>
                               <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e)=>setTopazUpscaleFactor(Number(e.target.value)||2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                             </div>
                           </div>

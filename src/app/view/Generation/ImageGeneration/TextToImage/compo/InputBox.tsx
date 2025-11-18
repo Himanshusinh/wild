@@ -842,6 +842,9 @@ const InputBox = () => {
     } catch (creditError: any) {
   // debug removed
       toast.error(creditError.message || 'Insufficient credits for generation');
+      setIsGeneratingLocally(false);
+      setLocalGeneratingEntries([]);
+      postGenerationBlockRef.current = false;
       return;
     }
 
@@ -974,6 +977,9 @@ const InputBox = () => {
               message: "gen4_image_turbo requires at least one reference image",
             })
           );
+          setIsGeneratingLocally(false);
+          setLocalGeneratingEntries([]);
+          postGenerationBlockRef.current = false;
           return;
         }
 
@@ -1063,8 +1069,8 @@ const InputBox = () => {
                   runwayBaseRespToastShownRef.current = true;
                   baseRespToastShown = true;
                 }
-                // Stop loader immediately
-                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                // Stop loader immediately - clear entries on error
+                setLocalGeneratingEntries([]);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -1073,7 +1079,7 @@ const InputBox = () => {
               if (s === 'FAILED' || s === 'CANCELLED' || s === 'THROTTLED') {
                 terminalError = (status?.failure as string) || 'Runway task did not complete';
                 if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
-                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setLocalGeneratingEntries([]);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -1981,11 +1987,8 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
-      // Mark local preview as failed
-      setLocalGeneratingEntries((prev) => prev.map((e) => ({
-        ...e,
-        status: 'failed'
-      })));
+      // Clear local generating entries on error - don't show generating logo or failed state
+      setLocalGeneratingEntries([]);
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
@@ -2026,10 +2029,13 @@ const InputBox = () => {
       if (!runwayBaseRespToastShownRef.current) {
         toast.error(error instanceof Error ? error.message : 'Failed to generate images');
       }
-    } finally {
-      // Always reset local generation state
+      
+      // Reset local generation state immediately on error
       setIsGeneratingLocally(false);
+      postGenerationBlockRef.current = false;
+    } finally {
       // Release pagination block after short cooldown so compressed refreshes don't trigger immediate loadMore
+      // Note: isGeneratingLocally and localGeneratingEntries are reset in catch block, so we don't need to reset here
       setTimeout(() => { postGenerationBlockRef.current = false; }, 2500);
       // Reset the base_resp toast guard for next run
       runwayBaseRespToastShownRef.current = false;
@@ -2095,45 +2101,34 @@ const InputBox = () => {
                 <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                     <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                      {localGeneratingEntries[0].status === 'generating' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                          <div className="flex flex-col items-center gap-2">
-                            <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                            <div className="text-xs text-white/60 text-center">Generating...</div>
-                          </div>
-                        </div>
-                      ) : localGeneratingEntries[0].status === 'failed' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                          <div className="flex flex-col items-center gap-2">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
-                            <div className="text-xs text-red-400">Failed</div>
-                          </div>
-                        </div>
-                      ) : image.url ? (
-                        <div className="relative w-full h-full group">
-                          <Image 
-                            src={image.thumbnailUrl || image.avifUrl || image.url} 
-                            alt="" 
-                            fill 
-                            className="object-cover transition-opacity duration-300" 
+                      <div className="relative w-full h-full group">
+                        {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+                          <Image
+                            src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                            alt=""
+                            fill
                             sizes="192px"
-                            onLoad={() => {
-                              // Smooth fade-in effect
-                              try { 
-                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
-                                if (img) img.style.opacity = '1';
-                              } catch {}
-                            }}
-                            style={{ opacity: 0 }}
+                            className="object-cover"
                           />
-                          {/* Shimmer loading effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No image</div>
-                        </div>
-                      )}
+                        ) : null}
+                        <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                        {localGeneratingEntries[0].status === 'generating' && (
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                            <div className="flex flex-col items-center gap-2">
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                              <div className="text-xs text-white/60 text-center">Generating...</div>
+                            </div>
+                          </div>
+                        )}
+                        {localGeneratingEntries[0].status === 'failed' && (
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2174,56 +2169,51 @@ const InputBox = () => {
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                           <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                            {localGeneratingEntries[0].status === 'generating' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-xl border border-white/20">
-                                <div className="flex flex-col items-center gap-2">
-                                  <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                                  <div className="text-xs text-white/60 text-center">Generating...</div>
+                            <div className="relative w-full h-full group">
+                              {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+                                <Image
+                                  src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                                  alt=""
+                                  fill
+                                  sizes="192px"
+                                  className="object-contain"
+                                />
+                              ) : null}
+                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              {localGeneratingEntries[0].status === 'generating' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                    <div className="text-xs text-white/60 text-center">Generating...</div>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : localGeneratingEntries[0].status === 'failed' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                                <div className="flex flex-col items-center gap-2">
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                  </svg>
-                                  <div className="text-xs text-red-400">Failed</div>
+                              )}
+                              {localGeneratingEntries[0].status === 'failed' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                    </svg>
+                                    <div className="text-xs text-red-400">Failed</div>
+                                  </div>
                                 </div>
-                              </div>
-                      ) : image.url ? (
-                        <div className="relative w-full h-full group">
-                          <Image 
-                            src={image.thumbnailUrl || image.avifUrl || image.url}
-                            alt="" 
-                            fill 
-                            className="object-contain transition-opacity duration-300" 
-                            sizes="192px"
-                            onLoad={() => {
-                              // Smooth fade-in effect
-                              try { 
-                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
-                                if (img) img.style.opacity = '1';
-                              } catch {}
-                            }}
-                            style={{ opacity: 0 }}
-                          />
-                          {/* Hover copy button overlay */}
-                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                            <button
-                              aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
-                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                            ) : (
-                              <div className="w-full h-full bg-black/90 flex items-center justify-center text-white/60">
-                                <div className="text-xs text-white/60">No image</div>
-                              </div>
-                            )}
+                              )}
+                              {localGeneratingEntries[0].status === 'completed' && (
+                                <>
+                                  {/* Hover copy button overlay */}
+                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                  <button
+                                    aria-label="Copy prompt"
+                                    className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  </button>
+                                </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </>

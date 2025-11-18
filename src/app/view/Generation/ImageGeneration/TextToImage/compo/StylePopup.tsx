@@ -71,10 +71,10 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     if (isPhoenix) {
       // Phoenix 1.0: Only show model-specific styles
       const allowedStyles = new Set([
-        'render_3d', 'bokeh', 'cinematic', 'cinematic_concept', 'creative', 'dynamic', 
+        '3d_cartoon', 'bokeh', 'cinematic', 'cinematic_concept', 'creative', 'dynamic', 
         'fashion', 'graphic_design_pop_art', 'graphic_design_vector', 'hdr', 'illustration', 
         'macro', 'minimalist', 'moody', 'none', 'portrait', 'pro_bw_photography', 
-        'pro_color_photography', 'pro_film_photography', 'portrait_fashion', 'ray_traced', 
+        'pro_color_photography', 'pro_film_photography', 'portrait_fashion', 'ray_tracing', 
         'sketch_bw', 'sketch_color', 'stock_photo', 'vibrant'
       ]);
       return STYLE_CATALOG.filter(style => allowedStyles.has(style.value));
@@ -84,7 +84,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
       'none', 'neutral_studio', 'realistic', 'minimalist', 'watercolor', 'oil_painting', 
       'abstract', 'cyberpunk', 'neon_noir', 'isometric', 'vintage_poster', 'vaporwave', 
       'pixel_art', 'cartoon', 'pencil_sketch', 'claymation', 'fantasy', 'sci_fi', 
-      'steampunk', 'abstract_geometry', 'surrealism', 'render_3d', 'ukiyoe', 'graffiti', 
+      'steampunk', 'abstract_geometry', 'surrealism', '3d_cartoon', 'ukiyoe', 'graffiti', 
       'renaissance', 'pop_art'
     ]);
     return STYLE_CATALOG.filter(style => originalStyles.has(style.value));

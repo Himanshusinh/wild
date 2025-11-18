@@ -63,8 +63,20 @@ async function main() {
   if (!API_KEY) throw new Error('Missing BFL_API_KEY in env')
   await ensureDir(OUTPUT_DIR)
 
-  // Generate for all styles; skip those already present
-  const styles = STYLE_CATALOG
+  // Get style filter from command line argument
+  const styleFilter = process.argv[2] // e.g., '3d_cartoon'
+  
+  // Filter styles if a specific style is requested
+  let styles = STYLE_CATALOG
+  if (styleFilter) {
+    styles = styles.filter(s => s.value === styleFilter)
+    if (styles.length === 0) {
+      console.error(`Style '${styleFilter}' not found in catalog`)
+      process.exit(1)
+    }
+    console.log(`Generating only for style: ${styles[0].name} (${styleFilter})`)
+  }
+  
   let success = 0
   let skipped = 0
 
