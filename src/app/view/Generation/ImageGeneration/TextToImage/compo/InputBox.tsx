@@ -89,19 +89,18 @@ const InputBox = () => {
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
     if (!entry) {
-      // If no local generating entries, ensure button state is reset
-      if (isGeneratingLocally) {
-        setIsGeneratingLocally(false);
-      }
+      // Don't reset button state here - only reset when entry status changes to completed/failed
+      // This ensures button stays in "Generating..." state during generation
       return;
     }
     if (entry.status === 'completed' || entry.status === 'failed') {
-      // Reset button state immediately when entry completes or fails
+      // Reset button state only when entry actually completes or fails
       setIsGeneratingLocally(false);
       const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
       return () => clearTimeout(timer);
     }
-  }, [localGeneratingEntries, isGeneratingLocally]);
+    // Keep button in "Generating..." state while status is 'generating' or any other status
+  }, [localGeneratingEntries]);
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
@@ -410,6 +409,10 @@ const InputBox = () => {
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
       try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      // Clear/reset document title when image is deleted
+      if (typeof document !== 'undefined') {
+        document.title = 'WildMind';
+      }
       toast.success('Image deleted');
     } catch (err) {
       console.error('Delete failed:', err);
@@ -1556,9 +1559,9 @@ const InputBox = () => {
         clearInputs();
         
         // Keep local entries visible for a moment before refreshing
+        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
         setTimeout(() => {
           setLocalGeneratingEntries([]);
-          setIsGeneratingLocally(false);
         }, 1000);
         
         await refreshHistory();
@@ -1615,9 +1618,9 @@ const InputBox = () => {
         clearInputs();
         
         // Keep local entries visible for a moment before refreshing
+        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
         setTimeout(() => {
           setLocalGeneratingEntries([]);
-          setIsGeneratingLocally(false);
         }, 1000);
         
         await refreshHistory();
@@ -2363,29 +2366,29 @@ const InputBox = () => {
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                              <div className="pointer-events-none absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                              <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                                 <button
                                   aria-label="Recreate image"
                                   className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => handleRecreate(e, entry)}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-6 h-6" />
+                                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
                                 </button>
                                 
                               </div>
                               <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                  className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                                 <button
                                   aria-label="Delete image"
-                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
                                   onClick={(e) => handleDeleteImage(e, entry)}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >

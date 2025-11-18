@@ -634,6 +634,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       if (remainingImages.length === 0) {
         await axiosInstance.delete(`/api/generations/${entry.id}`);
         try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        // Clear/reset document title when image is deleted
+        if (typeof document !== 'undefined') {
+          document.title = 'WildMind';
+        }
         onClose();
       } else {
         // Otherwise, update the entry to remove just this image
@@ -947,6 +951,29 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 {isUserUploadSelected && (
                   <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm ">User upload</div>
                 )}
+                {/* Left/Right Navigation Buttons */}
+                {sameDateGallery.length > 1 && (
+                  <>
+                    <button
+                      aria-label="Previous image"
+                      onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      aria-label="Next image"
+                      onClick={(e) => { e.stopPropagation(); goNext(e); }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  </>
+                )}
               </div>
             )}
             <button
@@ -978,7 +1005,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     <path d="M5 19h14" />
                   </svg>
                 </button>
-                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
               </div>
 
               <div className="relative group flex-1">
@@ -988,7 +1015,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 >
                   <Share className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
               </div>
 
               <div className="relative group flex-1">
@@ -999,7 +1026,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
               </div>
 
               <div className="relative group flex-1">
@@ -1016,7 +1043,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
                   )}
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button
+                  onClick={() => navigateToEdit('upscale')}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-1   rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                >
+                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-6 h-6" />
+                </button>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Edit</div>
               </div>
             </div>
 
