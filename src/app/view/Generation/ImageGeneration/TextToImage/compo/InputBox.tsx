@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import NextImage from "next/image";
 import { ChevronUp } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
@@ -56,12 +56,14 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
+import { toResourceProxy, toZataPath } from '@/lib/thumb';
 // Replaced per-page IntersectionObserver with unified bottom scroll pagination
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -86,12 +88,20 @@ const InputBox = () => {
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
-    if (!entry) return;
+    if (!entry) {
+      // If no local generating entries, ensure button state is reset
+      if (isGeneratingLocally) {
+        setIsGeneratingLocally(false);
+      }
+      return;
+    }
     if (entry.status === 'completed' || entry.status === 'failed') {
+      // Reset button state immediately when entry completes or fails
+      setIsGeneratingLocally(false);
       const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
       return () => clearTimeout(timer);
     }
-  }, [localGeneratingEntries]);
+  }, [localGeneratingEntries, isGeneratingLocally]);
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
@@ -153,6 +163,81 @@ const InputBox = () => {
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
+  };
+
+  // Helper function to extract style from prompt
+  const extractStyleFromPrompt = (promptText: string): string | undefined => {
+    const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
+    return match?.[1]?.trim();
+  };
+
+  // Helper function to check if URL is blob or data URL
+  const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
+
+  // Helper function for frontend proxy resource URL
+  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
+    if (!urlOrPath) return '';
+    return toResourceProxy(urlOrPath);
+  };
+
+  // Handle recreate - navigate to text-to-image with entry parameters (same as ImagePreviewModal)
+  const handleRecreate = (e: React.MouseEvent, entry: HistoryEntry) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // Get the first image from the entry
+      const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
+      
+      // Extract storagePath from image
+      const storagePath = (entryImage as any)?.storagePath || (() => {
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = entryImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
+      })();
+      
+      // Get fallback HTTP URL (not blob/data URLs)
+      const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
+      
+      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+      
+      const qs = new URLSearchParams();
+      
+      // Use userPrompt for remix if available, otherwise use cleanPrompt
+      const cleanPrompt = getCleanPrompt(entry.prompt || '');
+      const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
+      if (remixPrompt) qs.set('prompt', remixPrompt);
+      
+      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+      if (storagePath) {
+        qs.set('sp', storagePath);
+      } else if (imgUrl) {
+        // If no storagePath, set image URL directly
+        qs.set('image', imgUrl);
+      }
+      
+      // Also pass model, frameSize and style for preselection
+      if (entry.model) {
+        // Map backend model ids to UI dropdown ids where needed
+        const m = String(entry.model);
+        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+        qs.set('model', mapped);
+      }
+      if (entry.frameSize) qs.set('frame', String(entry.frameSize));
+      
+      const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
+      if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
+      
+      // Client-side navigation to avoid full page reload
+      router.push(`/text-to-image?${qs.toString()}`);
+    } catch (error) {
+      console.error('Error recreating image:', error);
+    }
   };
 
   // Adjust natural language references like "image 4" -> "image 3" (zero-based)
@@ -1473,6 +1558,7 @@ const InputBox = () => {
         // Keep local entries visible for a moment before refreshing
         setTimeout(() => {
           setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
         }, 1000);
         
         await refreshHistory();
@@ -1531,6 +1617,7 @@ const InputBox = () => {
         // Keep local entries visible for a moment before refreshing
         setTimeout(() => {
           setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
         }, 1000);
         
         await refreshHistory();
@@ -1989,6 +2076,7 @@ const InputBox = () => {
       console.error("Error generating images:", error);
       // Clear local generating entries on error - don't show generating logo or failed state
       setLocalGeneratingEntries([]);
+      setIsGeneratingLocally(false);
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
@@ -2274,7 +2362,18 @@ const InputBox = () => {
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              {/* Hover buttons overlay */}
+                              {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                              <div className="pointer-events-none absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                <button
+                                  aria-label="Recreate image"
+                                  className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                  onClick={(e) => handleRecreate(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-6 h-6" />
+                                </button>
+                                
+                              </div>
                               <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
                                 <button
                                   aria-label="Copy prompt"

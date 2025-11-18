@@ -11,7 +11,7 @@ import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic
 import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview'
 import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGeneration/compo/LogoImagePreview'
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
-import { toMediaProxy, toThumbUrl } from '@/lib/thumb'
+import { toMediaProxy, toThumbUrl, toDirectUrl } from '@/lib/thumb'
 import SmartImage from '@/components/media/SmartImage'
 import { isUserAuthenticated } from '@/lib/axiosInstance'
 
@@ -36,6 +36,34 @@ const CATEGORIES: Array<CreationItem['category']> = [
   'Stickers',
   'Products',
 ]
+
+// Helper function to normalize image URLs
+const normalizeImageUrl = (image: any): string => {
+  if (!image) return '';
+  
+  // Priority 1: Use storagePath if available (most reliable)
+  if (image.storagePath) {
+    const directUrl = toDirectUrl(image.storagePath);
+    if (directUrl) return directUrl;
+  }
+  
+  // Priority 2: Use url or firebaseUrl
+  const url = image.url || image.firebaseUrl || '';
+  if (!url) return '';
+  
+  // If it's already a full URL, return it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // If it's a storage path, convert to direct URL
+  if (url.startsWith('users/')) {
+    const directUrl = toDirectUrl(url);
+    if (directUrl) return directUrl;
+  }
+  
+  return url;
+}
 
 const Recentcreation: React.FC = () => {
   const router = useRouter()
@@ -210,9 +238,11 @@ const Recentcreation: React.FC = () => {
       if (entry.images && entry.images.length > 0 && 
           !['logo', 'sticker-generation', 'product-generation'].includes(entry.generationType)) {
         entry.images.forEach((image, index) => {
+          const normalizedUrl = normalizeImageUrl(image);
+          if (!normalizedUrl) return; // Skip if no valid URL
           items.push({
             id: `${entry.id}-image-${index}`,
-            src: image.url || image.firebaseUrl || '',
+            src: normalizedUrl,
             title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
@@ -277,9 +307,11 @@ const Recentcreation: React.FC = () => {
       // Process logos (if they have images)
       if (entry.generationType === 'logo' && entry.images && entry.images.length > 0) {
         entry.images.forEach((image, index) => {
+          const normalizedUrl = normalizeImageUrl(image);
+          if (!normalizedUrl) return; // Skip if no valid URL
           items.push({
             id: `${entry.id}-logo-${index}`,
-            src: image.url || image.firebaseUrl || '',
+            src: normalizedUrl,
             title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
@@ -295,9 +327,11 @@ const Recentcreation: React.FC = () => {
       // Process stickers (if they have images)
       if (entry.generationType === 'sticker-generation' && entry.images && entry.images.length > 0) {
         entry.images.forEach((image, index) => {
+          const normalizedUrl = normalizeImageUrl(image);
+          if (!normalizedUrl) return; // Skip if no valid URL
           items.push({
             id: `${entry.id}-sticker-${index}`,
-            src: image.url || image.firebaseUrl || '',
+            src: normalizedUrl,
             title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
@@ -313,9 +347,11 @@ const Recentcreation: React.FC = () => {
       // Process products (if they have images)
       if (entry.generationType === 'product-generation' && entry.images && entry.images.length > 0) {
         entry.images.forEach((image, index) => {
+          const normalizedUrl = normalizeImageUrl(image);
+          if (!normalizedUrl) return; // Skip if no valid URL
           items.push({
             id: `${entry.id}-product-${index}`,
-            src: image.url || image.firebaseUrl || '',
+            src: normalizedUrl,
             title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
@@ -709,7 +745,13 @@ const Recentcreation: React.FC = () => {
                 ) : item.src && item.src.trim() !== '' ? (
                   (() => {
                     // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
-                    const imgObj: any = ((item.entry.images || []) as any).find((im: any) => (im.url || im.firebaseUrl) === item.src || im.url === item.src) || ({} as any);
+                    // Match by comparing normalized URLs or original URLs
+                    const imgObj: any = ((item.entry.images || []) as any).find((im: any) => {
+                      const imUrl = normalizeImageUrl(im);
+                      const imOriginalUrl = im.url || im.firebaseUrl || '';
+                      return imUrl === item.src || imOriginalUrl === item.src || 
+                             (im.storagePath && toDirectUrl(im.storagePath) === item.src);
+                    }) || ({} as any);
                     const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
                     const avif: string | undefined = imgObj?.avifUrl || undefined;
                     const blur: string | undefined = imgObj?.blurDataUrl || undefined;
