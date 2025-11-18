@@ -584,7 +584,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return '—';
   };
 
-  const displayedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '—';
+  const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
+  const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = getAspectRatio();
   const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
   const cleanPrompt = getCleanPrompt(promptToDisplay);
@@ -1078,10 +1079,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Model:</span>
                   <span className="text-white/80 text-sm">{getModelDisplayName(selectedEntry?.model)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Style:</span>
-                  <span className="text-white/80 text-sm">{displayedStyle}</span>
-                </div>
+                {displayedStyle && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Style:</span>
+                    <span className="text-white/80 text-sm">{displayedStyle}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Aspect ratio:</span>
                   <span className="text-white/80 text-sm">{displayedAspect}</span>
@@ -1090,6 +1093,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Image</span>
                 </div>
+                {imageDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{imageDimensions.width} × {imageDimensions.height}</span>
+                  </div>
+                )}
               </div>
             </div>
 

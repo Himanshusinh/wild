@@ -191,7 +191,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     } catch {}
   };
 
-  const displayedStyle = preview.entry.style || extractStyleFromPrompt((preview.entry as any).originalPrompt || preview.entry.prompt) || '—';
+  const extractedStyle = preview.entry.style || extractStyleFromPrompt((preview.entry as any).originalPrompt || preview.entry.prompt);
+  const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = preview.entry.frameSize || '16:9';
 
   // Extract video URL and route through proxy for cross-origin safety
@@ -252,6 +253,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const [videoDuration, setVideoDuration] = React.useState<number | null>(null);
+  const [videoDimensions, setVideoDimensions] = React.useState<{ width: number; height: number } | null>(null);
   const isLongPrompt = cleanPrompt.length > 280;
   
   // Update isPublicFlag based on selected video
@@ -260,9 +262,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     setIsPublicFlag(isPublic);
   }, [preview.video]);
 
-  // Reset video duration when preview changes
+  // Reset video duration and dimensions when preview changes
   React.useEffect(() => {
     setVideoDuration(null);
+    setVideoDimensions(null);
   }, [preview]);
 
   // ---- Fullscreen helpers (unconditional hooks) ----
@@ -416,6 +419,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   onLoadedData={() => console.log('Video loaded successfully:', videoUrl)}
                   onLoadedMetadata={(e) => {
                     const video = e.currentTarget;
+                    if (video.videoWidth && video.videoHeight) {
+                      setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+                    }
                     if (video.duration && !isNaN(video.duration)) {
                       setVideoDuration(video.duration);
                       console.log('Video duration captured:', video.duration);
@@ -576,10 +582,12 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Model:</span>
                   <span className="text-white/80 text-sm">{getModelDisplayName(preview.entry.model)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Style:</span>
-                  <span className="text-white/80 text-sm">{displayedStyle}</span>
-                </div>
+                {displayedStyle && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Style:</span>
+                    <span className="text-white/80 text-sm">{displayedStyle}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Aspect ratio:</span>
                   <span className="text-white/80 text-sm">{displayedAspect}</span>
@@ -594,6 +602,12 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Video</span>
                 </div>
+                {videoDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{videoDimensions.width} × {videoDimensions.height}</span>
+                  </div>
+                )}
               </div>
             </div>
 

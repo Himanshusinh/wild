@@ -61,6 +61,7 @@ export default function ArtStationPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
+  const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
@@ -70,6 +71,11 @@ export default function ArtStationPage() {
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const [currentUid, setCurrentUid] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<{ uid?: string; username?: string; displayName?: string; photoURL?: string } | null>(null)
+
+  // Reset media dimensions when preview or selected index changes
+  useEffect(() => {
+    setMediaDimensions(null)
+  }, [preview, selectedImageIndex, selectedVideoIndex])
   // layout fixed to masonry (no toggle)
   // Track which media tiles have finished loading so we can fade them in
   const [loadedTiles, setLoadedTiles] = useState<Set<string>>(new Set())
@@ -1208,7 +1214,20 @@ export default function ArtStationPage() {
                         const src = toDirectUrl(best) || best
                         return (
                           <div className="relative w-full h-full">
-                            <Image src={src} alt={preview.item.prompt || ''} fill className="object-contain" priority fetchPriority="high" />
+                            <Image 
+                              src={src} 
+                              alt={preview.item.prompt || ''} 
+                              fill 
+                              className="object-contain" 
+                              priority 
+                              fetchPriority="high"
+                              onLoad={(e) => {
+                                const img = e.currentTarget;
+                                if (img.naturalWidth && img.naturalHeight) {
+                                  setMediaDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                }
+                              }}
+                            />
                           </div>
                         )
                       }
@@ -1218,7 +1237,21 @@ export default function ArtStationPage() {
                         const poster = vid.thumbnailUrl || vid.avifUrl || undefined
                         return (
                           <div className="relative w-full h-full">
-                            <video src={proxied} className="w-full h-full" controls autoPlay playsInline preload="auto" poster={poster} />
+                            <video 
+                              src={proxied} 
+                              className="w-full h-full" 
+                              controls 
+                              autoPlay 
+                              playsInline 
+                              preload="auto" 
+                              poster={poster}
+                              onLoadedMetadata={(e) => {
+                                const v = e.currentTarget;
+                                if (v.videoWidth && v.videoHeight) {
+                                  setMediaDimensions({ width: v.videoWidth, height: v.videoHeight });
+                                }
+                              }}
+                            />
                           </div>
                         )
                       }
@@ -1386,6 +1419,12 @@ export default function ArtStationPage() {
                           <span className="text-white/60 text-sm">Format:</span>
                           <span className="text-white/80 text-sm">{preview.kind}</span>
                         </div>
+                        {mediaDimensions && (
+                          <div className="flex justify-between">
+                            <span className="text-white/60 text-sm">Resolution:</span>
+                            <span className="text-white/80 text-sm">{mediaDimensions.width} × {mediaDimensions.height}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
