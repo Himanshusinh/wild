@@ -15,6 +15,9 @@ type Character = {
   leftImageUrl?: string;
   rightImageUrl?: string;
   createdAt: string;
+  thumbnailUrl?: string;
+  avifUrl?: string;
+  blurDataUrl?: string;
 };
 
 type CharacterModalProps = {
@@ -118,12 +121,22 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     // For text-to-character, use the generated character image (first image in images array)
     // NOT the input image. The generated character is what should be used.
     const generatedCharacterImage = entry.images?.[0];
+    // Prioritize url, then originalUrl, with fallback to Logo.gif
+    // SmartImage will handle URL normalization and optimization internally
     const frontImageUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl || '/styles/Logo.gif';
+    
+    // Extract optimized image properties if available (these will be passed to SmartImage)
+    const thumbnailUrl = generatedCharacterImage?.thumbnailUrl;
+    const avifUrl = generatedCharacterImage?.avifUrl;
+    const blurDataUrl = generatedCharacterImage?.blurDataUrl;
     
     return {
       id: entry.id,
       name: characterName,
       frontImageUrl, // Use generated character image, not input image
+      thumbnailUrl,
+      avifUrl,
+      blurDataUrl,
       createdAt: entry.createdAt?.toDate?.()?.toISOString() || entry.createdAt || entry.timestamp || new Date().toISOString(),
     };
   });
@@ -338,7 +351,11 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                                   src={character.frontImageUrl || '/styles/Logo.gif'} 
                                   alt={character.name} 
                                   fill 
-                                  className="object-cover" 
+                                  sizes="(max-width: 768px) 33vw, 20vw"
+                                  className="object-cover"
+                                  thumbnailUrl={character.thumbnailUrl}
+                                  avifUrl={character.avifUrl}
+                                  blurDataUrl={character.blurDataUrl}
                                 />
                               {/* Checkbox indicator for selected characters */}
                               {isAlreadySelected && (
