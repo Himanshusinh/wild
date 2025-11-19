@@ -2171,31 +2171,40 @@ const InputBox = () => {
       setIsEnhancing(true);
       const res = await enhancePromptAPI(prompt, selectedModel);
       if (res.ok && res.enhancedPrompt) {
-        // Update Redux state first
-        dispatch(setPrompt(res.enhancedPrompt));
+        const enhancedPrompt = res.enhancedPrompt;
         
-        // Wait for state to update and then update the contentEditable
-        // Use setTimeout to ensure Redux state has propagated
+        // Update Redux state - this will trigger the useEffect that calls updateContentEditable
+        dispatch(setPrompt(enhancedPrompt));
+        
+        // Immediately update the contentEditable element for instant visual feedback
+        // This bypasses any Redux state propagation delays
+        const el = contentEditableRef.current as HTMLElement | null;
+        if (el) {
+          // Set text content directly for immediate update
+          el.textContent = enhancedPrompt;
+          
+          // Focus and position cursor at end
+          el.focus();
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          if (sel) { 
+            sel.removeAllRanges(); 
+            sel.addRange(range); 
+          }
+        }
+        
+        // Let updateContentEditable run after Redux state has updated to properly format
+        // with character tags if needed (runs via useEffect watching prompt)
+        // Also call it directly after a brief delay to ensure proper formatting
         setTimeout(() => {
           try {
             updateContentEditable();
-            // Focus and put caret at end after content is updated
-            const el = contentEditableRef.current as HTMLElement | null;
-            if (el) {
-              el.focus();
-              const range = document.createRange();
-              range.selectNodeContents(el);
-              range.collapse(false);
-              const sel = window.getSelection();
-              if (sel) { 
-                sel.removeAllRanges(); 
-                sel.addRange(range); 
-              }
-            }
           } catch (err) {
-            console.error('Error updating contentEditable:', err);
+            console.error('Error in updateContentEditable after enhancement:', err);
           }
-        }, 0);
+        }, 100);
         
         toast.success('Prompt enhanced');
       } else {
