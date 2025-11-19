@@ -1,0 +1,26 @@
+/**
+ * Frontend helper for calling the server gemini/enhance endpoint.
+ * Can be imported from client components or server helpers.
+ */
+export async function enhancePromptAPI(prompt: string, model?: string): Promise<{ ok: boolean; enhancedPrompt?: string; error?: string } > {
+  if (!prompt || typeof prompt !== 'string') throw new Error('prompt is required');
+  const base = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000').replace(/\/$/, '');
+  const url = `${base}/api/gemini/enhance`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, model }),
+  });
+
+  if (!res.ok) {
+    let body: any;
+    try { body = await res.json(); } catch { body = { error: res.statusText }; }
+    return { ok: false, error: body?.error || `http ${res.status}` };
+  }
+
+  const data = await res.json();
+  return { ok: true, enhancedPrompt: data?.enhancedPrompt };
+}
+
+export default { enhancePromptAPI };
