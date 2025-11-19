@@ -28,6 +28,7 @@ import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
   removeHistoryEntry,
+  loadHistory,
 } from "@/store/slices/historySlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
@@ -158,6 +159,43 @@ const InputBox = () => {
 
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-image', initialLimit: 50 });
+  
+  // Also load vectorize / upscale / edit generations once, without triggering backend validation errors.
+  // Backend validators do not allow querying these generationType values, so we perform one broad
+  // unfiltered request and client-filter the operation entries immediately (no 1s delay).
+  useEffect(() => {
+    const loadAdditionalOps = async () => {
+      try {
+        const client = axiosInstance;
+        const params: any = { limit: 60, sortBy: 'createdAt' }; // omit generationType entirely
+        const res = await client.get('/api/generations', { params });
+        const result = res.data?.data || { items: [] };
+        const raw = (result.items || []).map((it: any) => {
+          const created = it?.createdAt || it?.updatedAt || it?.timestamp;
+          const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+          return { ...it, timestamp: iso, createdAt: iso };
+        });
+        const wanted = new Set(['image-upscale','image_upscale','image-edit','image_edit','image-to-svg','image_to_svg','vectorize','image-vectorize']);
+        const filtered = raw.filter((it: any) => wanted.has(String(it.generationType)));
+        setAdditionalOpEntries(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const storeIds = new Set((historyEntriesRawRef.current || []).map((e: any) => e.id));
+          const merged = [...prev];
+          filtered.forEach((it: { id: string }) => {
+            if (!existingIds.has(it.id) && !storeIds.has(it.id)) merged.push(it);
+          });
+          return merged;
+        });
+        console.log('[additionalOps] loaded', { totalFetched: raw.length, operations: filtered.length });
+      } catch (e) {
+        try {
+          const err: any = e;
+          console.warn('[additionalOps] broad fetch failed', { status: err?.response?.status, message: err?.response?.data?.message || err?.message });
+        } catch {}
+      }
+    };
+    loadAdditionalOps();
+  }, [dispatch]);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
@@ -486,6 +524,10 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  // Additional image operation entries fetched manually (vectorize, upscale, edit)
+  const [additionalOpEntries, setAdditionalOpEntries] = useState<any[]>([]);
+  // Ref to raw store entries for deduplication when adding additional ops
+  const historyEntriesRawRef = useRef<any[]>([]);
 
   // Seedream-specific UI state
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
@@ -503,16 +545,26 @@ const InputBox = () => {
   const historyEntries = useAppSelector(
     (state: any) => {
       const allEntries = state.history?.entries || [];
-      // Show all text-to-image generations; normalize underscores/hyphens and case
+      historyEntriesRawRef.current = allEntries;
       const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-      const filteredEntries = allEntries.filter((entry: any) => normalize(entry.generationType) === 'text-to-image');
+      const baseFiltered = allEntries.filter((entry: any) => {
+        const normalizedType = normalize(entry.generationType);
+        const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
+        return normalizedType === 'text-to-image' || 
+               normalizedType === 'image-upscale' || 
+               normalizedType === 'image-to-svg' ||
+               normalizedType === 'image-edit' ||
+               isVectorize;
+      });
+      // Merge additional operation entries (dedup by id)
+      const extra = additionalOpEntries.filter(it => !baseFiltered.some((e: any) => e.id === it.id));
+      const combined = [...baseFiltered, ...extra];
       console.log('🖼️ Image Generation - All entries:', allEntries.length);
-      console.log('🖼️ Image Generation - Filtered entries:', filteredEntries.length);
+      console.log('🖼️ Image Generation - Filtered base:', baseFiltered.length, 'Extra ops:', extra.length, 'Combined:', combined.length);
       console.log('🖼️ Image Generation - Current page:', page);
       console.log('🖼️ Image Generation - Has more:', hasMore);
-      return filteredEntries;
+      return combined;
     },
-    // Use shallowEqual to prevent unnecessary rerenders
     shallowEqual
   );
 
@@ -2149,7 +2201,7 @@ const InputBox = () => {
   }, [activeDropdown, dispatch]);
 
   return (
-    <React.Fragment>
+    <>
       {/* Enhanced spell check styles */}
       <style jsx global>{`
         /* Remove underline from placeholder across browsers */
@@ -2828,41 +2880,18 @@ const InputBox = () => {
             if (!hasMore || loading) return;
             await (dispatch as any)(loadMoreHistory({
               filters: { generationType: 'text-to-image' },
-              paginationParams: { limit: 10 }
+              paginationParams: { limit: 20 }
             })).unwrap();
           } catch {}
         }}
         onAdd={(urls: string[]) => {
-          const next = [...uploadedImages, ...urls].slice(0, 10);
-          dispatch(setUploadedImages(next));
+          try {
+            const next = [...(uploadedImages||[]), ...urls];
+            dispatch(setUploadedImages(next.slice(0, 10)));
+          } catch {}
         }}
       />
-
-      {/* Debug overlay – appears only when localStorage.wild_debug === '1' */}
-      {/* <InfiniteScrollDebugOverlay
-        hasMore={hasMore}
-        loading={loading}
-        totalCount={(historyEntries?.length || 0) + (localGeneratingEntries?.length || 0)}
-        nextCursor={null}
-        containerRef={scrollRootRef as any}
-        sentinelRef={sentinelRef as any}
-        events={ioEventsRef.current}
-      /> */}
-
-      {/* Character Modal */}
-      <CharacterModal
-        isOpen={isCharacterModalOpen}
-        onClose={() => setIsCharacterModalOpen(false)}
-        onAdd={(character: Character) => {
-          dispatch(addSelectedCharacter(character));
-        }}
-        onRemove={(characterId: string) => {
-          dispatch(removeSelectedCharacter(characterId));
-        }}
-        selectedCharacters={selectedCharacters}
-        maxCharacters={10}
-      />
-    </React.Fragment>
+    </>
   );
 };
 

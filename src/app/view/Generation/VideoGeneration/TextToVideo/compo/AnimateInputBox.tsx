@@ -68,7 +68,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [wanAnimateFps, setWanAnimateFps] = useState<number>(24);
   const [wanAnimateSeed, setWanAnimateSeed] = useState<number | undefined>(undefined);
   
-  // Runway Character Performance (act_two) parameters
+  // Runway Act-Two (act_two) parameters
   const [runwayActTwoRatio, setRunwayActTwoRatio] = useState<"1280:720" | "720:1280" | "960:960" | "1104:832" | "832:1104" | "1584:672">("1280:720");
   const [runwayActTwoCharacterType, setRunwayActTwoCharacterType] = useState<"image" | "video">("image");
   const [runwayActTwoSeed, setRunwayActTwoSeed] = useState<number | undefined>(undefined);
@@ -212,11 +212,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     // Check if entry is related to animate feature - match exact model from dropdown
     // The dropdown shows "wan-2.2-animate-replace" but backend saves as "wan-video/wan-2.2-animate-replace"
-    // Also includes Runway Character Performance (act_two) model
+    // Also includes Runway Act-Two (act_two) model
     const isAnimateEntry = (entry: any): boolean => {
       const model = String(entry?.model || '').toLowerCase();
       
-      // Check for Runway Character Performance (act_two) model
+      // Check for Runway Act-Two (act_two) model
       const isRunwayActTwo = 
         model === 'act_two' ||
         model === 'runway_act_two' ||
@@ -1075,7 +1075,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     const isRunwayModel = selectedModel === 'runway-act-two';
     
-    // For Runway Character Performance, character can be image or video
+    // For Runway Act-Two, character can be image or video
     if (isRunwayModel) {
       if (runwayActTwoCharacterType === 'image' && !uploadedCharacterImage) {
         toast.error("Character image upload is mandatory");
@@ -1109,7 +1109,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     try {
       const api = getApiClient();
       
-      // Handle Runway Character Performance model
+      // Handle Runway Act-Two model
       if (isRunwayModel) {
         const requestBody = {
           model: 'act_two',
@@ -1127,10 +1127,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           ...(runwayActTwoExpressionIntensity !== undefined && { expressionIntensity: runwayActTwoExpressionIntensity }),
           generationType: 'video-to-video',
           isPublic: false,
-          promptText: 'Character Performance generation',
+          promptText: 'Act-Two generation',
         };
 
-        console.log('Submitting Runway Character Performance request:', requestBody);
+        console.log('Submitting Runway Act-Two request:', requestBody);
 
         const { data } = await api.post('/api/runway/character-performance', requestBody);
         const result = data?.data || data;
@@ -1141,7 +1141,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           // Create local preview entry
           setLocalVideoPreview({
             id: `runway-act-two-loading-${Date.now()}`,
-            prompt: "Character Performance generation",
+            prompt: "Act-Two generation",
             model: 'runway_act_two',
             generationType: "video-to-video" as any,
             images: [{ id: 'video-loading', url: '', originalUrl: '' }] as any,
@@ -1207,7 +1207,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         const backendEntry: HistoryEntry = {
                           ...historyData,
                           id: historyData.id || result.historyId,
-                          prompt: historyData.prompt || "Character Performance generation",
+                          prompt: historyData.prompt || "Act-Two generation",
                           model: historyData.model || 'runway_act_two',
                           frameSize: historyData.frameSize || "16:9",
                           images: historyData.images || historyData.videos || [{ 
@@ -2199,7 +2199,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   </>
                 )}
                 
-                {/* Runway Character Performance Parameters - Only show for Runway model */}
+                {/* Runway Act-Two Parameters - Only show for Runway model */}
                 {selectedModel === 'runway-act-two' && (
                   <>
                     {/* Ratio Dropdown */}
@@ -2394,7 +2394,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 </>
               )}
               
-              {/* Runway Character Performance Checkboxes and Slider - Only show for Runway model */}
+              {/* Runway Act-Two Checkboxes and Slider - Only show for Runway model */}
               {selectedModel === 'runway-act-two' && (
                 <>
                   <div className="flex flex-row gap-5">

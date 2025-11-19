@@ -4,14 +4,31 @@ import axiosInstance from '@/lib/axiosInstance';
 import { PaginationParams, PaginationResult } from '@/lib/paginationUtils';
 
 // Map UI generation types to backend-expected values
-const mapGenerationTypeForBackend = (type?: string): string | undefined => {
+const mapGenerationTypeForBackend = (type?: string | string[]): string | string[] | undefined => {
   if (!type) return type;
+  // Handle array of types
+  if (Array.isArray(type)) {
+    return type.map(t => mapGenerationTypeForBackend(t) as string).filter(Boolean);
+  }
   const normalized = type.toLowerCase();
+  // Synonym mapping for operations (try canonical underscore forms first)
+  const opSynonyms: Record<string,string> = {
+    'image-upscale': 'image_upscale',
+    'image_upscale': 'image_upscale',
+    'upscale': 'image_upscale',
+    'image-edit': 'image_edit',
+    'image_edit': 'image_edit',
+    'edit-image': 'image_edit',
+    'edit_image': 'image_edit',
+    'image-to-svg': 'image_to_svg',
+    'image_to_svg': 'image_to_svg',
+    'vectorize': 'image_to_svg',
+    'image-vectorize': 'image_to_svg'
+  };
+  if (opSynonyms[normalized]) return opSynonyms[normalized];
   switch (normalized) {
-    // Backend stores 'logo' (not 'logo-generation')
     case 'logo-generation':
       return 'logo';
-    // Branding kit: backend expects these values exactly as-is
     case 'sticker-generation':
     case 'product-generation':
     case 'mockup-generation':
@@ -19,7 +36,6 @@ const mapGenerationTypeForBackend = (type?: string): string | undefined => {
     case 'text-to-image':
     case 'text-to-character':
       return normalized;
-    // Video variants mapping kept only if backend expects snake-case for those endpoints (not used by branding kit pages)
     case 'image-to-video':
       return 'image-to-video';
     case 'video-to-video':

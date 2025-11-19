@@ -5,7 +5,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
 import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
-import SmartImage from '@/components/media/SmartImage'
+import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
+import { API_BASE } from '../routes'
+// Removed SmartImage to avoid blocked thumbnail (403) and delayed preview; using plain <img>
 
 /* ---------- Types ---------- */
 type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
@@ -117,7 +119,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
 
   return (
     <div ref={setRef} className={`break-inside-avoid mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
-      <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 group cursor-pointer" onClick={onClick}>
+      <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 cursor-pointer" onClick={onClick}>
         <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
           {isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
@@ -140,43 +142,47 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
                   playsInline
                   preload="metadata"
                   poster={toThumbUrl(src, { w: 640, q: 60 }) || undefined}
-                  onMouseEnter={async (e) => {
-                    try { await (e.currentTarget as HTMLVideoElement).play() } catch {}
-                  }}
-                  onMouseLeave={(e) => {
-                    const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch {}
-                  }}
                 />
               );
             })()
           ) : (
-            // Use compressed thumbnail for fast grid load; full-res shown in modal on click
-            <SmartImage
-              src={(() => { try { const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'; return src.startsWith(Z) ? (toThumbUrl(src, { w: 640, q: 60 }) || src) : src } catch { return src } })()}
-              alt={item.prompt ?? 'creation'}
-              className="absolute inset-0 object-cover"
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              thumbWidth={640}
-              thumbQuality={60}
-              decorative
-              priority={false}
-            />
+            (() => {
+              // Attempt AVIF thumbnail first, then WEBP, then original
+              let avifThumb: string | undefined
+              let webpThumb: string | undefined
+              const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
+              if (src.startsWith(Z)) {
+                try { avifThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'avif' }) || undefined } catch {}
+                if (!avifThumb) { try { webpThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'webp' }) || undefined } catch {} }
+                else { try { webpThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'webp' }) || undefined } catch {} }
+              }
+              const displaySrc = avifThumb || webpThumb || src
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={displaySrc}
+                  alt={item.prompt ?? ''}
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => {
+                    const img = e.currentTarget as HTMLImageElement
+                    // Fallback chain: avif -> webp -> original
+                    if (img.src === avifThumb && webpThumb && webpThumb !== avifThumb) {
+                      img.src = webpThumb
+                      return
+                    }
+                    if (img.src === webpThumb && src !== webpThumb) {
+                      img.src = src
+                      return
+                    }
+                  }}
+                />
+              )
+            })()
           )}
         </div>
-        <div className="absolute inset-x-0 bottom-0 p-3">
-          <div className="rounded-xl bg-black/40 backdrop-blur-sm p-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
-            <div className="flex items-center justify-between">
-              <p className="text-[13px] leading-snug text-white/90 line-clamp-2">
-                {item.prompt ?? "—"}
-              </p>
-            </div>
-            {item.createdBy && (
-              <div className="mt-2 text-white/80 text-xs">By {item.createdBy}</div>
-            )}
-          </div>
-        </div>
-        <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
+        {/* Hover overlay and hover ring removed to prevent showing prompt/credit on hover */}
       </div>
     </div>
   );
@@ -196,6 +202,71 @@ export default function CommunityCreations({
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
   const [preview, setPreview] = useState<Creation | null>(null)
+  const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
+  const [currentUid, setCurrentUid] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ uid?: string; username?: string; displayName?: string; photoURL?: string } | null>(null)
+  const [previewFullItem, setPreviewFullItem] = useState<PublicItem | null>(null)
+
+  const toggleLike = (cardId: string) => {
+    setLikedCards(prev => {
+      const next = new Set(prev)
+      if (next.has(cardId)) next.delete(cardId); else next.add(cardId)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        const u = JSON.parse(userStr)
+        setCurrentUid(u?.uid || null)
+        setCurrentUser({ uid: u?.uid, username: u?.username || u?.displayName, displayName: u?.displayName || u?.username, photoURL: u?.photoURL || u?.photoUrl })
+      }
+    } catch {}
+  }, [])
+
+  // Enrich preview with full generation details (model, creator profile, aspect ratio)
+  useEffect(() => {
+    let cancelled = false
+    const fetchDetails = async (id: string) => {
+      try {
+        const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+        const res = await fetch(`${baseUrl}/api/generations/${id}`, { credentials: 'include' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        const it = (data?.data || data)
+        const normalizeDate = (d: any) => typeof d === 'string' ? d : (d && typeof d === 'object' && typeof d._seconds === 'number' ? new Date(d._seconds * 1000).toISOString() : undefined)
+        const normalized: PublicItem = {
+          id: it?.id || id,
+          prompt: it?.prompt,
+          generationType: it?.generationType,
+          model: it?.model,
+          aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
+          frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
+          aspect_ratio: it?.aspect_ratio,
+          createdAt: normalizeDate(it?.createdAt) || it?.createdAt,
+          updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
+          isPublic: it?.isPublic !== false,
+          isDeleted: it?.isDeleted === true,
+          createdBy: it?.createdBy || it?.user || undefined,
+          images: Array.isArray(it?.images) ? it.images : undefined,
+          videos: Array.isArray(it?.videos) ? it.videos : undefined,
+          audios: Array.isArray(it?.audios) ? it.audios : undefined,
+        }
+        if (!cancelled) setPreviewFullItem(normalized)
+      } catch (e) {
+        if (!cancelled) setPreviewFullItem(null)
+      }
+    }
+    if (preview?.id) {
+      setPreviewFullItem(null)
+      fetchDetails(preview.id)
+    } else {
+      setPreviewFullItem(null)
+    }
+    return () => { cancelled = true }
+  }, [preview?.id])
 
   const filtered = useMemo(() => {
     if (active === 'All') return items;
@@ -309,45 +380,80 @@ export default function CommunityCreations({
             </div>
           </>
         )}
-        {preview && (
-          <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center" onClick={() => setPreview(null)}>
-            <div className="relative max-w-[92vw] max-h-[88vh] w-auto h-auto" onClick={(e) => e.stopPropagation()}>
-              <button
-                className="absolute -top-10 right-0 text-white/80 hover:text-white"
-                onClick={() => setPreview(null)}
-                aria-label="Close preview"
-              >
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
-              {(() => {
-                const src = preview.src || ''
-                const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
-                const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
-                if (isAudio) {
-                  return (
-                    <div className="bg-[#0a0f1a] p-6 rounded-2xl text-white/90">
-                      <div className="mb-3">Audio Preview</div>
-                      <audio src={toMediaProxy(src)} controls autoPlay preload="metadata" className="w-[80vw] max-w-[720px]" />
-                    </div>
-                  )
-                }
-                if (isVideo) {
-                  return (
-                    <video src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} controls autoPlay className="max-w-[92vw] max-h-[88vh] rounded-2xl" poster={toThumbUrl(src, { w: 1280, q: 60 }) || undefined} />
-                  )
-                }
-                return (
-                  // Full resolution via media proxy for images
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={(process.env.NEXT_PUBLIC_ZATA_PREFIX && src.startsWith(process.env.NEXT_PUBLIC_ZATA_PREFIX)) ? toMediaProxy(src) : src} alt="" aria-hidden="true" decoding="async" fetchPriority="high" className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl" />
-                )
-              })()}
-              {preview.prompt && (
-                <div className="mt-3 text-white/80 text-sm line-clamp-3">{preview.prompt}</div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Preview Modal */}
+        {preview && (() => {
+          const src = preview.src || ''
+          const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
+          const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
+          const kind: 'image' | 'video' | 'audio' = isAudio ? 'audio' : isVideo ? 'video' : 'image'
+
+          const isSelf = Boolean(preview.createdBy) && Boolean(currentUser?.username) && (preview.createdBy === currentUser?.username || preview.createdBy === currentUser?.displayName)
+
+          const bridgeItem: PublicItem = {
+            id: preview.id,
+            prompt: preview.prompt,
+            generationType: kind === 'image' ? 'text-to-image' : kind === 'video' ? 'text-to-video' : 'text-to-music',
+            model: previewFullItem?.model,
+            createdAt: previewFullItem?.createdAt,
+            updatedAt: previewFullItem?.updatedAt,
+            isPublic: true,
+            isDeleted: false,
+            createdBy: { 
+              username: previewFullItem?.createdBy?.username || preview.createdBy || currentUser?.username || 'User',
+              displayName: previewFullItem?.createdBy?.displayName || preview.createdBy || currentUser?.displayName,
+              uid: previewFullItem?.createdBy?.uid || (isSelf ? currentUid || undefined : undefined),
+              photoURL: previewFullItem?.createdBy?.photoURL || (isSelf ? currentUser?.photoURL : undefined),
+            },
+            aspectRatio: previewFullItem?.aspectRatio,
+            frameSize: previewFullItem?.frameSize,
+            aspect_ratio: previewFullItem?.aspect_ratio,
+            images: (previewFullItem?.images && previewFullItem.images.length > 0) ? previewFullItem.images : (kind === 'image' ? [{ id: '0', url: src }] : []),
+            videos: (previewFullItem?.videos && previewFullItem.videos.length > 0) ? previewFullItem.videos : (kind === 'video' ? [{ id: '0', url: src }] : []),
+            audios: (previewFullItem?.audios && previewFullItem.audios.length > 0) ? previewFullItem.audios : (kind === 'audio' ? [{ id: '0', url: src }] : []),
+          }
+
+          // Prefer type based on enriched item if available
+          const resolvedKind: 'image' | 'video' | 'audio' = (bridgeItem.videos && bridgeItem.videos.length) ? 'video' : (bridgeItem.images && bridgeItem.images.length) ? 'image' : 'audio'
+          const firstMedia = (resolvedKind === 'video') ? bridgeItem.videos?.[0] : (resolvedKind === 'image') ? bridgeItem.images?.[0] : (bridgeItem as any).audios?.[0]
+          const cards = [{ item: bridgeItem, media: firstMedia || { id: '0', url: src }, kind: resolvedKind }]
+
+          const confirmDelete = async (item: PublicItem) => {
+            try {
+              const who = item?.createdBy?.uid || ''
+              const me = currentUid
+              if (!me || who !== me) {
+                alert('You can delete only your own generation')
+                return
+              }
+              const ok = confirm('Delete this generation permanently? This cannot be undone.')
+              if (!ok) return
+              const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+              const res = await fetch(`${baseUrl}/api/generations/${item.id}`, { method: 'DELETE', credentials: 'include' })
+              if (!res.ok) {
+                const t = await res.text()
+                throw new Error(t || 'Delete failed')
+              }
+              setPreview(null)
+              alert('Deleted successfully')
+            } catch (e) {
+              console.error('Delete error', e)
+              alert('Failed to delete generation')
+            }
+          }
+
+          return (
+            <ArtStationPreview
+              preview={{ kind: resolvedKind, url: (firstMedia as any)?.url || src, item: bridgeItem }}
+              onClose={() => setPreview(null)}
+              onConfirmDelete={confirmDelete}
+              currentUid={currentUid}
+              currentUser={currentUser}
+              cards={cards}
+              likedCards={likedCards}
+              toggleLike={toggleLike}
+            />
+          )
+        })()}
       </div>
     </section>
   );

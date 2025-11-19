@@ -5051,22 +5051,24 @@ const InputBox = (props: InputBoxProps = {}) => {
                             onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                           />
                         )}
-                        {/* Audio toggle for Veo 3.1 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                            generateAudio 
-                              ? 'bg-transparent text-white ' 
-                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
-                        >
-                          <div className="relative">
-                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                        {/* Audio toggle for Veo 3.1 - Hide in Lipsync feature */}
+                        {!(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1")) && (
+                          <button
+                            onClick={() => setGenerateAudio(v => !v)}
+                            className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                              generateAudio 
+                                ? 'bg-transparent text-white ' 
+                                : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                            }`}
+                          >
+                            <div className="relative">
+                              {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                                {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                              </div>
                             </div>
-                          </div>
-                        </button>
+                          </button>
+                        )}
                       </div>
                     );
                   }

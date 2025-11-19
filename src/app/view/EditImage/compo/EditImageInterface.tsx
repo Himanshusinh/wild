@@ -10,7 +10,7 @@ import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
-import { loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
@@ -1346,6 +1346,17 @@ const EditImageInterface: React.FC = () => {
           const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          // Refresh history to show vectorize entries in image generation page
+          try {
+            await (dispatch as any)(loadHistory({
+              filters: { generationType: ['image-to-svg'] as any },
+              paginationParams: { limit: 50 },
+              requestOrigin: 'page',
+              expectedType: 'text-to-image',
+              debugTag: `refresh-after-vectorize:${Date.now()}`,
+            }));
+          } catch {}
         } else {
           // fal-ai/image2svg
           const body: any = {
@@ -1366,6 +1377,17 @@ const EditImageInterface: React.FC = () => {
           const res = await axiosInstance.post('/api/fal/image2svg', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          // Refresh history to show vectorize entries in image generation page
+          try {
+            await (dispatch as any)(loadHistory({
+              filters: { generationType: ['image-to-svg'] as any },
+              paginationParams: { limit: 50 },
+              requestOrigin: 'page',
+              expectedType: 'text-to-image',
+              debugTag: `refresh-after-vectorize:${Date.now()}`,
+            }));
+          } catch {}
         }
         return;
       }

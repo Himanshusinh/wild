@@ -788,29 +788,35 @@ const Recentcreation: React.FC = () => {
                     const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
                     const avif: string | undefined = imgObj?.avifUrl || undefined;
                     const blur: string | undefined = imgObj?.blurDataUrl || undefined;
+                    // Replace SmartImage with plain <img> to avoid AVIF compatibility issues on some devices
+                    // Prefer thumbnailUrl, then avif, then original src
+                    const displaySrc = thumb || avif || item.src;
                     return (
                       <div className="absolute inset-0">
-                        <SmartImage
-                          src={item.src}
-                          alt={item.title}
-                          fill
-                          className="object-cover"
-                          sizes="250px"
-                          thumbWidth={480}
-                          thumbQuality={60}
-                          thumbnailUrl={thumb}
-                          avifUrl={avif}
-                          blurDataUrl={blur}
-                          decorative
-                          onLoadingComplete={(img) => {
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={displaySrc}
+                          alt={item.title || ''}
+                          loading="lazy"
+                          decoding="async"
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onLoad={(e) => {
                             try {
-                              const w = (img as any).naturalWidth || 1;
-                              const h = (img as any).naturalHeight || 1;
+                              const img = e.currentTarget as HTMLImageElement;
+                              const w = img.naturalWidth || 1;
+                              const h = img.naturalHeight || 1;
                               const g = gcd(w, h);
                               const rw = Math.round(w / g);
                               const rh = Math.round(h / g);
                               setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
                             } catch {}
+                          }}
+                          onError={(e) => {
+                            // If thumbnail fails, fallback to original src
+                            const img = e.currentTarget as HTMLImageElement;
+                            if (displaySrc !== item.src) {
+                              img.src = item.src;
+                            }
                           }}
                         />
                       </div>

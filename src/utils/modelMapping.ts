@@ -211,7 +211,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'runway-act-two',
-    creditModelName: 'Runway Character Performance (Act Two)', // Will use SKU-based pricing from backend
+    creditModelName: 'Runway Act-Two', // Will use SKU-based pricing from backend
     generationType: 'video',
     provider: 'runway',
     options: {

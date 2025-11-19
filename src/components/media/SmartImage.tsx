@@ -99,6 +99,13 @@ const SmartImage: React.FC<SmartImageProps> = ({
 		if (u.protocol.startsWith('http') && u.origin !== origin) isExternalAbsolute = true;
 	} catch {}
 
+	// Also treat data: and blob: URIs as "external" for rendering with plain <img>
+	// Next/Image does not reliably render data/blob URIs in all environments,
+	// so prefer a simple <img> which supports them.
+	if (typeof optimized === 'string' && (optimized.startsWith('data:') || optimized.startsWith('blob:'))) {
+		isExternalAbsolute = true;
+	}
+
 	const wrapperStyle = finalBlurDataUrl && !loaded
 		? { backgroundImage: `url(${finalBlurDataUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
 		: undefined;
@@ -111,17 +118,14 @@ const SmartImage: React.FC<SmartImageProps> = ({
 					alt={finalAlt}
 					decoding="async"
 					loading={(loading as any) || 'lazy'}
-					className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'} ${className || ''}`}
-					style={{ objectFit: (fill ? undefined : undefined) }}
+					className={`absolute inset-0 w-full h-full object-cover ${className || ''}`}
 					onLoad={(e) => {
 						try {
 							setLoaded(true);
 							onLoadingComplete && onLoadingComplete(e.currentTarget as HTMLImageElement);
 						} catch {}
 					}}
-					onError={() => {
-						try { setLoaded(true); } catch {}
-					}}
+					onError={() => { try { setLoaded(true); } catch {} }}
 					{...(rest as any)}
 				/>
 			) : (
@@ -130,21 +134,14 @@ const SmartImage: React.FC<SmartImageProps> = ({
 					alt={finalAlt}
 					sizes={sizes}
 					{...(fill ? { fill: true } : { width, height })}
-					// We manage the blur background manually to avoid double-placeholder flicker
 					placeholder="empty"
 					priority={priority}
 					fetchPriority={fetchPriority}
 					loading={loading}
-					className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'} ${className || ''}`}
-					onLoadingComplete={(img) => {
-						try {
-							setLoaded(true);
-							onLoadingComplete && onLoadingComplete(img as HTMLImageElement);
-						} catch {}
-					}}
-					onError={() => {
-						try { setLoaded(true); } catch {}
-					}}
+					unoptimized
+					className={`absolute inset-0 w-full h-full object-cover ${className || ''}`}
+					onLoad={(e) => { try { setLoaded(true); onLoadingComplete && onLoadingComplete(e.currentTarget as HTMLImageElement); } catch {} }}
+					onError={() => { try { setLoaded(true); } catch {} }}
 					{...rest}
 				/>
 			)}

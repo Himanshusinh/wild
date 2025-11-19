@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import SmartImage from "@/components/media/SmartImage";
+// Removed SmartImage; using raw <img> for character previews to avoid optimization issues
 import CreateCharacterModal from './CreateCharacterModal';
 import UploadModal from './UploadModal';
 import { useAppDispatch } from "@/store/hooks";
@@ -48,6 +48,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [characterEntries, setCharacterEntries] = useState<any[]>([]);
+  const [nextCursor, setNextCursor] = useState<any>(null);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   // Function to fetch characters from the backend without touching global history slice
@@ -67,7 +68,10 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
           return { ...it, timestamp, createdAt: it?.createdAt || timestamp };
         });
       setCharacterEntries(items);
-      setHasMore(Boolean(result.nextCursor));
+      setNextCursor(result.nextCursor || null);
+      // Prefer explicit hasMore from backend; fallback to presence of nextCursor
+      const computedHasMore = result.hasMore !== undefined ? Boolean(result.hasMore) : Boolean(result.nextCursor);
+      setHasMore(computedHasMore);
     } catch (error: any) {
       console.error('Error loading characters:', error);
     } finally {
@@ -132,6 +136,11 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     // Choose the best available preview source. This is what SmartImage will fall back to
     // if thumbnail/avif are not provided.
     const frontImageUrl = thumbnailUrl || avifUrl || firebaseUrl || rawUrl || '/styles/Logo.gif';
+    
+    // Debug: log the URLs being used
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Character:', characterName, '| frontImageUrl:', frontImageUrl?.substring(0, 100));
+    }
     
     return {
       id: entry.id,
@@ -237,7 +246,12 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
       const client = getApiClient();
       const last = characterEntries[characterEntries.length - 1];
       const params: any = { generationType: 'text-to-character', limit: 20 };
-      if (last && last.id) params.cursor = last.id;
+      // Use optimized nextCursor if available, else legacy id cursor
+      if (nextCursor) {
+        params.nextCursor = nextCursor;
+      } else if (last && last.id) {
+        params.cursor = last.id;
+      }
       const res = await client.get('/api/generations', { params });
       const result = res.data?.data || { items: [], nextCursor: undefined };
       const items = (result.items || [])
@@ -249,13 +263,15 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
           return { ...it, timestamp, createdAt: it?.createdAt || timestamp };
         });
       setCharacterEntries(prev => [...prev, ...items.filter((ni: any) => !prev.some(p => p.id === ni.id))]);
-      setHasMore(Boolean(result.nextCursor));
+      setNextCursor(result.nextCursor || null);
+      const computedHasMore = result.hasMore !== undefined ? Boolean(result.hasMore) : Boolean(result.nextCursor);
+      setHasMore(computedHasMore);
     } catch (error) {
       console.error('Error loading more characters:', error);
     } finally {
       setLoadingMore(false);
     }
-  }, [loading, loadingMore, hasMore, characterEntries]);
+  }, [loading, loadingMore, hasMore, characterEntries, nextCursor]);
 
   // Memoize scroll handler to prevent unnecessary re-renders
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -340,42 +356,42 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                           return (
                             <div
                               key={character.id}
-                              className="relative w-full aspect-square"
+                              className="relative w-full"
+                              style={{ paddingTop: '100%' }}
                             >
                               <button
                                 onClick={() => {
                                   handleCharacterToggle(character);
                                 }}
-                                className={`relative w-full h-full rounded-lg overflow-hidden ring-1 ${
+                                className={`absolute inset-0 rounded-lg overflow-hidden ring-1 ${
                                   (selected || isAlreadySelected) ? 'ring-white ring-2' : 'ring-white/20'
-                                } bg-black/50`}
+                                } bg-black/50 flex`}
                               >
-                                <SmartImage 
-                                  src={character.frontImageUrl || '/styles/Logo.gif'} 
-                                  alt={character.name} 
-                                  fill 
-                                  sizes="(max-width: 768px) 33vw, 20vw"
-                                  className="object-cover"
-                                  thumbnailUrl={character.thumbnailUrl}
-                                  avifUrl={character.avifUrl}
-                                  blurDataUrl={character.blurDataUrl}
+                                <img
+                                  src={character.frontImageUrl || '/styles/Logo.gif'}
+                                  alt={character.name}
+                                  className="absolute inset-0 w-full h-full object-cover select-none"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    try { (e.currentTarget as HTMLImageElement).src = '/styles/Logo.gif'; } catch {}
+                                  }}
                                 />
-                              {/* Checkbox indicator for selected characters */}
-                              {isAlreadySelected && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded flex items-center justify-center z-10">
-                                  <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
+                                {/* Checkbox indicator for selected characters */}
+                                {isAlreadySelected && (
+                                  <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded flex items-center justify-center z-10">
+                                    <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                                {/* Temporary selection indicator */}
+                                {selected && !isAlreadySelected && (
+                                  <div className="absolute top-2 right-2 w-5 h-5 bg-white/50 rounded border-2 border-white z-10" />
+                                )}
+                                <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 z-10">
+                                  <div className="text-white text-xs font-medium truncate">{character.name}</div>
                                 </div>
-                              )}
-                              {/* Temporary selection indicator */}
-                              {selected && !isAlreadySelected && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-white/50 rounded border-2 border-white z-10" />
-                              )}
-                              <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 z-10">
-                                <div className="text-white text-xs font-medium truncate">{character.name}</div>
-                              </div>
                               </button>
                             </div>
                           );
