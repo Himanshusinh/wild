@@ -94,7 +94,7 @@ const EditImageInterface: React.FC = () => {
   const [expandHoverEdge, setExpandHoverEdge] = useState<string | null>(null);
   
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('philz1337x/crystal-upscaler');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -105,6 +105,7 @@ const EditImageInterface: React.FC = () => {
     return 'compressed_sr: Upscale heavily compressed/low-bitrate images.';
   };
   const getUpscaleModelLabel = (m: string) => {
+    if (m === 'philz1337x/clarity-upscaler') return 'Clarity Upscaler';
     if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
     if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
     if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
@@ -160,7 +161,7 @@ const EditImageInterface: React.FC = () => {
 
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | 'replaceModel' | 'expandAspect' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | 'replaceModel' | 'expandAspect' | 'topazModel' | ''>('');
   // Vectorize controls
   const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
   const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
@@ -206,7 +207,7 @@ const EditImageInterface: React.FC = () => {
         if (validFeature === 'remove-bg') {
           setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
-          setModel('nightmareai/real-esrgan');
+          setModel('philz1337x/crystal-upscaler');
         } else if (validFeature === 'resize') {
           setModel('fal-ai/bria/expand');
         } else if (validFeature === 'fill') {
@@ -216,16 +217,18 @@ const EditImageInterface: React.FC = () => {
         }
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
-          const frontendProxied = `/api/proxy/resource/${encodeURIComponent(storagePathParam)}`;
+          const decodedPath = decodeURIComponent(storagePathParam).replace(/^\/+/, '');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const directUrl = decodedPath ? `${ZATA_PREFIX}${decodedPath}` : '';
           // Apply to all features so switching tabs preserves the same input
           setInputs({
-            'upscale': frontendProxied,
-            'remove-bg': frontendProxied,
-            'resize': frontendProxied,
-            'fill': frontendProxied,
-            'vectorize': frontendProxied,
-            'erase': frontendProxied,
-            'expand': frontendProxied,
+            'upscale': directUrl,
+            'remove-bg': directUrl,
+            'resize': directUrl,
+            'fill': directUrl,
+            'vectorize': directUrl,
+            'erase': directUrl,
+            'expand': directUrl,
           });
         } else if (imageParam && imageParam.trim() !== '') {
           setInputs({
@@ -532,6 +535,16 @@ const EditImageInterface: React.FC = () => {
   useEffect(() => {
     setOffset({ x: 0, y: 0 });
   }, [outputs[selectedFeature]]);
+
+  // Debug: Log when outputs change
+  useEffect(() => {
+    console.log('[EditImage] outputs changed:', { 
+      selectedFeature, 
+      'remove-bg': outputs['remove-bg'],
+      outputs: outputs[selectedFeature],
+      allOutputs: outputs 
+    });
+  }, [outputs, selectedFeature]);
 
   // Recompute fit scale when container resizes or natural size changes
   useEffect(() => {
@@ -1872,8 +1885,21 @@ const EditImageInterface: React.FC = () => {
         }
         const res = await axiosInstance.post('/api/replicate/remove-bg', body);
         console.log('[EditImage] remove-bg.res', res?.data);
-        const out = res?.data?.data?.url || res?.data?.data?.image || res?.data?.data?.images?.[0]?.url || res?.data?.url || res?.data?.image || '';
-        if (out) setOutputs((prev) => ({ ...prev, ['remove-bg']: out }));
+        
+        // Extract URL from response - match upscale pattern exactly
+        // Backend returns { data: { images: [{ url, storagePath }] } }
+        const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
+        
+        if (first) {
+          console.log('[EditImage] remove-bg output URL:', { first, selectedFeature });
+          // Set output directly like upscale does - no URL conversion needed since backend returns full URL
+          setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
+          // Ensure processing is set to false
+          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+        } else {
+          console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
+          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+        }
       } else if (false) {
         // Route to provider based on selected model
         const chosenModel = selectedGeneratorModel || 'gemini-25-flash-image';
@@ -2013,10 +2039,11 @@ const EditImageInterface: React.FC = () => {
         const clarityScale = parseScale(2);
         const esrganScale = parseScale(4);
         let payload: any = { image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput, model };
-        // if (model === 'philz1337x/clarity-upscaler') {
-        //   payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
-        // } else 
-        if (model === 'nightmareai/real-esrgan') {
+        if (model === 'philz1337x/clarity-upscaler') {
+          const dyn = dynamic ? Number(dynamic) : 6;
+          const shp = sharpen ? Number(sharpen) : 0;
+          payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
+        } else if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
         } else if (model === 'philz1337x/crystal-upscaler') {
           const crystalScale = Math.max(1, Math.min(6, clarityScale));
@@ -2076,7 +2103,7 @@ const EditImageInterface: React.FC = () => {
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
-      setModel('nightmareai/real-esrgan');
+      setModel('philz1337x/crystal-upscaler');
     } else if (selectedFeature === 'resize') {
       setModel('fal-ai/bria/expand');
     } else if (selectedFeature === 'vectorize') {
@@ -2318,7 +2345,7 @@ const EditImageInterface: React.FC = () => {
                     if (feature.id === 'remove-bg') {
                       setModel('851-labs/background-remover');
                     } else if (feature.id === 'upscale') {
-                      setModel('nightmareai/real-esrgan');
+                      setModel('philz1337x/crystal-upscaler');
                     } else if (feature.id === 'resize') {
                       setModel('fal-ai/bria/expand');
                     } else if (feature.id === 'vectorize') {
@@ -2328,7 +2355,7 @@ const EditImageInterface: React.FC = () => {
                   }}
                   className={`text-left bg-white/5 items-center justify-center rounded-lg p-1 h-18 w-auto border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                 >
-                  <div className="flex items-center gap-0 justify-center">
+                  <div className="flex items-center gap-0 justify-center ">
                     <div className={`w-6 h-6 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
                       {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="w-6 h-6" />)}
                       {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-6 h-6" />)}
@@ -2351,7 +2378,7 @@ const EditImageInterface: React.FC = () => {
           </div>
 
           {/* Feature Preview (GIF banner) */}
-          <div className="px-3 md:px-4 mb-2 pt-4">
+          <div className="px-3 md:px-4 mb-2 pt-4 z-10">
             <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
@@ -2379,7 +2406,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'vectorizeModel' && (
-                      <div className={`absolute top-full mt-2 z-70 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full mt-2 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {[
                           { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
                           { label: 'Image to SVG', value: 'fal-ai/image2svg' },
@@ -2521,7 +2548,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'model' && (
-                      <div className={`absolute top-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {(selectedFeature === 'remove-bg'
                           ? [
                               { label: '851-labs/background-remover', value: '851-labs/background-remover' },
@@ -2532,9 +2559,9 @@ const EditImageInterface: React.FC = () => {
                                   { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
                             ]
                           : [
-                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                                   { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-                                  { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+                                  { label: 'Clarity Upscaler', value: 'philz1337x/clarity-upscaler' },
+                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                             ]
                         ).map((opt) => (
                           <button
@@ -2749,7 +2776,7 @@ const EditImageInterface: React.FC = () => {
                               <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeAspect' ? 'rotate-180' : ''}`} />
                             </button>
                             {activeDropdown === 'resizeAspect' && (
-                              <div className={`absolute bottom-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-56 overflow-y-auto dropdown-scrollbar`}>
+                              <div className={`absolute top -full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-56 overflow-y-auto dropdown-scrollbar`}>
                                 {['1:1','2:3','3:2','3:4','4:3','4:5','5:4','9:16','16:9'].map((ar) => (
                                   <button key={ar} onClick={() => { setResizeAspectRatio(ar as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${resizeAspectRatio === ar ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{ar}</button>
                                 ))}
@@ -2877,10 +2904,51 @@ const EditImageInterface: React.FC = () => {
 
               {selectedFeature === 'upscale' && (
                 <>
+                  {model === 'philz1337x/clarity-upscaler' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale factor (1-4)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={4}
+                          step={1}
+                          value={Number(String(scaleFactor).replace('x', '')) || 2}
+                          onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(4, Number(e.target.value)))))}
+                          className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Output format</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                          >
+                            <span className="truncate uppercase">{(output || 'png').toString()}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'output' && (
+                            <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
+                                <button
+                                  key={fmt}
+                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <span className="uppercase">{fmt}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {model === 'nightmareai/real-esrgan' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale (0-10)</label>
                         <input
                           type="number"
                           min={0}
@@ -2908,7 +2976,7 @@ const EditImageInterface: React.FC = () => {
                       {model === 'philz1337x/crystal-upscaler' && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale factor (1-6)</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale factor (1-6)</label>
                             <input
                               type="number"
                               min={1}
@@ -2920,7 +2988,7 @@ const EditImageInterface: React.FC = () => {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Output format</label>
                             <div className="relative edit-dropdown">
                               <button
                                 onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
@@ -2930,7 +2998,7 @@ const EditImageInterface: React.FC = () => {
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
                               </button>
                               {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                   {['png', 'jpg'].map((fmt) => (
                                     <button
                                       key={fmt}
@@ -2950,13 +3018,13 @@ const EditImageInterface: React.FC = () => {
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Model</label>
                               <div className="relative edit-dropdown">
-                                <button onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                                <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
                                   <span className="truncate">{topazModel}</span>
-                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
                                 </button>
-                                {activeDropdown === 'model' && (
+                                {activeDropdown === 'topazModel' && (
                                   <div className={`absolute z-30 top-full mt-2 left-0 w-56 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                     {['Low Resolution V2','Standard V2','CGI','High Fidelity V2','Text Refine','Recovery','Redefine','Recovery V2'].map((opt) => (
                                       <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
@@ -2966,7 +3034,7 @@ const EditImageInterface: React.FC = () => {
                               </div>
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Upscale factor</label>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Upscale factor</label>
                               <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e)=>setTopazUpscaleFactor(Number(e.target.value)||2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                             </div>
                           </div>
@@ -3274,6 +3342,19 @@ const EditImageInterface: React.FC = () => {
                               fill
                               className="object-contain object-center"
                               style={{ objectPosition: 'center 55%' }}
+                              onError={(e) => {
+                                console.error('[EditImage] Output image failed to load:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e
+                                });
+                              }}
+                              onLoad={() => {
+                                console.log('[EditImage] Output image loaded successfully:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature
+                                });
+                              }}
                             />
                           </div>
                           <div className="absolute inset-0">
@@ -3322,6 +3403,18 @@ const EditImageInterface: React.FC = () => {
                             onLoad={(e) => {
                               const img = e.target as HTMLImageElement;
                               setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                              console.log('[EditImage] Zoom mode output image loaded:', {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                              });
+                            }}
+                            onError={(e) => {
+                              console.error('[EditImage] Zoom mode output image failed to load:', {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                error: e
+                              });
                             }}
                             onClick={handleImageClick}
                           />
@@ -3393,6 +3486,18 @@ const EditImageInterface: React.FC = () => {
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
                           setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                          console.log('[EditImage] No-input mode output image loaded:', {
+                            src: outputs[selectedFeature],
+                            selectedFeature,
+                            dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                          });
+                        }}
+                        onError={(e) => {
+                          console.error('[EditImage] No-input mode output image failed to load:', {
+                            src: outputs[selectedFeature],
+                            selectedFeature,
+                            error: e
+                          });
                         }}
                         onClick={handleImageClick}
                       />

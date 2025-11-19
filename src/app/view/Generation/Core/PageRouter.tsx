@@ -2,10 +2,10 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import TextToImageInputBox from '../ImageGeneration/TextToImage/compo/InputBox';
+import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
 import LogoGenerationInputBox from '../ImageGeneration/LogoGeneration/compo/InputBox';
 import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
-import TextToVideoInputBox from '../VideoGeneration/TextToVideo/compo/InputBox';
+import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
 import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
 import TextToMusicInputBox from '../MusicGeneration/TextToMusic/compo/InputBox';
 import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';

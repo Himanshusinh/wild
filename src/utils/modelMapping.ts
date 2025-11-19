@@ -119,7 +119,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'ideogram-ai/ideogram-v3-quality',
-    creditModelName: 'replicate/ideogram-ai/ideogram-v3-quality',
+    creditModelName: 'Ideogram 3 Quality',
     generationType: 'image',
     provider: 'replicate'
   },

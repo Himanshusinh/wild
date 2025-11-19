@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
-import { FilePlay, FilePlus2, Trash2, ChevronUp } from 'lucide-react';
+import { FilePlay, FilePlus2, Trash2, ChevronUp, Monitor } from 'lucide-react';
 import { getApiClient } from "@/lib/axiosInstance";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
@@ -2110,7 +2110,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
                     className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                   >
-                    <span>{wanAnimateResolution}p</span>
+                    <Monitor className="w-4 h-4 mr-1" />
+                    {wanAnimateResolution}p
                     <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {resolutionDropdownOpen && (

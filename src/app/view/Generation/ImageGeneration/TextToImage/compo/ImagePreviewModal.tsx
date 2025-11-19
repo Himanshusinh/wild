@@ -25,6 +25,15 @@ const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
   return toResourceProxy(urlOrPath);
 };
 
+const extractStyleFromPrompt = (promptText: string): string | undefined => {
+  const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
+  return match?.[1]?.trim();
+};
+
+const getCleanPrompt = (promptText: string): string => {
+  return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
+};
+
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
   onClose: () => void;
@@ -34,6 +43,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
 
   // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
   
@@ -68,6 +78,36 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [preview?.entry?.id, preview?.image?.id]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (!preview?.entry?.id) return;
+    let cancelled = false;
+    const fetchFullEntry = async () => {
+      try {
+        const res = await axiosInstance.get(`/api/generations/${preview.entry.id}`);
+        // Extract item from response: res.data.data.item or res.data.item or res.data
+        const detailedEntry = res?.data?.data?.item || res?.data?.item || res?.data?.data || res?.data;
+        if (!cancelled && detailedEntry) {
+          const mergedEntry = {
+            ...(preview?.entry || {}),
+            ...detailedEntry,
+          } as HistoryEntry;
+          console.log('[ImagePreviewModal] Fetched detailed entry:', {
+            hasInputImages: Array.isArray((mergedEntry as any)?.inputImages),
+            inputImagesCount: Array.isArray((mergedEntry as any)?.inputImages) ? (mergedEntry as any).inputImages.length : 0,
+            inputImages: (mergedEntry as any)?.inputImages,
+          });
+          setCurrentEntry(mergedEntry);
+        }
+      } catch (error) {
+        console.warn('[ImagePreviewModal] Failed to fetch detailed entry:', error);
+      }
+    };
+    fetchFullEntry();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview?.entry?.id]);
 
   // single dispatch instance
   // Fullscreen viewer state
@@ -416,6 +456,154 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     };
   }, [selectedIndex, preview?.entry?.id, preview?.image?.id, sameDateGallery, toMediaProxyUrl]);
 
+  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
+  const selectedImage: any = selectedPair.image || preview?.image;
+  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+  const isUserUploadSelected = false;
+
+  const normalizeInputMediaUrl = React.useCallback((item: any): string => {
+    if (!item) return '';
+    
+    // Priority 1: Use storagePath if available (most reliable for input images)
+    const storagePath = typeof item === 'string'
+      ? (item.startsWith('users/') ? item : '')
+      : (item?.storagePath || item?.path || '');
+    if (storagePath) {
+      const cleaned = storagePath.replace(/^\/+/, '');
+      const proxyUrl = toMediaProxy(cleaned);
+      if (proxyUrl) return proxyUrl;
+      // Fallback: construct Zata URL directly
+      return `${ZATA_PREFIX}${cleaned}`;
+    }
+    
+    // Priority 2: Use url (the stored input image URL, not originalUrl)
+    // originalUrl might point to a different image (the source before upload)
+    if (typeof item === 'string') {
+      return toMediaProxy(item) || item;
+    }
+    
+    // Prefer url over originalUrl for input images
+    const preferredUrl = item?.url || item?.firebaseUrl;
+    if (preferredUrl) {
+      const proxyUrl = toMediaProxy(preferredUrl);
+      if (proxyUrl) return proxyUrl;
+      return preferredUrl;
+    }
+    
+    // Last resort: use originalUrl, thumbnailUrl, or avifUrl
+    const fallbackUrl = item?.originalUrl || item?.thumbnailUrl || item?.avifUrl || '';
+    if (!fallbackUrl) return '';
+    const proxyUrl = toMediaProxy(fallbackUrl);
+    if (proxyUrl) return proxyUrl;
+    return fallbackUrl;
+  }, [ZATA_PREFIX]);
+
+  const inputImageItems = React.useMemo(() => {
+    try {
+      const inputs = Array.isArray((selectedEntry as any)?.inputImages)
+        ? (selectedEntry as any).inputImages
+        : [];
+      console.log('[ImagePreviewModal] Processing inputImages:', {
+        hasInputImages: inputs.length > 0,
+        count: inputs.length,
+        rawInputs: inputs,
+        selectedEntryId: (selectedEntry as any)?.id,
+      });
+      const processed = inputs
+        .map((item: any, idx: number) => {
+          console.log(`[ImagePreviewModal] Processing input image ${idx}:`, {
+            item,
+            storagePath: item?.storagePath,
+            url: item?.url,
+            originalUrl: item?.originalUrl,
+          });
+          const url = normalizeInputMediaUrl(item);
+          console.log(`[ImagePreviewModal] Normalized URL for input ${idx}:`, url);
+          if (!url) {
+            console.warn('[ImagePreviewModal] Failed to normalize input image URL:', item);
+            return null;
+          }
+          return {
+            key: (item?.id || `input-${idx}`),
+            url,
+          };
+        })
+        .filter(Boolean);
+      if (inputs.length > 0 && processed.length === 0) {
+        console.warn('[ImagePreviewModal] Had inputImages but none processed successfully:', inputs);
+      }
+      console.log('[ImagePreviewModal] Final inputImageItems:', processed);
+      return processed;
+    } catch (err) {
+      console.error('[ImagePreviewModal] Error processing inputImageItems:', err);
+      return [];
+    }
+  }, [selectedEntry, normalizeInputMediaUrl]);
+
+  const calculateAspectRatio = (width: number, height: number): string => {
+    if (!width || !height || width <= 0 || height <= 0) return '—';
+    const ratio = width / height;
+    const tolerance = 0.01;
+    const commonRatios: Array<{ ratio: number; label: string }> = [
+      { ratio: 1.0, label: '1:1' },
+      { ratio: 4 / 3, label: '4:3' },
+      { ratio: 3 / 4, label: '3:4' },
+      { ratio: 16 / 9, label: '16:9' },
+      { ratio: 9 / 16, label: '9:16' },
+      { ratio: 3 / 2, label: '3:2' },
+      { ratio: 2 / 3, label: '2:3' },
+      { ratio: 21 / 9, label: '21:9' },
+      { ratio: 9 / 21, label: '9:21' },
+      { ratio: 16 / 10, label: '16:10' },
+      { ratio: 10 / 16, label: '10:16' },
+      { ratio: 5 / 4, label: '5:4' },
+      { ratio: 4 / 5, label: '4:5' },
+    ];
+    for (const common of commonRatios) {
+      if (Math.abs(ratio - common.ratio) < tolerance || Math.abs(ratio - 1 / common.ratio) < tolerance) {
+        return common.label;
+      }
+    }
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const divisor = gcd(width, height);
+    const w = width / divisor;
+    const h = height / divisor;
+    if (w <= 100 && h <= 100) return `${w}:${h}`;
+    return `${Math.round(ratio * 100) / 100}:1`;
+  };
+
+  const getAspectRatio = (): string => {
+    const stored = selectedEntry?.frameSize || selectedEntry?.aspect_ratio || selectedEntry?.aspectRatio;
+    if (stored && stored !== '—' && stored !== null && stored !== undefined) return stored;
+    const imgWidth = (selectedImage as any)?.width || (selectedEntry as any)?.width;
+    const imgHeight = (selectedImage as any)?.height || (selectedEntry as any)?.height;
+    if (imgWidth && imgHeight) return calculateAspectRatio(imgWidth, imgHeight);
+    if (imageDimensions?.width && imageDimensions?.height) {
+      return calculateAspectRatio(imageDimensions.width, imageDimensions.height);
+    }
+    return '—';
+  };
+
+  const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
+  const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
+  const displayedAspect = getAspectRatio();
+  const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
+  const cleanPrompt = getCleanPrompt(promptToDisplay);
+  const isLongPrompt = cleanPrompt.length > 280;
+  const entryTimestamp = selectedEntry?.timestamp || selectedEntry?.createdAt || selectedEntry?.updatedAt;
+  const formattedDateTime = React.useMemo(() => {
+    if (!entryTimestamp) return '—';
+    try {
+      const d = new Date(entryTimestamp);
+      if (Number.isNaN(d.getTime())) return '—';
+      const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+      const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `${time} ${date}`;
+    } catch {
+      return '—';
+    }
+  }, [entryTimestamp]);
+
   if (!preview) return null;
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
@@ -423,11 +611,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   };
 
   // removed earlier duplicate definition; using single helper below near navigation
-
-  const extractStyleFromPrompt = (promptText: string): string | undefined => {
-    const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
-    return match?.[1]?.trim();
-  };
 
   const handleDelete = async () => {
     try {
@@ -451,6 +634,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       if (remainingImages.length === 0) {
         await axiosInstance.delete(`/api/generations/${entry.id}`);
         try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        // Clear/reset document title when image is deleted
+        if (typeof document !== 'undefined') {
+          document.title = 'WildMind';
+        }
         onClose();
       } else {
         // Otherwise, update the entry to remove just this image
@@ -479,10 +666,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-
-  const getCleanPrompt = (promptText: string): string => {
-    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
-  };
 
   const copyPrompt = async (prompt: string, buttonId: string) => {
     try {
@@ -606,86 +789,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
-  const selectedImage: any = selectedPair.image || preview?.image;
-  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
-  const isUserUploadSelected = false;
-
   // Helper function to calculate aspect ratio from dimensions
-  const calculateAspectRatio = (width: number, height: number): string => {
-    if (!width || !height || width <= 0 || height <= 0) return '—';
-    
-    const ratio = width / height;
-    const tolerance = 0.01; // 1% tolerance for matching common ratios
-    
-    // Common aspect ratios with their decimal values
-    const commonRatios: Array<{ ratio: number; label: string }> = [
-      { ratio: 1.0, label: '1:1' },
-      { ratio: 4/3, label: '4:3' },
-      { ratio: 3/4, label: '3:4' },
-      { ratio: 16/9, label: '16:9' },
-      { ratio: 9/16, label: '9:16' },
-      { ratio: 3/2, label: '3:2' },
-      { ratio: 2/3, label: '2:3' },
-      { ratio: 21/9, label: '21:9' },
-      { ratio: 9/21, label: '9:21' },
-      { ratio: 16/10, label: '16:10' },
-      { ratio: 10/16, label: '10:16' },
-      { ratio: 5/4, label: '5:4' },
-      { ratio: 4/5, label: '4:5' },
-    ];
-    
-    // Check if ratio matches any common ratio (within tolerance)
-    for (const common of commonRatios) {
-      if (Math.abs(ratio - common.ratio) < tolerance || Math.abs(ratio - 1/common.ratio) < tolerance) {
-        return common.label;
-      }
-    }
-    
-    // If no match, calculate simplified ratio using GCD
-    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
-    const divisor = gcd(width, height);
-    const w = width / divisor;
-    const h = height / divisor;
-    
-    // If the simplified ratio is reasonable, return it
-    if (w <= 100 && h <= 100) {
-      return `${w}:${h}`;
-    }
-    
-    // Otherwise, return a rounded decimal ratio
-    return `${Math.round(ratio * 100) / 100}:1`;
-  };
-
-  // Get aspect ratio from entry or calculate from image dimensions
-  const getAspectRatio = (): string => {
-    // First try to get from stored fields
-    const stored = selectedEntry?.frameSize || selectedEntry?.aspect_ratio || selectedEntry?.aspectRatio;
-    if (stored && stored !== '—' && stored !== null && stored !== undefined) return stored;
-    
-    // Try to get from image metadata (stored in database)
-    const imgWidth = (selectedImage as any)?.width || (selectedEntry as any)?.width;
-    const imgHeight = (selectedImage as any)?.height || (selectedEntry as any)?.height;
-    if (imgWidth && imgHeight) {
-      return calculateAspectRatio(imgWidth, imgHeight);
-    }
-    
-    // Try to get from loaded image dimensions (from onLoad event)
-    if (imageDimensions && imageDimensions.width && imageDimensions.height) {
-      return calculateAspectRatio(imageDimensions.width, imageDimensions.height);
-    }
-    
-    return '—';
-  };
-
-  const displayedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '—';
-  const displayedAspect = getAspectRatio();
-  // Use userPrompt (original user-entered prompt) if available, otherwise use the transformed prompt
-  const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
-  const cleanPrompt = getCleanPrompt(promptToDisplay);
-  const isLongPrompt = cleanPrompt.length > 280;
-
-
 
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
     return toResourceProxy(urlOrPath || '') || '';
@@ -847,6 +951,29 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 {isUserUploadSelected && (
                   <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm ">User upload</div>
                 )}
+                {/* Left/Right Navigation Buttons */}
+                {sameDateGallery.length > 1 && (
+                  <>
+                    <button
+                      aria-label="Previous image"
+                      onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      aria-label="Next image"
+                      onClick={(e) => { e.stopPropagation(); goNext(e); }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  </>
+                )}
               </div>
             )}
             <button
@@ -878,7 +1005,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     <path d="M5 19h14" />
                   </svg>
                 </button>
-                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
               </div>
 
               <div className="relative group flex-1">
@@ -888,7 +1015,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 >
                   <Share className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
               </div>
 
               <div className="relative group flex-1">
@@ -899,7 +1026,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
               </div>
 
               <div className="relative group flex-1">
@@ -916,14 +1043,24 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
                   )}
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+              </div>
+
+              <div className="relative group flex-1">
+                <button
+                  onClick={() => navigateToEdit('upscale')}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-1   rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
+                >
+                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-6 h-6" />
+                </button>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Edit</div>
               </div>
             </div>
 
              {/* Date */}
              <div className="mb-1 ">
               <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
-              <div className="text-white/80 text-sm">{new Date(selectedEntry?.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(selectedEntry?.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+              <div className="text-white/80 text-sm">{formattedDateTime}</div>
             </div>
 
             
@@ -979,10 +1116,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Model:</span>
                   <span className="text-white/80 text-sm">{getModelDisplayName(selectedEntry?.model)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Style:</span>
-                  <span className="text-white/80 text-sm">{displayedStyle}</span>
-                </div>
+                {displayedStyle && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Style:</span>
+                    <span className="text-white/80 text-sm">{displayedStyle}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Aspect ratio:</span>
                   <span className="text-white/80 text-sm">{displayedAspect}</span>
@@ -991,8 +1130,36 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Image</span>
                 </div>
+                {imageDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{imageDimensions.width} × {imageDimensions.height}</span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {inputImageItems.length > 0 && (
+              <div className="mb-4">
+                <div className="text-white/80 text-sm uppercase tracking-wider mb-1">Your Upload</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {inputImageItems.map((item: { key: string; url: string }) => (
+                    <div
+                      key={item.key}
+                      className="relative w-full aspect-square rounded-lg overflow-hidden border border-white/15 bg-white/5"
+                    >
+                      <img
+                        src={item.url}
+                        alt="Input upload"
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Gallery - show all images from this generation run in original order */}
             {Array.isArray((selectedEntry as any)?.images) && (selectedEntry as any).images.length > 1 && (
               <div className="mb-4">
@@ -1055,13 +1222,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       return '';
                     })();
                     const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-                    const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
+                    // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+                    const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
                     const qs = new URLSearchParams();
                     // Use userPrompt for remix if available, otherwise use cleanPrompt
                     const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
                     qs.set('prompt', remixPrompt);
-                    if (imgUrl) qs.set('image', imgUrl);
-                    if (storagePath) qs.set('sp', storagePath);
+                    // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+                    if (storagePath) {
+                      qs.set('sp', storagePath);
+                    } else if (imgUrl) {
+                      // If no storagePath, set image URL directly
+                      qs.set('image', imgUrl);
+                    }
                     // also pass model, frameSize and style for preselection
                     console.log('preview.entry', selectedEntry);
                     if (selectedEntry?.model) {
@@ -1080,7 +1253,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 }}
                 className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                Remix 
+                Recreate 
               </button>
               </div>
 

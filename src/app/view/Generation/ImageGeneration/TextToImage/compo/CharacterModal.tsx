@@ -15,6 +15,9 @@ type Character = {
   leftImageUrl?: string;
   rightImageUrl?: string;
   createdAt: string;
+  thumbnailUrl?: string;
+  avifUrl?: string;
+  blurDataUrl?: string;
 };
 
 type CharacterModalProps = {
@@ -115,15 +118,28 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     // Final fallback: use a generic name
     characterName = characterName || `Character ${entry.id.slice(-6)}`;
     
-    // For text-to-character, use the generated character image (first image in images array)
-    // NOT the input image. The generated character is what should be used.
+    // For text-to-character, use first generated output image (entry.images[0])
     const generatedCharacterImage = entry.images?.[0];
-    const frontImageUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl || '/styles/Logo.gif';
+
+    // Support multiple possible provider / post-processing fields. Some generations
+    // only have avif/webp/thumbnail/firebaseUrl early, and "url" is populated later.
+    const thumbnailUrl = generatedCharacterImage?.thumbnailUrl || generatedCharacterImage?.webpUrl;
+    const avifUrl = generatedCharacterImage?.avifUrl;
+    const firebaseUrl = generatedCharacterImage?.firebaseUrl;
+    const rawUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl;
+    const blurDataUrl = generatedCharacterImage?.blurDataUrl;
+
+    // Choose the best available preview source. This is what SmartImage will fall back to
+    // if thumbnail/avif are not provided.
+    const frontImageUrl = thumbnailUrl || avifUrl || firebaseUrl || rawUrl || '/styles/Logo.gif';
     
     return {
       id: entry.id,
       name: characterName,
       frontImageUrl, // Use generated character image, not input image
+      thumbnailUrl,
+      avifUrl,
+      blurDataUrl,
       createdAt: entry.createdAt?.toDate?.()?.toISOString() || entry.createdAt || entry.timestamp || new Date().toISOString(),
     };
   });
@@ -338,7 +354,11 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                                   src={character.frontImageUrl || '/styles/Logo.gif'} 
                                   alt={character.name} 
                                   fill 
-                                  className="object-cover" 
+                                  sizes="(max-width: 768px) 33vw, 20vw"
+                                  className="object-cover"
+                                  thumbnailUrl={character.thumbnailUrl}
+                                  avifUrl={character.avifUrl}
+                                  blurDataUrl={character.blurDataUrl}
                                 />
                               {/* Checkbox indicator for selected characters */}
                               {isAlreadySelected && (

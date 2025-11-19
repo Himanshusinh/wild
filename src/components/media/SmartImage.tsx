@@ -16,6 +16,8 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 	blurDataUrl?: string;
 	/** If true, renders as decorative (alt="") to avoid alt text flash on load */
 	decorative?: boolean;
+	/** Prefer WebP over AVIF for broader compatibility (e.g., homepage grid) */
+	preferWebp?: boolean;
 	// Note: Next/Image onLoadingComplete receives HTMLImageElement
 	onLoadingComplete?: (img: HTMLImageElement) => void;
 };
@@ -43,6 +45,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	avifUrl,
 	blurDataUrl,
 	decorative,
+	preferWebp = false,
 	onLoadingComplete,
 	...rest
 }) => {
@@ -50,16 +53,25 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	const BLUR_PLACEHOLDER =
 		'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+';
 
-	// Prioritize optimized thumbnails: thumbnailUrl -> avifUrl -> toThumbUrl() -> original
+	// Prioritize optimized thumbnails
+	// Default: thumbnailUrl -> avifUrl -> on-demand thumb -> original
+	// With preferWebp: ignore AVIF and force on-demand WebP when needed
 	const optimized = (() => {
-		// Use pre-generated thumbnail if available (small 400x400)
-		if (thumbnailUrl) return thumbnailUrl;
-		// Use optimized AVIF if available (full-size optimized)
-		if (avifUrl) return avifUrl;
-		
-		// Fall back to on-demand thumbnail generation
+		// Use pre-generated thumbnail if available
+		if (thumbnailUrl) {
+			// If we want to avoid AVIF, skip avif thumbnails
+			if (preferWebp && /\.avif(\?|$)/i.test(thumbnailUrl)) {
+				// continue to compute webp thumb below
+			} else {
+				return thumbnailUrl;
+			}
+		}
+		// Use optimized AVIF only when not preferring WebP
+		if (!preferWebp && avifUrl) return avifUrl;
+
+		// Fall back to on-demand thumbnail generation (force webp if requested)
 		try {
-			const u = toThumbUrl(src, { w: thumbWidth, q: thumbQuality });
+			const u = toThumbUrl(src, { w: thumbWidth, q: thumbQuality, fmt: preferWebp ? 'webp' : undefined as any });
 			return u || src;
 		} catch {
 			return src;
@@ -129,6 +141,9 @@ const SmartImage: React.FC<SmartImageProps> = ({
 							setLoaded(true);
 							onLoadingComplete && onLoadingComplete(img as HTMLImageElement);
 						} catch {}
+					}}
+					onError={() => {
+						try { setLoaded(true); } catch {}
 					}}
 					{...rest}
 				/>

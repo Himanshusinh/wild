@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import NextImage from "next/image";
 import { ChevronUp } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
@@ -57,12 +57,14 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
+import { toResourceProxy, toZataPath } from '@/lib/thumb';
 // Replaced per-page IntersectionObserver with unified bottom scroll pagination
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -89,11 +91,18 @@ const InputBox = () => {
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
-    if (!entry) return;
+    if (!entry) {
+      // Don't reset button state here - only reset when entry status changes to completed/failed
+      // This ensures button stays in "Generating..." state during generation
+      return;
+    }
     if (entry.status === 'completed' || entry.status === 'failed') {
+      // Reset button state only when entry actually completes or fails
+      setIsGeneratingLocally(false);
       const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
       return () => clearTimeout(timer);
     }
+    // Keep button in "Generating..." state while status is 'generating' or any other status
   }, [localGeneratingEntries]);
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
@@ -106,12 +115,21 @@ const InputBox = () => {
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
+      
+      // Handle image upload - prioritize sp (storage path) over image URL
       if (sp) {
-        const proxied = `/api/proxy/resource/${encodeURIComponent(sp)}`;
-        dispatch(setUploadedImages([proxied] as any));
+        const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const directUrl = `${zataBase}${decodedPath}`;
+        dispatch(setUploadedImages([directUrl] as any));
       } else if (img) {
-        dispatch(setUploadedImages([img] as any));
+        // Ensure the image URL is valid and not a blob/data URL
+        const imageUrl = img.trim();
+        if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+          dispatch(setUploadedImages([imageUrl] as any));
+        }
       }
+      
       if (prm) dispatch(setPrompt(prm));
       if (mdl) {
         const mapIncomingModel = (m: string): string => {
@@ -139,7 +157,7 @@ const InputBox = () => {
         window.history.replaceState({}, '', current.toString());
       }
     } catch {}
-  }, [dispatch, searchParams]);
+  }, [dispatch, searchParams, pathname]);
 
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-image', initialLimit: 50 });
@@ -147,6 +165,81 @@ const InputBox = () => {
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
+  };
+
+  // Helper function to extract style from prompt
+  const extractStyleFromPrompt = (promptText: string): string | undefined => {
+    const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
+    return match?.[1]?.trim();
+  };
+
+  // Helper function to check if URL is blob or data URL
+  const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
+
+  // Helper function for frontend proxy resource URL
+  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
+    if (!urlOrPath) return '';
+    return toResourceProxy(urlOrPath);
+  };
+
+  // Handle recreate - navigate to text-to-image with entry parameters (same as ImagePreviewModal)
+  const handleRecreate = (e: React.MouseEvent, entry: HistoryEntry) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // Get the first image from the entry
+      const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
+      
+      // Extract storagePath from image
+      const storagePath = (entryImage as any)?.storagePath || (() => {
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = entryImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
+      })();
+      
+      // Get fallback HTTP URL (not blob/data URLs)
+      const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
+      
+      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+      
+      const qs = new URLSearchParams();
+      
+      // Use userPrompt for remix if available, otherwise use cleanPrompt
+      const cleanPrompt = getCleanPrompt(entry.prompt || '');
+      const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
+      if (remixPrompt) qs.set('prompt', remixPrompt);
+      
+      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+      if (storagePath) {
+        qs.set('sp', storagePath);
+      } else if (imgUrl) {
+        // If no storagePath, set image URL directly
+        qs.set('image', imgUrl);
+      }
+      
+      // Also pass model, frameSize and style for preselection
+      if (entry.model) {
+        // Map backend model ids to UI dropdown ids where needed
+        const m = String(entry.model);
+        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+        qs.set('model', mapped);
+      }
+      if (entry.frameSize) qs.set('frame', String(entry.frameSize));
+      
+      const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
+      if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
+      
+      // Client-side navigation to avoid full page reload
+      router.push(`/text-to-image?${qs.toString()}`);
+    } catch (error) {
+      console.error('Error recreating image:', error);
+    }
   };
 
   // Adjust natural language references like "image 4" -> "image 3" (zero-based)
@@ -318,6 +411,10 @@ const InputBox = () => {
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
       try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      // Clear/reset document title when image is deleted
+      if (typeof document !== 'undefined') {
+        document.title = 'WildMind';
+      }
       toast.success('Image deleted');
     } catch (err) {
       console.error('Delete failed:', err);
@@ -754,9 +851,10 @@ const InputBox = () => {
   });
 
   // Function to clear input after successful generation
-  // Note: Selected characters are NOT cleared - they remain like the prompt
+  // Note: Selected characters and uploaded images are NOT cleared - they remain for easy remixing
   const clearInputs = () => {
-    dispatch(setUploadedImages([]));
+    // Don't clear uploadedImages - keep them for easy remixing
+    // dispatch(setUploadedImages([]));
     // Don't clear selectedCharacters - they should remain like the prompt
     // dispatch(clearSelectedCharacters());
     // Reset file input
@@ -857,6 +955,9 @@ const InputBox = () => {
       transactionId = creditResult.transactionId;
     } catch (creditError: any) {
       toast.error(creditError.message || 'Insufficient credits for generation');
+      setIsGeneratingLocally(false);
+      setLocalGeneratingEntries([]);
+      postGenerationBlockRef.current = false;
       return;
     }
 
@@ -989,6 +1090,9 @@ const InputBox = () => {
               message: "gen4_image_turbo requires at least one reference image",
             })
           );
+          setIsGeneratingLocally(false);
+          setLocalGeneratingEntries([]);
+          postGenerationBlockRef.current = false;
           return;
         }
 
@@ -1078,8 +1182,8 @@ const InputBox = () => {
                   runwayBaseRespToastShownRef.current = true;
                   baseRespToastShown = true;
                 }
-                // Stop loader immediately
-                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                // Stop loader immediately - clear entries on error
+                setLocalGeneratingEntries([]);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -1088,7 +1192,7 @@ const InputBox = () => {
               if (s === 'FAILED' || s === 'CANCELLED' || s === 'THROTTLED') {
                 terminalError = (status?.failure as string) || 'Runway task did not complete';
                 if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
-                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setLocalGeneratingEntries([]);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -1480,6 +1584,7 @@ const InputBox = () => {
         clearInputs();
         
         // Keep local entries visible for a moment before refreshing
+        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
         setTimeout(() => {
           setLocalGeneratingEntries([]);
         }, 1000);
@@ -1538,6 +1643,7 @@ const InputBox = () => {
         clearInputs();
         
         // Keep local entries visible for a moment before refreshing
+        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
         setTimeout(() => {
           setLocalGeneratingEntries([]);
         }, 1000);
@@ -1996,11 +2102,9 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
-      // Mark local preview as failed
-      setLocalGeneratingEntries((prev) => prev.map((e) => ({
-        ...e,
-        status: 'failed'
-      })));
+      // Clear local generating entries on error - don't show generating logo or failed state
+      setLocalGeneratingEntries([]);
+      setIsGeneratingLocally(false);
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
@@ -2041,10 +2145,13 @@ const InputBox = () => {
       if (!runwayBaseRespToastShownRef.current) {
         toast.error(error instanceof Error ? error.message : 'Failed to generate images');
       }
-    } finally {
-      // Always reset local generation state
+      
+      // Reset local generation state immediately on error
       setIsGeneratingLocally(false);
+      postGenerationBlockRef.current = false;
+    } finally {
       // Release pagination block after short cooldown so compressed refreshes don't trigger immediate loadMore
+      // Note: isGeneratingLocally and localGeneratingEntries are reset in catch block, so we don't need to reset here
       setTimeout(() => { postGenerationBlockRef.current = false; }, 2500);
       // Reset the base_resp toast guard for next run
       runwayBaseRespToastShownRef.current = false;
@@ -2148,45 +2255,34 @@ const InputBox = () => {
                 <div className="flex flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
                   {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                     <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                      {localGeneratingEntries[0].status === 'generating' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                          <div className="flex flex-col items-center gap-2">
-                            <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                            <div className="text-xs text-white/60 text-center">Generating...</div>
-                          </div>
-                        </div>
-                      ) : localGeneratingEntries[0].status === 'failed' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                          <div className="flex flex-col items-center gap-2">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
-                            <div className="text-xs text-red-400">Failed</div>
-                          </div>
-                        </div>
-                      ) : image.url ? (
-                        <div className="relative w-full h-full group">
-                          <Image 
-                            src={image.thumbnailUrl || image.avifUrl || image.url} 
-                            alt="" 
-                            fill 
-                            className="object-cover transition-opacity duration-300" 
+                      <div className="relative w-full h-full group">
+                        {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+                          <Image
+                            src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                            alt=""
+                            fill
                             sizes="192px"
-                            onLoad={() => {
-                              // Smooth fade-in effect
-                              try { 
-                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
-                                if (img) img.style.opacity = '1';
-                              } catch {}
-                            }}
-                            style={{ opacity: 0 }}
+                            className="object-cover"
                           />
-                          {/* Shimmer loading effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No image</div>
-                        </div>
-                      )}
+                        ) : null}
+                        <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                        {localGeneratingEntries[0].status === 'generating' && (
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                            <div className="flex flex-col items-center gap-2">
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                              <div className="text-xs text-white/60 text-center">Generating...</div>
+                            </div>
+                          </div>
+                        )}
+                        {localGeneratingEntries[0].status === 'failed' && (
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2227,56 +2323,51 @@ const InputBox = () => {
                       <>
                         {localGeneratingEntries[0].images.map((image: any, idx: number) => (
                           <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                            {localGeneratingEntries[0].status === 'generating' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-xl border border-white/20">
-                                <div className="flex flex-col items-center gap-2">
-                                  <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                                  <div className="text-xs text-white/60 text-center">Generating...</div>
+                            <div className="relative w-full h-full group">
+                              {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+                                <Image
+                                  src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                                  alt=""
+                                  fill
+                                  sizes="192px"
+                                  className="object-contain"
+                                />
+                              ) : null}
+                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              {localGeneratingEntries[0].status === 'generating' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                    <div className="text-xs text-white/60 text-center">Generating...</div>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : localGeneratingEntries[0].status === 'failed' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                                <div className="flex flex-col items-center gap-2">
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                  </svg>
-                                  <div className="text-xs text-red-400">Failed</div>
+                              )}
+                              {localGeneratingEntries[0].status === 'failed' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                    </svg>
+                                    <div className="text-xs text-red-400">Failed</div>
+                                  </div>
                                 </div>
-                              </div>
-                      ) : image.url ? (
-                        <div className="relative w-full h-full group">
-                          <Image 
-                            src={image.thumbnailUrl || image.avifUrl || image.url}
-                            alt="" 
-                            fill 
-                            className="object-contain transition-opacity duration-300" 
-                            sizes="192px"
-                            onLoad={() => {
-                              // Smooth fade-in effect
-                              try { 
-                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
-                                if (img) img.style.opacity = '1';
-                              } catch {}
-                            }}
-                            style={{ opacity: 0 }}
-                          />
-                          {/* Hover copy button overlay */}
-                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                            <button
-                              aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
-                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                            ) : (
-                              <div className="w-full h-full bg-black/90 flex items-center justify-center text-white/60">
-                                <div className="text-xs text-white/60">No image</div>
-                              </div>
-                            )}
+                              )}
+                              {localGeneratingEntries[0].status === 'completed' && (
+                                <>
+                                  {/* Hover copy button overlay */}
+                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                  <button
+                                    aria-label="Copy prompt"
+                                    className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  </button>
+                                </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </>
@@ -2337,19 +2428,30 @@ const InputBox = () => {
                               />
                               {/* Shimmer loading effect */}
                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              {/* Hover buttons overlay */}
+                              {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                              <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                <button
+                                  aria-label="Recreate image"
+                                  className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                  onClick={(e) => handleRecreate(e, entry)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                </button>
+                                
+                              </div>
                               <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
                                 <button
                                   aria-label="Copy prompt"
-                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                  className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
                                   onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                 </button>
                                 <button
                                   aria-label="Delete image"
-                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                  className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
                                   onClick={(e) => handleDeleteImage(e, entry)}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >

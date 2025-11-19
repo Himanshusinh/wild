@@ -38,6 +38,11 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
     setCurrentEntry(entry);
   }, [entry.id, entry.images?.length]);
 
+  // Reset image dimensions when selected image changes
+  React.useEffect(() => {
+    setImageDimensions(null);
+  }, [selectedImageIndex]);
+
   const toggleVisibility = async () => {
     try {
       const next = !isPublicFlag;
@@ -68,6 +73,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   const [fsIsPanning, setFsIsPanning] = React.useState(false);
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
+  const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
 
@@ -473,6 +479,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                 fill
                 className="object-contain"
                 unoptimized
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (img.naturalWidth && img.naturalHeight) {
+                    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                  }
+                }}
               />
             )}
             {isUserUploadSelected && (
@@ -590,6 +602,12 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Logo</span>
                 </div>
+                {imageDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{imageDimensions.width} × {imageDimensions.height}</span>
+                  </div>
+                )}
               </div>
             </div>
 
