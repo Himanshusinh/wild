@@ -2171,21 +2171,32 @@ const InputBox = () => {
       setIsEnhancing(true);
       const res = await enhancePromptAPI(prompt, selectedModel);
       if (res.ok && res.enhancedPrompt) {
+        // Update Redux state first
         dispatch(setPrompt(res.enhancedPrompt));
-        // Update the contentEditable visible HTML/tags
-        try { updateContentEditable(); } catch {}
-        // Focus and put caret at end
-        try {
-          const el = contentEditableRef.current as HTMLElement | null;
-          if (el) {
-            el.focus();
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            range.collapse(false);
-            const sel = window.getSelection();
-            if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+        
+        // Wait for state to update and then update the contentEditable
+        // Use setTimeout to ensure Redux state has propagated
+        setTimeout(() => {
+          try {
+            updateContentEditable();
+            // Focus and put caret at end after content is updated
+            const el = contentEditableRef.current as HTMLElement | null;
+            if (el) {
+              el.focus();
+              const range = document.createRange();
+              range.selectNodeContents(el);
+              range.collapse(false);
+              const sel = window.getSelection();
+              if (sel) { 
+                sel.removeAllRanges(); 
+                sel.addRange(range); 
+              }
+            }
+          } catch (err) {
+            console.error('Error updating contentEditable:', err);
           }
-        } catch {}
+        }, 0);
+        
         toast.success('Prompt enhanced');
       } else {
         toast.error(res.error || 'Failed to enhance prompt');

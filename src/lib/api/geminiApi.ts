@@ -16,11 +16,16 @@ export async function enhancePromptAPI(prompt: string, model?: string): Promise<
   if (!res.ok) {
     let body: any;
     try { body = await res.json(); } catch { body = { error: res.statusText }; }
-    return { ok: false, error: body?.error || `http ${res.status}` };
+    return { ok: false, error: body?.message || body?.error || `http ${res.status}` };
   }
 
   const data = await res.json();
-  return { ok: true, enhancedPrompt: data?.enhancedPrompt };
+  // Backend returns: { responseStatus: "success", message: "...", data: { enhancedPrompt: "..." } }
+  const enhancedPrompt = data?.data?.enhancedPrompt || data?.enhancedPrompt;
+  if (!enhancedPrompt) {
+    return { ok: false, error: data?.message || 'No enhanced prompt in response' };
+  }
+  return { ok: true, enhancedPrompt };
 }
 
 export default { enhancePromptAPI };
