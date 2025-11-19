@@ -15,9 +15,10 @@ export default function ChromeMount() {
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
 
+  const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
-  const isLandingRoute = pathname?.toLowerCase().startsWith('/view/landingpage');
-  const isSignupRoute = pathname?.toLowerCase().startsWith('/view/signup');
+  const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
+  const isSignupRoute = pathnameLower.startsWith('/view/signup');
   
   // Generation routes (all the generation type routes)
   const generationRoutes = [
@@ -37,20 +38,35 @@ export default function ChromeMount() {
   ];
   
   const isGenerationRoute = generationRoutes.some(route => 
-    pathname?.toLowerCase() === `/${route}` || 
-    pathname?.toLowerCase().startsWith(`/${route}/`)
+    pathnameLower === `/${route}` || 
+    pathnameLower.startsWith(`/${route}/`)
   );
   
-  const isHomeRoute = pathname?.toLowerCase().startsWith('/view/homepage');
+  // Home page routes - check both pathname (case-insensitive) and currentView
+  // Note: actual route is /view/HomePage (capital H and P)
+  const isHomeRoute = pathnameLower.startsWith('/view/homepage') || 
+                      pathnameLower === '/view/homepage' ||
+                      (isRoot && currentView === 'home');
+  
+  // Pricing and workflows routes
+  const isPricingRoute = pathnameLower.startsWith('/view/pricing');
+  const isWorkflowsRoute = pathnameLower.startsWith('/view/workflows');
   
   // Show sidebar/navbar on:
-  // 1. Home page
+  // 1. Home page (by route OR currentView === 'home')
   // 2. Generation routes
-  // 3. When currentView is 'generation' or 'history' (handled by MainLayout)
+  // 3. History page (currentView === 'history')
+  // 4. Pricing page
+  // 5. Workflows page
   const shouldShow = isHomeRoute || 
+                     currentView === 'home' ||
                      isGenerationRoute || 
                      currentView === 'generation' || 
-                     currentView === 'history';
+                     currentView === 'history' ||
+                     isPricingRoute ||
+                     currentView === 'pricing' ||
+                     isWorkflowsRoute ||
+                     currentView === 'workflows';
   
   // Hide on:
   // 1. Landing page
@@ -73,6 +89,6 @@ export default function ChromeMount() {
     );
   }
   
-  // Default: don't show (for other pages like pricing, workflows, etc.)
+  // Default: don't show (for other pages not explicitly listed)
   return null;
 }
