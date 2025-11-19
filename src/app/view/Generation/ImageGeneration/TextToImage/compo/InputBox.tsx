@@ -3063,6 +3063,24 @@ const InputBox = () => {
           } catch {}
         }}
       />
+
+      {/* Character Modal */}
+      <CharacterModal
+        isOpen={isCharacterModalOpen}
+        onClose={() => setIsCharacterModalOpen(false)}
+        onAdd={(character: Character) => {
+          try {
+            dispatch(addSelectedCharacter(character));
+          } catch {}
+        }}
+        onRemove={(characterId: string) => {
+          try {
+            dispatch(removeSelectedCharacter(characterId));
+          } catch {}
+        }}
+        selectedCharacters={selectedCharacters}
+        maxCharacters={10}
+      />
     </>
   );
 };
