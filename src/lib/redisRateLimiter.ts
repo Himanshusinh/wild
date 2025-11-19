@@ -13,6 +13,7 @@ async function initRedis(): Promise<void> {
   if (redisClient) return;
   try {
     // dynamic import to avoid hard dependency at build time
+    // @ts-expect-error - ioredis is an optional dependency that may not be installed
     const IORedis = await import('ioredis');
     const redisUrl = process.env.REDIS_URL;
     if (redisUrl) {

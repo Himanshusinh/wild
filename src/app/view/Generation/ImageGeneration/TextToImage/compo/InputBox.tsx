@@ -254,6 +254,7 @@ const InputBox = () => {
         const mentionRegex = /@([\w-]+)/g;
         let out = '';
         let lastIndex = 0;
+        let m: RegExpExecArray | null;
         while ((m = mentionRegex.exec(t))) {
           const matchIndex = m.index as number;
           const name = m[1];
@@ -2162,7 +2163,7 @@ const InputBox = () => {
   const handleEnhancePrompt = async () => {
     if (isEnhancing) return;
     if (!prompt || !prompt.trim()) {
-      toast.info('Please enter a prompt to enhance');
+      toast('Please enter a prompt to enhance');
       return;
     }
 
