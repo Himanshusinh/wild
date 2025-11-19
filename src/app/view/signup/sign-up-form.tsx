@@ -1,6 +1,7 @@
   "use client"
 
 import { useState, type FormEvent, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import axios from "axios"
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
@@ -50,6 +51,9 @@ const clearCookie = (name: string) => {
 }
 
 export default function SignInForm() {
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams?.get('returnUrl') || null
+  
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -177,9 +181,19 @@ export default function SignInForm() {
 
         // Set a short-lived hint cookie to prevent race-condition redirects in middleware
         try { document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax' } catch {}
-        const redirectUrl = (redirect || APP_ROUTES.HOME) + '?toast=LOGIN_SUCCESS'
-        console.log("🏠 Redirecting to:", redirectUrl)
-        window.location.href = redirectUrl
+        
+        // Use returnUrl if present (from Canvas Studio redirect), otherwise use redirect from server or default
+        let finalRedirectUrl = returnUrl || redirect || APP_ROUTES.HOME
+        // Add toast parameter if not already present
+        const urlObj = new URL(finalRedirectUrl, window.location.origin)
+        if (!urlObj.searchParams.has('toast')) {
+          urlObj.searchParams.set('toast', 'LOGIN_SUCCESS')
+        }
+        finalRedirectUrl = urlObj.toString().replace(window.location.origin, '') || finalRedirectUrl + '?toast=LOGIN_SUCCESS'
+        
+        console.log("🏠 Redirecting to:", finalRedirectUrl)
+        console.log("🔗 Return URL was:", returnUrl)
+        window.location.href = finalRedirectUrl
 
       } else {
         console.error("❌ Login failed:", response.data?.message)
@@ -582,8 +596,13 @@ export default function SignInForm() {
           try { localStorage.setItem('authToken', finalIdToken) } catch {}
           setIsRedirecting(true)
 
+          // Use returnUrl if present (from Canvas Studio redirect), otherwise use redirect from server or default
+          const finalRedirectUrl = returnUrl || redirect || APP_ROUTES.HOME
+          console.log("🏠 Google login redirecting to:", finalRedirectUrl)
+          console.log("🔗 Return URL was:", returnUrl)
+
           setTimeout(() => {
-            window.location.href = redirect || APP_ROUTES.HOME
+            window.location.href = finalRedirectUrl
           }, 2000)
         }
       }
