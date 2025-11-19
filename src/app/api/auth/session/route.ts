@@ -27,16 +27,38 @@ export async function POST(req: Request) {
     if (setCookie) {
       try {
         const host = (req.headers.get('host') || '').split(':')[0]
-        // Strip any Domain attribute coming from the backend (cross-domain cookies will be rejected)
-        // Also ensure SameSite=None and Secure are present for cross-site scenarios
+        const isProd = host === 'wildmindai.com' || host === 'www.wildmindai.com'
+        
+        // Extract domain from original cookie if present
+        const domainMatch = setCookie.match(/;\s*Domain=([^;]+)/i)
+        const originalDomain = domainMatch ? domainMatch[1].trim() : null
+        
+        // In production, preserve .wildmindai.com domain for cross-subdomain sharing
+        // In development, strip domain to scope to current host
         let normalized = setCookie
-          .replace(/;\s*Domain=[^;]*/gi, '')
           .replace(/;\s*SameSite=[^;]*/gi, '')
-        if (!/;\s*Secure(=|;|$)/i.test(normalized)) normalized += '; Secure'
-        normalized += '; SameSite=None'
-
-        // Optionally scope explicitly to current host (safe). Leaving it off scopes to current host by default.
-        // normalized += `; Domain=${host}`
+        
+        // Handle domain attribute
+        if (isProd && originalDomain === '.wildmindai.com') {
+          // Production: preserve .wildmindai.com domain for cross-subdomain cookie sharing
+          // Keep the domain as-is (already in the cookie string)
+          // Just ensure SameSite and Secure are correct
+        } else {
+          // Development or other domains: strip domain to scope to current host
+          normalized = normalized.replace(/;\s*Domain=[^;]*/gi, '')
+        }
+        
+        // Ensure Secure and SameSite are set correctly
+        if (!/;\s*Secure(=|;|$)/i.test(normalized)) {
+          normalized += '; Secure'
+        }
+        if (isProd) {
+          // Production: SameSite=None for cross-subdomain
+          normalized += '; SameSite=None'
+        } else {
+          // Development: SameSite=Lax for same-site
+          normalized += '; SameSite=Lax'
+        }
 
         headers['set-cookie'] = normalized
       } catch {

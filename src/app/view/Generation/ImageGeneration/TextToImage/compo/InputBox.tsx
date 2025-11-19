@@ -33,6 +33,7 @@ import {
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import toast from 'react-hot-toast';
+import { enhancePromptAPI } from '@/lib/api/geminiApi';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -82,6 +83,8 @@ const InputBox = () => {
   
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  // Local state to track prompt enhancement (loading skeleton)
+  const [isEnhancing, setIsEnhancing] = useState(false);
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
@@ -964,6 +967,31 @@ const InputBox = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    const originalPrompt = prompt;
+    let finalPrompt = originalPrompt;
+
+    // If prompt-enhance toggles are enabled for the selected model(s), call the backend enhancer first
+    if ((lucidPromptEnhance || phoenixPromptEnhance) && !isEnhancing) {
+      try {
+        setIsEnhancing(true);
+        const res = await enhancePromptAPI(originalPrompt, selectedModel as any);
+        if (res && res.ok && res.enhancedPrompt) {
+          finalPrompt = res.enhancedPrompt;
+          // Update the UI prompt with the enhanced version
+          try { dispatch(setPrompt(finalPrompt)); } catch {}
+        } else {
+          // Non-fatal: show an error but continue with original prompt
+          if (res && res.error) toast.error(res.error);
+        }
+      } catch (e) {
+        console.error('Prompt enhancement failed:', e);
+        toast.error('Prompt enhancement failed');
+      } finally {
+        setIsEnhancing(false);
+      }
+    }
+
     // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
     postGenerationBlockRef.current = true;
 
@@ -978,9 +1006,7 @@ const InputBox = () => {
     try {
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
-  // debug removed
     } catch (creditError: any) {
-  // debug removed
       toast.error(creditError.message || 'Insufficient credits for generation');
       setIsGeneratingLocally(false);
       setLocalGeneratingEntries([]);
@@ -992,7 +1018,7 @@ const InputBox = () => {
     const tempEntryId = `loading-${Date.now()}`;
     const tempEntry: HistoryEntry = {
       id: tempEntryId,
-      prompt,
+      prompt: finalPrompt,
       model: selectedModel,
       generationType: 'text-to-image',
       frameSize: frameSize || undefined,
@@ -1167,7 +1193,7 @@ const InputBox = () => {
 
             // Make direct API call to avoid creating multiple history entries
             console.log(`=== MAKING RUNWAY API CALL FOR IMAGE ${index + 1} ===`);
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const combinedImages = getCombinedUploadedImages();
             console.log('API payload:', {
               promptText: `${promptAdjusted} [Style: ${style}]`,
@@ -1470,7 +1496,7 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const result = await dispatch(
             generateMiniMaxImages({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -1527,7 +1553,7 @@ const InputBox = () => {
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -1579,7 +1605,7 @@ const InputBox = () => {
       } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
         // Imagen 4 models via FAL generate endpoint
         try {
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -1636,7 +1662,7 @@ const InputBox = () => {
           const seedreamAllowedAspect = new Set([
             'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
           ]);
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const payload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: 'bytedance/seedream-4',
@@ -1700,7 +1726,7 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-turbo',
@@ -1776,7 +1802,7 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-quality',
@@ -1851,7 +1877,7 @@ const InputBox = () => {
           // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'leonardoai/lucid-origin',
@@ -2019,7 +2045,7 @@ const InputBox = () => {
           }
 
           // Call local image generation proxy (server uploads to Firebase)
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(bflGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -2059,7 +2085,7 @@ const InputBox = () => {
           // flux-dev uses frameSize conversion (handled in API route)
           const isFluxProModel = selectedModel === "flux-pro-1.1" || selectedModel === "flux-pro-1.1-ultra" || selectedModel === "flux-pro";
 
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           let generationPayload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -2182,6 +2208,64 @@ const InputBox = () => {
       setTimeout(() => { postGenerationBlockRef.current = false; }, 2500);
       // Reset the base_resp toast guard for next run
       runwayBaseRespToastShownRef.current = false;
+    }
+  };
+
+  // Handle manual prompt enhancement (button)
+  const handleEnhancePrompt = async () => {
+    if (isEnhancing) return;
+    if (!prompt || !prompt.trim()) {
+      toast('Please enter a prompt to enhance');
+      return;
+    }
+
+    try {
+      setIsEnhancing(true);
+      const res = await enhancePromptAPI(prompt, selectedModel);
+      if (res.ok && res.enhancedPrompt) {
+        const enhancedPrompt = res.enhancedPrompt;
+        
+        // Update Redux state - this will trigger the useEffect that calls updateContentEditable
+        dispatch(setPrompt(enhancedPrompt));
+        
+        // Immediately update the contentEditable element for instant visual feedback
+        // This bypasses any Redux state propagation delays
+        const el = contentEditableRef.current as HTMLElement | null;
+        if (el) {
+          // Set text content directly for immediate update
+          el.textContent = enhancedPrompt;
+          
+          // Focus and position cursor at end
+          el.focus();
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          if (sel) { 
+            sel.removeAllRanges(); 
+            sel.addRange(range); 
+          }
+        }
+        
+        // Let updateContentEditable run after Redux state has updated to properly format
+        // with character tags if needed (runs via useEffect watching prompt)
+        // Also call it directly after a brief delay to ensure proper formatting
+        setTimeout(() => {
+          try {
+            updateContentEditable();
+          } catch (err) {
+            console.error('Error in updateContentEditable after enhancement:', err);
+          }
+        }, 100);
+        
+        toast.success('Prompt enhanced');
+      } else {
+        toast.error(res.error || 'Failed to enhance prompt');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to enhance prompt');
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -2601,6 +2685,15 @@ const InputBox = () => {
                 }}
                 data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
               />
+                {/* Enhancement overlay */}
+                {isEnhancing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-40 rounded-lg pointer-events-none">
+                    <div className="flex items-center gap-2">
+                      <svg className="animate-spin text-white/90" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <div className="text-white/90 text-sm">Enhancing…</div>
+                    </div>
+                  </div>
+                )}
               {/* Fixed position buttons container */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
@@ -2712,6 +2805,23 @@ const InputBox = () => {
                   </div>
                 )}
                <div className="relative flex items-center gap-1.5 -mr-1 -mt-1.5">
+                  {/* Enhance prompt button (manual trigger) */}
+                  <div className="relative">
+                    <button
+                      onClick={handleEnhancePrompt}
+                      disabled={isEnhancing || !prompt.trim()}
+                      type="button"
+                      title="Enhance prompt"
+                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition flex items-center gap-1 text-sm text-white/90"
+                      aria-pressed={isEnhancing}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+                        <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
+                        <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance</div>
+                  </div>
                   <div className="relative">
                     <button
                       className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
@@ -2841,10 +2951,11 @@ const InputBox = () => {
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
-                disabled={isGeneratingLocally || !prompt.trim()}
+                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                aria-busy={isEnhancing}
               >
-                {isGeneratingLocally ? "Generating..." : "Generate"}
+                {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
               </button>
             </div></div>
             </div>
