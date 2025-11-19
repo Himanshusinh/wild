@@ -457,21 +457,21 @@ const InputBox = () => {
                     setLogoFile(null);
                   }
                 }}
-                className="text-white text-sm"
+                className="text-sm"
               />
               <input
                 type="text"
                 placeholder="Business name"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                className="bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none border-b border-white/10 py-1"
+                className="bg-white text-gray-800 placeholder-gray-400 outline-none text-[15px] leading-none border border-gray-200 py-2 px-3 rounded-lg"
               />
               <input
                 type="text"
                 placeholder="Tagline (optional)"
                 value={businessTagline}
                 onChange={(e) => setBusinessTagline(e.target.value)}
-                className="bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-none border-b border-white/10 py-1"
+                className="bg-white text-gray-800 placeholder-gray-400 outline-none text-[15px] leading-none border border-gray-200 py-2 px-3 rounded-lg"
               />
             </div>
             <div className="flex flex-col items-end gap-2">

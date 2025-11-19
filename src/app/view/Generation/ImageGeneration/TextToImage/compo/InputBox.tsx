@@ -17,6 +17,7 @@ import {
   generateMiniMaxImages,
   setUploadedImages,
   setSelectedModel,
+  setImageCount,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
@@ -1975,232 +1976,146 @@ const InputBox = () => {
         </div>
       )}
       <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 md:w-[60%] lg:w-[90%] w-[94%] md:max-w-[60%] z-[60] h-auto">
-        <div className="rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl">
-          {/* Top row: prompt + actions */}
-          <div className="flex items-start gap-2 md:gap-0 p-2 md:p-3 pr-2 md:pr-3">
-            <div className="flex-1 flex items-start gap-1.5 md:gap-2 bg-transparent rounded-lg pr-2 md:pr-4 pl-1.5 md:pl-2 py-1.5 md:py-2.5 w-full relative">
-              <textarea
-                ref={inputEl}
-                placeholder="Type your prompt..."
-                value={prompt}
-                onChange={(e) => {
-                  dispatch(setPrompt(e.target.value));
-                  adjustTextareaHeight(e.target);
-                }}
-                spellCheck={true}
-                lang="en"
-                autoComplete="off"
-                autoCorrect="on"
-                autoCapitalize="on"
-                className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm md:text-[15px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
-                  }`}
-                rows={1}
-                style={{
-                  minHeight: '20px',
-                  maxHeight: '80px',
-                  lineHeight: '1.2',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
-                }}
-              />
-              {/* Fixed position buttons container */}
-              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                {/* Clear prompt button - only show when there's text */}
-                {prompt.trim() && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => {
-                        dispatch(setPrompt(''));
-                        if (inputEl.current) {
-                          inputEl.current.focus();
-                        }
-                      }}
-                      className="px-1 py-1 md:px-1.5 md:py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs md:text-sm font-medium transition-colors duration-200 flex items-center gap-1"
-                      aria-label="Clear prompt"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-white/80 md:w-[18px] md:h-[18px]"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+        <div className="group rounded-lg md:rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl p-3">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <div className="bg-white rounded-lg px-3 py-2 flex items-center gap-3">
+                <textarea
+                  ref={inputEl}
+                  placeholder="Write your prompt..."
+                  value={prompt}
+                  onChange={(e) => {
+                    dispatch(setPrompt(e.target.value));
+                    adjustTextareaHeight(e.target);
+                  }}
+                  spellCheck={true}
+                  lang="en"
+                  autoComplete="off"
+                  autoCorrect="on"
+                  autoCapitalize="on"
+                  className={`flex-1 bg-white text-black placeholder-gray-400 outline-none text-sm md:text-[15px] leading-relaxed resize-none overflow-y-auto`}
+                  rows={1}
+                  style={{ minHeight: '20px', maxHeight: '120px', lineHeight: '1.2' }}
+                />
+
+                <div className="flex items-center gap-2">
+                  {/* Inline hover-controls: appear when the outer group is hovered */}
+                  <div className="hidden md:flex items-center gap-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all">
+                    <div className="h-8 flex items-center rounded-md border border-white/20 bg-white px-1">
+                      <ModelsDropdown imageOnly={true} />
+                    </div>
+                    <div className="h-8 flex items-center rounded-md border border-white/20 px-2">
+                      <ImageCountDropdown light={true} />
+                    </div>
+                    <div className="h-8 flex items-center rounded-md border border-white/20 px-2">
+                      <FrameSizeDropdown light={true} />
+                    </div>
                   </div>
-                )}
-                {/* Previews just to the left of upload */}
-                {uploadedImages.length > 0 && (
-                  <div className="flex items-center gap-1 md:gap-1.5">
-                    {uploadedImages.map((u: string, i: number) => (
-                      <div
-                        key={i}
-                        className="relative w-8 h-8 md:w-12 md:h-12 rounded-md overflow-hidden ring-1 ring-white/20 group"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={u}
-                          alt={`ref-${i}`}
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <button
-                          aria-label="Remove reference"
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const next = uploadedImages.filter(
-                              (_: string, idx: number) => idx !== i
-                            );
-                            dispatch(setUploadedImages(next));
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="relative group">
+
+                  {uploadedImages && uploadedImages.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      {uploadedImages.map((u: string, i: number) => (
+                        <div key={`up-${i}`} className="relative w-10 h-10 rounded-md overflow-hidden bg-gray-100">
+                          <Image src={u} alt={`upload-${i}`} width={40} height={40} className="object-cover" />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); const next = uploadedImages.filter((_: string, idx: number) => idx !== i); dispatch(setUploadedImages(next)); }}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white shadow flex items-center justify-center text-red-500"
+                            aria-label="Remove"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <button
-                    className="p-1 md:p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0"
+                    className="p-1.5 rounded-md bg-white/50 hover:bg-gray-100 transition"
                     onClick={() => setIsUploadOpen(true)}
-                    type="button"
                     aria-label="Upload"
+                    type="button"
                   >
-                    <Image src="/icons/fileupload.svg" alt="Attach" width={16} height={16} className="opacity-90 md:w-[18px] md:h-[18px]" />
-                    <span className="text-white text-sm"> </span>
+                    <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} />
                   </button>
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload Image</div>
+
+                  {/* Inline image count +/- control (bounded 1..4) */}
+                  <div className="flex items-center gap-1 pl-1 pr-1">
+                    <button
+                      aria-label="Decrease images"
+                      onClick={() => dispatch(setImageCount(Math.max(1, imageCount - 1)))}
+                      disabled={imageCount <= 1}
+                      className="w-7 h-7 rounded-md bg-white/90 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center text-sm"
+                      type="button"
+                    >
+                      -
+                    </button>
+                    <div className="w-8 text-center text-sm text-gray-700">{imageCount}</div>
+                    <button
+                      aria-label="Increase images"
+                      onClick={() => dispatch(setImageCount(Math.min(4, imageCount + 1)))}
+                      disabled={imageCount >= 4}
+                      className="w-7 h-7 rounded-md bg-white/90 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center text-sm"
+                      type="button"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGeneratingLocally || !prompt.trim()}
+                    aria-label="Send"
+                    className="ml-1 w-9 h-9 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-60 flex items-center justify-center"
+                  >
+                    <ChevronUp className="w-4 h-4 rotate-180" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 mr-2 hidden md:inline">Model</span>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center gap-2 ring-1 ring-white/20 hover:border-[#3b82f6] transition">
+                      <ModelsDropdown imageOnly={true} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="bg-gray-100 rounded-full px-2 py-1 text-sm flex items-center gap-2 ring-1 ring-white/20">
+                    <span className="text-gray-600 hidden md:inline">Seconds</span>
+                    <ImageCountDropdown light={true} />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center gap-2 ring-1 ring-white/20 hover:border-[#3b82f6] transition">
+                    <FrameSizeDropdown light={true} />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="bg-transparent hidden md:flex items-center gap-2">
+                    <StyleSelector />
+                    <LucidOriginOptions />
+                    <PhoenixOptions />
+                    <FileTypeDropdown />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Fixed position Generate button */}
-            <div className="flex flex-col items-end gap-1 md:gap-2 flex-shrink-0">
+            <div className="flex flex-col items-end gap-2">
               {error && <div className="text-red-500 text-xs md:text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
                 disabled={isGeneratingLocally || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-3 py-1.5 md:px-6 md:py-2.5 rounded-lg text-xs md:text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
+                className="hidden md:inline bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                {isGeneratingLocally ? (
-                  <>
-                    <svg className="w-5 h-5 md:hidden animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 6v6l4 2" />
-                    </svg>
-                    <span className="hidden md:inline">Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5 md:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 19V5M5 12l7-7 7 7" />
-                    </svg>
-                    <span className="hidden md:inline">Generate</span>
-                  </>
-                )}
+                {isGeneratingLocally ? 'Generating...' : 'Generate'}
               </button>
-            </div>
-          </div>
-
-          {/* Bottom row: pill options */}
-          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 px-2 md:px-3 pb-2 md:pb-3">
-            {/* Selection Summary */}
-            {/* <div className="flex items-center gap-2 text-xs text-white/60 bg-white/5 px-3 py-1.5 rounded-lg transition-all duration-300">
-            <span>Selected:</span>
-            <span className="text-white/80 font-medium flex flex-wrap gap-1">
-              {selectedModel !== 'flux-dev' && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
-                  {selectedModel.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                </span>
-              )}
-              {imageCount !== 1 && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
-                  {imageCount} Image{imageCount > 1 ? 's' : ''}
-                </span>
-              )}
-              {frameSize !== '1:1' && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
-                  {frameSize}
-                </span>
-              )}
-              {style !== 'realistic' && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded animate-pulse">
-                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                </span>
-              )}
-              {(selectedModel === 'flux-dev' && imageCount === 1 && frameSize === '1:1' && style === 'realistic') && (
-                <span className="text-white/40">Default settings</span>
-              )}
-            </span>
-          </div> */}
-
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-3 flex-1 min-w-0">
-              <ModelsDropdown />
-              <ImageCountDropdown />
-              <FrameSizeDropdown />
-              <StyleSelector />
-              <LucidOriginOptions />
-              <PhoenixOptions />
-              <FileTypeDropdown />
-              {selectedModel === 'seedream-v4' && (
-                <div className="flex items-center gap-2 relative">
-                  <div className="relative dropdown-container">
-                    <button
-                      onClick={() => dispatch(toggleDropdown('seedreamSize'))}
-                        className="h-[28px] md:h-[32px] px-3 md:px-4 rounded-lg text-xs md:text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1.5 md:gap-2"
-                    >
-                      {seedreamSize}
-                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'seedreamSize' && (
-                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                        {['1K','2K','4K','custom'].map((opt) => (
-                          <button
-                            key={opt}
-                            onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
-                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <span>{opt}</span>
-                            {seedreamSize === opt && (
-                              <span className="w-2 h-2 bg-black rounded-full"></span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {seedreamSize === 'custom' && (
-                    <>
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamWidth}
-                        onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
-                        placeholder="Width"
-                        className="h-[28px] md:h-[32px] w-20 md:w-24 px-2 md:px-3 rounded-lg text-xs md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamHeight}
-                        onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
-                        placeholder="Height"
-                        className="h-[28px] md:h-[32px] w-20 md:w-24 px-2 md:px-3 rounded-lg text-xs md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
