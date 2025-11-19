@@ -562,11 +562,24 @@ const InputBox = () => {
       // Merge additional operation entries (dedup by id)
       const extra = additionalOpEntries.filter(it => !baseFiltered.some((e: any) => e.id === it.id));
       const combined = [...baseFiltered, ...extra];
+      // Sort strictly by createdAt/timestamp DESC so the newest (including vectorize/upscale/edit)
+      // operations appear first immediately after completion. History page relies on server ordering;
+      // the merge here could previously place freshly fetched operation entries in the middle.
+      const sortedCombined = combined.slice().sort((a: any, b: any) => {
+        const getTs = (x: any) => {
+          // Prefer updatedAt (completion time) then createdAt then fallback timestamp
+          const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+          const t = typeof raw === 'string' ? raw : (raw && raw.toString ? raw.toString() : '');
+          const ms = Date.parse(t);
+          return Number.isNaN(ms) ? 0 : ms;
+        };
+        return getTs(b) - getTs(a);
+      });
       console.log('🖼️ Image Generation - All entries:', allEntries.length);
-      console.log('🖼️ Image Generation - Filtered base:', baseFiltered.length, 'Extra ops:', extra.length, 'Combined:', combined.length);
+      console.log('🖼️ Image Generation - Filtered base:', baseFiltered.length, 'Extra ops:', extra.length, 'Combined (pre-sort):', combined.length);
       console.log('🖼️ Image Generation - Current page:', page);
       console.log('🖼️ Image Generation - Has more:', hasMore);
-      return combined;
+      return sortedCombined;
     },
     shallowEqual
   );
@@ -1593,6 +1606,10 @@ const InputBox = () => {
           }
         } catch (error) {
           console.error('FAL generate failed:', error);
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
 
           // Handle credit failure
           if (transactionId) {
@@ -1649,6 +1666,11 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1676,7 +1698,20 @@ const InputBox = () => {
             payload.width = Math.max(1024, Math.min(4096, Number(seedreamWidth) || 2048));
             payload.height = Math.max(1024, Math.min(4096, Number(seedreamHeight) || 2048));
           }
-          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10).map((u: string) => toAbsoluteFromProxy(u));
+          // Filter out SVG files - Seedream doesn't support SVG as input
+          if (uploadedImages && uploadedImages.length > 0) {
+            const validImages = uploadedImages
+              .slice(0, 10)
+              .map((u: string) => toAbsoluteFromProxy(u))
+              .filter((url: string) => {
+                // Exclude SVG files (vectorized images)
+                const lowerUrl = url.toLowerCase();
+                return !lowerUrl.includes('.svg') && !lowerUrl.includes('vectorized');
+              });
+            if (validImages.length > 0) {
+              payload.image_input = validImages;
+            }
+          }
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
           try {
@@ -1707,6 +1742,11 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1783,6 +1823,11 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1859,6 +1904,11 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1931,6 +1981,11 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2002,6 +2057,11 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2158,6 +2218,7 @@ const InputBox = () => {
       // Clear local generating entries on error - don't show generating logo or failed state
       setLocalGeneratingEntries([]);
       setIsGeneratingLocally(false);
+      postGenerationBlockRef.current = false;
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id

@@ -133,113 +133,117 @@ export default function ArtStationPreview({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20" onClick={onClose}>
+                  <button aria-label="Close" className="text-white hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+
       <div className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}>
+          
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
           <div className="text-white/70 text-sm"></div>
-          <div className="flex items-center gap-2">
-            {/* Delete (owner only) */}
-            {currentUid && preview.item.createdBy?.uid === currentUid && (
+        </div>
+
+        {/* Action buttons */}
+        <div className="absolute top-6 right-8 z-20">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="relative group">
+              <button
+                onClick={async () => {
+                  const currentMedia = (() => {
+                    if (preview.kind === 'image') {
+                      const images = (preview.item.images || []) as any[]
+                      return images[selectedImageIndex] || images[0] || { url: preview.url }
+                    } else if (preview.kind === 'video') {
+                      const videos = (preview.item.videos || []) as any[]
+                      return videos[selectedVideoIndex] || videos[0] || { url: preview.url }
+                    } else {
+                      const audios = (preview.item as any).audios || []
+                      return audios[selectedAudioIndex] || audios[0] || { url: preview.url }
+                    }
+                  })()
+
+                  try {
+                    let downloadUrl = currentMedia.url
+                    if (downloadUrl.startsWith('/api/proxy/resource/')) {
+                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+                      downloadUrl = `${API_BASE}${downloadUrl}`
+                    }
+                    const fileType = preview.kind as 'image' | 'video' | 'audio'
+                    const creatorUsername = preview.item.createdBy?.username || preview.item.createdBy?.displayName || 'user'
+                    await downloadFileWithNaming(downloadUrl, creatorUsername, fileType)
+                  } catch (e) {
+                    console.error('Download failed:', e)
+                  }
+                }}
+                className="w-20 h-10 flex  items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors "
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M12 3v12" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M5 19h14" />
+                </svg>
+              </button>
+              <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 backdrop-blur-3xl shadow-2xl">Download</div>
+            </div>
+
+            <div className="relative group">
+              <button
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/view/ArtStation?gen=${preview.item.id}`
+                  if (navigator.share) {
+                    navigator.share({
+                      title: 'Check out this AI generation',
+                      text: preview.item.prompt || 'Amazing AI-generated content',
+                      url: shareUrl
+                    })
+                  } else {
+                    navigator.clipboard.writeText(shareUrl)
+                    alert('Link copied to clipboard!')
+                  }
+                }}
+                className="w-20 h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                  <polyline points="16,6 12,2 8,6" />
+                  <line x1="12" y1="2" x2="12" y2="15" />
+                </svg>
+              </button>
+              <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+            </div>
+
+            <div className="relative group">
+              {(() => {
+                const isLiked = previewCardId ? likedCards.has(previewCardId) : false
+                return (
+                  <button
+                    onClick={() => { if (previewCardId) toggleLike(previewCardId) }}
+                    className="w-20 h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={isLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                  </button>
+                )
+              })()}
+              <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Like</div>
+            </div>
+
+            {/* Delete button (owner only) - on same row as Like button */}
+            {currentUid && preview.item.createdBy?.uid === currentUid ? (
               <div className="relative group">
                 <button
                   title="Delete"
-                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  className="w-20 h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
                   onClick={() => onConfirmDelete(preview.item)}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Delete</div>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
               </div>
+            ) : (
+              <div className="w-10 h-10"></div>
             )}
-
-            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="absolute top-12 right-8 z-20 flex items-center justify-between w-auto gap-2 ">
-          <div className="relative group">
-            <button
-              onClick={async () => {
-                const currentMedia = (() => {
-                  if (preview.kind === 'image') {
-                    const images = (preview.item.images || []) as any[]
-                    return images[selectedImageIndex] || images[0] || { url: preview.url }
-                  } else if (preview.kind === 'video') {
-                    const videos = (preview.item.videos || []) as any[]
-                    return videos[selectedVideoIndex] || videos[0] || { url: preview.url }
-                  } else {
-                    const audios = (preview.item as any).audios || []
-                    return audios[selectedAudioIndex] || audios[0] || { url: preview.url }
-                  }
-                })()
-
-                try {
-                  let downloadUrl = currentMedia.url
-                  if (downloadUrl.startsWith('/api/proxy/resource/')) {
-                    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-                    downloadUrl = `${API_BASE}${downloadUrl}`
-                  }
-                  const fileType = preview.kind as 'image' | 'video' | 'audio'
-                  const creatorUsername = preview.item.createdBy?.username || preview.item.createdBy?.displayName || 'user'
-                  await downloadFileWithNaming(downloadUrl, creatorUsername, fileType)
-                } catch (e) {
-                  console.error('Download failed:', e)
-                }
-              }}
-              className="w-[6vw]  flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <path d="M12 3v12" />
-                <path d="M7 10l5 5 5-5" />
-                <path d="M5 19h14" />
-              </svg>
-            </button>
-            <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2  bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 backdrop-blur-3xl shadow-2xl">Download</div>
-          </div>
-
-          <div className="relative group ">
-            <button
-              onClick={() => {
-                const shareUrl = `${window.location.origin}/view/ArtStation?gen=${preview.item.id}`
-                if (navigator.share) {
-                  navigator.share({
-                    title: 'Check out this AI generation',
-                    text: preview.item.prompt || 'Amazing AI-generated content',
-                    url: shareUrl
-                  })
-                } else {
-                  navigator.clipboard.writeText(shareUrl)
-                  alert('Link copied to clipboard!')
-                }
-              }}
-              className="w-[6vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                <polyline points="16,6 12,2 8,6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            </button>
-            <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
-          </div>
-
-          <div className="relative group ">
-            {(() => {
-              const isLiked = previewCardId ? likedCards.has(previewCardId) : false
-              return (
-                <button
-                  onClick={() => { if (previewCardId) toggleLike(previewCardId) }}
-                  className="w-[6vw] flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={isLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
-                  </svg>
-                </button>
-              )
-            })()}
-            <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Like</div>
           </div>
         </div>
 
@@ -478,22 +482,38 @@ export default function ArtStationPreview({
             </div>
 
             {/* Open in generator button */}
-            <div className="mt-6">
-              <button
-                onClick={() => {
-                  onClose()
-                  const images = (preview.item.images || []) as any[]
-                  const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                  const url = img?.url || preview.url
-                  const dest = new URL(window.location.origin + '/text-to-image')
-                  dest.searchParams.set('image', url)
-                  window.location.href = dest.toString()
-                }}
-                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
-              >
-                Remix
-              </button>
-            </div>
+            {(() => {
+              // Check if this is a vectorize generation (should hide Remix button)
+              const generationType = preview.item.generationType || ''
+              const normalizedGenType = String(generationType).toLowerCase().replace(/[_-]/g, '-')
+              const isVectorizeGeneration = normalizedGenType === 'vectorize' || 
+                                           normalizedGenType === 'image-vectorize' || 
+                                           normalizedGenType === 'image-to-svg' ||
+                                           normalizedGenType === 'image_to_svg' ||
+                                           normalizedGenType.includes('vector')
+              
+              // Hide Remix button for vectorize generations
+              if (isVectorizeGeneration) return null
+              
+              return (
+                <div className="mt-6">
+                  <button
+                    onClick={() => {
+                      onClose()
+                      const images = (preview.item.images || []) as any[]
+                      const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+                      const url = img?.url || preview.url
+                      const dest = new URL(window.location.origin + '/text-to-image')
+                      dest.searchParams.set('image', url)
+                      window.location.href = dest.toString()
+                    }}
+                    className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+                  >
+                    Remix
+                  </button>
+                </div>
+              )
+            })()}
           </div>
         </div>
 

@@ -1347,13 +1347,12 @@ const EditImageInterface: React.FC = () => {
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-          // Refresh history to show vectorize entries in image generation page
+          // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
+          // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
             await (dispatch as any)(loadHistory({
-              filters: { generationType: ['image-to-svg'] as any },
-              paginationParams: { limit: 50 },
+              paginationParams: { limit: 60 },
               requestOrigin: 'page',
-              expectedType: 'text-to-image',
               debugTag: `refresh-after-vectorize:${Date.now()}`,
             }));
           } catch {}
@@ -1378,13 +1377,12 @@ const EditImageInterface: React.FC = () => {
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-          // Refresh history to show vectorize entries in image generation page
+          // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
+          // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
             await (dispatch as any)(loadHistory({
-              filters: { generationType: ['image-to-svg'] as any },
-              paginationParams: { limit: 50 },
+              paginationParams: { limit: 60 },
               requestOrigin: 'page',
-              expectedType: 'text-to-image',
               debugTag: `refresh-after-vectorize:${Date.now()}`,
             }));
           } catch {}
