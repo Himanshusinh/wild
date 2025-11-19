@@ -617,8 +617,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             {/* Your Uploads (images/videos) */}
             {(inputImages.length + inputVideos.length) > 0 && (
               <div className="mb-4">
-                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads ({inputImages.length + inputVideos.length})</div>
-                <div className="grid grid-cols-4 gap-2">
+                                {/* <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads ({inputImages.length + inputVideos.length})</div> */}
+
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads </div>
+                <div className="grid grid-cols-2 gap-2">
                   {inputImages.map((img: any, idx: number) => {
                     const src = toResourceProxy(img?.storagePath || img?.url || img?.firebaseUrl || img?.originalUrl || '');
                     if (!src) return null;
