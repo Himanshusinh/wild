@@ -118,17 +118,20 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     // Final fallback: use a generic name
     characterName = characterName || `Character ${entry.id.slice(-6)}`;
     
-    // For text-to-character, use the generated character image (first image in images array)
-    // NOT the input image. The generated character is what should be used.
+    // For text-to-character, use first generated output image (entry.images[0])
     const generatedCharacterImage = entry.images?.[0];
-    // Prioritize url, then originalUrl, with fallback to Logo.gif
-    // SmartImage will handle URL normalization and optimization internally
-    const frontImageUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl || '/styles/Logo.gif';
-    
-    // Extract optimized image properties if available (these will be passed to SmartImage)
-    const thumbnailUrl = generatedCharacterImage?.thumbnailUrl;
+
+    // Support multiple possible provider / post-processing fields. Some generations
+    // only have avif/webp/thumbnail/firebaseUrl early, and "url" is populated later.
+    const thumbnailUrl = generatedCharacterImage?.thumbnailUrl || generatedCharacterImage?.webpUrl;
     const avifUrl = generatedCharacterImage?.avifUrl;
+    const firebaseUrl = generatedCharacterImage?.firebaseUrl;
+    const rawUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl;
     const blurDataUrl = generatedCharacterImage?.blurDataUrl;
+
+    // Choose the best available preview source. This is what SmartImage will fall back to
+    // if thumbnail/avif are not provided.
+    const frontImageUrl = thumbnailUrl || avifUrl || firebaseUrl || rawUrl || '/styles/Logo.gif';
     
     return {
       id: entry.id,

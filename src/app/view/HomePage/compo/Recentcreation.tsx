@@ -47,9 +47,34 @@ const normalizeImageUrl = (image: any): string => {
     if (directUrl) return directUrl;
   }
   
-  // Priority 2: Use url or firebaseUrl
-  const url = image.url || image.firebaseUrl || '';
-  if (!url) return '';
+  // Priority 2: Use url or firebaseUrl (prefer regular url over avifUrl for display)
+  // Prefer non-AVIF URLs for main display, but fallback to AVIF if that's all we have
+  let url = image.url || image.firebaseUrl || image.originalUrl || '';
+  
+  // If the url is an AVIF URL, try to find a non-AVIF alternative
+  if (url && (url.includes('.avif') || url.includes('_optimized') || url.includes('_thumb'))) {
+    // Try to find a non-AVIF URL first
+    if (image.originalUrl && !image.originalUrl.includes('.avif') && !image.originalUrl.includes('_optimized') && !image.originalUrl.includes('_thumb')) {
+      url = image.originalUrl;
+    } else if (image.firebaseUrl && !image.firebaseUrl.includes('.avif') && !image.firebaseUrl.includes('_optimized') && !image.firebaseUrl.includes('_thumb')) {
+      url = image.firebaseUrl;
+    } else {
+      // If we only have AVIF URLs, try to construct the base URL
+      // Remove AVIF-specific suffixes
+      url = url.replace(/_optimized\.avif$/, '').replace(/_thumb\.avif$/, '').replace(/\.avif$/, '');
+      // If we still have an AVIF URL, keep it as fallback
+      if (!url || url.includes('.avif')) {
+        url = image.url || image.firebaseUrl || image.originalUrl || '';
+      }
+    }
+  }
+  
+  // If still no url, try avifUrl or thumbnailUrl as last resort (better than nothing)
+  if (!url || url.trim() === '') {
+    url = image.avifUrl || image.thumbnailUrl || '';
+  }
+  
+  if (!url || url.trim() === '') return '';
   
   // If it's already a full URL, return it
   if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -693,7 +718,7 @@ const Recentcreation: React.FC = () => {
                           loop
                           playsInline
                           preload="metadata"
-                          poster={toThumbUrl(item.src, { w: 640, q: 60 }) || undefined}
+                          poster={toThumbUrl(item.src, { w: 640, q: 60 , fmt:'avif'}) || undefined}
                           onLoadedMetadata={(e) => {
                             const video = e.target as HTMLVideoElement
                             const w = video.videoWidth || 1
@@ -748,9 +773,17 @@ const Recentcreation: React.FC = () => {
                     // Match by comparing normalized URLs or original URLs
                     const imgObj: any = ((item.entry.images || []) as any).find((im: any) => {
                       const imUrl = normalizeImageUrl(im);
-                      const imOriginalUrl = im.url || im.firebaseUrl || '';
-                      return imUrl === item.src || imOriginalUrl === item.src || 
-                             (im.storagePath && toDirectUrl(im.storagePath) === item.src);
+                      const imOriginalUrl = im.url || im.firebaseUrl || im.originalUrl || '';
+                      const imAvifUrl = im.avifUrl || '';
+                      const imStoragePath = im.storagePath ? toDirectUrl(im.storagePath) : '';
+                      // Match by normalized URL, original URL, AVIF URL, or storage path
+                      return imUrl === item.src || 
+                             imOriginalUrl === item.src || 
+                             imAvifUrl === item.src ||
+                             imStoragePath === item.src ||
+                             (im.storagePath && toDirectUrl(im.storagePath) === item.src) ||
+                             // Also match if the base URL (without AVIF suffix) matches
+                             (item.src && imOriginalUrl && item.src.replace(/\.(avif|jpg|jpeg|png)$/i, '') === imOriginalUrl.replace(/\.(avif|jpg|jpeg|png)$/i, ''));
                     }) || ({} as any);
                     const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
                     const avif: string | undefined = imgObj?.avifUrl || undefined;

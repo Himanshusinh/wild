@@ -19,7 +19,6 @@ export function toZataPath(urlOrPath: string): string {
 export function toThumbUrl(urlOrPath: string, opts?: { w?: number; q?: number; fmt?: 'auto' | 'webp' | 'avif'; t?: number }): string {
   const path = toZataPath(urlOrPath)
   if (!path) return ''
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
   const w = opts?.w ?? 512
   const q = opts?.q ?? 60
   const fmt = opts?.fmt
@@ -29,7 +28,8 @@ export function toThumbUrl(urlOrPath: string, opts?: { w?: number; q?: number; f
   params.set('q', String(q))
   if (fmt) params.set('fmt', fmt)
   if (typeof t === 'number') params.set('t', String(t))
-  return `${base}/api/proxy/thumb/${encodeURIComponent(path)}?${params.toString()}`
+  // Use same-origin Next.js API route to avoid cross-origin issues
+  return `/api/proxy/thumb/${encodeURIComponent(path)}?${params.toString()}`
 }
 
 export function toMediaProxy(urlOrPath: string): string {
