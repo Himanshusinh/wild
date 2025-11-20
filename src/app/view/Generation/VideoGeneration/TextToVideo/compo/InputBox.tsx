@@ -1390,13 +1390,130 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Local, ephemeral preview entry for video generations
   const [localVideoPreview, setLocalVideoPreview] = useState<HistoryEntry | null>(null);
+  
+  // Track which videos have loaded to hide loading effects
+  const [loadedVideos, setLoadedVideos] = useState<Set<string>>(new Set());
+  
+  // Track entries that have been added to history to prevent duplicate rendering
+  const historyEntryIdsRef = useRef<Set<string>>(new Set());
+  
+  // Get current entries from Redux
+  const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
+  
   useEffect(() => {
     if (!localVideoPreview) return;
+    
+    // Check if this entry already exists in Redux history
+    const entryId = localVideoPreview.id;
+    const entryFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+    
+    // FIRST: Check ref (updated immediately when entry is added to history)
+    const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
+                       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
+    
+    // SECOND: Check Redux state
+    const existsInHistory = existingEntries.some((e: HistoryEntry) => {
+      const eId = e.id;
+      const eFirebaseId = (e as any)?.firebaseHistoryId;
+      if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
+      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
+      return false;
+    });
+    
+    // CRITICAL: If entry exists in ref OR history, immediately clear local preview
+    if (existsInRef || existsInHistory) {
+      setLocalVideoPreview(null);
+      return;
+    }
+    
+    // If entry completes/fails but not in history yet, clear after delay
     if (localVideoPreview.status === 'completed' || localVideoPreview.status === 'failed') {
       const t = setTimeout(() => setLocalVideoPreview(null), 1500);
       return () => clearTimeout(t);
     }
-  }, [localVideoPreview]);
+  }, [localVideoPreview, existingEntries]);
+
+  // Function to fetch and add/update a single generation instead of reloading all
+  const refreshSingleGeneration = async (historyId: string) => {
+    try {
+      const client = axiosInstance;
+      const res = await client.get(`/api/generations/${historyId}`);
+      const item = res.data?.data?.item;
+      if (!item) {
+        console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
+        dispatch(loadHistory({ 
+          filters: { mode: 'video' } as any, 
+          paginationParams: { limit: 50 },
+          requestOrigin: 'page',
+          expectedType: 'text-to-video',
+          debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+        } as any));
+        return;
+      }
+      
+      // Normalize the item to match HistoryEntry format
+      const created = item?.createdAt || item?.updatedAt || item?.timestamp;
+      const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+      const normalizedEntry: HistoryEntry = {
+        ...item,
+        id: item.id || historyId,
+        timestamp: iso,
+        createdAt: iso,
+      } as HistoryEntry;
+      
+      // Check if entry already exists in current Redux state
+      const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
+      
+      // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
+      historyEntryIdsRef.current.add(historyId);
+      if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
+      if ((normalizedEntry as any)?.firebaseHistoryId) {
+        historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
+      }
+      
+      if (exists) {
+        dispatch(updateHistoryEntry({ 
+          id: historyId, 
+          updates: {
+            status: normalizedEntry.status,
+            images: normalizedEntry.images,
+            videos: normalizedEntry.videos,
+            timestamp: normalizedEntry.timestamp,
+          }
+        }));
+      } else {
+        dispatch(addHistoryEntry(normalizedEntry));
+      }
+      
+      // CRITICAL: Immediately clear local preview when history entry is added/updated
+      setLocalVideoPreview((prev) => {
+        if (!prev) return null;
+        
+        const prevId = prev.id;
+        const prevFirebaseId = (prev as any)?.firebaseHistoryId;
+        
+        // Check if IDs match
+        if (prevId === historyId || prevFirebaseId === historyId) return null;
+        if (normalizedEntry.id && (prevId === normalizedEntry.id || prevFirebaseId === normalizedEntry.id)) return null;
+        const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
+        if (normalizedFirebaseId && (prevId === normalizedFirebaseId || prevFirebaseId === normalizedFirebaseId)) return null;
+        
+        // If local preview is completed and we just added a completed history entry, clear it
+        if (prev.status === 'completed' && normalizedEntry.status === 'completed') return null;
+        
+        return prev;
+      });
+    } catch (error) {
+      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
+      dispatch(loadHistory({ 
+        filters: { mode: 'video' } as any, 
+        paginationParams: { limit: 50 },
+        requestOrigin: 'page',
+        expectedType: 'text-to-video',
+        debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+      } as any));
+    }
+  };
 
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
   useEffect(() => {
@@ -3785,16 +3902,20 @@ const InputBox = (props: InputBoxProps = {}) => {
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
 
-  // Schedule a debounced history refresh instead of immediate duplicate fetches
-  dispatch(clearFilters());
-  // Refresh using mode: 'video' to get ALL video types (same as History.tsx)
-  dispatch(loadHistory({ 
-    filters: { mode: 'video' } as any, 
-    paginationParams: { limit: 50 },
-    requestOrigin: 'page',
-    expectedType: 'text-to-video',
-    debugTag: `InputBox:refresh:video-mode:${Date.now()}`
-  } as any));
+  // Refresh only the single completed generation instead of reloading all
+  if (result.historyId) {
+    await refreshSingleGeneration(result.historyId);
+  } else {
+    // Fallback to full refresh if no historyId
+    dispatch(clearFilters());
+    dispatch(loadHistory({ 
+      filters: { mode: 'video' } as any, 
+      paginationParams: { limit: 50 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-video',
+      debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+    } as any));
+  }
 
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -3941,79 +4062,114 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {/* All Videos for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-3 ml-0">
                     {/* Prepend local video preview to today's row to push existing items right */}
-                    {date === todayKey && localVideoPreview && (
-                      <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                        {localVideoPreview.status === 'generating' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-black/90">
-                            <div className="flex flex-col items-center gap-2">
-                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                              <div className="text-xs text-white/60 text-center">Generating...</div>
-                            </div>
-                          </div>
-                        ) : localVideoPreview.status === 'failed' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                            <div className="flex flex-col items-center gap-2">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                              <div className="text-xs text-red-400">Failed</div>
-                            </div>
-                          </div>
-                        ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                          <div className="relative w-full h-full">
-                            <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                          </div>
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                            <div className="text-xs text-white/60">No preview</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {groupedByDate[date].map((entry: HistoryEntry) => {
-                      // More defensive approach to get media items
-                      let mediaItems: any[] = [];
-                      if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
-                        mediaItems = entry.images;
-                      } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-                        mediaItems = entry.videos;
-                      } else {
-                        // Fallback: check if videos are stored in a different structure
-                        console.log(`[VideoPage] No valid media found for entry ${entry.id}, checking structure:`, {
-                          images: entry.images,
-                          videos: entry.videos,
-                          videosType: typeof entry.videos,
-                          videosIsArray: Array.isArray(entry.videos),
-                          videosContent: entry.videos,
-                          allKeys: Object.keys(entry)
-                        });
-                      }
-                      console.log(`[VideoPage] Rendering entry ${entry.id}:`, {
-                        generationType: entry.generationType,
-                        status: entry.status,
-                        imagesCount: entry.images?.length || 0,
-                        videosCount: entry.videos?.length || 0,
-                        mediaItemsCount: mediaItems.length,
-                        images: entry.images,
-                        videos: entry.videos,
-                        videosType: typeof entry.videos,
-                        videosIsArray: Array.isArray(entry.videos),
-                        videosContent: entry.videos
+                    {date === todayKey && localVideoPreview && (() => {
+                      const localEntryId = localVideoPreview.id;
+                      const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+                      
+                      // Check if this local preview already exists in history
+                      const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
+                                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
+                      const existsInHistory = historyEntries.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
                       });
+                      const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      // If entry exists anywhere, don't render local preview
+                      if (existsInRef || existsInHistory || existsInGrouped) {
+                        return null;
+                      }
+                      
+                      // Safety check: if local preview is completed and history exists, don't show it
+                      if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
+                        return null;
+                      }
+                      
+                      return (
+                        <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          {localVideoPreview.status === 'generating' ? (
+                            <div className="w-full h-full flex items-center justify-center bg-black/90">
+                              <div className="flex flex-col items-center gap-2">
+                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                <div className="text-xs text-white/60 text-center">Generating...</div>
+                              </div>
+                            </div>
+                          ) : localVideoPreview.status === 'failed' ? (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                              <div className="flex flex-col items-center gap-2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                </svg>
+                                <div className="text-xs text-red-400">Failed</div>
+                              </div>
+                            </div>
+                          ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                            <div className="relative w-full h-full">
+                              <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                            </div>
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                              <div className="text-xs text-white/60">No preview</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      // Create a set of all local preview IDs for fast lookup
+                      const localPreviewIds = new Set<string>();
+                      if (date === todayKey && localVideoPreview) {
+                        const localEntryId = localVideoPreview.id;
+                        const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+                        if (localEntryId) localPreviewIds.add(localEntryId);
+                        if (localFirebaseId) localPreviewIds.add(localFirebaseId);
+                      }
+                      
+                      // Filter out history entries that match local preview
+                      const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
+                        if (localPreviewIds.size === 0) return true;
+                        const entryId = entry.id;
+                        const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+                        if (entryId && localPreviewIds.has(entryId)) return false;
+                        if (entryFirebaseId && localPreviewIds.has(entryFirebaseId)) return false;
+                        return true;
+                      });
+                      
+                      return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
+                        // More defensive approach to get media items
+                        let mediaItems: any[] = [];
+                        if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
+                          mediaItems = entry.images;
+                        } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+                          mediaItems = entry.videos;
+                        }
 
-                      return mediaItems.map((video: any) => (
-                        <div
-                          key={`${entry.id}-${video.id}`}
-                          data-video-id={`${entry.id}-${video.id}`}
-                          onClick={(e) => {
-                            // Don't open preview if clicking on copy button
-                            if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
-                              return;
-                            }
-                            setPreview({ entry, video });
-                          }}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                        >
+                        return mediaItems.map((video: any, videoIdx: number) => {
+                          const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
+                          const isVideoLoaded = loadedVideos.has(uniqueVideoKey);
+                          
+                          return (
+                            <div
+                              key={uniqueVideoKey}
+                              data-video-id={uniqueVideoKey}
+                              onClick={(e) => {
+                                // Don't open preview if clicking on copy button
+                                if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
+                                  return;
+                                }
+                                setPreview({ entry, video });
+                              }}
+                              className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                            >
                           {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -4082,9 +4238,15 @@ const InputBox = (props: InputBoxProps = {}) => {
                                           videoEl.currentTime = 0;
                                         }
                                       }}
-                                      onLoadStart={() => { /* silent */ }}
-                                      onLoadedData={() => { /* silent */ }}
-                                      onCanPlay={() => { /* silent */ }}
+                                      onLoadStart={() => { 
+                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                      }}
+                                      onLoadedData={() => { 
+                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                      }}
+                                      onCanPlay={() => { 
+                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                      }}
                                     />
                                   );
                                 })()
@@ -4128,8 +4290,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                         </div>
-                      ));
-                    })}
+                        );
+                      });
+                      });
+                    })()}
                   </div>
                 </div>
               ))}
