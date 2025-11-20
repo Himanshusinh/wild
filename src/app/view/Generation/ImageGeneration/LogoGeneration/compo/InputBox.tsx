@@ -101,6 +101,16 @@ const InputBox = () => {
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
   const loadLockRef = useRef(false);
+  
+  // Track which images have loaded to hide shimmer effect
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  
+  // Track entries that have been added to history to prevent duplicate rendering
+  // This ref is updated immediately when entries are added, before React re-renders
+  const historyEntryIdsRef = useRef<Set<string>>(new Set());
+  
+  // Get current entries from Redux (will be updated on each render)
+  const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
 
   // Helpers: clean prompt (remove [Style: ...]) and copy
   const getCleanPrompt = (text: string): string => {
@@ -135,17 +145,125 @@ const InputBox = () => {
   };
 
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
+  // Also check if the entry already exists in Redux history to prevent duplicates
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
-    if (!entry) return;
-    if (entry.status === "completed" || entry.status === "failed") {
-      const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
-      return () => clearTimeout(timer);
+    if (!entry) {
+      return;
     }
-  }, [localGeneratingEntries]);
+    
+    // Check if this entry already exists in Redux history (by id or firebaseHistoryId)
+    const entryId = entry.id;
+    const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+    
+    // FIRST: Check ref (updated immediately when entry is added to history)
+    const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
+                       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
+    
+    // SECOND: Check Redux state
+    const existsInHistory = existingEntries.some((e: HistoryEntry) => {
+      const eId = e.id;
+      const eFirebaseId = (e as any)?.firebaseHistoryId;
+      if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
+      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
+      return false;
+    });
+    
+    // CRITICAL: If entry exists in ref OR history, immediately clear local entry
+    if (existsInRef || existsInHistory) {
+      setIsGeneratingLocally(false);
+      setLocalGeneratingEntries((prev) => {
+        return prev.filter((e) => {
+          const eId = e.id || (e as any)?.firebaseHistoryId;
+          const entryIdToMatch = entry.id || (entry as any)?.firebaseHistoryId;
+          return eId !== entryIdToMatch;
+        });
+      });
+      return;
+    }
+    
+    // If entry completes/fails but not in history yet, reset button state
+    if (entry.status === 'completed' || entry.status === 'failed') {
+      setIsGeneratingLocally(false);
+    }
+  }, [localGeneratingEntries, existingEntries]);
 
   // Unified initial load & refresh via shared hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'logo', initialLimit: 10 });
+  
+  // Function to fetch and add/update a single generation instead of reloading all
+  const refreshSingleGeneration = async (historyId: string) => {
+    try {
+      const client = axiosInstance;
+      const res = await client.get(`/api/generations/${historyId}`);
+      const item = res.data?.data?.item;
+      if (!item) {
+        console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
+        refreshHistoryDebounced();
+        return;
+      }
+      
+      // Normalize the item to match HistoryEntry format
+      const created = item?.createdAt || item?.updatedAt || item?.timestamp;
+      const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+      const normalizedEntry: HistoryEntry = {
+        ...item,
+        id: item.id || historyId,
+        timestamp: iso,
+        createdAt: iso,
+      } as HistoryEntry;
+      
+      // Check if entry already exists in current Redux state
+      const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
+      
+      // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
+      historyEntryIdsRef.current.add(historyId);
+      if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
+      if ((normalizedEntry as any)?.firebaseHistoryId) {
+        historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
+      }
+      
+      // Import Redux actions
+      const { addHistoryEntry, updateHistoryEntry } = await import('@/store/slices/historySlice');
+      
+      if (exists) {
+        dispatch(updateHistoryEntry({ 
+          id: historyId, 
+          updates: {
+            status: normalizedEntry.status,
+            images: normalizedEntry.images,
+            imageCount: normalizedEntry.imageCount,
+            timestamp: normalizedEntry.timestamp,
+          }
+        }));
+      } else {
+        dispatch(addHistoryEntry(normalizedEntry));
+      }
+      
+      // CRITICAL: Immediately clear local entry when history entry is added/updated
+      setLocalGeneratingEntries((prev) => {
+        const filtered = prev.filter((e) => {
+          const eId = e.id;
+          const eFirebaseId = (e as any)?.firebaseHistoryId;
+          
+          // Check if IDs match
+          if (eId === historyId || eFirebaseId === historyId) return false;
+          if (normalizedEntry.id && (eId === normalizedEntry.id || eFirebaseId === normalizedEntry.id)) return false;
+          const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
+          if (normalizedFirebaseId && (eId === normalizedFirebaseId || eFirebaseId === normalizedFirebaseId)) return false;
+          
+          // If local entry is completed and we just added a completed history entry, clear it
+          if (e.status === 'completed' && normalizedEntry.status === 'completed') return false;
+          
+          return true;
+        });
+        return filtered;
+      });
+    } catch (error) {
+      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
+      refreshHistoryDebounced();
+    }
+  };
   useEffect(() => {
     // Mark initial loading state until first entries arrive or timeout
     if (initialLoading && historyEntries.length > 0) {
@@ -309,8 +427,12 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
         await handleGenerationSuccess(transactionId);
       }
 
-      // Debounced refresh instead of immediate duplicate requests
-      refreshHistoryDebounced();
+      // Refresh only the single completed generation instead of reloading all
+      if (result.historyId) {
+        await refreshSingleGeneration(result.historyId);
+      } else {
+        refreshHistoryDebounced();
+      }
 
       // Reset local generation state
       setIsGeneratingLocally(false);
@@ -511,16 +633,150 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                   {/* All Images for this Date - Horizontal Layout */}
                 <div className="flex flex-wrap gap-3 ml-9">
                     {/* Prepend local preview tiles at the start of today's row to push images right */}
-                    {date === todayKey && localGeneratingEntries.length > 0 && (
-                      <>
-                        {localGeneratingEntries[0].images.map(
-                          (image: any, idx: number) => (
+                    {date === todayKey && localGeneratingEntries.length > 0 && (() => {
+                      const localEntry = localGeneratingEntries[0];
+                      const localEntryId = localEntry.id;
+                      const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
+                      
+                      // Check if this local entry already exists in history
+                      const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
+                                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
+                      const existsInHistory = logoHistoryEntries.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      // If entry exists anywhere, don't render local entry
+                      if (existsInRef || existsInHistory || existsInGrouped) {
+                        return null;
+                      }
+                      
+                      // Safety check: if local entry is completed and history exists, don't show it
+                      if (localEntry.status === 'completed' && (logoHistoryEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
+                        return null;
+                      }
+                      
+                      return (
+                        <>
+                          {localEntry.images.map((image: any, idx: number) => {
+                            const uniqueImageKey = image?.id ? `local-${localEntryId}-${image.id}` : `local-${localEntryId}-img-${idx}`;
+                            const isImageLoaded = loadedImages.has(uniqueImageKey);
+                            
+                            return (
+                              <div
+                                key={uniqueImageKey}
+                                className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                              >
+                                {localEntry.status === "generating" ? (
+                                  <div className="w-full h-full flex items-center justify-center bg-black/90">
+                                    <div className="flex flex-col items-center gap-2">
+                                      <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                      <div className="text-xs text-white/60 text-center">
+                                        Generating...
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : localEntry.status === "failed" ? (
+                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                                    <div className="flex flex-col items-center gap-2">
+                                      <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="text-red-400"
+                                      >
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                      </svg>
+                                      <div className="text-xs text-red-400">
+                                        Failed
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="relative w-full h-full group">
+                                    <Image
+                                      src={
+                                        image.thumbnailUrl || image.avifUrl || image.url ||
+                                        image.originalUrl ||
+                                        "/placeholder-logo.png"
+                                      }
+                                      alt={localEntry.prompt}
+                                      fill
+                                      loading="lazy"
+                                      className="object-cover"
+                                      sizes="192px"
+                                      onLoad={() => {
+                                        setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                      }}
+                                    />
+                                    {!isImageLoaded && (
+                                      <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                    )}
+                                    {/* Hover buttons overlay */}
+                                    <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                      <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(localEntry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                                  Logo
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+
+                    {/* Regular history entries - filter out any that match local entries */}
+                    {(() => {
+                      // Create a set of all local entry IDs for fast lookup
+                      const localEntryIds = new Set<string>();
+                      if (date === todayKey && localGeneratingEntries.length > 0) {
+                        localGeneratingEntries.forEach((localEntry) => {
+                          const localEntryId = localEntry.id;
+                          const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
+                          if (localEntryId) localEntryIds.add(localEntryId);
+                          if (localFirebaseId) localEntryIds.add(localFirebaseId);
+                        });
+                      }
+                      
+                      // Filter out history entries that match local entries
+                      const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
+                        if (localEntryIds.size === 0) return true;
+                        const entryId = entry.id;
+                        const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+                        if (entryId && localEntryIds.has(entryId)) return false;
+                        if (entryFirebaseId && localEntryIds.has(entryFirebaseId)) return false;
+                        return true;
+                      });
+                      
+                      return filteredHistoryEntries.flatMap((entry: any) =>
+                        (entry.images || []).map((image: any, imgIdx: number) => {
+                          const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
+                          const isImageLoaded = loadedImages.has(uniqueImageKey);
+                          
+                          return (
                             <div
-                              key={`local-${idx}`}
-                              className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                              key={uniqueImageKey}
+                              data-image-id={uniqueImageKey}
+                              onClick={() => setPreviewEntry(entry)}
+                              className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
                             >
-                              {localGeneratingEntries[0].status ===
-                              "generating" ? (
+                              {entry.status === "generating" ? (
                                 <div className="w-full h-full flex items-center justify-center bg-black/90">
                                   <div className="flex flex-col items-center gap-2">
                                     <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
@@ -529,8 +785,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                                     </div>
                                   </div>
                                 </div>
-                              ) : localGeneratingEntries[0].status ===
-                                "failed" ? (
+                              ) : entry.status === "failed" ? (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
                                   <div className="flex flex-col items-center gap-2">
                                     <svg
@@ -542,113 +797,45 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                                     >
                                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                                     </svg>
-                                    <div className="text-xs text-red-400">
-                                      Failed
-                                    </div>
+                                    <div className="text-xs text-red-400">Failed</div>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="relative w-full h-full">
+                                <div className="relative w-full h-full group">
                                   <Image
-                                    src={
-                                      image.url ||
-                                      image.originalUrl ||
-                                      "/placeholder-logo.png"
-                                    }
-                                    alt={localGeneratingEntries[0].prompt}
+                                    src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'}
+                                    alt={entry.prompt}
                                     fill
-                                    loading="lazy"
-                                    className="object-cover"
+                                    className="object-cover transition-transform group-hover:scale-105"
                                     sizes="192px"
+                                    onLoad={() => {
+                                      setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                    }}
                                   />
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                  {!isImageLoaded && (
+                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                  )}
+                                  {/* Hover buttons overlay */}
+                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                    <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                    </button>
+                                    <button
+                                      aria-label="Delete image"
+                                      className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                      onClick={(e) => handleDeleteImage(e, entry)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
                                 </div>
                               )}
-                              <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                                Logo
-                              </div>
                             </div>
-                          )
-                        )}
-                      </>
-                    )}
-
-                    {/* Regular history entries */}
-                    {groupedByDate[date].map((entry: any) =>
-                      (entry.images || []).map((image: any) => (
-                      <div
-                        key={`${entry.id}-${image.id}`}
-                        data-image-id={`${entry.id}-${image.id}`}
-                          onClick={() => setPreviewEntry(entry)}
-                        className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                      >
-                          {entry.status === "generating" ? (
-                          // Loading frame
-                          <div className="w-full h-full flex items-center justify-center bg-black/90">
-                            <div className="flex flex-col items-center gap-2">
-                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                              <div className="text-xs text-white/60 text-center">
-                                Generating...
-                              </div>
-                            </div>
-                          </div>
-                          ) : entry.status === "failed" ? (
-                          // Error frame
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                            <div className="flex flex-col items-center gap-2">
-                              <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                className="text-red-400"
-                              >
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                              <div className="text-xs text-red-400">Failed</div>
-                            </div>
-                          </div>
-                          ) : (
-                            // Completed logo
-                          <div className="relative w-full h-full group">
-                            <Image
-                                src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'}
-                                alt={entry.prompt}
-                              fill
-                                className="object-cover transition-transform group-hover:scale-105"
-                              sizes="192px"
-                              onLoad={() => {
-                                setTimeout(() => {
-                                  const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
-                                    if (shimmer) shimmer.style.opacity = '0';
-                                }, 100);
-                              }}
-                            />
-                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                            {/* Hover buttons overlay */}
-                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                              <button aria-label="Copy prompt" className="pointer-events-auto p-1.5 rounded-lg bg-black/40 hover:bg-black/50 text-white/90 backdrop-blur-3xl" onClick={(e)=>copyPrompt(e, getCleanPrompt(entry.prompt))} onMouseDown={(e) => e.stopPropagation()}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                              </button>
-                              <button
-                                aria-label="Delete image"
-                                className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                onClick={(e) => handleDeleteImage(e, entry)}
-                                onMouseDown={(e) => e.stopPropagation()}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                          )}
-
-                          {/* Logo badge */}
-                          {/* <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                            Logo
-                          </div> */}
-                      </div>
-                    ))
-                  )}
+                          );
+                        })
+                      );
+                    })()}
                 </div>
               </div>
             ))}

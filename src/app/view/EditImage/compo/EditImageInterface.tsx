@@ -175,6 +175,7 @@ const EditImageInterface: React.FC = () => {
   const [vMaxIterations, setVMaxIterations] = useState<number>(10);
   const [vSpliceThreshold, setVSpliceThreshold] = useState<number>(45);
   const [vPathPrecision, setVPathPrecision] = useState<number>(3);
+  const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
@@ -1339,21 +1340,63 @@ const EditImageInterface: React.FC = () => {
       if (selectedFeature === 'vectorize') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error('Please upload an image to vectorize');
+        
+        let vectorizeInput = normalizedInput;
+        let vectorizeInputUrl = currentInput;
+        
+        // Super mode: First convert image to 2D vector using Seedream
+        if (vectorizeSuperMode) {
+          try {
+            // Step 1: Use Seedream to convert image to 2D vector
+            const seedreamPayload: any = {
+              prompt: 'convert into 2D vector image',
+              model: 'bytedance/seedream-4',
+              size: '2K',
+              image_input: [String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput],
+              sequential_image_generation: 'disabled',
+              max_images: 1,
+              isPublic: false, // Intermediate step, don't make public
+            };
+            
+            const seedreamRes = await axiosInstance.post('/api/replicate/generate', seedreamPayload);
+            const seedreamOut = seedreamRes?.data?.images?.[0]?.url || seedreamRes?.data?.data?.images?.[0]?.url || seedreamRes?.data?.data?.url || seedreamRes?.data?.url || '';
+            
+            if (!seedreamOut) {
+              throw new Error('Seedream conversion failed. Please try again.');
+            }
+            
+            // Step 2: Use the Seedream output as input for vectorization
+            // Convert to data URI if needed for vectorize API
+            try {
+              const seedreamNormalized = await toDataUriIfLocal(seedreamOut);
+              vectorizeInput = seedreamNormalized;
+              vectorizeInputUrl = seedreamOut;
+            } catch {
+              // If conversion fails, use URL directly
+              vectorizeInputUrl = seedreamOut;
+            }
+          } catch (seedreamError: any) {
+            console.error('[EditImage] Seedream conversion error:', seedreamError);
+            const errorMsg = seedreamError?.response?.data?.message || seedreamError?.message || 'Seedream conversion failed';
+            throw new Error(`Super mode failed: ${errorMsg}`);
+          }
+        }
+        
+        // Step 3: Vectorize the image (either original or Seedream output)
         if (vectorizeModel === 'fal-ai/recraft/vectorize') {
           const body: any = { isPublic };
-          if (String(normalizedInput).startsWith('data:')) body.image = normalizedInput;
-          else body.image_url = currentInput;
+          if (String(vectorizeInput).startsWith('data:')) body.image = vectorizeInput;
+          else body.image_url = vectorizeInputUrl;
           const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-          // Refresh history to show vectorize entries in image generation page
+          // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
+          // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
             await (dispatch as any)(loadHistory({
-              filters: { generationType: ['image-to-svg'] as any },
-              paginationParams: { limit: 50 },
+              paginationParams: { limit: 60 },
               requestOrigin: 'page',
-              expectedType: 'text-to-image',
               debugTag: `refresh-after-vectorize:${Date.now()}`,
             }));
           } catch {}
@@ -1373,18 +1416,17 @@ const EditImageInterface: React.FC = () => {
             splice_threshold: vSpliceThreshold,
             path_precision: vPathPrecision,
           };
-          if (String(normalizedInput).startsWith('data:')) body.image = normalizedInput; else body.image_url = currentInput;
+          if (String(vectorizeInput).startsWith('data:')) body.image = vectorizeInput; else body.image_url = vectorizeInputUrl;
           const res = await axiosInstance.post('/api/fal/image2svg', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-          // Refresh history to show vectorize entries in image generation page
+          // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
+          // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
             await (dispatch as any)(loadHistory({
-              filters: { generationType: ['image-to-svg'] as any },
-              paginationParams: { limit: 50 },
+              paginationParams: { limit: 60 },
               requestOrigin: 'page',
-              expectedType: 'text-to-image',
               debugTag: `refresh-after-vectorize:${Date.now()}`,
             }));
           } catch {}
@@ -1773,12 +1815,20 @@ const EditImageInterface: React.FC = () => {
               input_image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
               masked_image: maskDataUrl,
               prompt: finalPrompt,
-              model,
+              model: 'google_nano_banana',
             };
             const res = await axiosInstance.post('/api/replace/edit', payload);
             const edited = res?.data?.data?.edited_image || res?.data?.edited_image || '';
             if (edited) setOutputs((prev) => ({ ...prev, [selectedFeature]: edited }));
             try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+            // Refresh global history so the Image Generation page sees the new edit entry immediately
+            try {
+              await (dispatch as any)(loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: 'page',
+                debugTag: `refresh-after-${selectedFeature}:${Date.now()}`,
+              }));
+            } catch {}
             return;
           } catch (replaceErr) {
             console.error(`[${selectedFeature === 'erase' ? 'Erase' : 'Replace'}] API Error:`, replaceErr);
@@ -1822,6 +1872,14 @@ const EditImageInterface: React.FC = () => {
           const out = imagesArray[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['fill']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new fill entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-fill:${Date.now()}`,
+            }));
+          } catch {}
           return;
         } catch (fillError) {
           console.error('[Fill] API Error:', fillError);
@@ -1851,6 +1909,14 @@ const EditImageInterface: React.FC = () => {
         const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh global history so the Image Generation page sees the new resize entry immediately
+        try {
+          await (dispatch as any)(loadHistory({
+            paginationParams: { limit: 60 },
+            requestOrigin: 'page',
+            debugTag: `refresh-after-resize:${Date.now()}`,
+          }));
+        } catch {}
         return;
       }
 
@@ -1918,6 +1984,15 @@ const EditImageInterface: React.FC = () => {
           setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
           // Ensure processing is set to false
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new remove-bg entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-remove-bg:${Date.now()}`,
+            }));
+          } catch {}
         } else {
           console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
@@ -2090,6 +2165,14 @@ const EditImageInterface: React.FC = () => {
           const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new upscale entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-upscale-topaz:${Date.now()}`,
+            }));
+          } catch {}
           return;
         } 
         // else if (model === 'fermatresearch/magic-image-refiner') {
@@ -2100,6 +2183,14 @@ const EditImageInterface: React.FC = () => {
         const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
         if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh global history so the Image Generation page sees the new upscale entry immediately
+        try {
+          await (dispatch as any)(loadHistory({
+            paginationParams: { limit: 60 },
+            requestOrigin: 'page',
+            debugTag: `refresh-after-upscale:${Date.now()}`,
+          }));
+        } catch {}
       }
     } catch (e) {
       console.error('[EditImage] run.error', e);
@@ -2417,6 +2508,37 @@ const EditImageInterface: React.FC = () => {
             <div className="px-3 md:px-4">
               {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
               <div className="space-y-2">
+                {/* Super Mode Toggle */}
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm">Mode</label>
+                  <div className="relative bg-white/5 border border-white/20 rounded-lg p-1 flex">
+                    <button
+                      onClick={() => setVectorizeSuperMode(false)}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        !vectorizeSuperMode
+                          ? 'bg-white text-black'
+                          : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      onClick={() => setVectorizeSuperMode(true)}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        vectorizeSuperMode
+                          ? 'bg-white text-black'
+                          : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      Super best for production
+                    </button>
+                  </div>
+                  {vectorizeSuperMode && (
+                    <div className="text-[11px] text-white/50 mt-1">
+                      First converts image to 2D vector using Seedream, then vectorizes the result
+                    </div>
+                  )}
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm ">Model</label>
                   <div className="relative edit-dropdown">
@@ -2582,7 +2704,7 @@ const EditImageInterface: React.FC = () => {
                             ]
                           : [
                                   { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-                                  { label: 'Clarity Upscaler', value: 'philz1337x/clarity-upscaler' },
+                                  { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
                                   { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                             ]
                         ).map((opt) => (
@@ -2926,47 +3048,6 @@ const EditImageInterface: React.FC = () => {
 
               {selectedFeature === 'upscale' && (
                 <>
-                  {model === 'philz1337x/clarity-upscaler' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale factor (1-4)</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={4}
-                          step={1}
-                          value={Number(String(scaleFactor).replace('x', '')) || 2}
-                          onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(4, Number(e.target.value)))))}
-                          className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Output format</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate uppercase">{(output || 'png').toString()}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'output' && (
-                            <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                              {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
-                                <button
-                                  key={fmt}
-                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="uppercase">{fmt}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   {model === 'nightmareai/real-esrgan' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>

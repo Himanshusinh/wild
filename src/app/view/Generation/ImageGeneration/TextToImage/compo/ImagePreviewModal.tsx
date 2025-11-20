@@ -590,6 +590,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
   const cleanPrompt = getCleanPrompt(promptToDisplay);
   const isLongPrompt = cleanPrompt.length > 280;
+  
+  // Check if this is a vectorize generation (should hide certain action buttons)
+  const generationType = (selectedEntry as any)?.generationType || '';
+  const normalizedGenType = String(generationType).toLowerCase().replace(/[_-]/g, '-');
+  const isVectorizeGeneration = normalizedGenType === 'vectorize' || 
+                                 normalizedGenType === 'image-vectorize' || 
+                                 normalizedGenType === 'image-to-svg' ||
+                                 normalizedGenType === 'image_to_svg' ||
+                                 normalizedGenType.includes('vector');
   const entryTimestamp = selectedEntry?.timestamp || selectedEntry?.createdAt || selectedEntry?.updatedAt;
   const formattedDateTime = React.useMemo(() => {
     if (!entryTimestamp) return '—';
@@ -911,7 +920,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
     <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
       <div 
-        className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
+        className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
       > 
         {/* Header */}
@@ -1032,29 +1041,23 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="relative group flex-1">
                 <button
                   onClick={toggleVisibility}
-                  className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm`}
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm`}
                   aria-pressed={isPublicFlag}
                   aria-label="Toggle visibility"
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
-                  {isPublicFlag ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
-                  )}
+                  <Image 
+                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                    alt={isPublicFlag ? "Public" : "Private"} 
+                    width={16} 
+                    height={16} 
+                    className="w-5 h-5"
+                  />
                 </button>
                 <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
               </div>
 
-              <div className="relative group flex-1">
-                <button
-                  onClick={() => navigateToEdit('upscale')}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-1   rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
-                >
-                  <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-6 h-6" />
-                </button>
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Edit</div>
-              </div>
+              
             </div>
 
              {/* Date */}
@@ -1185,97 +1188,108 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             )}
 
             {/* Actions */}
-            <div className="mt-6 space-y-2">
-              <div className="flex gap-2">
+            {!isVectorizeGeneration && (
+              <div className="mt-6 space-y-2">
+                <div className="flex gap-2">
+
+                {!isVectorizeGeneration && (
+                  <button
+                    onClick={() => navigateToEdit('upscale')}
+                    className="flex-1 px-3 py-2 items-center justify-center rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                  Edit Image                   
+                  </button>
+              )}
+                  <button
+                    onClick={() => navigateToEdit('upscale')}
+                    className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Upscale
+                  </button>
+                  {/* <button
+                    onClick={() => navigateToEdit('remove-bg')}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Remove background
+                  </button>
+                   */}
+                </div>
+
+                <div className="flex gap-2">
                 <button
-                  onClick={() => navigateToEdit('upscale')}
-                  className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  Upscale
-                </button>
+                    onClick={handleCreateVideo}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    {/* <Video className="h-4 w-4" /> */}
+                    Create Video
+                  </button>
                 <button
-                  onClick={() => navigateToEdit('remove-bg')}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  onClick={() => {
+                    try {
+                      const storagePath = (selectedImage as any)?.storagePath || (() => {
+                        try {
+                          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+                          const original = selectedImage?.url || '';
+                          if (!original) return '';
+                          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+                        } catch {}
+                        return '';
+                      })();
+                      const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+                      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+                      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+                      const qs = new URLSearchParams();
+                      // Use userPrompt for remix if available, otherwise use cleanPrompt
+                      const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
+                      qs.set('prompt', remixPrompt);
+                      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+                      if (storagePath) {
+                        qs.set('sp', storagePath);
+                      } else if (imgUrl) {
+                        // If no storagePath, set image URL directly
+                        qs.set('image', imgUrl);
+                      }
+                      // also pass model, frameSize and style for preselection
+                      console.log('preview.entry', selectedEntry);
+                      if (selectedEntry?.model) {
+                        // Map backend model ids to UI dropdown ids where needed
+                        const m = String(selectedEntry.model);
+                        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+                        qs.set('model', mapped);
+                      }
+                      if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
+                      const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
+                      if (sty) qs.set('style', String(sty));
+                      // Client-side navigation to avoid full page reload
+                      router.push(`/text-to-image?${qs.toString()}`);
+                      onClose();
+                    } catch {}
+                  }}
+                  className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 >
-                  Remove background
+                  Recreate 
                 </button>
+                </div>
+
+                {/* New buttons row */}
+                {/* <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={handleEditInLiveCanvas}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    <Palette className="h-4 w-4" />
+                    Edit in Live Canvas
+                  </button>
+                  <button
+                    onClick={handleCreateVideo}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Create Video
+                  </button>
+                </div> */}
                 
               </div>
-
-              <div className="flex gap-2">
-              <button
-                  onClick={() => navigateToEdit('resize')}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  Resize
-                </button>
-              <button
-                onClick={() => {
-                  try {
-                    const storagePath = (selectedImage as any)?.storagePath || (() => {
-                      try {
-                        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
-                        const original = selectedImage?.url || '';
-                        if (!original) return '';
-                        if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-                      } catch {}
-                      return '';
-                    })();
-                    const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-                    // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
-                    const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
-                    const qs = new URLSearchParams();
-                    // Use userPrompt for remix if available, otherwise use cleanPrompt
-                    const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
-                    qs.set('prompt', remixPrompt);
-                    // Always set sp if we have storagePath (InputBox prioritizes sp over image)
-                    if (storagePath) {
-                      qs.set('sp', storagePath);
-                    } else if (imgUrl) {
-                      // If no storagePath, set image URL directly
-                      qs.set('image', imgUrl);
-                    }
-                    // also pass model, frameSize and style for preselection
-                    console.log('preview.entry', selectedEntry);
-                    if (selectedEntry?.model) {
-                      // Map backend model ids to UI dropdown ids where needed
-                      const m = String(selectedEntry.model);
-                      const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
-                      qs.set('model', mapped);
-                    }
-                    if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
-                    const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
-                    if (sty) qs.set('style', String(sty));
-                    // Client-side navigation to avoid full page reload
-                    router.push(`/text-to-image?${qs.toString()}`);
-                    onClose();
-                  } catch {}
-                }}
-                className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-              >
-                Recreate 
-              </button>
-              </div>
-
-              {/* New buttons row */}
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleEditInLiveCanvas}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  {/* <Palette className="h-4 w-4" /> */}
-                  Edit in Live Canvas
-                </button>
-                <button
-                  onClick={handleCreateVideo}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  {/* <Video className="h-4 w-4" /> */}
-                  Create Video
-                </button>
-              </div>
-              
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
  'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -516,11 +517,13 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   aria-label="Toggle visibility"
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
-                  {isPublicFlag ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
-                  )}
+                  <Image 
+                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                    alt={isPublicFlag ? "Public" : "Private"} 
+                    width={16} 
+                    height={16} 
+                    className="w-4 h-4"
+                  />
                 </button>
                 <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
               </div>
@@ -611,15 +614,36 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               </div>
             </div>
 
-            {/* Action Button */}
-            <div className="mt-6">
-              <button 
-                onClick={onClose}
-                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
-              >
-                Close Preview
-              </button>
-            </div>
+            {/* Your Uploads (images/videos) */}
+            {(inputImages.length + inputVideos.length) > 0 && (
+              <div className="mb-4">
+                                {/* <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads ({inputImages.length + inputVideos.length})</div> */}
+
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {inputImages.map((img: any, idx: number) => {
+                    const src = toResourceProxy(img?.storagePath || img?.url || img?.firebaseUrl || img?.originalUrl || '');
+                    if (!src) return null;
+                    return (
+                      <div key={`up-img-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
+                        <Image src={src} alt={`Upload ${idx + 1}`} fill className="object-cover" />
+                      </div>
+                    );
+                  })}
+                  {inputVideos.map((vid: any, idx: number) => {
+                    const vsrc = toMediaProxy(vid?.storagePath || vid?.url || vid?.firebaseUrl || vid?.originalUrl || '');
+                    if (!vsrc) return null;
+                    return (
+                      <div key={`up-vid-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
+                        <video src={vsrc} className="w-full h-full object-cover" muted autoPlay loop playsInline />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* No explicit close button per request */}
           </div>
         </div>
       </div>
