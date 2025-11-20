@@ -63,7 +63,7 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
       <div className="relative w-full max-w-6xl bg-black/40 ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '92vh' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end px-4 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10">
-          <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+          <button aria-label="Close" className="text-white/80 hover:text-white text-lg z-[100] md:p-0 p-2 touch-manipulation" onClick={onClose}>✕</button>
         </div>
 
         {/* Content */}

@@ -66,7 +66,7 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
           <div className="text-white/70 text-sm">{entry.model}</div>
           <div className="flex items-center gap-2">
             <button className="px-3 py-1.5 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-sm" onClick={handleDelete}>Delete</button>
-            <button aria-label="Close" className="text-white/80 hover:text-white text-lg" onClick={onClose}>✕</button>
+            <button aria-label="Close" className="text-white/80 hover:text-white text-lg z-[100] md:p-0 p-2 touch-manipulation" onClick={onClose}>✕</button>
           </div>
         </div>
 

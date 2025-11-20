@@ -459,7 +459,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
   return (
     <div className="fixed inset-0 mt-15 bg-black/90 md:bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2  md:py-20" onClick={onClose}>
-      <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+      <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 z-[100] md:p-0 p-2 touch-manipulation" onClick={onClose}>✕</button>
       <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         

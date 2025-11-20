@@ -385,7 +385,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         </button>
         {modelOpen && (
           <div className="
-            fixed md:left-1/2 md:-translate-x-1/2 bottom-17 md:bottom-24 w-[40vw]
+            fixed bottom-17 md:bottom-24 w-[40vw]
             md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-48
             mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20
             py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
@@ -431,7 +431,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       </button>
       {styleOpen && (
         <div className="
-          fixed md:left-1/2 md:-translate-x-1/2 bottom-48 md:bottom-24 w-[40vw]
+          fixed md:-translate-x-1/2 bottom-48 md:bottom-24 w-[40vw]
           md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-48
           mb-2 bg-black/90 backdrop-blur-3xl rounded-lg ring-1 ring-white/20 py-1
           max-h-[40vh] md:max-h-150 overflow-y-auto scrollbar-hide z-80">
@@ -481,7 +481,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       </button>
       {instrumentsOpen && (
         <div className="
-          fixed md:left-1/2 md:-translate-x-1/2 bottom-48 md:bottom-24 w-[40vw]
+          fixed md:-translate-x-1/2 bottom-48 md:bottom-24 w-[40vw]
           md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-48
           mb-2 bg-black/90 backdrop-blur-3xl rounded-lg ring-1 ring-white/20 py-1
           max-h-[40vh] md:max-h-150 overflow-y-auto scrollbar-hide z-80">
@@ -531,7 +531,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       </button>
       {srOpen && (
         <div className="
-          fixed md:left-1/2 md:-translate-x-1/2 bottom-17 md:bottom-24 w-[40vw]
+          fixed  bottom-17 md:bottom-24 w-[40vw]
           md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-32
           mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {[44100, 32000, 24000, 16000].map((sr) => (
@@ -580,7 +580,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       </button>
       {brOpen && (
         <div className="
-          fixed md:left-1/2 md:-translate-x-1/2 bottom-17 md:bottom-24 w-[40vw]
+          fixed  bottom-17 md:bottom-24 w-[40vw]
           md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-32
           mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {[256000, 128000, 64000, 32000].map((br) => (
@@ -629,7 +629,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       </button>
       {formatOpen && (
         <div className="
-          fixed md:left-1/2 md:-translate-x-1/2 bottom-17 md:bottom-24 w-[20vw]
+          fixed bottom-17 md:bottom-24 w-[20vw]
           md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-24
           mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {['mp3', 'wav', 'pcm'].map((format) => (
@@ -678,7 +678,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       </button>
       {outputFormatOpen && (
         <div className="
-          fixed md:left-1/2 md:-translate-x-1/2 bottom-10 md:bottom-24 w-[20vw]
+          fixed bottom-8 md:bottom-24 w-[20vw]
           md:absolute md:bottom-full md:left-0 md:translate-x-0 md:w-24
           mb-2 bg-black/90 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-80 max-h-[40vh] md:max-h-150 overflow-y-auto dropdown-scrollbar">
           {['hex', 'url'].map((format) => (

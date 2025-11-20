@@ -760,7 +760,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       }}
     > 
 
-    <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+    <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-6 right-10 z-[100] md:p-0 p-0 touch-manipulation" onClick={onClose}>✕</button>
       <div 
         className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
