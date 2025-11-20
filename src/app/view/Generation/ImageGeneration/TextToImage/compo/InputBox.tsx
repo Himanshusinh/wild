@@ -588,7 +588,9 @@ const InputBox = () => {
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
-    const date = new Date(entry.timestamp).toDateString();
+    // Use updatedAt (completion time) if available, otherwise createdAt or timestamp
+    const entryTime = entry.updatedAt || entry.createdAt || entry.timestamp;
+    const date = new Date(entryTime).toDateString();
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -600,6 +602,19 @@ const InputBox = () => {
   const sortedDates = Object.keys(groupedByDate).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
   );
+  
+  // Sort entries within each date group by completion time (newest first)
+  Object.keys(groupedByDate).forEach(date => {
+    groupedByDate[date].sort((a: any, b: any) => {
+      const getTs = (x: any) => {
+        const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+        const t = typeof raw === 'string' ? raw : (raw && raw.toString ? raw.toString() : '');
+        const ms = Date.parse(t);
+        return Number.isNaN(ms) ? 0 : ms;
+      };
+      return getTs(b) - getTs(a);
+    });
+  });
   // Today key in the same format used for grouping
   const todayKey = new Date().toDateString();
   const uploadedImages = useAppSelector(

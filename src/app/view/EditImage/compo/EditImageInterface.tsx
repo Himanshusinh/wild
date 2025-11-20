@@ -1815,12 +1815,20 @@ const EditImageInterface: React.FC = () => {
               input_image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
               masked_image: maskDataUrl,
               prompt: finalPrompt,
-              model,
+              model: 'google_nano_banana',
             };
             const res = await axiosInstance.post('/api/replace/edit', payload);
             const edited = res?.data?.data?.edited_image || res?.data?.edited_image || '';
             if (edited) setOutputs((prev) => ({ ...prev, [selectedFeature]: edited }));
             try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+            // Refresh global history so the Image Generation page sees the new edit entry immediately
+            try {
+              await (dispatch as any)(loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: 'page',
+                debugTag: `refresh-after-${selectedFeature}:${Date.now()}`,
+              }));
+            } catch {}
             return;
           } catch (replaceErr) {
             console.error(`[${selectedFeature === 'erase' ? 'Erase' : 'Replace'}] API Error:`, replaceErr);
@@ -1864,6 +1872,14 @@ const EditImageInterface: React.FC = () => {
           const out = imagesArray[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['fill']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new fill entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-fill:${Date.now()}`,
+            }));
+          } catch {}
           return;
         } catch (fillError) {
           console.error('[Fill] API Error:', fillError);
@@ -1893,6 +1909,14 @@ const EditImageInterface: React.FC = () => {
         const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh global history so the Image Generation page sees the new resize entry immediately
+        try {
+          await (dispatch as any)(loadHistory({
+            paginationParams: { limit: 60 },
+            requestOrigin: 'page',
+            debugTag: `refresh-after-resize:${Date.now()}`,
+          }));
+        } catch {}
         return;
       }
 
@@ -1960,6 +1984,15 @@ const EditImageInterface: React.FC = () => {
           setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
           // Ensure processing is set to false
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new remove-bg entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-remove-bg:${Date.now()}`,
+            }));
+          } catch {}
         } else {
           console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
@@ -2132,6 +2165,14 @@ const EditImageInterface: React.FC = () => {
           const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new upscale entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-upscale-topaz:${Date.now()}`,
+            }));
+          } catch {}
           return;
         } 
         // else if (model === 'fermatresearch/magic-image-refiner') {
@@ -2142,6 +2183,14 @@ const EditImageInterface: React.FC = () => {
         const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
         if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh global history so the Image Generation page sees the new upscale entry immediately
+        try {
+          await (dispatch as any)(loadHistory({
+            paginationParams: { limit: 60 },
+            requestOrigin: 'page',
+            debugTag: `refresh-after-upscale:${Date.now()}`,
+          }));
+        } catch {}
       }
     } catch (e) {
       console.error('[EditImage] run.error', e);
