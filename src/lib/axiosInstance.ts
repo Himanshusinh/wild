@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { auth } from './firebase'
+import { showFalErrorToast } from './falToast'
 
 // Try to extract an ID token from localStorage in a tolerant way
 const getStoredIdToken = (): string | null => {
@@ -416,6 +417,7 @@ axiosInstance.interceptors.response.use(
     return response
   },
   async (error) => {
+    try { await showFalErrorToast(error); } catch {}
     try {
       const urlStr = String(error?.config?.url || '')
       if (urlStr.includes('/api/auth/logout')) {
