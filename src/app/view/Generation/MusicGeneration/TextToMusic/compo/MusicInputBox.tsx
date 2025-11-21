@@ -174,6 +174,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   // Local generating state for UI demo
   const [localGenerating, setLocalGenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const dispatch = useAppDispatch();
   const generating = isGenerating || localGenerating;
   const isTtsModel = model.toLowerCase().includes('eleven') || model.toLowerCase().includes('chatterbox') || model.toLowerCase().includes('maya');
