@@ -326,40 +326,40 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
   const showHistoryOnly = props?.showHistoryOnly || false;
 
-  if (showHistoryOnly) {
-    return (
-      <MusicHistory
-        generationType="text-to-music"
-        allowedTypes={['text-to-music', 'text_to_music']}
-        onAudioSelect={setSelectedAudio}
-        selectedAudio={selectedAudio}
-        localPreview={localMusicPreview}
-      />
-    );
-  }
-
   return (
     <>
-      {/* Error Message Display */}
-      {errorMessage && (
-        <div className="mb-4 z-[60]">
-          <div className="rounded-2xl bg-red-500/15 ring-1 ring-red-500/30 p-3">
-            <div className="text-red-300 text-sm">{errorMessage}</div>
+      {showHistoryOnly ? (
+        <MusicHistory
+          generationType="text-to-music"
+          allowedTypes={['text-to-music', 'text_to_music']}
+          onAudioSelect={setSelectedAudio}
+          selectedAudio={selectedAudio}
+          localPreview={localMusicPreview}
+        />
+      ) : (
+        <>
+          {/* Error Message Display */}
+          {errorMessage && (
+            <div className="mb-4 z-[60]">
+              <div className="rounded-2xl bg-red-500/15 ring-1 ring-red-500/30 p-3">
+                <div className="text-red-300 text-sm">{errorMessage}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Music Input Box */}
+          <div className="w-full -mt-10 pt-4">
+            <MusicInputBox
+              onGenerate={handleGenerate}
+              isGenerating={isGenerating}
+              resultUrl={resultUrl}
+              errorMessage={errorMessage}
+            />
           </div>
-        </div>
+        </>
       )}
 
-      {/* Music Input Box */}
-      <div className="w-full -mt-10 pt-4">
-        <MusicInputBox
-          onGenerate={handleGenerate}
-          isGenerating={isGenerating}
-          resultUrl={resultUrl}
-          errorMessage={errorMessage}
-        />
-      </div>
-
-      {/* Audio Player Modal */}
+      {/* Audio Player Modal - Rendered for both history and input views */}
       {selectedAudio && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
           <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
@@ -375,7 +375,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
               </button>
             </div>
             <CustomAudioPlayer 
-              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl}
+              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
