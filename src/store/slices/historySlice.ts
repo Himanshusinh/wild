@@ -280,8 +280,19 @@ export const loadMoreHistory = createAsyncThunk(
         };
         const matchesFilters = (entry: any): boolean => {
           // Generation type filter
-          if (filters?.generationType && !typeMatches(entry.generationType, filters.generationType)) {
-            return false;
+          if (filters?.generationType) {
+            const filterType = filters.generationType;
+            if (Array.isArray(filterType)) {
+              // If it's an array, check if any type matches
+              if (!filterType.some(ft => typeMatches(entry.generationType, ft))) {
+                return false;
+              }
+            } else {
+              // If it's a string, use existing logic
+              if (!typeMatches(entry.generationType, filterType)) {
+                return false;
+              }
+            }
           }
           // Mode filter (video groups t2v/i2v/v2v)
           if ((filters as any)?.mode === 'video') {
