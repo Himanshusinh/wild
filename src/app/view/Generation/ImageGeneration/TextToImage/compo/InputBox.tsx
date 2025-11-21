@@ -1232,6 +1232,13 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
+    // This ensures the loader shows instantly when the button is clicked
+    setIsGeneratingLocally(true);
+    
+    // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
+    postGenerationBlockRef.current = true;
+
     const originalPrompt = prompt;
     let finalPrompt = originalPrompt;
 
@@ -1239,28 +1246,23 @@ const InputBox = () => {
     if ((lucidPromptEnhance || phoenixPromptEnhance) && !isEnhancing) {
       try {
         setIsEnhancing(true);
-        const res = await enhancePromptAPI(originalPrompt, selectedModel as any);
+        // Explicitly pass 'image' as media type for image generation
+        const res = await enhancePromptAPI(originalPrompt, selectedModel as any, 'image');
         if (res && res.ok && res.enhancedPrompt) {
           finalPrompt = res.enhancedPrompt;
           // Update the UI prompt with the enhanced version
           try { dispatch(setPrompt(finalPrompt)); } catch {}
         } else {
           // Non-fatal: show an error but continue with original prompt
-          if (res && res.error) toast.error(res.error);
+          if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error('Prompt enhancement failed:', e);
-        toast.error('Prompt enhancement failed');
+        toast.error(e?.message || 'Prompt enhancement failed. Using original prompt.');
       } finally {
         setIsEnhancing(false);
       }
     }
-
-    // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
-    postGenerationBlockRef.current = true;
-
-    // Set local generation state immediately
-    setIsGeneratingLocally(true);
 
     // Clear any previous credit errors
     clearCreditsError();
@@ -2642,7 +2644,8 @@ const InputBox = () => {
 
     try {
       setIsEnhancing(true);
-      const res = await enhancePromptAPI(prompt, selectedModel);
+      // Explicitly pass 'image' as media type for image generation
+      const res = await enhancePromptAPI(prompt, selectedModel, 'image');
       if (res.ok && res.enhancedPrompt) {
         const enhancedPrompt = res.enhancedPrompt;
         
@@ -2683,8 +2686,9 @@ const InputBox = () => {
       } else {
         toast.error(res.error || 'Failed to enhance prompt');
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to enhance prompt');
+    } catch (e: any) {
+      console.error('Prompt enhancement error:', e);
+      toast.error(e?.message || 'Failed to enhance prompt. Please try again.');
     } finally {
       setIsEnhancing(false);
     }

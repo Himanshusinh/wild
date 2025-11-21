@@ -12,6 +12,8 @@ import { useGenerationCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MusicInputBox from './MusicInputBox';
+import { enhancePromptAPI } from '@/lib/api/geminiApi';
+import { toast } from 'react-hot-toast';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
@@ -138,6 +140,24 @@ const InputBox = () => {
       // Redirect to signup page
       window.location.href = '/view/signup?next=/text-to-music';
       return;
+    }
+
+    // Enhance lyrics/prompt before generation
+    let finalLyrics = payload.lyrics.trim();
+    try {
+      const res = await enhancePromptAPI(finalLyrics, payload.model, 'music');
+      if (res && res.ok && res.enhancedPrompt) {
+        finalLyrics = res.enhancedPrompt;
+        // Update payload with enhanced lyrics
+        payload.lyrics = finalLyrics;
+        payload.prompt = finalLyrics;
+      } else {
+        // Non-fatal: show an error but continue with original lyrics
+        if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
+      }
+    } catch (e: any) {
+      console.error('Prompt enhancement failed:', e);
+      toast.error(e?.message || 'Prompt enhancement failed. Using original lyrics.');
     }
 
     // Clear any previous credit errors

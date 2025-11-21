@@ -54,7 +54,9 @@ export default function ArtStationPage() {
     return `${dd}-${mm}-${yyyy} ${time}`
   }
   const [items, setItems] = useState<PublicItem[]>([])
-  const [loading, setLoading] = useState(false)
+  // CRITICAL: Initialize loading to true to prevent "no generations" blink on initial mount
+  // The loading state will be set to false after the first fetch completes
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -200,8 +202,18 @@ export default function ArtStationPage() {
         queuedNextRef.current = { reset }
         return
       }
-      if (loading) return
-      setLoading(true)
+      // CRITICAL: Set loading state IMMEDIATELY for initial load or reset
+      // This ensures loading shows right away when page loads or category changes
+      const isInitialLoad = reset || items.length === 0
+      if (isInitialLoad) {
+        setLoading(true)
+      } else if (!loading) {
+        // For pagination, only set loading if not already loading
+        setLoading(true)
+      } else {
+        // Already loading, skip
+        return
+      }
       const seq = ++requestSeqRef.current
       const categoryAtStart = activeCategory
       const searchAtStart = searchQuery
@@ -210,7 +222,7 @@ export default function ArtStationPage() {
       
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
-      url.searchParams.set('limit', '20') // Same limit for both search and normal browsing
+      url.searchParams.set('limit', '50') // Increased limit for better pagination
       url.searchParams.set('sortBy', 'createdAt')
       url.searchParams.set('sortOrder', 'desc')
       // Apply server-side filtering based on active tab
@@ -314,7 +326,7 @@ export default function ArtStationPage() {
       })
   setCursor(newCursor)
       // Use same page limit for both search and normal browsing
-      const pageLimit = 20
+      const pageLimit = 50
       // Enable pagination for both search and normal browsing
       const inferredHasMore = typeof meta?.hasMore === 'boolean'
         ? meta.hasMore
@@ -551,6 +563,39 @@ export default function ArtStationPage() {
     return m.url || m.originalUrl || (m.firebaseUrl as string | undefined)
   }
 
+  // Resolve thumbnail URL with fallback: avifUrl > thumbnailUrl > _thumb.avif fallback > url
+  const resolveThumbnailUrl = (m: any): string | undefined => {
+    if (!m) return undefined
+    
+    // 1. Prefer avifUrl (optimized AVIF)
+    if (m.avifUrl) return m.avifUrl
+    
+    // 2. Then thumbnailUrl
+    if (m.thumbnailUrl) return m.thumbnailUrl
+    
+    // 3. Fallback: if we have a storagePath or url, try _thumb.avif
+    const baseUrl = m.url || m.originalUrl
+    if (baseUrl) {
+      // Extract path from Zata URL and append _thumb.avif
+      try {
+        const urlObj = new URL(baseUrl)
+        if (urlObj.pathname.includes('/devstoragev1/')) {
+          const path = urlObj.pathname.replace('/devstoragev1/', '')
+          // Remove file extension and add _thumb.avif
+          const pathWithoutExt = path.replace(/\.(jpg|jpeg|png|webp|avif)$/i, '')
+          const thumbPath = `${pathWithoutExt}_thumb.avif`
+          return `https://idr01.zata.ai/devstoragev1/${thumbPath}`
+        }
+      } catch (e) {
+        // If URL parsing fails, continue to next fallback
+      }
+    }
+    
+    // 4. Last fallback: original URL
+    return baseUrl
+  }
+
+
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
     const seenMedia = new Set<string>()
@@ -595,9 +640,22 @@ export default function ArtStationPage() {
         continue
       }
 
+      // Resolve thumbnail URL with fallback
+      const thumbnailUrl = kind === 'image' && candidate ? resolveThumbnailUrl(candidate) : candidateUrl
+      
       seenMedia.add(key)
       seenItem.add(it.id)
-      out.push({ item: it, media: { ...candidate, url: candidateUrl }, kind })
+      out.push({ 
+        item: it, 
+        media: { 
+          ...candidate, 
+          url: candidateUrl,
+          thumbnailUrl: thumbnailUrl || (candidate as any)?.thumbnailUrl,
+          avifUrl: (candidate as any)?.avifUrl || thumbnailUrl,
+          blurDataUrl: (candidate as any)?.blurDataUrl,
+        }, 
+        kind 
+      })
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -899,54 +957,49 @@ export default function ArtStationPage() {
                           </>
                         ) : (
                           <div className="relative w-full h-full">
-                            {media.thumbnailUrl || media.avifUrl ? (
-                              <div
-                                className="relative w-full h-full"
-                                style={(!loadedTiles.has(cardId) && (media.blurDataUrl || blur)) ? { backgroundImage: `url(${media.blurDataUrl || blur})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                              >
-                                <Image
-                                  src={media.thumbnailUrl || media.avifUrl || media.url}
-                                  alt={item.prompt || ''}
-                                  fill
-                                  sizes={sizes}
-                                  className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01] absolute inset-0 w-full h-full"
-                                  // manage blur via wrapper background to avoid double placeholders
-                                  placeholder="empty"
-                                  priority={isPriority}
-                                  fetchPriority={isPriority ? 'high' : 'auto'}
-                                  onLoadingComplete={(img) => {
-                                    try {
-                                      const el = img as unknown as HTMLImageElement
-                                      if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                    } catch { }
-                                    markTileLoaded(cardId)
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              <div
-                                className="relative w-full h-full"
-                                style={(!loadedTiles.has(cardId) && blur) ? { backgroundImage: `url(${blur})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                              >
-                                <Image
-                                  src={media.url}
-                                  alt={item.prompt || ''}
-                                  fill
-                                  sizes={sizes}
-                                  className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01] absolute inset-0 w-full h-full"
-                                  placeholder="empty"
-                                  priority={isPriority}
-                                  fetchPriority={isPriority ? 'high' : 'auto'}
-                                  onLoadingComplete={(img) => {
-                                    try {
-                                      const el = img as unknown as HTMLImageElement
-                                      if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                    } catch { }
-                                    markTileLoaded(cardId)
-                                  }}
-                                />
-                              </div>
-                            )}
+                            {/* Use resolved thumbnail URL with fallback */}
+                            {(() => {
+                              // Priority: avifUrl > thumbnailUrl > _thumb.avif fallback > url
+                              const thumbUrl = media.avifUrl || media.thumbnailUrl || resolveThumbnailUrl(media) || media.url
+                              const blurUrl = media.blurDataUrl || blur
+                              
+                              return (
+                                <div
+                                  className="relative w-full h-full"
+                                  style={(!loadedTiles.has(cardId) && blurUrl) ? { 
+                                    backgroundImage: `url(${blurUrl})`, 
+                                    backgroundSize: 'cover', 
+                                    backgroundPosition: 'center' 
+                                  } : undefined}
+                                >
+                                  <Image
+                                    src={thumbUrl}
+                                    alt={item.prompt || ''}
+                                    fill
+                                    sizes={sizes}
+                                    className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01] absolute inset-0 w-full h-full"
+                                    placeholder="empty"
+                                    priority={isPriority}
+                                    fetchPriority={isPriority ? 'high' : 'auto'}
+                                    onError={(e) => {
+                                      // If thumbnail fails, try original URL as fallback
+                                      const target = e.target as HTMLImageElement
+                                      if (target.src !== media.url) {
+                                        target.src = media.url
+                                      }
+                                      // Note: Broken images are filtered by backend, so this is just a fallback
+                                    }}
+                                    onLoadingComplete={(img) => {
+                                      try {
+                                        const el = img as unknown as HTMLImageElement
+                                        if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                      } catch { }
+                                      markTileLoaded(cardId)
+                                    }}
+                                  />
+                                </div>
+                              )
+                            })()}
                           </div>
                         )
                       })()}
