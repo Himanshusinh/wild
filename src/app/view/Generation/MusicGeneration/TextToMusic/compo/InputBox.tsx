@@ -15,6 +15,7 @@ import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
+import MusicHistory from "./MusicHistory";
 
 const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
   const dispatch = useAppDispatch();
