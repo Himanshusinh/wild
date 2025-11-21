@@ -76,6 +76,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   // Local generating state for UI demo
   const [localGenerating, setLocalGenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const dispatch = useAppDispatch();
   const generating = isGenerating || localGenerating;
 
