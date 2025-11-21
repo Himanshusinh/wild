@@ -33,6 +33,7 @@ type PublicItem = {
     storagePath?: string;
     webpUrl?: string;
     thumbnailUrl?: string;
+    avifUrl?: string;
     blurDataUrl?: string;
     optimized?: boolean;
   }[];
@@ -563,36 +564,30 @@ export default function ArtStationPage() {
     return m.url || m.originalUrl || (m.firebaseUrl as string | undefined)
   }
 
-  // Resolve thumbnail URL with fallback: avifUrl > thumbnailUrl > _thumb.avif fallback > url
+  // Resolve thumbnail URL with fallbacks: thumbnailUrl > avifUrl > constructed _thumb.avif > original url
   const resolveThumbnailUrl = (m: any): string | undefined => {
     if (!m) return undefined
     
-    // 1. Prefer avifUrl (optimized AVIF)
-    if (m.avifUrl) return m.avifUrl
-    
-    // 2. Then thumbnailUrl
+    // 1. Prefer thumbnailUrl if available
     if (m.thumbnailUrl) return m.thumbnailUrl
     
-    // 3. Fallback: if we have a storagePath or url, try _thumb.avif
-    const baseUrl = m.url || m.originalUrl
-    if (baseUrl) {
-      // Extract path from Zata URL and append _thumb.avif
+    // 2. Fallback to avifUrl (optimized AVIF)
+    if (m.avifUrl) return m.avifUrl
+    
+    // 3. Fallback: Construct thumbnail URL from Zata URL by appending _thumb.avif
+    const imageUrl = m.url || m.originalUrl
+    if (imageUrl && imageUrl.includes('zata.ai')) {
       try {
-        const urlObj = new URL(baseUrl)
-        if (urlObj.pathname.includes('/devstoragev1/')) {
-          const path = urlObj.pathname.replace('/devstoragev1/', '')
-          // Remove file extension and add _thumb.avif
-          const pathWithoutExt = path.replace(/\.(jpg|jpeg|png|webp|avif)$/i, '')
-          const thumbPath = `${pathWithoutExt}_thumb.avif`
-          return `https://idr01.zata.ai/devstoragev1/${thumbPath}`
-        }
+        // Remove file extension and append _thumb.avif
+        const urlWithoutExt = imageUrl.replace(/\.(jpg|jpeg|png|webp|avif)$/i, '')
+        return `${urlWithoutExt}_thumb.avif`
       } catch (e) {
         // If URL parsing fails, continue to next fallback
       }
     }
     
     // 4. Last fallback: original URL
-    return baseUrl
+    return imageUrl
   }
 
 
@@ -640,8 +635,8 @@ export default function ArtStationPage() {
         continue
       }
 
-      // Resolve thumbnail URL with fallback
-      const thumbnailUrl = kind === 'image' && candidate ? resolveThumbnailUrl(candidate) : candidateUrl
+      // Resolve thumbnail URL - ONLY use thumbnailUrl (no fallbacks)
+      const thumbnailUrl = kind === 'image' && candidate ? resolveThumbnailUrl(candidate) : undefined
       
       seenMedia.add(key)
       seenItem.add(it.id)
@@ -650,8 +645,8 @@ export default function ArtStationPage() {
         media: { 
           ...candidate, 
           url: candidateUrl,
-          thumbnailUrl: thumbnailUrl || (candidate as any)?.thumbnailUrl,
-          avifUrl: (candidate as any)?.avifUrl || thumbnailUrl,
+          // ONLY use thumbnailUrl - no fallback to avifUrl or url
+          thumbnailUrl: (candidate as any)?.thumbnailUrl || thumbnailUrl,
           blurDataUrl: (candidate as any)?.blurDataUrl,
         }, 
         kind 
@@ -928,7 +923,7 @@ export default function ArtStationPage() {
                                 muted
                                 playsInline
                                 preload="metadata"
-                                poster={media.thumbnailUrl || media.avifUrl || undefined}
+                                poster={media.thumbnailUrl || undefined}
                                 // play on hover
                                 onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
                                 onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
@@ -957,37 +952,49 @@ export default function ArtStationPage() {
                           </>
                         ) : (
                           <div className="relative w-full h-full">
-                            {/* Use resolved thumbnail URL with fallback */}
+                            {/* Use ONLY thumbnailUrl with blurDataUrl as loading placeholder */}
                             {(() => {
-                              // Priority: avifUrl > thumbnailUrl > _thumb.avif fallback > url
-                              const thumbUrl = media.avifUrl || media.thumbnailUrl || resolveThumbnailUrl(media) || media.url
-                              const blurUrl = media.blurDataUrl || blur
+                              // ONLY use thumbnailUrl (_thumb.avif) - no fallbacks
+                              const thumbUrl = resolveThumbnailUrl(media)
+                              const blurUrl = media.blurDataUrl
+                              
+                              // Show blur placeholder while loading
+                              if (!thumbUrl) {
+                                return (
+                                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                    <div className="text-gray-500 text-sm">No thumbnail</div>
+                                  </div>
+                                )
+                              }
                               
                               return (
-                                <div
-                                  className="relative w-full h-full"
-                                  style={(!loadedTiles.has(cardId) && blurUrl) ? { 
-                                    backgroundImage: `url(${blurUrl})`, 
-                                    backgroundSize: 'cover', 
-                                    backgroundPosition: 'center' 
-                                  } : undefined}
-                                >
+                                <div className="relative w-full h-full">
+                                  {/* Blur placeholder shown while loading */}
+                                  {!loadedTiles.has(cardId) && blurUrl && (
+                                    <div
+                                      className="absolute inset-0 w-full h-full"
+                                      style={{ 
+                                        backgroundImage: `url(${blurUrl})`, 
+                                        backgroundSize: 'cover', 
+                                        backgroundPosition: 'center',
+                                        filter: 'blur(20px)',
+                                        transform: 'scale(1.1)'
+                                      }}
+                                    />
+                                  )}
+                                  {/* Thumbnail image - fades in when loaded */}
                                   <Image
                                     src={thumbUrl}
                                     alt={item.prompt || ''}
                                     fill
                                     sizes={sizes}
-                                    className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01] absolute inset-0 w-full h-full"
-                                    placeholder="empty"
+                                    className={`object-cover transition-opacity duration-500 ease-in-out group-hover:scale-[1.01] absolute inset-0 w-full h-full ${
+                                      loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'
+                                    }`}
                                     priority={isPriority}
                                     fetchPriority={isPriority ? 'high' : 'auto'}
-                                    onError={(e) => {
-                                      // If thumbnail fails, try original URL as fallback
-                                      const target = e.target as HTMLImageElement
-                                      if (target.src !== media.url) {
-                                        target.src = media.url
-                                      }
-                                      // Note: Broken images are filtered by backend, so this is just a fallback
+                                    onLoad={() => {
+                                      markTileLoaded(cardId)
                                     }}
                                     onLoadingComplete={(img) => {
                                       try {
