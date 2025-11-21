@@ -131,7 +131,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'leonardoai/phoenix-1.0',
-    creditModelName: 'replicate/leonardoai/phoenix-1.0',
+    creditModelName: 'Phoenix 1.0',
     generationType: 'image',
     provider: 'replicate'
   },

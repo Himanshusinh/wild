@@ -5,6 +5,8 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addNotification } from '@/store/slices/uiSlice';
 import { Music4, ChevronDown, ChevronUp, Volume2, FileText, Palette, Guitar } from "lucide-react";
 import { getModelCreditInfo } from '@/utils/modelCredits';
+import { enhancePromptAPI } from '@/lib/api/geminiApi';
+import { toast } from 'react-hot-toast';
 
 // Music styles and instruments for dropdowns
 const MUSIC_STYLES = [
@@ -447,8 +449,52 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     }
   }, [resultUrl]);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!canGenerate) return;
+
+    // Enhance lyrics/prompt before generation
+    let finalLyrics = lyrics.trim();
+    if (!isEnhancing && finalLyrics) {
+      try {
+        setIsEnhancing(true);
+        const res = await enhancePromptAPI(finalLyrics, model, 'music');
+        if (res && res.ok && res.enhancedPrompt) {
+          finalLyrics = res.enhancedPrompt;
+          // Update the UI with the enhanced lyrics
+          setLyrics(finalLyrics);
+        } else {
+          // Non-fatal: show an error but continue with original lyrics
+          if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
+        }
+      } catch (e: any) {
+        console.error('Prompt enhancement failed:', e);
+        toast.error(e?.message || 'Prompt enhancement failed. Using original lyrics.');
+      } finally {
+        setIsEnhancing(false);
+      }
+    }
+
+    // Enhance lyrics/prompt before generation
+    let finalLyrics = lyrics.trim();
+    if (!isEnhancing && finalLyrics) {
+      try {
+        setIsEnhancing(true);
+        const res = await enhancePromptAPI(finalLyrics, model, 'music');
+        if (res && res.ok && res.enhancedPrompt) {
+          finalLyrics = res.enhancedPrompt;
+          // Update the UI with the enhanced lyrics
+          setLyrics(finalLyrics);
+        } else {
+          // Non-fatal: show an error but continue with original lyrics
+          if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
+        }
+      } catch (e: any) {
+        console.error('Prompt enhancement failed:', e);
+        toast.error(e?.message || 'Prompt enhancement failed. Using original lyrics.');
+      } finally {
+        setIsEnhancing(false);
+      }
+    }
 
     // Close all dropdowns before generating
     setElevenlabsVoiceDropdownOpen(false);
@@ -476,6 +522,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     
     const payload: any = {
       model,
+      // Store the user's actual input as prompt for history; API uses `lyrics` for generation
+      prompt: finalLyrics,
+      lyrics: finalLyrics,
+      // Keep style/instruments only as display controls; provider doesn't need them separately
+      audio_setting: { ...audio },
+      ...(outputFormat && outputFormat !== "hex" ? { output_format: outputFormat } : {}),
+    };
       prompt: trimmedText,
       lyrics: trimmedText,
       generationType: derivedGenerationType
