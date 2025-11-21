@@ -2086,6 +2086,47 @@ const InputBox = (props: InputBoxProps = {}) => {
     return originalPrompt;
   };
 
+  // Clear all inputs and configurations after successful generation
+  const clearInputs = () => {
+    // Clear prompt
+    setPrompt("");
+    
+    // Clear all uploaded assets
+    setUploadedImages([]);
+    setUploadedVideo("");
+    setUploadedAudio("");
+    setUploadedCharacterImage("");
+    setSourceHistoryEntryId("");
+    setReferences([]);
+    setLastFrameImage("");
+    
+    // Reset generation mode
+    setGenerationMode("text_to_video");
+    
+    // Reset to default configurations
+    setSelectedModel("seedance-1.0-lite-t2v");
+    setFrameSize("16:9");
+    setDuration(6);
+    setSelectedResolution("1080P");
+    setSelectedMiniMaxDuration(6);
+    setSelectedQuality("720p");
+    setKlingMode('standard');
+    setSeedanceResolution("1080p");
+    setPixverseQuality("720p");
+    setWanAnimateResolution("720");
+    setWanAnimateRefertNum(1);
+    setWanAnimateGoFast(true);
+    setWanAnimateMergeAudio(true);
+    setWanAnimateFps(24);
+    setWanAnimateSeed(undefined);
+    setFps(25);
+    setGenerateAudio(true);
+    setSelectedCameraMovements([]);
+    
+    // Clear error
+    setError("");
+  };
+
   // Handle video generation
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -3899,6 +3940,9 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Confirm credit transaction as successful
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
+      
+      // Clear all inputs and configurations
+      clearInputs();
 
   // Refresh only the single completed generation instead of reloading all
   if (result.historyId) {

@@ -438,14 +438,67 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Clear inputs when parent indicates generation succeeded (resultUrl set)
+  // Clear all inputs and configurations when parent indicates generation succeeded (resultUrl set)
   useEffect(() => {
     if (resultUrl) {
+      // Clear lyrics
       setLyrics('');
+      
+      // Reset to default style and instruments
       setSelectedStyle('Pop');
       setSelectedInstruments(['Piano']);
+      
+      // Reset model to default
+      setModel(defaultModel);
+      
+      // Reset audio settings to defaults
+      setAudio({
+        sample_rate: 44100,
+        bitrate: 256000,
+        format: 'mp3'
+      });
+      
+      // Reset output format
+      setOutputFormat('hex');
+      
+      // Reset ElevenLabs TTS settings
+      setElevenlabsVoice('english');
+      setElevenlabsCustomAudioLanguage('');
+      setElevenlabsExaggeration(0.5);
+      setElevenlabsTemperature(0.8);
+      setElevenlabsCfgScale(0.5);
+      
+      // Reset Chatterbox settings
+      setChatterboxVoice('english');
+      setCustomAudioLanguage('');
+      setExaggeration(0.5);
+      setTemperature(0.8);
+      setCfgScale(0.5);
+      setSeed('random');
+      setAudioUrl('');
+      
+      // Reset Maya TTS settings
+      setMayaPrompt('Realistic male voice in the 30s age with american accent. Normal pitch, warm timbre, conversational pacing, neutral tone delivery at med intensity.');
+      setMayaTemperature(0.4);
+      setMayaTopP(0.9);
+      setMayaMaxTokens(2000);
+      setMayaRepetitionPenalty(1.1);
+      setMayaOutputFormat('wav');
+      
+      // Reset Dialogue settings
+      setDialogueInputs([{ text: '', voice: 'Aria' }]);
+      setDialogueStability(0.5);
+      setDialogueUseSpeakerBoost(false);
+      setDialogueSeed('random');
+      setDialoguePronunciationDicts([]);
+      
+      // Reset SFX settings
+      setSfxDuration(5.0);
+      setSfxPromptInfluence(0.3);
+      setSfxOutputFormat('mp3_44100_128');
+      setSfxLoop(false);
     }
-  }, [resultUrl]);
+  }, [resultUrl, defaultModel, isDialogueMode]);
 
   const handleGenerate = () => {
     if (!canGenerate) return;
