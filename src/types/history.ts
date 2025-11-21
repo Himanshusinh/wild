@@ -35,7 +35,7 @@ export interface HistoryEntry {
   prompt: string;
   userPrompt?: string; // Original user-entered prompt (e.g., "@buddy is dancing with @emily")
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -69,7 +69,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -101,7 +101,12 @@ export interface HistoryEntryFirestore {
 
 export interface HistoryFilters {
   model?: string;
-  generationType?: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video';
+  // Allow filtering by a single type or multiple types (e.g., ['text-to-speech','text_to_speech','tts'])
+  generationType?: (
+    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
+  ) | Array<
+    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
+  >;
   dateRange?: {
     start: Date;
     end: Date;

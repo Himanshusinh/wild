@@ -3,28 +3,28 @@
 import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { addHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
-import { minimaxMusic, falElevenTts } from '@/store/slices/generationsApi';
-import { useGenerationCredits } from '@/hooks/useCredits';
-// historyService removed; backend persists history
+import { falElevenTts } from '@/store/slices/generationsApi';
+import { useCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
-import MusicInputBox from './MusicInputBox';
-import MusicHistory from './MusicHistory';
+import TTSHistory from './TTSHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
+import MusicInputBox from './MusicInputBox';
 
-const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
+interface TextToSpeechInputBoxProps {
+  showHistoryOnly?: boolean;
+}
+
+const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) => {
   const dispatch = useAppDispatch();
-  // Self-manage history loads for music to avoid central duplicate requests
-  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-music' });
+  // Include 'text-to-music' for backward compatibility with earlier mis-labeled TTS generations
+  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: ['text-to-speech', 'text_to_speech', 'tts', 'text-to-music'] });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-
-  // Local preview state for immediate UI feedback
   const [localMusicPreview, setLocalMusicPreview] = useState<any>(null);
 
-  // Auto-clear local preview after completion/failure
   useEffect(() => {
     if (!localMusicPreview) return;
     if (localMusicPreview.status === 'completed' || localMusicPreview.status === 'failed') {
@@ -33,56 +33,56 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     }
   }, [localMusicPreview]);
 
-  // Credits management
   const {
-    validateAndReserveCredits,
-    handleGenerationSuccess,
-    handleGenerationFailure,
+    validateMusicCredits,
+    reserveCreditsForGeneration,
+    confirmGenerationSuccess,
+    confirmGenerationFailure,
     clearCreditsError,
-  } = useGenerationCredits('music', 'music-1.5', {
-    duration: 90, // Default duration for music
-  });
+  } = useCredits();
 
   const handleGenerate = async (payload: any) => {
-    const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
-    const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.prompt || '';
+    const primaryText = payload?.text || payload?.prompt || '';
     if (!primaryText.trim()) {
-      setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics');
+      setErrorMessage('Please provide text');
       return;
     }
     const normalizedText = primaryText.trim();
-    if (isTtsModel) {
-      payload.text = normalizedText;
-      payload.prompt = payload.prompt || normalizedText;
-      payload.lyrics = normalizedText;
-      payload.generationType = payload.generationType || 'text-to-music';
-    } else {
-      payload.lyrics = normalizedText;
-      payload.prompt = payload.prompt || normalizedText;
+    payload.text = normalizedText;
+    payload.prompt = payload.prompt || normalizedText;
+    payload.lyrics = normalizedText;
+    payload.generationType = 'text-to-speech';
+    // Keep the model from payload (could be elevenlabs-tts, chatterbox-multilingual, or maya-tts)
+    if (!payload.model) {
+      payload.model = 'elevenlabs-tts';
     }
 
-    // Check authentication before allowing generation
     const hasSession = document.cookie.includes('app_session');
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
     
     if (!hasSession && !hasToken) {
-      setErrorMessage('Please sign in to generate music');
-      // Redirect to signup page
+      setErrorMessage('Please sign in to generate speech');
       window.location.href = '/view/signup?next=/text-to-music';
       return;
     }
 
-    // Clear any previous credit errors
     clearCreditsError();
 
-    // Validate and reserve credits before generation
     let transactionId: string;
     try {
-      const creditResult = await validateAndReserveCredits();
-      transactionId = creditResult.transactionId;
-      console.log('✅ Credits reserved for music generation:', creditResult);
+      // Use the model from payload for credit validation (supports elevenlabs-tts, chatterbox-multilingual, and maya-tts)
+      const musicResult = await validateMusicCredits(payload.model, 10);
+      const reservation = await reserveCreditsForGeneration(
+        musicResult.requiredCredits,
+        'music-generation',
+        {
+          model: payload.model,
+          generationType: 'text-to-speech',
+          duration: 10,
+        }
+      );
+      transactionId = reservation.transaction.id;
     } catch (creditError: any) {
-      console.error('❌ Credit validation failed:', creditError);
       setErrorMessage(creditError.message || 'Insufficient credits for generation');
       return;
     }
@@ -91,174 +91,200 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     setErrorMessage(undefined);
     setResultUrl(undefined);
 
-    // Create local preview immediately for UI feedback
+    const modelName = payload.model || 'elevenlabs-tts';
+    
     setLocalMusicPreview({
-      id: `music-loading-${Date.now()}`,
+      id: `tts-loading-${Date.now()}`,
       prompt: normalizedText,
-      model: payload.model,
-      generationType: 'text-to-music',
-      images: [{ id: 'music-loading', url: '', originalUrl: '' }],
+      model: modelName,
+      generationType: 'text-to-speech',
+      images: [{ id: 'tts-loading', url: '', originalUrl: '' }],
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
       status: 'generating'
     });
 
-    // Create loading history entry for Redux (with temporary ID)
     const tempId = Date.now().toString();
     const loadingEntry = {
       id: tempId,
       prompt: normalizedText,
-      model: payload.model,
+      model: modelName, // Keep frontend model name (chatterbox-multilingual or elevenlabs-tts)
       lyrics: normalizedText,
-      generationType: 'text-to-music' as const,
-      images: [], // Will store audio data in this field
-      status: "generating" as const,
+      generationType: 'text-to-speech' as 'text-to-speech',
+      images: [],
+      status: "generating" as 'generating',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      imageCount: 1 // For music, this represents audio count
+      imageCount: 1
     };
+    
+    console.log('[TextToSpeech] Creating loading entry:', {
+      id: tempId,
+      model: modelName,
+      generationType: 'text-to-speech',
+      prompt: normalizedText.substring(0, 50) + '...'
+    });
 
-    // Add to Redux with temporary ID
     dispatch(addHistoryEntry(loadingEntry));
 
     let firebaseHistoryId: string | null = null;
 
     try {
-      // Save to Firebase first (without ID field)
       try {
         const { id, ...loadingEntryWithoutId } = loadingEntry;
         firebaseHistoryId = await saveHistoryEntry(loadingEntryWithoutId);
-        console.log('✅ Firebase history entry created with ID:', firebaseHistoryId);
-        console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
-
-        // Update Redux entry with Firebase ID (replace tempId with firebaseHistoryId)
         dispatch(updateHistoryEntry({
           id: tempId,
           updates: { id: firebaseHistoryId }
         }));
-
-        // Don't modify the loadingEntry object - use firebaseHistoryId directly
-        console.log('Using Firebase ID for all operations:', firebaseHistoryId);
       } catch (firebaseError) {
         console.error('❌ Firebase save failed:', firebaseError);
-        try { const toast = (await import('react-hot-toast')).default; toast.error('Failed to save generation to history'); } catch {}
-        // Continue with generation even if Firebase save fails
       }
 
-      // Add isPublic from backend policy
       const { getIsPublic } = await import('@/lib/publicFlag');
       const isPublic = await getIsPublic();
-      console.log('🎵 Calling music API with payload via thunk:', { ...payload, isPublic });
-      const requestPayload = { ...payload, isPublic, prompt: payload.prompt || normalizedText };
-      const result = isTtsModel
-        ? await dispatch(falElevenTts(requestPayload)).unwrap()
-        : await dispatch(minimaxMusic(requestPayload)).unwrap();
-      console.log('🎵 Music generation thunk result:', result);
+      const requestPayload = { 
+        ...payload, 
+        isPublic, 
+        prompt: payload.prompt || normalizedText,
+        generationType: 'text-to-speech' // Ensure generationType is explicitly set
+      };
+      const result = await dispatch(falElevenTts(requestPayload)).unwrap();
+
+      console.log('[TextToSpeech] API Response received:', {
+        status: result?.status,
+        hasAudio: !!result?.audio,
+        hasAudios: Array.isArray(result?.audios) && result?.audios.length > 0,
+        model: result?.model,
+        historyId: result?.historyId
+      });
 
       if (!result || result.status !== 'completed') {
         throw new Error(result?.error || 'Generation failed');
       }
 
-      // Extract audio data - prefer audios array from backend, fallback to audio object
       let audioItem: any;
       let audiosArray: any[] = [];
       
-      if (isTtsModel) {
-        if (Array.isArray(result.audios) && result.audios.length > 0) {
-          audiosArray = result.audios;
-          audioItem = result.audios[0];
-        } else if (result.audio) {
-          audiosArray = [result.audio];
-          audioItem = result.audio;
-        }
-      } else {
-        audiosArray = Array.isArray(result.audios) ? result.audios : [];
-        audioItem = audiosArray[0];
+      if (Array.isArray(result.audios) && result.audios.length > 0) {
+        audiosArray = result.audios;
+        audioItem = result.audios[0];
+        console.log('[TextToSpeech] Using audios array from response:', audiosArray.length);
+      } else if (result.audio) {
+        audiosArray = [result.audio];
+        audioItem = result.audio;
+        console.log('[TextToSpeech] Using audio object from response');
       }
 
       if (!audioItem) {
-        console.error('❌ No audio data in response:', result);
+        console.error('[TextToSpeech] ❌ No audio data in response:', result);
         throw new Error('No audio data received from generator');
       }
 
       const audioUrl = audioItem.url || audioItem.firebaseUrl || audioItem.originalUrl;
       if (!audioUrl) {
-        console.error('❌ No audio URL in audioItem:', audioItem);
+        console.error('[TextToSpeech] ❌ No audio URL in audioItem:', audioItem);
         throw new Error('No audio URL received from generator');
       }
 
-      // Use audios array from backend if available, otherwise create from audioItem
+      console.log('[TextToSpeech] Audio URL extracted:', audioUrl);
+
       const finalAudios = audiosArray.length > 0 ? audiosArray : [{
-        id: audioItem.id || 'music-1',
+        id: audioItem.id || 'tts-1',
         url: audioUrl,
         firebaseUrl: audioUrl,
         originalUrl: audioItem.originalUrl || audioUrl,
         storagePath: audioItem.storagePath || ''
       }];
 
-      // Update the history entry with the audio URL from backend
-      // Store in both audios and images fields for compatibility
+      // Create images array in the format expected by MusicHistory component
+      // Each image entry should have: id, url, originalUrl, and optionally type
+      const imagesArray = finalAudios.map((a, index) => ({
+        id: a.id || `img-${Date.now()}-${index}`,
+        url: a.url || a.firebaseUrl || a.originalUrl,
+        originalUrl: a.originalUrl || a.url || a.firebaseUrl,
+        firebaseUrl: a.firebaseUrl || a.url,
+        storagePath: a.storagePath || '',
+        type: 'audio'
+      }));
+
       const updateData = {
         status: 'completed' as const,
         audios: finalAudios,
-        images: finalAudios.map(a => ({ ...a, type: 'audio' })),
-        lyrics: payload.lyrics || payload.text || payload.prompt
+        images: imagesArray,
+        lyrics: payload.lyrics || payload.text || payload.prompt,
+        // Ensure model name is preserved (use frontend model name, not backend endpoint name)
+        model: modelName,
+        generationType: 'text-to-speech' as const
       };
 
-      console.log('🎵 Final audio data for history:', updateData);
-      console.log('🎵 Audio URL:', audioUrl);
-      console.log('🎵 History ID being updated:', firebaseHistoryId || tempId);
-      console.log('🎵 Backend result:', result);
+      console.log('[TextToSpeech] Updating history entry:', {
+        id: firebaseHistoryId || tempId,
+        model: modelName,
+        generationType: 'text-to-speech',
+        audiosCount: finalAudios.length,
+        imagesCount: imagesArray.length,
+        hasAudioUrl: !!audioUrl,
+        updateData: {
+          status: updateData.status,
+          audiosCount: updateData.audios.length,
+          imagesCount: updateData.images.length,
+          model: updateData.model,
+          generationType: updateData.generationType
+        }
+      });
 
-      // Update Redux entry with completion data
-      console.log('🎵 Updating Redux history entry with ID:', firebaseHistoryId || tempId);
+      // Update Redux store first
       dispatch(updateHistoryEntry({
         id: firebaseHistoryId || tempId,
         updates: updateData
       }));
-      console.log('🎵 Redux history entry updated with audios:', updateData.audios.length, 'items');
 
-      // Update Firebase
+      console.log('[TextToSpeech] History entry updated in Redux:', {
+        id: firebaseHistoryId || tempId,
+        entryInStore: 'check Redux state'
+      });
+
+      // Update backend/Firebase
       if (firebaseHistoryId) {
         try {
           await updateFirebaseHistory(firebaseHistoryId, updateData);
-          console.log('✅ Firebase history updated successfully');
+          console.log('[TextToSpeech] Firebase history updated:', firebaseHistoryId);
         } catch (firebaseError) {
           console.error('❌ Firebase update failed:', firebaseError);
         }
       }
 
-      // Set result URL for audio player
       setResultUrl(audioUrl);
-
-      // Update local preview to completed
       setLocalMusicPreview((prev: any) => prev ? ({
         ...prev,
         status: 'completed',
-        images: [{ id: 'music-completed', url: audioUrl, originalUrl: audioUrl }]
+        audios: finalAudios,
+        images: imagesArray,
+        model: modelName
       }) : prev);
 
-      // Show success notification
-      try { const toast = (await import('react-hot-toast')).default; toast.success('Music generated successfully!'); } catch {}
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Speech generated successfully!'); } catch {}
 
-      // Handle credit success
       if (transactionId) {
-        await handleGenerationSuccess(transactionId);
+        await confirmGenerationSuccess(transactionId);
       }
 
-      // Refresh history after a short delay to ensure backend has updated
+      // Refresh history immediately to show the new entry
+      console.log('[TextToSpeech] Refreshing history to show new entry...');
       setTimeout(() => {
-        console.log('🔄 Refreshing music history...');
         refreshMusicHistoryImmediate();
       }, 500);
-
-      console.log('✅ Music generation completed successfully');
+      
+      // Also refresh after a longer delay to ensure backend sync
+      setTimeout(() => {
+        refreshMusicHistoryImmediate();
+      }, 2000);
 
     } catch (error: any) {
-      console.error('❌ Music generation failed:', error);
+      console.error('❌ TTS generation failed:', error);
       
-      // Update history entry with failed status
       if (firebaseHistoryId) {
         try {
           await updateFirebaseHistory(firebaseHistoryId, {
@@ -270,13 +296,11 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         }
       }
 
-      // Update local preview to failed
       setLocalMusicPreview((prev: any) => prev ? ({
         ...prev,
         status: 'failed'
       }) : prev);
 
-      // Update Redux entry with failed status
       dispatch(updateHistoryEntry({
         id: firebaseHistoryId || tempId,
         updates: {
@@ -285,12 +309,11 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         }
       }));
 
-      setErrorMessage(error.message || 'Music generation failed');
-      try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch {}
+      setErrorMessage(error.message || 'Speech generation failed');
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Speech generation failed'); } catch {}
       
-      // Handle credit failure
       if (transactionId) {
-        await handleGenerationFailure(transactionId);
+        await confirmGenerationFailure(transactionId);
       }
     } finally {
       setIsGenerating(false);
@@ -306,9 +329,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
   if (showHistoryOnly) {
     return (
-      <MusicHistory
-        generationType="text-to-music"
-        allowedTypes={['text-to-music', 'text_to_music']}
+      <TTSHistory
         onAudioSelect={setSelectedAudio}
         selectedAudio={selectedAudio}
         localPreview={localMusicPreview}
@@ -327,13 +348,15 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         </div>
       )}
 
-      {/* Music Input Box */}
+      {/* TTS Input Box */}
       <div className="w-full -mt-10 pt-4">
         <MusicInputBox
           onGenerate={handleGenerate}
           isGenerating={isGenerating}
           resultUrl={resultUrl}
           errorMessage={errorMessage}
+          defaultModel="elevenlabs-tts"
+          isTtsMode={true}
         />
       </div>
 
@@ -342,7 +365,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
           <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Music Track</h3>
+              <h3 className="text-white text-lg font-semibold">Speech</h3>
               <button
                 onClick={() => setSelectedAudio(null)}
                 className="text-white/60 hover:text-white transition-colors"
@@ -366,4 +389,4 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
   );
 };
 
-export default MusicGenerationInputBox;
+export default TextToSpeechInputBox;

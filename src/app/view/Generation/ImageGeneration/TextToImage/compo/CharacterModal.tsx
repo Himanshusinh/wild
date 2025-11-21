@@ -449,7 +449,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                       const files = Array.from(e.dataTransfer.files || []);
                       if (files.length === 0) return;
                       const file = files[0];
-                      const maxSize = 2 * 1024 * 1024;
+                      const maxSize = 20 * 1024 * 1024;
                       if (file.size > maxSize) {
                         alert('File size must be less than 2MB');
                         return;
@@ -471,7 +471,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                         const files = Array.from(input.files || []);
                         if (files.length === 0) return;
                         const file = files[0];
-                        const maxSize = 2 * 1024 * 1024;
+                        const maxSize = 20 * 1024 * 1024;
                         if (file.size > maxSize) {
                           alert('File size must be less than 2MB');
                           return;

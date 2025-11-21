@@ -26,7 +26,7 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
     const file = event.target.files?.[0];
     if (file) {
       // Check file size (2MB limit)
-      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      const maxSize = 20 * 1024 * 1024; // 2MB in bytes
       if (file.size > maxSize) {
         alert("Image too large. Maximum size is 2MB per image.");
         // Clear the input
