@@ -46,7 +46,6 @@ import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { enhancePromptAPI } from '@/lib/api/geminiApi';
 
 
 interface InputBoxProps {
@@ -87,7 +86,6 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [frameSize, setFrameSize] = useState("16:9");
   const [duration, setDuration] = useState(6);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isEnhancing, setIsEnhancing] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
   // Debug uploadedImages changes
@@ -2230,28 +2228,6 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
-    // Enhance prompt before generation
-    let finalPrompt = prompt;
-    if (!isEnhancing && prompt.trim()) {
-      try {
-        setIsEnhancing(true);
-        const res = await enhancePromptAPI(prompt, selectedModel, 'video');
-        if (res && res.ok && res.enhancedPrompt) {
-          finalPrompt = res.enhancedPrompt;
-          // Update the UI prompt with the enhanced version
-          setPrompt(finalPrompt);
-        } else {
-          // Non-fatal: show an error but continue with original prompt
-          if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
-        }
-      } catch (e: any) {
-        console.error('Prompt enhancement failed:', e);
-        toast.error(e?.message || 'Prompt enhancement failed. Using original prompt.');
-      } finally {
-        setIsEnhancing(false);
-      }
-    }
-
     setIsGenerating(true);
     setError("");
     clearCreditsError();
@@ -2334,7 +2310,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           requestBody = {
             model: selectedModel,
-            prompt: finalPrompt,
+            prompt: prompt,
             // MiniMax-Hailuo-02: Include duration and resolution only (no images for text-to-video)
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
@@ -2349,15 +2325,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Veo 3.1 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
             generate_audio: true,
-            enhance_prompt: true,
             auto_fix: true,
             isPublic
           };
@@ -2367,15 +2342,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Veo3 text-to-video generation
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
-            enhance_prompt: true,
             auto_fix: true,
             isPublic
           };
@@ -2384,11 +2358,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel.includes("wan-2.5") && !selectedModel.includes("i2v")) {
           // WAN 2.5 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-t2v-fast" : "wan-video/wan-2.5-t2v",
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             duration: duration, // 5 or 10 seconds
             size: frameSize, // WAN uses specific size format like "1280*720"
             ...(uploadedAudio && { audio: uploadedAudio }), // Include audio if uploaded
@@ -2418,11 +2392,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'kwaivgi/kling-v2.5-turbo-pro',
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
             generationType: 'text-to-video',
@@ -2433,11 +2407,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
           // Seedance T2V
           const isLite = selectedModel.includes('lite');
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             resolution: seedanceResolution,
             aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
@@ -2448,11 +2422,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           apiEndpoint = '/api/replicate/seedance-t2v/submit';
         } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
           // PixVerse T2V
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'pixverse/pixverse-v5',
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             quality: pixverseQuality,
             aspect_ratio: frameSize, // PixVerse supports 16:9, 9:16, 1:1
@@ -2464,7 +2438,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel.includes('sora2') && !selectedModel.includes('i2v') && !selectedModel.includes('v2v')) {
           // Sora 2 T2V
           const isPro = selectedModel.includes('pro');
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           
           // Ensure duration is a number and one of [4, 8, 12]
           let soraDuration = duration;
@@ -2511,10 +2485,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           // LTX V2 Text-to-Video (Pro/Fast)
           const isPro = selectedModel.includes('pro');
           const normalizedRes = (selectedResolution || '1080p').toLowerCase();
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             resolution: normalizedRes,
             aspect_ratio: '16:9',
             duration,
@@ -2583,11 +2557,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
 
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: selectedModel,
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             // MiniMax-Hailuo-02: Include duration and resolution, first_frame_image based on requirements
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
@@ -2626,11 +2600,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           const isFast = selectedModel.includes("fast");
           // Use uploaded image or reference image
           const imageUrl = uploadedImages.length > 0 ? uploadedImages[0] : references[0];
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             image_url: imageUrl, // Veo 3.1 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
             duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
@@ -2647,11 +2621,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           const isFast = selectedModel.includes("fast");
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0], // Veo3 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
             duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
@@ -2668,11 +2642,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           const isFast = selectedModel.includes("fast");
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-i2v-fast" : "wan-video/wan-2.5-i2v",
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0], // WAN expects image URL
             duration: duration, // 5 or 10 seconds
             resolution: frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p",
@@ -2699,11 +2673,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           const isV25 = selectedModel.includes('v2.5');
           if (isV25) {
             // Kling 2.5 Turbo Pro - uses 'image' parameter for I2V
-            const apiPrompt = getApiPrompt(finalPrompt);
+            const apiPrompt = getApiPrompt(prompt);
             requestBody = { 
               model: 'kwaivgi/kling-v2.5-turbo-pro', 
               prompt: apiPrompt,
-              originalPrompt: finalPrompt, // Store original prompt for display
+              originalPrompt: prompt, // Store original prompt for display
               image: uploadedImages[0], 
               duration, 
               aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), 
@@ -2714,11 +2688,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             // Kling v2.1 and v2.1-master - use 'start_image' parameter (required)
             const isMaster = selectedModel.includes('master');
             const modelName = isMaster ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.1';
-            const apiPrompt = getApiPrompt(finalPrompt);
+            const apiPrompt = getApiPrompt(prompt);
             requestBody = {
               model: modelName,
               prompt: apiPrompt,
-              originalPrompt: finalPrompt, // Store original prompt for display
+              originalPrompt: prompt, // Store original prompt for display
               start_image: uploadedImages[0], // Required for v2.1
               duration,
               aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
@@ -2736,11 +2710,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           const isLite = selectedModel.includes('lite');
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             resolution: seedanceResolution,
@@ -2758,11 +2732,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             setError("PixVerse image-to-video requires an input image");
             return;
           }
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'pixverse/pixverse-v5',
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             quality: pixverseQuality,
@@ -2779,7 +2753,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           const isPro = selectedModel.includes('pro');
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           
           // Ensure duration is a number and one of [4, 8, 12]
           let soraDuration = duration;
@@ -2831,10 +2805,10 @@ const InputBox = (props: InputBoxProps = {}) => {
             setError('LTX V2 image-to-video requires an input image');
             return;
           }
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0],
             resolution: normalizedRes,
             aspect_ratio: ratio,
@@ -2855,7 +2829,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
-          const apiPrompt = getApiPrompt(finalPrompt);
+          const apiPrompt = getApiPrompt(prompt);
           const imageToVideoBody = buildImageToVideoBody({
             model: selectedModel as "gen4_turbo" | "gen3a_turbo",
             ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
@@ -2877,7 +2851,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             mode: "image_to_video",
             sku: runwaySku,
             imageToVideo: imageToVideoBody,
-            originalPrompt: finalPrompt, // Store original prompt for display
+            originalPrompt: prompt, // Store original prompt for display
             generationType: "image-to-video",
             isPublic,
           };
@@ -2964,13 +2938,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             model: 'kwaivgi/kling-lip-sync',
             video_url: uploadedVideo || undefined, // Use video_url if uploaded
             video_id: sourceHistoryEntryId || undefined, // Use video_id if from history
-            text: finalPrompt.trim() || undefined, // Text for lip sync
+            text: prompt.trim() || undefined, // Text for lip sync
             audio_file: uploadedAudio || undefined, // Audio file if uploaded
             voice_id: 'en_AOT', // Default voice_id (can be made configurable later)
             voice_speed: 1, // Default voice speed (can be made configurable later)
             generationType: 'video-to-video',
             isPublic,
-            originalPrompt: finalPrompt.trim() || '', // Store original prompt for display
+            originalPrompt: prompt.trim() || '', // Store original prompt for display
           };
           generationType = 'video-to-video';
           apiEndpoint = '/api/replicate/kling-lipsync/submit';
@@ -3001,7 +2975,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             ...(wanAnimateSeed !== undefined && { seed: wanAnimateSeed }),
             generationType: 'video-to-video',
             isPublic,
-            originalPrompt: finalPrompt.trim() || '', // Store original prompt for display
+            originalPrompt: prompt.trim() || '', // Store original prompt for display
           };
           generationType = 'video-to-video';
           apiEndpoint = '/api/replicate/wan-2-2-animate-replace/submit';
@@ -3022,7 +2996,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             videoToVideo: buildVideoToVideoBody({
               model: "gen4_aleph",
               ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-              promptText: finalPrompt,
+              promptText: prompt,
               videoUri: uploadedVideo,
               references: references.length > 0 ? references.map(ref => ({
                 type: "image",

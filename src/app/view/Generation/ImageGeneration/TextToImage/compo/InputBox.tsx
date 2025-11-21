@@ -1250,8 +1250,39 @@ const InputBox = () => {
         const res = await enhancePromptAPI(originalPrompt, selectedModel as any, 'image');
         if (res && res.ok && res.enhancedPrompt) {
           finalPrompt = res.enhancedPrompt;
-          // Update the UI prompt with the enhanced version
-          try { dispatch(setPrompt(finalPrompt)); } catch {}
+          
+          // Update Redux state - this will trigger the useEffect that calls updateContentEditable
+          dispatch(setPrompt(finalPrompt));
+          
+          // Immediately update the contentEditable element for instant visual feedback
+          // This bypasses any Redux state propagation delays
+          const el = contentEditableRef.current as HTMLElement | null;
+          if (el) {
+            // Set text content directly for immediate update
+            el.textContent = finalPrompt;
+            
+            // Focus and position cursor at end
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const sel = window.getSelection();
+            if (sel) { 
+              sel.removeAllRanges(); 
+              sel.addRange(range); 
+            }
+          }
+          
+          // Let updateContentEditable run after Redux state has updated to properly format
+          // with character tags if needed (runs via useEffect watching prompt)
+          // Also call it directly after a brief delay to ensure proper formatting
+          setTimeout(() => {
+            try {
+              updateContentEditable();
+            } catch (err) {
+              console.error('Error in updateContentEditable after enhancement:', err);
+            }
+          }, 100);
         } else {
           // Non-fatal: show an error but continue with original prompt
           if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
