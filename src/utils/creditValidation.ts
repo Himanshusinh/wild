@@ -1,7 +1,7 @@
 // @ts-ignore
 import { creditDistributionData, ModelCreditInfo } from './creditDistribution';
 import { buildCreditModelName, getModelMapping } from './modelMapping';
-import { getCreditsForModel } from './modelCredits';
+import { getCreditsForModel, MODEL_CREDITS_MAPPING } from './modelCredits';
 
 /**
  * Get credit cost for a specific model
@@ -120,14 +120,29 @@ export const getRunwayVideoCreditCost = (model: string, duration?: number): numb
  */
 export const getMusicCreditCost = (frontendModel: string, duration?: number): number => {
   const mapping = getModelMapping(frontendModel);
-  if (!mapping || mapping.generationType !== 'music') {
+  // Accept both 'music' and 'sfx' generation types for audio-related models
+  if (!mapping || (mapping.generationType !== 'music' && mapping.generationType !== 'sfx')) {
     console.warn(`Unknown or invalid music model: ${frontendModel}`);
     return 0;
   }
 
+  // First try to get cost from creditDistributionData using creditModelName
   console.log(`Looking for music model: ${mapping.creditModelName}`);
-  const cost = getCreditCostForModel(mapping.creditModelName);
-  console.log(`Found cost: ${cost} for model: ${mapping.creditModelName}`);
+  let cost = getCreditCostForModel(mapping.creditModelName);
+  
+  // If not found in creditDistributionData, try direct lookup in MODEL_CREDITS_MAPPING using frontend value
+  if (cost === 0) {
+    const directCost = MODEL_CREDITS_MAPPING[frontendModel];
+    if (directCost !== undefined && directCost > 0) {
+      cost = directCost;
+      console.log(`Found cost via direct mapping: ${cost} for model: ${frontendModel}`);
+    } else {
+      console.log(`Found cost: ${cost} for model: ${mapping.creditModelName}`);
+    }
+  } else {
+    console.log(`Found cost: ${cost} for model: ${mapping.creditModelName}`);
+  }
+  
   return cost;
 };
 

@@ -12,6 +12,8 @@ import { loadHistory, setFilters } from '@/store/slices/historySlice';
  */
 interface UseHistoryLoaderOptions {
   generationType: string;
+  // Optional expanded set of types to fetch (e.g., TTS synonyms)
+  generationTypes?: string[];
   initialLimit?: number;
   debounceMs?: number;
   // If true, always force an initial request even if entries cached (rare, for hard refresh pages)
@@ -24,6 +26,7 @@ const lastLoadTimestamps: Record<string, number> = {};
 
 export const useHistoryLoader = ({
   generationType,
+  generationTypes,
   initialLimit = 50,
   debounceMs = 600,
   forceInitial = false,
@@ -42,15 +45,20 @@ export const useHistoryLoader = ({
     if (mountedRef.current) return; // only once per mount
     mountedRef.current = true;
     const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
-    const hasTypeEntries = entries.some((e: any) => norm(e.generationType || '') === norm(generationType));
-    const filtersMatch = norm(String(currentFilters?.generationType || '')) === norm(generationType);
+    const wantedTypes = Array.isArray(generationTypes) && generationTypes.length > 0 ? generationTypes : [generationType];
+    const hasTypeEntries = entries.some((e: any) => wantedTypes.some(w => norm(e.generationType || '') === norm(String(w))));
+    const currentFilterVal = currentFilters?.generationType;
+    const filtersMatch = Array.isArray(currentFilterVal)
+      ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
+      : norm(String(currentFilterVal || '')) === norm(generationType);
     if (!forceInitial && hasTypeEntries && filtersMatch) return; // already loaded
     if (inFlightTypeLocks[generationType]) return; // another component kicked off load
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
-    dispatch(setFilters({ generationType } as any));
+    const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+    dispatch(setFilters(genFilter as any));
     (dispatch as any)(loadHistory({
-      filters: { generationType: generationType as any },
+      filters: genFilter,
       paginationParams: { limit: initialLimit },
       requestOrigin: 'page',
       expectedType: generationType,
@@ -75,8 +83,9 @@ export const useHistoryLoader = ({
       }
       inFlightTypeLocks[generationType] = true;
       lastLoadTimestamps[generationType] = Date.now();
+      const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
       (dispatch as any)(loadHistory({
-        filters: { generationType: generationType as any },
+        filters: genFilter,
         paginationParams: { limit },
         requestOrigin: 'page',
         expectedType: generationType,
@@ -86,15 +95,16 @@ export const useHistoryLoader = ({
         pendingRefreshRef.current = false;
       });
     }, debounceMs);
-  }, [generationType, debounceMs, dispatch, loading, initialLimit]);
+  }, [generationType, generationTypes, debounceMs, dispatch, loading, initialLimit]);
 
   // Immediate (non-debounced) refresh - still respects lock to prevent overlap
   const refreshImmediate = useCallback((limit: number = initialLimit) => {
     if (loading || inFlightTypeLocks[generationType]) return;
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
+    const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
     (dispatch as any)(loadHistory({
-      filters: { generationType: generationType as any },
+      filters: genFilter,
       paginationParams: { limit },
       requestOrigin: 'page',
       expectedType: generationType,
@@ -102,7 +112,7 @@ export const useHistoryLoader = ({
     })).finally(() => {
       inFlightTypeLocks[generationType] = false;
     });
-  }, [generationType, dispatch, loading, initialLimit]);
+  }, [generationType, generationTypes, dispatch, loading, initialLimit]);
 
   return {
     refresh,

@@ -6,7 +6,7 @@
 export interface ModelMapping {
   frontendValue: string;
   creditModelName: string;
-  generationType: 'image' | 'video' | 'music';
+  generationType: 'image' | 'video' | 'music' | 'sfx' | 'text-to-dialogue' ;
   provider: string;
   options?: {
     resolution?: string[];
@@ -580,6 +580,36 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'Music 1.5 (Up to 90s)',
     generationType: 'music',
     provider: 'minimax'
+  },
+  {
+    frontendValue: 'elevenlabs-tts',
+    creditModelName: 'ElevenLabs TTS v3',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'chatterbox-multilingual',
+    creditModelName: 'Chatterbox Multilingual TTS',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'maya-tts',
+    creditModelName: 'Maya TTS',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue',
+    creditModelName: 'ElevenLabs Dialogue',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-sfx',
+    creditModelName: 'ElevenLabs Sound Effects',
+    generationType: 'sfx',
+    provider: 'fal'
   },
 
   // PROMPT ENHANCER MODELS

@@ -115,7 +115,20 @@ export const loadHistory = createAsyncThunk(
       const client = axiosInstance;
       const params: any = {};
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
+      // Always send canonical generationType to backend (prevents unrelated items),
+      // while still performing client-side legacy inclusions for mis-labeled audio entries.
+      const canonicalAudioType = (incoming: string | string[] | undefined): string | string[] | undefined => {
+        if (!incoming) return incoming;
+        const arr = Array.isArray(incoming) ? incoming : [incoming];
+        const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
+        // Backend does NOT accept these audio feature generationType filters yet; skip sending and filter client-side.
+        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
+        return mapGenerationTypeForBackend(incoming as any);
+      };
+      if (filters?.generationType) {
+        const mapped = canonicalAudioType(filters.generationType as any);
+        if (mapped) params.generationType = mapped;
+      }
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       // Add search parameter if present
@@ -267,8 +280,19 @@ export const loadMoreHistory = createAsyncThunk(
         };
         const matchesFilters = (entry: any): boolean => {
           // Generation type filter
-          if (filters?.generationType && !typeMatches(entry.generationType, filters.generationType)) {
-            return false;
+          if (filters?.generationType) {
+            const filterType = filters.generationType;
+            if (Array.isArray(filterType)) {
+              // If it's an array, check if any type matches
+              if (!filterType.some(ft => typeMatches(entry.generationType, ft))) {
+                return false;
+              }
+            } else {
+              // If it's a string, use existing logic
+              if (!typeMatches(entry.generationType, filterType)) {
+                return false;
+              }
+            }
           }
           // Mode filter (video groups t2v/i2v/v2v)
           if ((filters as any)?.mode === 'video') {
@@ -301,7 +325,17 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
   const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
-      if (filters?.generationType) params.generationType = mapGenerationTypeForBackend(filters.generationType);
+      const canonicalAudioType = (incoming: string | string[] | undefined): string | string[] | undefined => {
+        if (!incoming) return incoming;
+        const arr = Array.isArray(incoming) ? incoming : [incoming];
+        const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
+        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
+        return mapGenerationTypeForBackend(incoming as any);
+      };
+      if (filters?.generationType) {
+        const mapped = canonicalAudioType(filters.generationType as any);
+        if (mapped) params.generationType = mapped;
+      }
       if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
       if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
       // Add search parameter if present
@@ -494,26 +528,55 @@ const historySlice = createSlice({
 
         // Apply a safe, synonym-aware filter when a generationType is requested
         state.entries = action.payload.entries;
-        const usedType = (usedFilters as any)?.generationType as string | undefined;
-        if (usedType) {
+        const usedTypeAny = (usedFilters as any)?.generationType as any;
+        if (usedTypeAny) {
           const normalize = (t?: string): string => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-          const matchesType = (entryType?: string): boolean => {
-            const e = normalize(entryType);
-            const f = normalize(usedType);
+          const typeMatches = (eType?: string, fType?: string): boolean => {
+            const e = normalize(eType);
+            const f = normalize(fType);
+            if (!f) return true;
             if (e === f) return true;
             // logo synonyms
             if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
             // sticker synonyms
             if ((f === 'sticker-generation' && e === 'sticker') || (f === 'sticker' && e === 'sticker-generation')) return true;
-            if ((f === 'sticker-generation' && e === 'sticker-generation') || (f === 'sticker' && e === 'sticker')) return true;
             // product synonyms
             if ((f === 'product-generation' && e === 'product') || (f === 'product' && e === 'product-generation')) return true;
-            if ((f === 'product-generation' && e === 'product-generation') || (f === 'product' && e === 'product')) return true;
+            // TTS synonyms
+            if ((f === 'text-to-speech' && (e === 'text-to-speech' || e === 'text-to-voice' || e === 'tts' || e === 'text-to-voice')) ||
+                (f === 'text_to_speech' && (e === 'text-to-speech' || e === 'text_to_speech' || e === 'tts')) ||
+                (f === 'tts' && (e === 'text-to-speech' || e === 'text_to_speech' || e === 'tts'))) return true;
             // text-to-character exact match
             if (f === 'text-to-character' && e === 'text-to-character') return true;
             return false;
           };
-          state.entries = state.entries.filter((it: any) => matchesType(it?.generationType));
+          const usedTypesArr = Array.isArray(usedTypeAny) ? usedTypeAny : [usedTypeAny];
+          const isTtsRequest = usedTypesArr.map(normalize).some((t: string) => ['text-to-speech','text_to_speech','tts'].includes(t));
+          const isSfxRequest = usedTypesArr.map(normalize).some((t: string) => ['sfx','sound-effect','sound_effect','sound-effects','sound_effects'].includes(t));
+          const isDialogueRequest = usedTypesArr.map(normalize).some((t: string) => ['text-to-dialogue','dialogue','text_to_dialogue'].includes(t));
+          state.entries = state.entries.filter((it: any) => {
+            // Standard type match
+            if (usedTypesArr.some((f: string) => typeMatches(it?.generationType, f))) return true;
+            // Extra inclusions for TTS: include chatterbox/elevenlabs items regardless of generationType
+            if (isTtsRequest) {
+              const model = normalize(it?.model) || normalize((it as any)?.backendModel) || normalize((it as any)?.apiModel) || '';
+              const hasAudioData = (Array.isArray((it as any)?.audios) && (it as any).audios.length > 0) || !!(it as any)?.audio || (Array.isArray((it as any)?.images) && (it as any).images.some((img: any) => img?.type === 'audio'));
+              if ((model.includes('chatterbox') || model.includes('eleven') || model.includes('maya') || model.includes('tts')) && hasAudioData) return true;
+            }
+            // Extra inclusions for SFX: include elevenlabs sound-effects regardless of mislabels
+            if (isSfxRequest) {
+              const model = normalize(it?.model) || normalize((it as any)?.backendModel) || normalize((it as any)?.apiModel) || '';
+              const hasAudioData = (Array.isArray((it as any)?.audios) && (it as any).audios.length > 0) || !!(it as any)?.audio || (Array.isArray((it as any)?.images) && (it as any).images.some((img: any) => img?.type === 'audio'));
+              if ((model.includes('sound-effects') || model.includes('sound_effects') || model.includes('sfx')) && hasAudioData) return true;
+            }
+            // Extra inclusions for Dialogue: include dialogue endpoints regardless of mislabels
+            if (isDialogueRequest) {
+              const model = normalize(it?.model) || normalize((it as any)?.backendModel) || normalize((it as any)?.apiModel) || '';
+              const hasAudioData = (Array.isArray((it as any)?.audios) && (it as any).audios.length > 0) || !!(it as any)?.audio || (Array.isArray((it as any)?.images) && (it as any).images.some((img: any) => img?.type === 'audio'));
+              if ((model.includes('dialogue') || model.includes('conversation')) && hasAudioData) return true;
+            }
+            return false;
+          });
         }
         
           state.lastLoadedCount = action.payload.entries.length;
@@ -559,19 +622,45 @@ const historySlice = createSlice({
         );
 
         // Enforce requested generationType for pagination as well
-        const usedType = ((action.meta as any)?.arg?.filters?.generationType || state.filters?.generationType) as string | undefined;
-        if (usedType) {
+        const usedTypeAny = ((action.meta as any)?.arg?.filters?.generationType || state.filters?.generationType) as any;
+        if (usedTypeAny) {
           const normalize = (t?: string): string => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-          const matchesType = (entryType?: string): boolean => {
-            const e = normalize(entryType);
-            const f = normalize(usedType);
+          const typeMatches = (eType?: string, fType?: string): boolean => {
+            const e = normalize(eType);
+            const f = normalize(fType);
+            if (!f) return true;
             if (e === f) return true;
             if ((f === 'logo' && e === 'logo-generation') || (f === 'logo-generation' && e === 'logo')) return true;
             if ((f === 'sticker-generation' && e === 'sticker') || (f === 'sticker' && e === 'sticker-generation')) return true;
             if ((f === 'product-generation' && e === 'product') || (f === 'product' && e === 'product-generation')) return true;
+            if ((f === 'text-to-speech' && (e === 'text-to-speech' || e === 'text_to_speech' || e === 'tts')) ||
+                (f === 'text_to_speech' && (e === 'text-to-speech' || e === 'text_to_speech' || e === 'tts')) ||
+                (f === 'tts' && (e === 'text-to-speech' || e === 'text_to_speech' || e === 'tts'))) return true;
             return false;
           };
-          newEntries = newEntries.filter((it: any) => matchesType(it?.generationType));
+          const usedTypesArr = Array.isArray(usedTypeAny) ? usedTypeAny : [usedTypeAny];
+          const isTtsRequest = usedTypesArr.map(normalize).some((t: string) => ['text-to-speech','text_to_speech','tts'].includes(t));
+          const isSfxRequest = usedTypesArr.map(normalize).some((t: string) => ['sfx','sound-effect','sound_effect','sound-effects','sound_effects'].includes(t));
+          const isDialogueRequest = usedTypesArr.map(normalize).some((t: string) => ['text-to-dialogue','dialogue','text_to_dialogue'].includes(t));
+          newEntries = newEntries.filter((it: any) => {
+            if (usedTypesArr.some((f: string) => typeMatches(it?.generationType, f))) return true;
+            if (isTtsRequest) {
+              const model = normalize(it?.model) || normalize((it as any)?.backendModel) || normalize((it as any)?.apiModel) || '';
+              const hasAudioData = (Array.isArray((it as any)?.audios) && (it as any).audios.length > 0) || !!(it as any)?.audio || (Array.isArray((it as any)?.images) && (it as any).images.some((img: any) => img?.type === 'audio'));
+              if ((model.includes('chatterbox') || model.includes('eleven') || model.includes('maya') || model.includes('tts')) && hasAudioData) return true;
+            }
+            if (isSfxRequest) {
+              const model = normalize(it?.model) || normalize((it as any)?.backendModel) || normalize((it as any)?.apiModel) || '';
+              const hasAudioData = (Array.isArray((it as any)?.audios) && (it as any).audios.length > 0) || !!(it as any)?.audio || (Array.isArray((it as any)?.images) && (it as any).images.some((img: any) => img?.type === 'audio'));
+              if ((model.includes('sound-effects') || model.includes('sound_effects') || model.includes('sfx')) && hasAudioData) return true;
+            }
+            if (isDialogueRequest) {
+              const model = normalize(it?.model) || normalize((it as any)?.backendModel) || normalize((it as any)?.apiModel) || '';
+              const hasAudioData = (Array.isArray((it as any)?.audios) && (it as any).audios.length > 0) || !!(it as any)?.audio || (Array.isArray((it as any)?.images) && (it as any).images.some((img: any) => img?.type === 'audio'));
+              if ((model.includes('dialogue') || model.includes('conversation')) && hasAudioData) return true;
+            }
+            return false;
+          });
         }
         
         // Append only genuinely new entries

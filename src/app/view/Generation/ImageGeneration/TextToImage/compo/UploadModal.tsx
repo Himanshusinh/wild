@@ -279,7 +279,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
-                    const maxSize = 2 * 1024 * 1024;
+                    const maxSize = 20 * 1024 * 1024;
                     const urls: string[] = [];
                     for (const file of files) {
                       if (file.size > maxSize) continue;
@@ -299,7 +299,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 2 * 1024 * 1024;
+                      const maxSize = 20 * 1024 * 1024;
                       const urls: string[] = [];
                       for (const file of files) {
                         if (file.size > maxSize) { continue; }
