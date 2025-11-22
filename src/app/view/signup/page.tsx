@@ -47,21 +47,34 @@ export default function SignUp() {
         if (response.ok) {
           const data = await response.json()
           if (data?.responseStatus === 'success' && Array.isArray(data?.data) && data.data.length > 0) {
-            setImages(data.data)
-            console.log('✅ Loaded', data.data.length, 'high-scored images for slideshow')
+            // Start slideshow as soon as first image arrives
+            if (data.data.length > 0) {
+              setImages([data.data[0]]) // Set first image immediately
+              setIsLoadingImage(false) // Stop loading state
+              // Then add remaining images
+              if (data.data.length > 1) {
+                setTimeout(() => {
+                  setImages(data.data)
+                }, 100)
+              }
+            } else {
+              setImages([])
+              setIsLoadingImage(false)
+            }
           } else {
             // API returned success but no images - use default
             setImages([])
+            setIsLoadingImage(false)
           }
         } else {
           // API call failed - use default
           setImages([])
+          setIsLoadingImage(false)
         }
       } catch (error) {
         console.error('❌ Failed to fetch random images:', error)
         // API call failed - use default
         setImages([])
-      } finally {
         setIsLoadingImage(false)
       }
     }
@@ -69,7 +82,7 @@ export default function SignUp() {
     fetchRandomImages()
   }, [])
 
-  // Slideshow effect - change image every 5 seconds with smooth fade transition
+  // Slideshow effect - change image every 7 seconds with smooth fade transition
   useEffect(() => {
     if (images.length <= 1) return
 
@@ -91,7 +104,7 @@ export default function SignUp() {
           setFadeOut(false)
         }, 100)
       }, 600) // Half of transition duration (1200ms / 2)
-    }, 5000) // Change image every 5 seconds
+    }, 7000) // Change image every 7 seconds
 
     return () => {
       if (intervalRef.current) {
