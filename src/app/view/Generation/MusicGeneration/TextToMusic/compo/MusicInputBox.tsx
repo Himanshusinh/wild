@@ -95,6 +95,9 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   // Chatterbox-specific state
   const [chatterboxVoice, setChatterboxVoice] = useState('english');
   const [customAudioLanguage, setCustomAudioLanguage] = useState('');
+  const [voiceFileName, setVoiceFileName] = useState('');
+  const [uploadedVoiceFile, setUploadedVoiceFile] = useState<File | null>(null);
+  const [isUploadingVoice, setIsUploadingVoice] = useState(false);
   const [exaggeration, setExaggeration] = useState(0.5);
   const [temperature, setTemperature] = useState(0.8);
   const [cfgScale, setCfgScale] = useState(0.5);
@@ -533,6 +536,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       payload.model = 'chatterbox-multilingual';
       if (chatterboxVoice.trim()) payload.voice = chatterboxVoice.trim();
       if (customAudioLanguage.trim()) payload.custom_audio_language = customAudioLanguage.trim();
+      if (voiceFileName.trim()) payload.voice_file_name = voiceFileName.trim();
       if (exaggeration != null) payload.exaggeration = Number(exaggeration.toFixed(2));
       if (temperature != null) payload.temperature = Number(temperature.toFixed(2));
       if (cfgScale != null) payload.cfg_scale = Number(cfgScale.toFixed(2));
@@ -1132,6 +1136,37 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <RangeControl label="Temperature" value={elevenlabsTemperature} min={0.05} max={5.0} step={0.01} onChange={setElevenlabsTemperature} />
           <RangeControl label="CFG Scale" value={elevenlabsCfgScale} min={0.0} max={1.0} step={0.01} onChange={setElevenlabsCfgScale} />
         </div>
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1">
+            <label className="block text-white/70 text-sm mb-1">Seed</label>
+            <div className="flex items-center gap-2">
+              <input
+                value={seed}
+                onChange={(e) => setSeed(e.target.value)}
+                placeholder="random"
+                className="flex-1 bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
+              />
+              <button
+                onClick={() => setSeed('random')}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                title="Reset to random"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/80">
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M3 3v5h5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M21 21v-5h-5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="flex-1">
+            <label className="block text-white/70 text-sm mb-1">Audio URL (Optional)</label>
+            <input
+              value={audioUrl}
+              onChange={(e) => setAudioUrl(e.target.value)}
+              placeholder="URL to reference audio..."
+              className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
+            />
+          </div>
+        </div>
       </div>
     );
   };
@@ -1242,31 +1277,123 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       'swahili', 'turkish', 'chinese'
     ];
     
+    // Check if voice is a custom URL
+    const isCustomVoiceUrl = chatterboxVoice && typeof chatterboxVoice === 'string' && 
+      (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://'));
+    
     return (
       <div className="space-y-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-col gap-3">
+          <div className="flex-1 relative dropdown-container">
             <label className="block text-white/70 text-sm mb-1">Voice</label>
-            <button
-              onClick={() => {
-                setVoiceDropdownOpen(!voiceDropdownOpen);
-                setCustomAudioLanguageDropdownOpen(false);
-              }}
-              className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 transition flex items-center justify-between text-white p-2 rounded-lg text-left"
-            >
-              <span className={chatterboxVoice ? 'text-white' : 'text-white/60'}>
-                {chatterboxVoice || 'Select voice...'}
-              </span>
-              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setVoiceDropdownOpen(!voiceDropdownOpen);
+                  setCustomAudioLanguageDropdownOpen(false);
+                }}
+                className="flex-1 h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
+              >
+                <span className={chatterboxVoice ? 'text-white' : 'text-white/60'}>
+                  {chatterboxVoice && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://')) 
+                    ? 'Custom Voice URL' 
+                    : (chatterboxVoice ? chatterboxVoice.charAt(0).toUpperCase() + chatterboxVoice.slice(1) : 'Select voice...')}
+                </span>
+                <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  // Validate file type
+                  const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
+                  const allowedExtensions = /\.(wav|mp3)$/i;
+                  if (!allowedTypes.includes(file.type) && !file.name.match(allowedExtensions)) {
+                    dispatch(addNotification({ type: 'error', message: 'Please upload a WAV or MP3 audio file' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  // Validate file size (max 15MB)
+                  const maxSize = 15 * 1024 * 1024;
+                  if (file.size > maxSize) {
+                    dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  setIsUploadingVoice(true);
+                  setUploadedVoiceFile(file);
+                  
+                  try {
+                    // Convert file to data URI
+                    const reader = new FileReader();
+                    const dataUri = await new Promise<string>((resolve, reject) => {
+                      reader.onload = () => resolve(reader.result as string);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(file);
+                    });
+                    
+                    // Upload to backend to get URL
+                    const { getApiClient } = await import('@/lib/axiosInstance');
+                    const api = getApiClient();
+                    const uploadResponse = await api.post('/api/fal/upload-voice', {
+                      audioData: dataUri,
+                      fileName: voiceFileName || file.name.replace(/\.[^/.]+$/, ''),
+                    });
+                    
+                    if (uploadResponse.data?.data?.url) {
+                      const uploadedUrl = uploadResponse.data.data.url;
+                      setChatterboxVoice(uploadedUrl);
+                      dispatch(addNotification({ type: 'success', message: 'Voice file uploaded successfully' }));
+                    } else {
+                      throw new Error('No URL returned from upload');
+                    }
+                  } catch (error: any) {
+                    console.error('Failed to upload voice file:', error);
+                    dispatch(addNotification({ type: 'error', message: error?.response?.data?.message || 'Failed to upload voice file' }));
+                    setUploadedVoiceFile(null);
+                  } finally {
+                    setIsUploadingVoice(false);
+                    e.target.value = '';
+                  }
+                }}
+                className="hidden"
+                id="voice-file-input-chatterbox"
+                disabled={isUploadingVoice}
+              />
+              <label
+                htmlFor="voice-file-input-chatterbox"
+                className={`flex items-center justify-center gap-1.5 px-3 h-[32px] rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition-all cursor-pointer bg-white/10 hover:bg-white/20 text-white ${isUploadingVoice ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="Upload audio file for custom voice"
+              >
+                {isUploadingVoice ? (
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                )}
+              </label>
+            </div>
             {voiceDropdownOpen && (
-              <div className="absolute z-[100] bottom-full left-0 mb-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                 {voiceOptions.map((option) => (
                   <button
                     key={option}
                     onClick={() => {
                       setChatterboxVoice(option);
                       setVoiceDropdownOpen(false);
+                      setCustomAudioLanguage('');
+                      setUploadedVoiceFile(null);
                     }}
                     className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
                       chatterboxVoice === option ? "bg-white text-black" : "text-white/90"
@@ -1278,59 +1405,180 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     )}
                   </button>
                 ))}
+                <div className="border-t border-white/10 my-1"></div>
+                <div className="px-3 py-2 space-y-3" onClick={(e) => e.stopPropagation()}>
+                  <div>
+                    <label className="block text-white/70 text-xs mb-2 font-medium">Upload Audio File</label>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        // Validate file type
+                        const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
+                        const allowedExtensions = /\.(wav|mp3)$/i;
+                        if (!allowedTypes.includes(file.type) && !file.name.match(allowedExtensions)) {
+                          dispatch(addNotification({ type: 'error', message: 'Please upload a WAV or MP3 audio file' }));
+                          e.target.value = '';
+                          return;
+                        }
+                        
+                        // Validate file size (max 15MB)
+                        const maxSize = 15 * 1024 * 1024;
+                        if (file.size > maxSize) {
+                          dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
+                          e.target.value = '';
+                          return;
+                        }
+                        
+                        setIsUploadingVoice(true);
+                        setUploadedVoiceFile(file);
+                        
+                        try {
+                          // Convert file to data URI
+                          const reader = new FileReader();
+                          const dataUri = await new Promise<string>((resolve, reject) => {
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                          });
+                          
+                          // Upload to backend to get URL
+                          const { getApiClient } = await import('@/lib/axiosInstance');
+                          const api = getApiClient();
+                          const uploadResponse = await api.post('/api/fal/upload-voice', {
+                            audioData: dataUri,
+                            fileName: voiceFileName || file.name.replace(/\.[^/.]+$/, ''),
+                          });
+                          
+                          if (uploadResponse.data?.data?.url) {
+                            const uploadedUrl = uploadResponse.data.data.url;
+                            setChatterboxVoice(uploadedUrl);
+                            setVoiceDropdownOpen(false);
+                            dispatch(addNotification({ type: 'success', message: 'Voice file uploaded successfully' }));
+                          } else {
+                            throw new Error('No URL returned from upload');
+                          }
+                        } catch (error: any) {
+                          console.error('Failed to upload voice file:', error);
+                          dispatch(addNotification({ type: 'error', message: error?.response?.data?.message || 'Failed to upload voice file' }));
+                          setUploadedVoiceFile(null);
+                        } finally {
+                          setIsUploadingVoice(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="hidden"
+                      id="voice-file-input"
+                      disabled={isUploadingVoice}
+                    />
+                    <label
+                      htmlFor="voice-file-input"
+                      className={`flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 ring-1 ring-white/20 hover:ring-white/30 cursor-pointer text-center py-2.5 rounded-lg text-sm font-medium text-white transition-all ${isUploadingVoice ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isUploadingVoice ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                          </svg>
+                          <span>{uploadedVoiceFile ? `Uploaded: ${uploadedVoiceFile.name}` : 'Choose Audio File'}</span>
+                        </>
+                      )}
+                    </label>
+                    {uploadedVoiceFile && (
+                      <p className="text-xs text-white/60 mt-1 truncate">{uploadedVoiceFile.name}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-white/70 text-xs mb-2 font-medium">Or enter custom audio URL:</label>
+                    <input
+                      type="text"
+                      value={chatterboxVoice && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://')) ? chatterboxVoice : ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setChatterboxVoice(value);
+                        if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                          setCustomAudioLanguage('');
+                          setUploadedVoiceFile(null);
+                        }
+                      }}
+                      placeholder="https://example.com/voice.mp3"
+                      className="w-full bg-black/50 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/40 p-2 rounded text-xs"
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
-          {/* <div className="flex-1 relative">
-            <label className="block text-white/70 text-sm mb-1">Custom Audio Language</label>
-            <button
-              onClick={() => {
-                setCustomAudioLanguageDropdownOpen(!customAudioLanguageDropdownOpen);
-                setVoiceDropdownOpen(false);
-              }}
-              className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 transition flex items-center justify-between text-white p-2 rounded-lg text-left"
-            >
-              <span className={customAudioLanguage ? 'text-white' : 'text-white/60'}>
-                {customAudioLanguage ? customAudioLanguage.charAt(0).toUpperCase() + customAudioLanguage.slice(1) : 'Select the Custom Audio Language'}
-              </span>
-              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${customAudioLanguageDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {customAudioLanguageDropdownOpen && (
-              <div className="absolute z-[100] bottom-full left-0 mb-2 w-full max-h-60 overflow-y-auto bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 scrollbar-hide">
-                <button
-                  onClick={() => {
-                    setCustomAudioLanguage('');
-                    setCustomAudioLanguageDropdownOpen(false);
-                  }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                    !customAudioLanguage ? "bg-white/20 text-white" : "text-white/90"
-                  }`}
-                >
-                  <span>None</span>
-                  {!customAudioLanguage && (
-                    <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
-                  )}
-                </button>
-                {customAudioLanguageOptions.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setCustomAudioLanguage(option);
-                      setCustomAudioLanguageDropdownOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                      customAudioLanguage === option ? "bg-white/20 text-white" : "text-white/90"
-                    }`}
-                  >
-                    <span className="capitalize">{option}</span>
-                    {customAudioLanguage === option && (
-                      <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div> */}
+          
+          {/* Show Custom Audio Language when using custom voice URL */}
+          {isCustomVoiceUrl && (
+            <div className="flex-1 relative">
+              <label className="block text-white/70 text-sm mb-1">
+                Custom Audio Language <span className="text-red-400">*</span>
+              </label>
+              <button
+                onClick={() => {
+                  setCustomAudioLanguageDropdownOpen(!customAudioLanguageDropdownOpen);
+                  setVoiceDropdownOpen(false);
+                }}
+                className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
+              >
+                <span className={customAudioLanguage ? 'text-white' : 'text-white/60'}>
+                  {customAudioLanguage ? customAudioLanguage.charAt(0).toUpperCase() + customAudioLanguage.slice(1) : 'Select language...'}
+                </span>
+                <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${customAudioLanguageDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {customAudioLanguageDropdownOpen && (
+                <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                  {customAudioLanguageOptions.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => {
+                        setCustomAudioLanguage(option);
+                        setCustomAudioLanguageDropdownOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                        customAudioLanguage === option ? "bg-white text-black" : "text-white/90"
+                      }`}
+                    >
+                      <span className="capitalize">{option}</span>
+                      {customAudioLanguage === option && (
+                        <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Show Voice File Name input when using custom voice URL */}
+          {isCustomVoiceUrl && (
+            <div className="flex-1">
+              <label className="block text-white/70 text-sm mb-1">Voice File Name (Optional)</label>
+              <input
+                type="text"
+                value={voiceFileName}
+                onChange={(e) => setVoiceFileName(e.target.value)}
+                placeholder="e.g., my-custom-voice"
+                className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg text-sm"
+              />
+              <p className="text-xs text-white/50 mt-1">Name for the uploaded voice file in storage</p>
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <RangeControl label="Exaggeration" value={exaggeration} min={0.25} max={2.0} step={0.01} onChange={setExaggeration} />
