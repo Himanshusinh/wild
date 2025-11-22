@@ -436,8 +436,9 @@ const SidePannelFeatures = ({
             >
               <span className='text-sm text-white'>Product Generation</span>
             </div>
-          )}
+            </div>
 
+          </div>
         </div>
 
       {/* Art Station */}
@@ -528,8 +529,6 @@ const SidePannelFeatures = ({
             </div>
         </div> */}
 
-      </div>
-
       {/* Bottom: credits + profile */}
       <div className='mt-auto pb-3'>
         <div className='flex items-center gap-2 px-2'>
@@ -574,7 +573,6 @@ const SidePannelFeatures = ({
 
 
     </div>
-    </>
   );
 }
 
