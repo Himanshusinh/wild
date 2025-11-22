@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Monitor } from "lucide-react";
 
 interface ResolutionDropdownProps {
   selectedModel: string;
@@ -22,7 +22,9 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 
   // Get available resolutions based on model
   const getAvailableResolutions = () => {
-    if (selectedModel?.includes("seedance")) {
+    if (selectedModel === "wan-2.2-animate-replace") {
+      return ["480p", "720p"]; // WAN 2.2 Animate Replace only supports 480p and 720p
+    } else if (selectedModel?.includes("seedance")) {
       return ["480p", "720p", "1080p"];
     } else if (selectedModel === "MiniMax-Hailuo-02") {
       return ["768P", "1080P"];
@@ -104,19 +106,13 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5 ${
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent  text-white ${
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         }`}
       >
-        <div className="flex items-center gap-1">
-          <span className="text-white font-medium text-[11px] md:text-sm">Resolution</span>
-          <span className="text-[10px] md:text-xs text-white/60">{selectedResolution}</span>
-        </div>
-        <ChevronUp
-          className={`w-3 h-3 md:w-4 md:h-4 text-white/60 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        <Monitor className="w-4 h-4 mr-1" />
+        {selectedResolution || 'Resolution'}
+        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (

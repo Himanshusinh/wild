@@ -13,13 +13,10 @@ import {
   toggleDropdown, 
   addNotification 
 } from '@/store/slices/uiSlice';
-import { setFilters } from '@/store/slices/historySlice';
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import { useGenerationCredits } from '@/hooks/useCredits';
 import { 
   loadMoreHistory,
-  loadHistory,
-  clearHistory,
-  clearFilters,
   removeHistoryEntry,
 } from "@/store/slices/historySlice";
 import axiosInstance from "@/lib/axiosInstance";
@@ -36,6 +33,7 @@ const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
 import ModelsDropdown from './ModelsDropdown';
 import StickerCountDropdown from './StickerCountDropdown';
 import StickerImagePreview from './StickerImagePreview';
+import { useBottomScrollPagination } from "@/hooks/useBottomScrollPagination";
 // Replaced custom loader with Logo.gif
 
 const InputBox = () => {
@@ -130,48 +128,14 @@ const InputBox = () => {
     }
   }, [localGeneratingEntries]);
 
-  // Load history on mount (scoped to sticker-generation) — single initial request, no auto-fill loop
+  // Unified initial load & refresh via shared hook
+  const { refresh: refreshHistoryDebounced } = useHistoryLoader({ generationType: 'sticker-generation', initialLimit: 10 });
   useEffect(() => {
-    console.log('[Sticker] useEffect: mount -> loading sticker history');
-    (async () => {
-      try {
-        // Skip if route already changed during navigation
-        if (typeof pathname === 'string' && !pathname.includes('/sticker-generation')) {
-          console.log('[Sticker] initial load skipped: pathname not sticker-generation', { pathname });
-          return;
-        }
-        if (loadLockRef.current) {
-          console.log('[Sticker] initial load skipped (lock)');
-          return;
-        }
-        loadLockRef.current = true;
-        setInitialLoading(true);
-        const baseFilters: any = { generationType: 'sticker-generation' };
-        const debugTag = `page:sticker:${Date.now()}`;
-        // Set filters early so other observers (PageRouter) show correct type immediately
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        console.log('[Sticker] dispatch loadHistory', { baseFilters, limit: 10, debugTag });
-        await (dispatch as any)(loadHistory({ 
-          filters: baseFilters,
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'sticker-generation',
-          debugTag
-        })).unwrap();
-        console.log('[Sticker] initial loadHistory fulfilled');
-      } catch (e: any) {
-        if (e && e.name === 'ConditionError') {
-          // benign: another in-flight request finished first
-        } else {
-          console.error('[Sticker] initial loadHistory error', e);
-        }
-      } finally {
-        setInitialLoading(false);
-        setHasInitiallyLoaded(true);
-      }
-    })();
-  }, [dispatch, pathname]);
+    if (initialLoading && historyEntries.length > 0) {
+      setInitialLoading(false);
+      setHasInitiallyLoaded(true);
+    }
+  }, [initialLoading, historyEntries.length]);
 
   // Mark user scroll
   useEffect(() => {
@@ -180,57 +144,23 @@ const InputBox = () => {
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
-  // IntersectionObserver-based infinite scroll
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) {
-        console.log('[Sticker] IO: skip until user scrolls');
-        return;
-      }
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMore) {
-        console.log('[Sticker] IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('[Sticker] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
-      console.log('[Sticker] IO: loadMore start', { hasMore });
-      
+  // Bottom scroll pagination replacing IntersectionObserver to mirror History page
+  useBottomScrollPagination({
+    containerRef: undefined,
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       try {
-        await (dispatch as any)(loadMoreHistory({ 
-          filters: { generationType: 'sticker-generation' }, 
-          paginationParams: { limit: 10 } 
+        await (dispatch as any)(loadMoreHistory({
+          filters: { generationType: 'sticker-generation' },
+          paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('[Sticker] IO: loadMore success');
-      } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Sticker] IO: loadMore skipped - no more pages');
-        } else {
-          console.error('[Sticker] IO: loadMore error', e);
-        }
-      } finally {
-        loadingMoreRef.current = false;
-      }
-    }, { root: null, threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Sticker] IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Sticker] IO: observer disconnected');
-    };
-  }, [hasMore, loading, dispatch]);
+      } catch {/* swallow */}
+    }
+  });
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -387,18 +317,8 @@ const InputBox = () => {
         await handleGenerationSuccess(transactionId);
       }
 
-      // Refresh history to show the new sticker
-      {
-        const debugTag = `page:sticker:refresh:${Date.now()}`;
-        console.log('[Sticker] refresh loadHistory after generation', { debugTag });
-        dispatch(loadHistory({ 
-          filters: { generationType: 'sticker-generation' }, 
-          paginationParams: { limit: 10 },
-          requestOrigin: 'page',
-          expectedType: 'sticker-generation',
-          debugTag,
-        }));
-      }
+      // Debounced refresh instead of immediate duplicate requests
+      refreshHistoryDebounced();
 
       // Reset local generation state
       setIsGeneratingLocally(false);

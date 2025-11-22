@@ -1,13 +1,14 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 import Image from 'next/image'
 import { OptimizedImage } from '@/components/media/OptimizedImage'
-import Nav from '../Generation/Core/Nav'
-import SidePannelFeatures from '../Generation/Core/SidePannelFeatures'
+// Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
+import ArtStationPreview from '@/components/ArtStationPreview'
 import { toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
@@ -32,6 +33,7 @@ type PublicItem = {
     storagePath?: string;
     webpUrl?: string;
     thumbnailUrl?: string;
+    avifUrl?: string;
     blurDataUrl?: string;
     optimized?: boolean;
   }[];
@@ -53,7 +55,9 @@ export default function ArtStationPage() {
     return `${dd}-${mm}-${yyyy} ${time}`
   }
   const [items, setItems] = useState<PublicItem[]>([])
-  const [loading, setLoading] = useState(false)
+  // CRITICAL: Initialize loading to true to prevent "no generations" blink on initial mount
+  // The loading state will be set to false after the first fetch completes
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -61,6 +65,7 @@ export default function ArtStationPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
+  const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null)
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
@@ -70,6 +75,11 @@ export default function ArtStationPage() {
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
   const [currentUid, setCurrentUid] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<{ uid?: string; username?: string; displayName?: string; photoURL?: string } | null>(null)
+
+  // Reset media dimensions when preview or selected index changes
+  useEffect(() => {
+    setMediaDimensions(null)
+  }, [preview, selectedImageIndex, selectedVideoIndex])
   // layout fixed to masonry (no toggle)
   // Track which media tiles have finished loading so we can fade them in
   const [loadedTiles, setLoadedTiles] = useState<Set<string>>(new Set())
@@ -93,6 +103,7 @@ export default function ArtStationPage() {
   const requestSeqRef = useRef(0)
   const inFlightRef = useRef<Promise<void> | null>(null)
   const queuedNextRef = useRef<{ reset: boolean } | null>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigateForType = (type?: string) => {
     const t = (type || '').toLowerCase()
     if (t === 'text-to-image' || t === 'logo' || t === 'sticker-generation') {
@@ -192,25 +203,58 @@ export default function ArtStationPage() {
         queuedNextRef.current = { reset }
         return
       }
-      if (loading) return
-      setLoading(true)
+      // CRITICAL: Set loading state IMMEDIATELY for initial load or reset
+      // This ensures loading shows right away when page loads or category changes
+      const isInitialLoad = reset || items.length === 0
+      if (isInitialLoad) {
+        setLoading(true)
+      } else if (!loading) {
+        // For pagination, only set loading if not already loading
+        setLoading(true)
+      } else {
+        // Already loading, skip
+        return
+      }
       const seq = ++requestSeqRef.current
       const categoryAtStart = activeCategory
+      const searchAtStart = searchQuery
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
       const url = new URL(`${baseUrl}/api/feed`)
-      url.searchParams.set('limit', '20')
-      // Always request latest-first
+      
+      // Use same limit for both search and normal browsing - proper pagination
+      const hasSearch = searchQuery.trim().length > 0
+      url.searchParams.set('limit', '50') // Increased limit for better pagination
       url.searchParams.set('sortBy', 'createdAt')
       url.searchParams.set('sortOrder', 'desc')
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
       if (q.mode) url.searchParams.set('mode', q.mode)
       if (q.generationType) url.searchParams.set('generationType', q.generationType)
+      // Add search query parameter - ALWAYS include it if there's a search query
+      if (hasSearch) {
+        url.searchParams.set('search', searchQuery.trim())
+      }
+      // Use cursor for pagination (works for both search and normal browsing)
       if (!reset && cursor) {
         url.searchParams.set('cursor', cursor)
       }
 
-      console.log('[ArtStation] Fetching feed:', { reset, cursor, url: url.toString() })
+      // Log the full URL to verify search parameter is included
+      const fullUrlString = url.toString()
+      console.log('[ArtStation] Fetching feed:', { 
+        reset, 
+        cursor, 
+        searchQuery, 
+        hasSearch: hasSearch,
+        hasSearchParam: url.searchParams.has('search'),
+        searchParamValue: url.searchParams.get('search'),
+        fullUrl: fullUrlString 
+      })
+      
+      // Double-check search parameter is in URL
+      if (hasSearch && !fullUrlString.includes('search=')) {
+        console.error('[ArtStation] ERROR: Search query present but not in URL!', { searchQuery, fullUrl: fullUrlString })
+      }
 
       const doFetch = async () => {
         const res = await fetch(url.toString(), { credentials: 'include' })
@@ -239,6 +283,11 @@ export default function ArtStationPage() {
         console.log('[ArtStation] Category changed from', categoryAtStart, 'to', activeCategory, '— ignoring response')
         return
       }
+      // Also ignore if the search query changed mid-flight
+      if (searchAtStart !== searchQuery) {
+        console.log('[ArtStation] Search query changed from', searchAtStart, 'to', searchQuery, '— ignoring response')
+        return
+      }
 
       const payload = data?.data || data
       const meta = payload?.meta || {}
@@ -250,8 +299,8 @@ export default function ArtStationPage() {
         aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
         frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
       }))
-      const newCursor = meta?.nextCursor || payload?.nextCursor
 
+      const newCursor = meta?.nextCursor || payload?.nextCursor
       console.log('[ArtStation] Parsed feed response:', {
         itemsCount: newItems.length,
         newCursor,
@@ -276,8 +325,13 @@ export default function ArtStationPage() {
         newItems.forEach(it => map.set(it.id, it))
         return Array.from(map.values())
       })
-      setCursor(newCursor)
-      const inferredHasMore = typeof meta?.hasMore === 'boolean' ? meta.hasMore : Boolean(newCursor)
+  setCursor(newCursor)
+      // Use same page limit for both search and normal browsing
+      const pageLimit = 50
+      // Enable pagination for both search and normal browsing
+      const inferredHasMore = typeof meta?.hasMore === 'boolean'
+        ? meta.hasMore
+        : (newItems.length >= pageLimit && Boolean(newCursor))
       setHasMore(inferredHasMore)
       setError(null)
 
@@ -345,43 +399,67 @@ export default function ArtStationPage() {
     setItems([])
     setCursor(undefined)
     setHasMore(true)
+    // Note: fetchFeed will include searchQuery if present
     fetchFeed(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory])
 
-  // Infinite scroll observer
+  // Refetch when search query changes (with debouncing)
   useEffect(() => {
-    if (!sentinelRef.current) return
-    // Don’t start observer until initial page for this tab is loaded
-    if (!initialLoadDoneRef.current) return
-    const el = sentinelRef.current
-    // Disconnect any prior observer before creating a new one for this tab/state
-    let observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0]
-      if (!entry.isIntersecting) return
-      if (!initialLoadDoneRef.current) return
-      // Serialize loads
-      if (loading || loadingMoreRef.current || !hasMore) {
-        return
+    // Don't trigger on initial mount if search is empty
+    const isInitialMount = didFetchForCategoryRef.current === null;
+    if (isInitialMount && !searchQuery.trim()) {
+      return;
+    }
+    
+    // Clear any pending search timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // Debounce search to avoid too many API calls
+    // Shorter delay when searching (300ms) vs clearing (0ms)
+    const delay = searchQuery.trim() ? 300 : 0; // Reduced delay for better UX
+    searchTimeoutRef.current = setTimeout(() => {
+      // Reset and refetch when search changes
+      loadingMoreRef.current = false
+      try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+      initialLoadDoneRef.current = false
+      setItems([])
+      setCursor(undefined)
+      setHasMore(true)
+      console.log('[ArtStation] Search changed, refetching with query:', searchQuery)
+      fetchFeed(true)
+    }, delay);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
       }
-      loadingMoreRef.current = true
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery])
+
+  // Infinite scroll observer — use the shared helper to ensure hasMore-first and local busy guards
+  // Use EXACT same settings for both search and normal browsing (same as original Art Station)
+  useIntersectionObserverForRef(
+    sentinelRef,
+    async () => {
       try {
         await fetchFeed(false)
       } catch (err) {
         console.error('[ArtStation] Error loading more:', err)
-      } finally {
-        loadingMoreRef.current = false
       }
-    }, {
-      root: null,
-      rootMargin: '600px',
-      threshold: 0.01
-    })
-    observer.observe(el)
-    return () => {
-      try { observer.disconnect() } catch { }
+    },
+    hasMore,
+    loading,
+    { 
+      root: null, 
+      rootMargin: '600px', // Same as normal Art Station
+      threshold: 0.01, // Same as normal Art Station
+      requireUserScrollRef: initialLoadDoneRef 
     }
-  }, [hasMore, loading, cursor, activeCategory, items.length])
+  )
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
@@ -474,15 +552,10 @@ export default function ArtStationPage() {
       });
     }
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      categoryFiltered = categoryFiltered.filter(item => {
-        const prompt = (item.prompt || '').toLowerCase();
-        return prompt.includes(query);
-      });
-    }
-
+    // Search is now handled server-side, so no client-side filtering needed
+    // But we keep this for backward compatibility if backend doesn't filter
+    // (Backend should handle search, so this is just a safety net)
+    
     return categoryFiltered;
   }, [items, activeCategory, searchQuery]);
 
@@ -490,6 +563,33 @@ export default function ArtStationPage() {
     if (!m) return undefined
     return m.url || m.originalUrl || (m.firebaseUrl as string | undefined)
   }
+
+  // Resolve thumbnail URL with fallbacks: thumbnailUrl > avifUrl > constructed _thumb.avif > original url
+  const resolveThumbnailUrl = (m: any): string | undefined => {
+    if (!m) return undefined
+    
+    // 1. Prefer thumbnailUrl if available
+    if (m.thumbnailUrl) return m.thumbnailUrl
+    
+    // 2. Fallback to avifUrl (optimized AVIF)
+    if (m.avifUrl) return m.avifUrl
+    
+    // 3. Fallback: Construct thumbnail URL from Zata URL by appending _thumb.avif
+    const imageUrl = m.url || m.originalUrl
+    if (imageUrl && imageUrl.includes('zata.ai')) {
+      try {
+        // Remove file extension and append _thumb.avif
+        const urlWithoutExt = imageUrl.replace(/\.(jpg|jpeg|png|webp|avif)$/i, '')
+        return `${urlWithoutExt}_thumb.avif`
+      } catch (e) {
+        // If URL parsing fails, continue to next fallback
+      }
+    }
+    
+    // 4. Last fallback: original URL
+    return imageUrl
+  }
+
 
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
@@ -535,9 +635,22 @@ export default function ArtStationPage() {
         continue
       }
 
+      // Resolve thumbnail URL - ONLY use thumbnailUrl (no fallbacks)
+      const thumbnailUrl = kind === 'image' && candidate ? resolveThumbnailUrl(candidate) : undefined
+      
       seenMedia.add(key)
       seenItem.add(it.id)
-      out.push({ item: it, media: { ...candidate, url: candidateUrl }, kind })
+      out.push({ 
+        item: it, 
+        media: { 
+          ...candidate, 
+          url: candidateUrl,
+          // ONLY use thumbnailUrl - no fallback to avifUrl or url
+          thumbnailUrl: (candidate as any)?.thumbnailUrl || thumbnailUrl,
+          blurDataUrl: (candidate as any)?.blurDataUrl,
+        }, 
+        kind 
+      })
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -687,10 +800,10 @@ export default function ArtStationPage() {
     <div className="min-h-screen bg-[#07070B]">
       <div className="fixed top-0 left-0 right-0 z-30"><Nav /></div>
       <div className="flex pt-0">
-        <div className="w-0 sm:w-[68px] flex-shrink-0 overflow-hidden sm:overflow-visible"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
-        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 mt-5 ">
-          {/* Sticky header + filters (mobile: fixed under navbar) */}
-          <div className="fixed sm:sticky top-14 sm:top-0 left-0 right-0 z-20 bg-[#07070B] pt-10 px-4 sm:px-0">
+        <div className="w-[68px] flex-shrink-0"><SidePannelFeatures currentView={'home' as any} onViewChange={() => { }} onGenerationTypeChange={() => { }} onWildmindSkitClick={() => { }} /></div>
+        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
+          {/* Sticky header + filters (pinned under navbar) */}
+          <div className="sticky top-0 z-20 bg-[#07070B] pt-10">
             <div className=" mb-2 md:mb-3">
               <h3 className="text-white text-md sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
                 Art Station
@@ -717,7 +830,7 @@ export default function ArtStationPage() {
                 ))}
 
                 {/* Search Input and Buttons */}
-                <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                <div className="ml-auto flex items-center gap-2 flex-shrink-0 p-1">
                   <div className="relative flex items-center">
                     <input
                       type="text"
@@ -730,30 +843,21 @@ export default function ArtStationPage() {
                         }
                       }}
                       placeholder="Search by prompt..."
-                      className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                      className={`px-4 py-2 rounded-lg text-sm bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
                     />
-                    <button
-                      onClick={() => {
-                        // Search is already applied via filteredItems useMemo
-                      }}
-                      className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
-                      aria-label="Search"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                      </svg>
-                    </button>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        aria-label="Clear search"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    )}
                   </div>
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-                      aria-label="Clear search"
-                    >
-                      Clear
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -823,7 +927,7 @@ export default function ArtStationPage() {
                                 muted
                                 playsInline
                                 preload="metadata"
-                                poster={media.thumbnailUrl || media.avifUrl || undefined}
+                                poster={media.thumbnailUrl || undefined}
                                 // play on hover
                                 onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
                                 onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
@@ -852,45 +956,61 @@ export default function ArtStationPage() {
                           </>
                         ) : (
                           <div className="relative w-full h-full">
-                            {media.thumbnailUrl || media.avifUrl ? (
-                              <Image
-                                src={media.thumbnailUrl || media.avifUrl || media.url}
-                                alt={item.prompt || ''}
-                                fill
-                                sizes={sizes}
-                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                                placeholder="blur"
-                                blurDataURL={media.blurDataUrl || blur}
-                                priority={isPriority}
-                                fetchPriority={isPriority ? 'high' : 'auto'}
-                                onLoadingComplete={(img) => {
-                                  try {
-                                    const el = img as unknown as HTMLImageElement
-                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                  } catch { }
-                                  markTileLoaded(cardId)
-                                }}
-                              />
-                            ) : (
-                              <Image
-                                src={media.url}
-                                alt={item.prompt || ''}
-                                fill
-                                sizes={sizes}
-                                className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                                placeholder="blur"
-                                blurDataURL={blur}
-                                priority={isPriority}
-                                fetchPriority={isPriority ? 'high' : 'auto'}
-                                onLoadingComplete={(img) => {
-                                  try {
-                                    const el = img as unknown as HTMLImageElement
-                                    if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                  } catch { }
-                                  markTileLoaded(cardId)
-                                }}
-                              />
-                            )}
+                            {/* Use ONLY thumbnailUrl with blurDataUrl as loading placeholder */}
+                            {(() => {
+                              // ONLY use thumbnailUrl (_thumb.avif) - no fallbacks
+                              const thumbUrl = resolveThumbnailUrl(media)
+                              const blurUrl = media.blurDataUrl
+                              
+                              // Show blur placeholder while loading
+                              if (!thumbUrl) {
+                                return (
+                                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                    <div className="text-gray-500 text-sm">No thumbnail</div>
+                                  </div>
+                                )
+                              }
+                              
+                              return (
+                                <div className="relative w-full h-full">
+                                  {/* Blur placeholder shown while loading */}
+                                  {!loadedTiles.has(cardId) && blurUrl && (
+                                    <div
+                                      className="absolute inset-0 w-full h-full"
+                                      style={{ 
+                                        backgroundImage: `url(${blurUrl})`, 
+                                        backgroundSize: 'cover', 
+                                        backgroundPosition: 'center',
+                                        filter: 'blur(20px)',
+                                        transform: 'scale(1.1)'
+                                      }}
+                                    />
+                                  )}
+                                  {/* Thumbnail image - fades in when loaded */}
+                                  <Image
+                                    src={thumbUrl}
+                                    alt={item.prompt || ''}
+                                    fill
+                                    sizes={sizes}
+                                    className={`object-cover transition-opacity duration-500 ease-in-out group-hover:scale-[1.01] absolute inset-0 w-full h-full ${
+                                      loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'
+                                    }`}
+                                    priority={isPriority}
+                                    fetchPriority={isPriority ? 'high' : 'auto'}
+                                    onLoad={() => {
+                                      markTileLoaded(cardId)
+                                    }}
+                                    onLoadingComplete={(img) => {
+                                      try {
+                                        const el = img as unknown as HTMLImageElement
+                                        if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                      } catch { }
+                                      markTileLoaded(cardId)
+                                    }}
+                                  />
+                                </div>
+                              )
+                            })()}
                           </div>
                         )
                       })()}
@@ -1257,7 +1377,7 @@ export default function ArtStationPage() {
                     {preview.item.images && preview.item.images.length > 1 && (
                       <div className="mb-4">
                         <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Images ({preview.item.images.length})</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {preview.item.images.map((im: any, idx: number) => (
                             <button
                               key={im.id || idx}
@@ -1275,7 +1395,7 @@ export default function ArtStationPage() {
                     {preview.item.videos && preview.item.videos.length > 1 && (
                       <div className="mb-4">
                         <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Videos ({preview.item.videos.length})</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {preview.item.videos.map((vd: any, idx: number) => (
                             <button
                               key={vd.id || idx}

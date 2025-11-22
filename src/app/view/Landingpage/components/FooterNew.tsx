@@ -112,26 +112,7 @@ const FooterNew: React.FC = () => {
                       AI Image Generation
                       </Link>
                     </li>
-                    <li>
-                      <Link href={NAV_ROUTES.TEMPLATES} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Video Generation
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href={NAV_ROUTES.ART_STATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Audio Generation
-                      </Link>                      </li>
-                      <li>
-
-                      <Link href={NAV_ROUTES.ART_STATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Filming tools
-                      </Link>                      </li>
-                      <li>
-
-                      <Link href={NAV_ROUTES.ART_STATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI 3D Generation
-                      </Link>
-                    </li>
+                    {/* Removed a few public-facing feature links to reduce discoverability for SEO. */}
                   </ul>
                 </div>
 
@@ -141,9 +122,11 @@ const FooterNew: React.FC = () => {
                   Product
                   </h3>
                   <ul className="space-y-3">
+                    {/* Product links intentionally reduced to avoid exposing generation pages. */}
                     <li>
-                      <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Pricing                      </Link>
+                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Pricing
+                      </Link>
                     </li>
                     <li>
                       <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">

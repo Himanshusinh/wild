@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import Nav from './compo/Nav'
-import SidePannelFeatures from '../Generation/Core/SidePannelFeatures';
+// Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Second from './compo/Second'
 import WorkflowCarousel, { WorkflowCard } from './compo/WorkflowCarousel'
@@ -256,26 +255,9 @@ const HomePage: React.FC = () => {
         🔍 DEBUG: HomePage Component is Rendering
       </div> */}
 
-      {/* Navigation - fixed at top */}
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <Nav />
-      </div>
-
-      {/* Main layout - side panel + content area */}
-      <div className="flex pt-16 md:pt-20"> {/* Responsive top padding */}
-        {/* Side Panel - fixed width */}
-        <div className="w-[68px] flex-shrink-0">
-          <SidePannelFeatures
-            currentView={currentView}
-            onViewChange={onViewChange}
-            onGenerationTypeChange={onGenerationTypeChange}
-            onWildmindSkitClick={() => setShowWildmindSkitPopup(true)}
-            showMobileHeader={false}
-          />
-        </div>
-
-        {/* Main Content Area - takes remaining width */}
-        <div className="flex-1 min-w-0 w-full md:w-auto -ml-[68px] md:ml-0">
+      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
+      <div className="flex pt-[80px] ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
+        <div className="flex-1 min-w-0">
           <Header />
           <Recentcreation />
           <Second />

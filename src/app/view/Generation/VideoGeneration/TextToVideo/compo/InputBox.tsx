@@ -6,7 +6,8 @@ import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
-import { addHistoryEntry, loadMoreHistory, loadHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
+import { addHistoryEntry, loadHistory, loadMoreHistory, updateHistoryEntry, clearFilters, removeHistoryEntry } from "@/store/slices/historySlice";
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import { Trash2 } from 'lucide-react';
 import { addNotification } from "@/store/slices/uiSlice";
@@ -19,7 +20,7 @@ import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
-import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2 } from 'lucide-react';
+import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { getApiClient } from "@/lib/axiosInstance";
@@ -44,9 +45,17 @@ import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 
 
-const InputBox = () => {
+interface InputBoxProps {
+  placeholder?: string;
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'UGC';
+  showHistory?: boolean; // Control whether to show the history section
+}
+
+const InputBox = (props: InputBoxProps = {}) => {
+  const { placeholder = "Type your video prompt...", activeFeature = 'Video', showHistory = true } = props;
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -54,10 +63,26 @@ const InputBox = () => {
     video: any;
   } | null>(null);
   const inputEl = useRef<HTMLTextAreaElement>(null);
+  
+  // Helper functions for proxy URLs (same as History.tsx)
+  const toProxyPath = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return '';
+    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // Allow direct storagePath-like values (users/...)
+    if (/^users\//.test(urlOrPath)) return urlOrPath;
+    // For external URLs (fal.media, etc.), do not proxy
+    return '';
+  };
+
+  const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
+    const path = toProxyPath(urlOrPath);
+    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+  };
 
   // Video generation state
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gen4_turbo");
+  const [selectedModel, setSelectedModel] = useState("seedance-1.0-lite-t2v");
   const [frameSize, setFrameSize] = useState("16:9");
   const [duration, setDuration] = useState(6);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -68,6 +93,8 @@ const InputBox = () => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
+  const [uploadedAudio, setUploadedAudio] = useState<string>(""); // For WAN models audio file
+  const [uploadedCharacterImage, setUploadedCharacterImage] = useState<string>(""); // For WAN 2.2 Animate Replace character image
   const [sourceHistoryEntryId, setSourceHistoryEntryId] = useState<string>(""); // For Sora 2 Remix source video
   const [references, setReferences] = useState<string[]>([]);
   const [generationMode, setGenerationMode] = useState<"text_to_video" | "image_to_video" | "video_to_video">("text_to_video");
@@ -117,6 +144,7 @@ const InputBox = () => {
   const [libraryImageHasMore, setLibraryImageHasMore] = useState<boolean>(true);
   const [libraryImageLoading, setLibraryImageLoading] = useState<boolean>(false);
   const libraryImageNextCursorRef = useRef<string | undefined>(undefined);
+  const libraryImageLoadingRef = useRef<boolean>(false);
   const libraryImageInitRef = useRef<boolean>(false);
 
   // MiniMax specific state
@@ -135,6 +163,13 @@ const InputBox = () => {
   const [seedanceResolution, setSeedanceResolution] = useState("1080p"); // For Seedance resolution (480p/720p/1080p)
   // PixVerse specific state
   const [pixverseQuality, setPixverseQuality] = useState("720p"); // For PixVerse quality (360p/540p/720p/1080p)
+  // WAN 2.2 Animate Replace specific state
+  const [wanAnimateResolution, setWanAnimateResolution] = useState<"720" | "480">("720"); // For WAN Animate Replace resolution
+  const [wanAnimateRefertNum, setWanAnimateRefertNum] = useState<1 | 5>(1); // For WAN Animate Replace reference frames
+  const [wanAnimateGoFast, setWanAnimateGoFast] = useState<boolean>(true); // For WAN Animate Replace go_fast
+  const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = useState<boolean>(true); // For WAN Animate Replace merge_audio
+  const [wanAnimateFps, setWanAnimateFps] = useState<number>(24); // For WAN Animate Replace frames_per_second
+  const [wanAnimateSeed, setWanAnimateSeed] = useState<number | undefined>(undefined); // For WAN Animate Replace seed (optional)
   // LTX and audio controls
   const [fps, setFps] = useState<25 | 50>(25);
   const [generateAudio, setGenerateAudio] = useState<boolean>(true);
@@ -216,28 +251,267 @@ const InputBox = () => {
     }
   }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration]);
 
-  // Auto-select model based onf generation mode (but preserve user's choice when possible)
-  useEffect(() => {
-    if (generationMode === "text_to_video") {
-      // Allow MiniMax, Veo3/3.1, WAN, Kling, Seedance, PixVerse, Sora2, LTX V2
-      if (!(selectedModel === "MiniMax-Hailuo-02" || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('sora2') || selectedModel.includes('ltx2'))) {
-        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for text→video
-      }
-    } else if (generationMode === "image_to_video") {
-      // Allow Runway, MiniMax, Veo3/3.1, WAN, Kling, Seedance, PixVerse, Sora2, LTX V2
-      if (!(selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo" || selectedModel === "MiniMax-Hailuo-02" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('sora2') || selectedModel.includes('ltx2'))) {
-        setSelectedModel("MiniMax-Hailuo-02"); // Default to MiniMax for image→video
-      }
-    } else if (generationMode === "video_to_video") {
-      // Video→Video: Runway and Sora 2 models support this
-      if (selectedModel !== "gen4_aleph" && !selectedModel.includes('sora2-v2v')) {
-        setSelectedModel("gen4_aleph"); // Default to Runway model for video→video
-      }
+  // Helper function to determine model capabilities
+  const getModelCapabilities = (model: string) => {
+    const capabilities = {
+      supportsTextToVideo: false,
+      supportsImageToVideo: false,
+      supportsVideoToVideo: false,
+      requiresImage: false,
+      requiresFirstFrame: false,
+      requiresLastFrame: false,
+      requiresReferenceImage: false,
+      requiresVideo: false,
+    };
+
+    // Models that support both text-to-video and image-to-video
+    if (model.includes("veo3.1") && !model.includes("i2v")) {
+      // Veo 3.1 supports both T2V and I2V (when not explicitly i2v variant)
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes("veo3") && !model.includes("veo3.1") && !model.includes("i2v")) {
+      // Veo3 supports both T2V and I2V (when not explicitly i2v variant)
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes("wan-2.5") && !model.includes("i2v")) {
+      // WAN 2.5 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.startsWith('kling-') && model.includes('v2.5')) {
+      // Kling 2.5 Turbo Pro supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.startsWith('kling-') && (model.includes('v2.1') || model.includes('master'))) {
+      // Kling 2.1 and 2.1 Master are I2V-only (require start_image)
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
+    } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
+      // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
+    } else if (model.includes('seedance') && !model.includes('i2v')) {
+      // Seedance supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('pixverse') && !model.includes('i2v')) {
+      // PixVerse supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('sora2') && !model.includes('i2v') && !model.includes('v2v')) {
+      // Sora 2 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.includes('ltx2') && !model.includes('i2v')) {
+      // LTX V2 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    }
+    
+    // Text-to-video only models
+    if (model === "T2V-01-Director") {
+      capabilities.supportsTextToVideo = true;
+    }
+    
+    // Image-to-video only models (explicit i2v variants or image-only models)
+    if (model === "I2V-01-Director" || 
+        model === "S2V-01" ||
+        model === "gen4_turbo" ||
+        model === "gen3a_turbo" ||
+        (model.includes("veo3") && model.includes("i2v")) ||
+        (model.includes("wan-2.5") && model.includes("i2v")) ||
+        (model.startsWith('kling-') && model.includes('i2v')) ||
+        (model.includes('seedance') && model.includes('i2v')) ||
+        (model.includes('pixverse') && model.includes('i2v')) ||
+        (model.includes('sora2') && model.includes('i2v'))) {
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
     }
 
-    // Clear camera movements when generation mode changes
-    setSelectedCameraMovements([]);
+    // Video-to-video models
+    if (model === "kling-lip-sync") {
+      capabilities.supportsVideoToVideo = true;
+      capabilities.requiresVideo = true;
+      capabilities.supportsTextToVideo = false;
+      capabilities.supportsImageToVideo = false;
+    }
+    if (model === "wan-2.2-animate-replace") {
+      capabilities.supportsVideoToVideo = true;
+      capabilities.requiresVideo = true;
+      capabilities.requiresImage = true; // Requires character_image
+      capabilities.supportsTextToVideo = false;
+      capabilities.supportsImageToVideo = false;
+    }
+    if (model === "gen4_aleph" || model.includes('sora2-v2v')) {
+      capabilities.supportsVideoToVideo = true;
+      capabilities.requiresVideo = true;
+    }
+
+    // Models that support both text and image
+    if (model === "MiniMax-Hailuo-02") {
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+      // Image is optional for text-to-video, required for 512P resolution
+    }
+
+    // Specific requirements
+    if (model === "I2V-01-Director") {
+      capabilities.requiresFirstFrame = true;
+    }
+    if (model === "S2V-01") {
+      capabilities.requiresReferenceImage = true;
+    }
+
+    return capabilities;
+  };
+
+  // Memoize current model capabilities to prevent recalculations during render
+  const currentModelCapabilities = useMemo(() => {
+    const caps = getModelCapabilities(selectedModel);
+    // MiniMax-Hailuo-02 requires first frame for 512P resolution
+    if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+      caps.requiresFirstFrame = true;
+    }
+    return caps;
+  }, [selectedModel, selectedResolution]);
+
+  // Extract primitive values for stable dependencies
+  const supportsTextToVideo = currentModelCapabilities.supportsTextToVideo;
+  const supportsImageToVideo = currentModelCapabilities.supportsImageToVideo;
+  const supportsVideoToVideo = currentModelCapabilities.supportsVideoToVideo;
+
+  // Memoize the computed mode to prevent unnecessary recalculations
+  const computedMode = useMemo(() => {
+    if (supportsVideoToVideo && uploadedVideo) {
+      return "video_to_video";
+    } else if (supportsImageToVideo && (uploadedImages.length > 0 || references.length > 0)) {
+      return "image_to_video";
+    } else if (supportsTextToVideo) {
+      return "text_to_video";
+    } else if (supportsImageToVideo) {
+      return "image_to_video";
+    } else if (supportsVideoToVideo) {
+      return "video_to_video";
+    }
+    return null;
+  }, [supportsTextToVideo, supportsImageToVideo, supportsVideoToVideo, uploadedImages.length, references.length, uploadedVideo]);
+
+  // Auto-determine generation mode based on model selection only (not content changes to prevent loops)
+  // Only update generation mode when model changes, not when content is uploaded
+  const prevModelForModeRef = useRef(selectedModel);
+  useEffect(() => {
+    // Only run if model actually changed
+    if (prevModelForModeRef.current === selectedModel) {
+      return;
+    }
+    prevModelForModeRef.current = selectedModel;
+
+    const caps = getModelCapabilities(selectedModel);
+    
+    // Determine appropriate generation mode based on model capabilities only
+    let newMode: "text_to_video" | "image_to_video" | "video_to_video" | null = null;
+    
+    // Special handling for I2V-only models - they require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
+    if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
+        selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+      // These models require image, so force image-to-video mode
+      newMode = "image_to_video";
+    } else if (caps.supportsTextToVideo) {
+      // Prefer text-to-video if model supports it (most models do)
+      newMode = "text_to_video";
+    } else if (caps.supportsImageToVideo) {
+      newMode = "image_to_video";
+    } else if (caps.supportsVideoToVideo) {
+      newMode = "video_to_video";
+    }
+
+    // Only update if mode actually changed
+    if (newMode) {
+      setGenerationMode(prevMode => {
+        if (newMode !== prevMode) {
+          console.log(`🔄 Mode changed from ${prevMode} to ${newMode} for model ${selectedModel}`);
+          return newMode;
+        }
+        return prevMode;
+      });
+    }
+  }, [selectedModel]);
+
+  // Auto-convert LTX V2, WAN 2.5, and Kling models between t2v and i2v variants when switching modes
+  useEffect(() => {
+    // Convert LTX V2 models
+    if (selectedModel.includes('ltx2')) {
+      const isI2V = selectedModel.includes('i2v');
+      const isPro = selectedModel.includes('pro');
+      const isFast = selectedModel.includes('fast');
+      
+      if (generationMode === 'text_to_video' && isI2V) {
+        // Switch from i2v to t2v variant
+        const newModel = isPro ? 'ltx2-pro-t2v' : (isFast ? 'ltx2-fast-t2v' : 'ltx2-pro-t2v');
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      } else if (generationMode === 'image_to_video' && !isI2V) {
+        // Switch from t2v to i2v variant
+        const newModel = isPro ? 'ltx2-pro-i2v' : (isFast ? 'ltx2-fast-i2v' : 'ltx2-pro-i2v');
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      }
+    }
+    
+    // Convert WAN 2.5 models
+    if (selectedModel.includes('wan-2.5') && !selectedModel.includes('v2v')) {
+      const isI2V = selectedModel.includes('i2v');
+      const isFast = selectedModel.includes('fast');
+      
+      if (generationMode === 'text_to_video' && isI2V) {
+        // Switch from i2v to t2v variant
+        const newModel = isFast ? 'wan-2.5-t2v-fast' : 'wan-2.5-t2v';
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      } else if (generationMode === 'image_to_video' && !isI2V) {
+        // Switch from t2v to i2v variant
+        const newModel = isFast ? 'wan-2.5-i2v-fast' : 'wan-2.5-i2v';
+        if (newModel !== selectedModel) {
+          setSelectedModel(newModel);
+        }
+      }
+    }
+    
+    // Convert Kling models (except v2.5 which supports both without conversion)
+    if (selectedModel.startsWith('kling-') && !selectedModel.includes('v2.5')) {
+      const isI2V = selectedModel.includes('i2v');
+      const isV21 = selectedModel.includes('v2.1');
+      const isMaster = selectedModel.includes('master');
+      
+      // Kling 2.1 and 2.1 Master require image (I2V only), so always use i2v variant
+      if (isV21 && !isI2V) {
+        // Switch from t2v to i2v variant for v2.1 models
+        const newModel = isMaster ? 'kling-v2.1-master-i2v' : 'kling-v2.1-i2v';
+        if (newModel !== selectedModel) {
+          console.log('🔄 Auto-converting Kling 2.1 from T2V to I2V variant:', newModel);
+          setSelectedModel(newModel);
+        }
+      } else if (generationMode === 'text_to_video' && isI2V && isV21) {
+        // If somehow in T2V mode with I2V variant, this shouldn't happen for v2.1, but handle it
+        // Actually, v2.1 can't do T2V, so don't convert back
+      } else if (generationMode === 'image_to_video' && !isI2V && isV21) {
+        // Ensure v2.1 uses i2v variant in image-to-video mode
+        const newModel = isMaster ? 'kling-v2.1-master-i2v' : 'kling-v2.1-i2v';
+        if (newModel !== selectedModel) {
+          console.log('🔄 Auto-converting Kling 2.1 to I2V variant for image-to-video mode:', newModel);
+          setSelectedModel(newModel);
+        }
+      }
+    }
   }, [generationMode, selectedModel]);
+
+  // Clear camera movements when model changes (separate effect to avoid loop)
+  useEffect(() => {
+    setSelectedCameraMovements([]);
+  }, [selectedModel]);
+
 
   // Reset fps/audio defaults when model changes
   useEffect(() => {
@@ -269,31 +543,44 @@ const InputBox = () => {
   }, [selectedModel, selectedMiniMaxDuration]);
 
   // Auto-adjust resolution when switching to text-to-video mode (512P not supported)
+  // Use ref to track previous generationMode to prevent loops
+  const prevGenerationModeRef = useRef(generationMode);
   useEffect(() => {
-    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
-      setSelectedResolution("768P"); // Switch to 768P for text-to-video
+    // Only run if generationMode actually changed
+    if (prevGenerationModeRef.current === generationMode) {
+      return;
     }
-  }, [generationMode, selectedModel, selectedResolution]);
+    prevGenerationModeRef.current = generationMode;
 
-  // Additional check to ensure 512P is not available for text-to-video
-  useEffect(() => {
-    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
-      setSelectedResolution("768P"); // Force switch to 768P
+    // Only adjust if switching to text-to-video and resolution is 512P
+    if (generationMode === "text_to_video" && selectedModel === "MiniMax-Hailuo-02") {
+      setSelectedResolution(prev => {
+        if (prev === "512P") {
+          return "768P"; // Switch to 768P for text-to-video
+        }
+        return prev; // Keep current resolution if not 512P
+      });
     }
-  }, [generationMode, selectedModel, selectedResolution]);
+  }, [generationMode, selectedModel]); // Removed selectedResolution from deps to prevent loop
 
   // Auto-adjust resolution when duration changes for MiniMax-Hailuo-02
+  // Only update if resolution actually needs to change to prevent loops
   useEffect(() => {
-    if (selectedModel === "MiniMax-Hailuo-02") {
-      if (selectedMiniMaxDuration === 10 && selectedResolution === "1080P") {
-        // 10s doesn't support 1080P, switch to 768P
-        setSelectedResolution("768P");
-      }
+    if (selectedModel === "MiniMax-Hailuo-02" && selectedMiniMaxDuration === 10) {
+      setSelectedResolution(prev => prev === "1080P" ? "768P" : prev); // Only update if still 1080P
     }
-  }, [selectedMiniMaxDuration, selectedModel, selectedResolution]);
+  }, [selectedMiniMaxDuration, selectedModel]); // Removed selectedResolution from deps to prevent loop
 
   // Reset controls when switching between MiniMax and Runway models
+  // Use ref to track previous model to prevent unnecessary updates
+  const prevModelForResetRef = useRef(selectedModel);
   useEffect(() => {
+    // Only run if model actually changed
+    if (prevModelForResetRef.current === selectedModel) {
+      return;
+    }
+    prevModelForResetRef.current = selectedModel;
+
     if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
       // Reset Runway-specific controls when switching to MiniMax
       // Note: MiniMax models don't support custom aspect ratios - they use fixed resolutions
@@ -302,16 +589,16 @@ const InputBox = () => {
 
       // Set appropriate MiniMax defaults based on model
       if (selectedModel === "MiniMax-Hailuo-02") {
-        setSelectedResolution("1080P");
+        setSelectedResolution(prev => prev !== "1080P" ? "1080P" : prev);
         setSelectedMiniMaxDuration(6);
       } else {
         // T2V-01, I2V-01, S2V-01 have fixed settings
-        setSelectedResolution("720P");
+        setSelectedResolution(prev => prev !== "720P" ? "720P" : prev);
         setSelectedMiniMaxDuration(6);
       }
     } else {
       // Reset MiniMax-specific controls when switching to Runway
-      setSelectedResolution("1080P"); // Default resolution
+      setSelectedResolution(prev => prev !== "1080P" ? "1080P" : prev); // Only update if different
       setSelectedMiniMaxDuration(6); // Default duration
     }
   }, [selectedModel]);
@@ -402,8 +689,9 @@ const InputBox = () => {
 
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
-      // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, and Sora 2 models support this
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
+      // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
+      // Note: gen4_turbo, gen3a_turbo, and Kling 2.1/master are I2V-only and will auto-switch to image-to-video mode
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -431,35 +719,76 @@ const InputBox = () => {
           // WAN 2.5 models: Set default duration and frame size
           setDuration(5); // Default 5s for WAN
           setFrameSize("1280*720"); // Default 720p for WAN
+          // Keep audio if switching between WAN models
         } else if (newModel.startsWith('kling-')) {
           // Kling models: duration default 5s; aspect via frame dropdown not used (we use separate aspect for kling)
           setDuration(5);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('seedance')) {
           // Seedance models: duration default 5s, resolution default 1080p, aspect ratio default 16:9
           setDuration(5);
           setSeedanceResolution("1080p");
           setFrameSize("16:9"); // For T2V aspect ratio
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('pixverse')) {
           // PixVerse models: duration default 5s, quality default 720p, aspect ratio default 16:9
           setDuration(5);
           setPixverseQuality("720p");
           setFrameSize("16:9");
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('sora2')) {
           // Sora 2 models: duration default 8s, aspect ratio default 16:9, quality default 720p (or 1080p for Pro)
           setDuration(8); // Default 8s for Sora 2
           setFrameSize("16:9"); // Default aspect ratio
           setSelectedQuality(newModel.includes('pro') ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('ltx2')) {
           // LTX V2 T2V: default resolution 1080p, duration 6s, 16:9 fixed
           setDuration(6);
           setFrameSize("16:9");
           setSelectedResolution("1080p" as any);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
+        } else {
+          // Clear audio when switching away from WAN models to any other model
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
+      } else if (newModel === "gen4_turbo" || newModel === "gen3a_turbo") {
+        // Gen-4 Turbo and Gen-3a Turbo are I2V-only, so switch to image-to-video mode
+        setGenerationMode("image_to_video");
+        setSelectedModel(newModel);
+        setDuration(5);
+        setFrameSize("16:9");
+        setSelectedCameraMovements([]);
+      } else if (newModel === "I2V-01-Director" || newModel === "S2V-01") {
+        // I2V-01-Director and S2V-01 are I2V-only, so switch to image-to-video mode
+        setGenerationMode("image_to_video");
+        setSelectedModel(newModel);
+        setSelectedResolution("720P");
+        setSelectedMiniMaxDuration(6);
+        setFrameSize("16:9");
+        setSelectedCameraMovements([]);
       } else {
-        // Runway models don't support text-to-video
-        console.warn('Runway models cannot be used for text-to-video generation');
+        // Model not supported for text-to-video
+        console.warn(`Model ${newModel} cannot be used for text-to-video generation`);
         return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
@@ -502,19 +831,36 @@ const InputBox = () => {
           // WAN 2.5 models: Set default duration and frame size
           setDuration(5); // Default 5s for WAN
           setFrameSize("1280*720"); // Default 720p for WAN
+          // Keep audio if switching between WAN models
         } else if (newModel.startsWith('kling-')) {
           setDuration(5);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
+        } else if (newModel === "gen4_turbo" || newModel === "gen3a_turbo") {
+          // Gen-4 Turbo and Gen-3a Turbo: default duration 5s (only supports 5s and 10s)
+          setDuration(5);
+          setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
           // Seedance models: duration default 5s, resolution default 1080p
           setDuration(5);
           setSeedanceResolution("1080p");
           // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
           setFrameSize("16:9");
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('pixverse')) {
           // PixVerse models: duration default 5s, quality default 720p
           setDuration(5);
           setPixverseQuality("720p");
           setFrameSize("16:9");
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('sora2')) {
           // Sora 2 models: duration default 8s, aspect ratio default auto (for I2V) or 16:9 (for T2V), quality default 720p (or 1080p for Pro)
           if (generationMode === "image_to_video") {
@@ -525,11 +871,24 @@ const InputBox = () => {
             setFrameSize("16:9"); // Default aspect ratio for Sora 2 T2V
           }
           setSelectedQuality(newModel.includes('pro') ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes('ltx2')) {
           // LTX V2 I2V: default resolution 1080p, duration 6s, aspect ratio 16:9 (can change)
           setDuration(6);
           setFrameSize("16:9");
           setSelectedResolution("1080p" as any);
+          // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
+        } else {
+          // Clear audio when switching away from WAN models to any other model
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         }
         // Clear camera movements when switching models
         setSelectedCameraMovements([]);
@@ -586,14 +945,54 @@ const InputBox = () => {
     const urlVideoTypes = allEntries.filter((entry: any) =>
       Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
     );
+    
+    // Also get entries that have videos array with video URLs
+    const videosArrayTypes = allEntries.filter((entry: any) =>
+      entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl))
+    );
 
-    // Merge both sets, removing duplicates by ID
+    // Merge all sets, removing duplicates by ID
     const byId: Record<string, any> = {};
-    [...declaredVideoTypes, ...urlVideoTypes].forEach((e: any) => {
+    [...declaredVideoTypes, ...urlVideoTypes, ...videosArrayTypes].forEach((e: any) => {
       byId[e.id] = e;
     });
 
     const mergedEntries = Object.values(byId);
+    
+    // Debug: Log all video entries and specifically animate entries
+    const animateEntries = mergedEntries.filter((e: any) => {
+      const model = String(e?.model || '').toLowerCase();
+      return model.includes('wan-2.2-animate') || model.includes('wan-video/wan-2.2-animate');
+    });
+    if (animateEntries.length > 0) {
+      console.log('[InputBox] ✅ Found animate entries in video history:', animateEntries.length, animateEntries.map((e: any) => ({
+        id: e.id,
+        model: e.model,
+        generationType: e.generationType,
+        status: e.status
+      })));
+    }
+    
+    // Debug: Log video-to-video entries to ensure they're being included
+    const videoToVideoEntries = mergedEntries.filter((e: any) => {
+      const normalizedType = normalizeGenerationType(e?.generationType);
+      return normalizedType === 'video-to-video';
+    });
+    const videoToVideoInAll = allEntries.filter((e: any) => {
+      const normalizedType = normalizeGenerationType(e?.generationType);
+      return normalizedType === 'video-to-video';
+    });
+    console.log('[InputBox] Video-to-video entries:', {
+      inAllEntries: videoToVideoInAll.length,
+      inMergedEntries: videoToVideoEntries.length,
+      sample: videoToVideoInAll.slice(0, 2).map((e: any) => ({
+        id: e.id,
+        model: e.model,
+        generationType: e.generationType,
+        hasImages: !!(e.images?.length),
+        hasVideos: !!(e.videos?.length)
+      }))
+    });
 
     // Count entries by normalized generationType for debugging
     const countsAll = allEntries.reduce((acc: any, e: any) => {
@@ -609,8 +1008,8 @@ const InputBox = () => {
       return acc;
     }, {} as Record<string, number>);
 
-    /* Debug removed for cleanliness
-    console.log('[VideoPage] history totals:', {
+    // Debug: Log history totals to diagnose missing entries
+    console.log('[InputBox] History totals:', {
       all: allEntries.length,
       textToVideo: countsAll['text-to-video'] || 0,
       imageToVideo: countsAll['image-to-video'] || 0,
@@ -618,9 +1017,10 @@ const InputBox = () => {
       filtered: mergedEntries.length,
       declaredVideoTypes: declaredVideoTypes.length,
       urlVideoTypes: urlVideoTypes.length,
+      videosArrayTypes: videosArrayTypes.length,
       rawGenerationTypes,
       normalizedCounts: countsAll,
-    });*/
+    });
 
     // Debug: Show which entries are being filtered and why
     if (mergedEntries.length < allEntries.length) {
@@ -682,50 +1082,295 @@ const InputBox = () => {
   // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
   const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
     try {
-      if (libraryImageLoading) return;
-      if (!initial && (!libraryImageHasMore || !isUploadModalOpen)) return;
+      // Use ref to check loading state to avoid stale closure issues
+      if (libraryImageLoadingRef.current) {
+        console.log('[VideoPage] fetchLibraryImages: Already loading, skipping');
+        return;
+      }
+      // For non-initial loads, check if we have a cursor (hasMore) and modal is open
+      if (!initial) {
+        if (!libraryImageNextCursorRef.current) {
+          console.log('[VideoPage] fetchLibraryImages: No nextCursor, no more items');
+          setLibraryImageHasMore(false);
+          return;
+        }
+        if (!isUploadModalOpen) {
+          console.log('[VideoPage] fetchLibraryImages: Modal not open, skipping');
+          return;
+        }
+      }
+      libraryImageLoadingRef.current = true;
       setLibraryImageLoading(true);
       const api = getApiClient();
       const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
-      if (!initial && libraryImageNextCursorRef.current) {
-        params.cursor = libraryImageNextCursorRef.current;
+      // For pagination, use the cursor from the previous response
+      // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
+      const currentCursor = libraryImageNextCursorRef.current;
+      if (!initial && currentCursor) {
+        // Backend expects `nextCursor` for pagination; using `cursor` causes first page to repeat
+        params.nextCursor = currentCursor;
+        console.log('[VideoPage] 🔄 Pagination request with cursor:', {
+          cursor: currentCursor,
+          cursorType: typeof currentCursor,
+          cursorLength: String(currentCursor).length,
+          isInitial: initial,
+          currentEntriesCount: libraryImageEntries.length
+        });
+      } else if (initial) {
+        // Ensure no cursor is sent for initial load
+        console.log('[VideoPage] 🆕 Initial load (no cursor)', {
+          currentCursor: currentCursor ? 'present but ignored' : 'none',
+          currentEntriesCount: libraryImageEntries.length
+        });
+      } else {
+        console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available!', {
+          currentCursor,
+          hasMore: libraryImageHasMore,
+          currentEntriesCount: libraryImageEntries.length
+        });
       }
+  // Ensure createdAt ordering always requested
+  params.sortBy = 'createdAt';
       const res = await api.get('/api/generations', { params });
       const payload = res.data?.data || res.data || {};
       const items: any[] = Array.isArray(payload.items) ? payload.items : [];
-      const nextCursor: string | undefined = payload.nextCursor;
+      const nextCursor: string | number | undefined = payload.nextCursor;
 
-      // Merge uniquely by id
-      const existingById: Record<string, any> = {};
-      libraryImageEntries.forEach((e: any) => { existingById[e.id] = e; });
-      items.forEach((e: any) => { existingById[e.id] = e; });
-      const merged = Object.values(existingById);
+      // Ensure all items have the images array properly structured
+      const normalizedItems = items.map((item: any) => {
+        // Clone the item to avoid mutating the original
+        const normalized = { ...item };
+        
+        // If item doesn't have images array, try to extract from other properties
+        if (!Array.isArray(normalized.images) || normalized.images.length === 0) {
+          // Some APIs might return images in a different structure
+          if (normalized.media && Array.isArray(normalized.media)) {
+            normalized.images = normalized.media.filter((m: any) => m.type === 'image' || !m.type);
+          }
+        }
+        // Ensure images is always an array (even if empty) - don't filter out items
+        // The UploadModal will handle empty arrays gracefully
+        if (!Array.isArray(normalized.images)) {
+          normalized.images = [];
+        }
+        
+        // Ensure each image has required properties
+        if (Array.isArray(normalized.images)) {
+          normalized.images = normalized.images.map((img: any) => {
+            if (typeof img === 'string') {
+              // If image is just a URL string, convert to object
+              return { url: img, id: img };
+            }
+            return img;
+          });
+        }
+        
+        return normalized;
+      });
 
-      setLibraryImageEntries(merged);
-      libraryImageNextCursorRef.current = nextCursor;
-      setLibraryImageHasMore(Boolean(nextCursor));
+      console.log('[VideoPage] fetchLibraryImages API response:', {
+        payloadKeys: Object.keys(payload),
+        itemsCount: items.length,
+        normalizedItemsCount: normalizedItems.length,
+        itemsSample: normalizedItems.slice(0, 2).map((item: any) => ({
+          id: item.id,
+          generationType: item.generationType,
+          imagesCount: item.images?.length || 0,
+          hasImagesArray: Array.isArray(item.images),
+          images: item.images?.slice(0, 1).map((img: any) => ({
+            id: img.id,
+            url: img.url?.substring(0, 50) + '...',
+            thumbnailUrl: img.thumbnailUrl ? 'present' : 'missing',
+            avifUrl: img.avifUrl ? 'present' : 'missing'
+          }))
+        })),
+        nextCursor: nextCursor ? 'present' : 'null'
+      });
+
+      // Merge uniquely by id using functional update to avoid stale closure
+      // Always create a new array reference to ensure React detects the change
+      setLibraryImageEntries((prevEntries) => {
+        // If this is an initial load, replace all entries (don't merge with old data)
+        if (initial) {
+          console.log('[VideoPage] fetchLibraryImages initial load - replacing all entries');
+          const sorted = normalizedItems.sort((a: any, b: any) => {
+            const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+            const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+            return timeB - timeA; // Descending (newest first)
+          });
+          console.log('[VideoPage] fetchLibraryImages initial load result:', {
+            itemsCount: normalizedItems.length,
+            sortedCount: sorted.length,
+            sample: sorted.slice(0, 2).map((e: any) => ({
+              id: e.id,
+              generationType: e.generationType,
+              imagesCount: e.images?.length || 0,
+              hasImages: Array.isArray(e.images) && e.images.length > 0
+            }))
+          });
+          // Always return a new array reference
+          return [...sorted];
+        }
+        
+        // For pagination loads, merge with existing entries
+        // IMPORTANT: Check if items are actually new by comparing IDs
+        const existingIds = new Set(prevEntries.map((e: any) => e?.id).filter(Boolean));
+        const newItems = normalizedItems.filter((item: any) => item?.id && !existingIds.has(item.id));
+        const existingItems = normalizedItems.filter((item: any) => item?.id && existingIds.has(item.id));
+        
+        console.log('[VideoPage] fetchLibraryImages pagination merge:', {
+          previousCount: prevEntries.length,
+          newItemsReceived: normalizedItems.length,
+          actuallyNew: newItems.length,
+          duplicates: existingItems.length,
+          newItemIds: newItems.slice(0, 5).map((e: any) => e.id),
+          newItemsWithImages: newItems.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
+        });
+        
+        if (newItems.length === 0) {
+          console.warn('[VideoPage] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.');
+          return [...prevEntries];
+        }
+        
+        const existingById: Record<string, any> = {};
+        // Add existing entries first
+        prevEntries.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Then add only NEW entries (avoid unnecessary updates)
+        newItems.forEach((e: any) => { 
+          if (e?.id) {
+            existingById[e.id] = e; 
+          }
+        });
+        // Create a new array and sort by createdAt (newest first)
+        const merged = Object.values(existingById).sort((a: any, b: any) => {
+          const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+          const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+          return timeB - timeA; // Descending (newest first)
+        });
+
+        console.log('[VideoPage] fetchLibraryImages after merge:', {
+          previousCount: prevEntries.length,
+          newItemsCount: normalizedItems.length,
+          newItemsAdded: newItems.length,
+          mergedCount: merged.length,
+          mergedEntriesWithImages: merged.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length,
+          mergedSample: merged.slice(0, 3).map((e: any) => ({
+            id: e.id,
+            generationType: e.generationType,
+            imagesCount: e.images?.length || 0,
+            hasImages: Array.isArray(e.images) && e.images.length > 0,
+            firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...',
+            firstImageThumbnail: e.images?.[0]?.thumbnailUrl ? 'present' : 'missing'
+          }))
+        });
+
+        // Always return a new array reference (even if contents are the same)
+        return [...merged];
+      });
+      
+      // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
+      // This ensures the cursor is available for the next pagination request
+      const previousCursor = libraryImageNextCursorRef.current;
+      // Convert cursor to string if it's a number (API might return number cursor)
+      // Handle both string and number cursors from API
+      // IMPORTANT: Store the cursor immediately so it's available for the next request
+      const newCursor = nextCursor ? (typeof nextCursor === 'string' ? nextCursor : String(nextCursor)) : undefined;
+      libraryImageNextCursorRef.current = newCursor;
+      
+      // Log cursor update immediately
+      console.log('[VideoPage] 📥 Cursor updated in ref:', {
+        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
+        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'none',
+        cursorChanged: previousCursor !== newCursor,
+        itemsReceived: items.length
+      });
+      
+      // Set hasMore: if there's a nextCursor, we definitely have more items to load
+      // The presence of nextCursor is the definitive indicator from the backend
+      const hasMoreItems = Boolean(nextCursor);
+      
+      console.log('[VideoPage] 📥 fetchLibraryImages response received:', { 
+        itemsCount: items.length, 
+        requested: params.limit || 30, 
+        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
+        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'null',
+        newCursorType: typeof nextCursor,
+        newCursorFull: newCursor,
+        cursorChanged: previousCursor !== newCursor,
+        hasMoreItems,
+        currentEntriesCount: libraryImageEntries.length
+      });
+      
+      // If cursor didn't change and we got items, it means we're getting duplicates
+      if (!initial && previousCursor === newCursor && items.length > 0) {
+        console.warn('[VideoPage] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.');
+      }
+      
+      setLibraryImageHasMore(hasMoreItems);
     } catch (e) {
       console.error('[VideoPage] Failed to fetch library images:', e);
     } finally {
+      libraryImageLoadingRef.current = false;
       setLibraryImageLoading(false);
     }
-  }, [libraryImageEntries, libraryImageHasMore, libraryImageLoading, isUploadModalOpen]);
+  }, [isUploadModalOpen]);
 
-  // When opening the UploadModal for images/references in image_to_video mode, ensure initial image library is loaded
+  // Debug: Log when libraryImageEntries changes to verify state updates
   useEffect(() => {
-    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference') && generationMode === 'image_to_video';
+    if (isUploadModalOpen) {
+      console.log('[VideoPage] libraryImageEntries state updated:', {
+        count: libraryImageEntries.length,
+        sampleEntries: libraryImageEntries.slice(0, 3).map((e: any) => ({
+          id: e.id,
+          generationType: e.generationType,
+          imagesCount: e.images?.length || 0,
+          hasImages: Array.isArray(e.images) && e.images.length > 0,
+          firstImage: e.images?.[0] ? {
+            id: e.images[0].id,
+            url: e.images[0].url?.substring(0, 50) + '...',
+            thumbnailUrl: e.images[0].thumbnailUrl ? 'present' : 'missing'
+          } : null
+        })),
+        allEntriesWithImages: libraryImageEntries.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
+      });
+    }
+  }, [libraryImageEntries, isUploadModalOpen]);
+
+  // When opening the UploadModal for images/references, ensure initial image library is loaded
+  // IMPORTANT: Always fetch fresh data when modal opens to show newly generated images
+  // Load ALL images by fetching pages until there's no more cursor (like image generation)
+  useEffect(() => {
+    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference');
     if (needsLibrary) {
-      if (!libraryImageInitRef.current) {
-        libraryImageInitRef.current = true;
-        fetchLibraryImages(true);
-      }
+      // Reset pagination state when opening modal to ensure fresh load
+      libraryImageNextCursorRef.current = undefined;
+      libraryImageLoadingRef.current = false; // Reset loading ref
+      setLibraryImageHasMore(true);
+      setLibraryImageEntries([]); // Clear previous entries for fresh load
+      setLibraryImageLoading(false); // Ensure loading state is reset
+      
+      // Only load the first page when modal opens - pagination will happen on scroll
+      const fetchPromise = fetchLibraryImages(true);
+      fetchPromise
+        .then(() => {
+          console.log('[VideoPage] ✅ Successfully fetched initial library images');
+        })
+        .catch((error) => {
+          console.error('[VideoPage] ❌ Error fetching library images:', error);
+          libraryImageLoadingRef.current = false;
+          setLibraryImageLoading(false);
+        });
     } else {
-      // Reset guard when modal closes or mode/type changes
+      // When modal closes, reset the guard so it can fetch fresh next time
       libraryImageInitRef.current = false;
     }
     // Deliberately not depending on fetchLibraryImages or entries length to avoid re-running
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUploadModalOpen, uploadModalType, generationMode]);
+  }, [isUploadModalOpen, uploadModalType]);
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -746,13 +1391,130 @@ const InputBox = () => {
 
   // Local, ephemeral preview entry for video generations
   const [localVideoPreview, setLocalVideoPreview] = useState<HistoryEntry | null>(null);
+  
+  // Track which videos have loaded to hide loading effects
+  const [loadedVideos, setLoadedVideos] = useState<Set<string>>(new Set());
+  
+  // Track entries that have been added to history to prevent duplicate rendering
+  const historyEntryIdsRef = useRef<Set<string>>(new Set());
+  
+  // Get current entries from Redux
+  const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
+  
   useEffect(() => {
     if (!localVideoPreview) return;
+    
+    // Check if this entry already exists in Redux history
+    const entryId = localVideoPreview.id;
+    const entryFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+    
+    // FIRST: Check ref (updated immediately when entry is added to history)
+    const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
+                       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
+    
+    // SECOND: Check Redux state
+    const existsInHistory = existingEntries.some((e: HistoryEntry) => {
+      const eId = e.id;
+      const eFirebaseId = (e as any)?.firebaseHistoryId;
+      if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
+      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
+      return false;
+    });
+    
+    // CRITICAL: If entry exists in ref OR history, immediately clear local preview
+    if (existsInRef || existsInHistory) {
+      setLocalVideoPreview(null);
+      return;
+    }
+    
+    // If entry completes/fails but not in history yet, clear after delay
     if (localVideoPreview.status === 'completed' || localVideoPreview.status === 'failed') {
       const t = setTimeout(() => setLocalVideoPreview(null), 1500);
       return () => clearTimeout(t);
     }
-  }, [localVideoPreview]);
+  }, [localVideoPreview, existingEntries]);
+
+  // Function to fetch and add/update a single generation instead of reloading all
+  const refreshSingleGeneration = async (historyId: string) => {
+    try {
+      const client = axiosInstance;
+      const res = await client.get(`/api/generations/${historyId}`);
+      const item = res.data?.data?.item;
+      if (!item) {
+        console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
+        dispatch(loadHistory({ 
+          filters: { mode: 'video' } as any, 
+          paginationParams: { limit: 50 },
+          requestOrigin: 'page',
+          expectedType: 'text-to-video',
+          debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+        } as any));
+        return;
+      }
+      
+      // Normalize the item to match HistoryEntry format
+      const created = item?.createdAt || item?.updatedAt || item?.timestamp;
+      const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+      const normalizedEntry: HistoryEntry = {
+        ...item,
+        id: item.id || historyId,
+        timestamp: iso,
+        createdAt: iso,
+      } as HistoryEntry;
+      
+      // Check if entry already exists in current Redux state
+      const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
+      
+      // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
+      historyEntryIdsRef.current.add(historyId);
+      if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
+      if ((normalizedEntry as any)?.firebaseHistoryId) {
+        historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
+      }
+      
+      if (exists) {
+        dispatch(updateHistoryEntry({ 
+          id: historyId, 
+          updates: {
+            status: normalizedEntry.status,
+            images: normalizedEntry.images,
+            videos: normalizedEntry.videos,
+            timestamp: normalizedEntry.timestamp,
+          }
+        }));
+      } else {
+        dispatch(addHistoryEntry(normalizedEntry));
+      }
+      
+      // CRITICAL: Immediately clear local preview when history entry is added/updated
+      setLocalVideoPreview((prev) => {
+        if (!prev) return null;
+        
+        const prevId = prev.id;
+        const prevFirebaseId = (prev as any)?.firebaseHistoryId;
+        
+        // Check if IDs match
+        if (prevId === historyId || prevFirebaseId === historyId) return null;
+        if (normalizedEntry.id && (prevId === normalizedEntry.id || prevFirebaseId === normalizedEntry.id)) return null;
+        const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
+        if (normalizedFirebaseId && (prevId === normalizedFirebaseId || prevFirebaseId === normalizedFirebaseId)) return null;
+        
+        // If local preview is completed and we just added a completed history entry, clear it
+        if (prev.status === 'completed' && normalizedEntry.status === 'completed') return null;
+        
+        return prev;
+      });
+    } catch (error) {
+      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
+      dispatch(loadHistory({ 
+        filters: { mode: 'video' } as any, 
+        paginationParams: { limit: 50 },
+        requestOrigin: 'page',
+        expectedType: 'text-to-video',
+        debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+      } as any));
+    }
+  };
 
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
   useEffect(() => {
@@ -1010,6 +1772,28 @@ const InputBox = () => {
   }, []);
 
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
+  // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
+  const didInitialLoadRef = useRef(false);
+  // Use mode: 'video' to load ALL video types at once (same as History.tsx)
+  // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
+  useEffect(() => {
+    if (didInitialLoadRef.current) return;
+    // Load all video types using mode: 'video' (backend handles this correctly)
+    didInitialLoadRef.current = true;
+    try {
+      // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
+      // This is the same approach History.tsx uses and ensures all video types are loaded
+      dispatch(loadHistory({ 
+        filters: { mode: 'video' } as any, 
+        paginationParams: { limit: 50 },
+        requestOrigin: 'page',
+        expectedType: 'text-to-video',
+        debugTag: `InputBox:video-mode:${Date.now()}`
+      } as any));
+    } catch (e) {
+      // swallow
+    }
+  }, [dispatch]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -1020,76 +1804,24 @@ const InputBox = () => {
     return () => { container.removeEventListener('scroll', onScroll as any); };
   }, [historyScrollElement]);
 
-  // IntersectionObserver-based load more for video history, using viewport as root
-  useEffect(() => {
-    if (!sentinelElement) return;
-    const el = sentinelElement;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMore) {
-        console.log('[Video] IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('[Video] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
+  // Standardized intersection observer for video history
+  // Replace IntersectionObserver with History-style bottom scroll pagination
+  useBottomScrollPagination({
+    containerRef: historyScrollElement ? { current: historyScrollElement } as any : undefined,
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
-      console.log('[Video] IO: loadMore start', { nextPage, hasMore });
-      
       try {
-        await (dispatch as any)(loadMoreHistory({
-          filters: { mode: 'video' } as any,
-          paginationParams: { limit: 10 }
-        })).unwrap();
-        console.log('[Video] IO: loadMore success');
-      } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Video] IO: loadMore skipped - no more pages');
-        } else {
-          console.error('[Video] IO loadMore error', e);
-        }
-      } finally {
-        loadingMoreRef.current = false;
-      }
-    }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Video] IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Video] IO: observer disconnected');
-    };
-  }, [hasMore, loading, page, dispatch, sentinelElement]);
-
-  // Also mark user scroll on window in case container isn't scroll root
-  useEffect(() => {
-    const onWindowScroll = () => { hasUserScrolledRef.current = true; };
-    window.addEventListener('scroll', onWindowScroll, { passive: true } as any);
-    return () => window.removeEventListener('scroll', onWindowScroll as any);
-  }, []);
-
-  // Auto-fill viewport if content is short (load more until we have enough content)
-  useEffect(() => {
-    const container = historyScrollElement || document.documentElement;
-    if (!container) return;
-    const viewportHeight = window.innerHeight || 0;
-    const contentHeight = container.scrollHeight || 0;
-    if (contentHeight < viewportHeight + 200 && hasMore && !loading && !loadingMoreRef.current) {
-      loadingMoreRef.current = true;
-      (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }))
-        .finally(() => { loadingMoreRef.current = false; });
+        // Use mode: 'video' which backend converts to all video types including video-to-video
+        await (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } })).unwrap();
+      } catch {/* swallow */}
     }
-  }, [historyEntries, hasMore, loading, dispatch, historyScrollElement]);
+  });
 
   // Handle references upload
   const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1133,7 +1865,12 @@ const InputBox = () => {
   // Handle image/video upload from UploadModal
   const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
     if (uploadModalType === 'image') {
-      setUploadedImages(prev => [...prev, ...urls]);
+      // For WAN 2.2 Animate Replace, set character image instead of uploaded images
+      if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
+        setUploadedCharacterImage(urls[0] || "");
+      } else {
+        setUploadedImages(prev => [...prev, ...urls]);
+      }
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
     } else if (uploadModalType === 'video') {
@@ -1254,9 +1991,149 @@ const InputBox = () => {
     event.target.value = '';
   };
 
+  // Handle audio upload for WAN models
+  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const file = files[0];
+    // Validate file type and size (wav/mp3, ≤15MB, 3-30s)
+    const allowedMimes = new Set([
+      'audio/wav',
+      'audio/wave',
+      'audio/x-wav',
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/mpeg3',
+      'audio/x-mpeg-3',
+    ]);
+
+    const maxBytes = 15 * 1024 * 1024; // 15MB max
+    if (!allowedMimes.has(file.type) && !file.name.match(/\.(wav|mp3)$/i)) {
+      toast.error('Unsupported audio type. Use WAV or MP3 format');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > maxBytes) {
+      toast.error('Audio file too large. Please upload an audio file ≤ 15MB');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.type.startsWith('audio/') || file.name.match(/\.(wav|mp3)$/i)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setUploadedAudio(result);
+          toast.success('Audio file uploaded successfully');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
+  // Handle character image upload for WAN 2.2 Animate Replace
+  const handleCharacterImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const file = files[0];
+    // Validate file type and size
+    const allowedMimes = new Set([
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+    ]);
+
+    const maxBytes = 10 * 1024 * 1024; // 10MB max
+    if (!allowedMimes.has(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
+      toast.error('Unsupported image type. Use JPG, PNG, or WebP format');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > maxBytes) {
+      toast.error('Image file too large. Please upload an image ≤ 10MB');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setUploadedCharacterImage(result);
+          toast.success('Character image uploaded successfully');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
+  // Helper function to get the prompt for API (with hardcoded prefix for Lipsync)
+  const getApiPrompt = (originalPrompt: string): string => {
+    // For Lipsync feature with uploaded image, add hardcoded prefix
+    if (activeFeature === 'Lipsync' && uploadedImages.length > 0) {
+      return `The model or person in the uploaded image will speak this: ${originalPrompt}`;
+    }
+    return originalPrompt;
+  };
+
+  // Clear all inputs and configurations after successful generation
+  const clearInputs = () => {
+    // Clear prompt
+    setPrompt("");
+    
+    // Clear all uploaded assets
+    setUploadedImages([]);
+    setUploadedVideo("");
+    setUploadedAudio("");
+    setUploadedCharacterImage("");
+    setSourceHistoryEntryId("");
+    setReferences([]);
+    setLastFrameImage("");
+    
+    // Reset generation mode
+    setGenerationMode("text_to_video");
+    
+    // Reset to default configurations
+    setSelectedModel("seedance-1.0-lite-t2v");
+    setFrameSize("16:9");
+    setDuration(6);
+    setSelectedResolution("1080P");
+    setSelectedMiniMaxDuration(6);
+    setSelectedQuality("720p");
+    setKlingMode('standard');
+    setSeedanceResolution("1080p");
+    setPixverseQuality("720p");
+    setWanAnimateResolution("720");
+    setWanAnimateRefertNum(1);
+    setWanAnimateGoFast(true);
+    setWanAnimateMergeAudio(true);
+    setWanAnimateFps(24);
+    setWanAnimateSeed(undefined);
+    setFps(25);
+    setGenerateAudio(true);
+    setSelectedCameraMovements([]);
+    
+    // Clear error
+    setError("");
+  };
+
   // Handle video generation
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt');
+      return;
+    }
 
     console.log('🚀 Starting video generation with:');
     console.log('🚀 - Selected model:', selectedModel);
@@ -1264,9 +2141,132 @@ const InputBox = () => {
     console.log('🚀 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
     console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
 
+    // Get current model capabilities
+    const caps = currentModelCapabilities;
+
+    // Validate I2V-only models require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
+    if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
+        selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+      if (uploadedImages.length === 0 && references.length === 0) {
+        // Get model display name
+        let modelName = '';
+        if (selectedModel.startsWith('kling-')) {
+          if (selectedModel.includes('master')) {
+            modelName = 'Kling 2.1 Master';
+          } else if (selectedModel.includes('v2.1')) {
+            modelName = 'Kling 2.1';
+          }
+        } else if (selectedModel === 'gen4_turbo') {
+          modelName = 'Gen-4 Turbo';
+        } else if (selectedModel === 'gen3a_turbo') {
+          modelName = 'Gen-3a Turbo';
+        }
+        // Show toast with custom styling
+        toast.error(
+          <div className="flex items-start gap-3">
+            {/* <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg> */}
+            <div>
+              <p className="font-semibold text-white">{modelName} needs one image as input to generate video.</p>
+              <p className="text-sm text-white/70 mt-1">Please upload an image to continue.</p>
+            </div>
+          </div>,
+          {
+            duration: 8000, // 8 seconds
+            style: {
+              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(251, 146, 60, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              backdropFilter: 'blur(10px)',
+            },
+          } as any
+        );
+        setIsGenerating(false);
+        return;
+      }
+    }
+
+    // Validate model requirements
+    // Check if model requires image (like Runway models)
+    // Note: I2V-only models (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo) are already handled above
+    if (caps.requiresImage && uploadedImages.length === 0 && references.length === 0) {
+      if (selectedModel === "S2V-01") {
+        // Show toast with custom styling for S2V-01
+        toast.error(
+          <div className="flex items-start gap-3">
+            <div>
+              <p className="font-semibold text-white">S2V-01 needs one image as input to generate video.</p>
+              <p className="text-sm text-white/70 mt-1">Please upload a character reference image to continue.</p>
+            </div>
+          </div>,
+          {
+            duration: 8000, // 8 seconds
+            style: {
+              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(251, 146, 60, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              backdropFilter: 'blur(10px)',
+            },
+          } as any
+        );
+      } else if (selectedModel === "I2V-01-Director") {
+        // Show toast with custom styling for I2V-01-Director
+        toast.error(
+          <div className="flex items-start gap-3">
+            <div>
+              <p className="font-semibold text-white">I2V-01-Director needs one image as input to generate video.</p>
+              <p className="text-sm text-white/70 mt-1">Please upload a first frame image to continue.</p>
+            </div>
+          </div>,
+          {
+            duration: 8000, // 8 seconds
+            style: {
+              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(251, 146, 60, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              backdropFilter: 'blur(10px)',
+            },
+          } as any
+        );
+      } else if (selectedModel.includes("veo3.1") && selectedModel.includes("i2v")) {
+        toast.error('An input image is required to use Veo 3.1 image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes("veo3") && selectedModel.includes("i2v")) {
+        toast.error('An input image is required to use Veo 3 image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes("wan-2.5") && selectedModel.includes("i2v")) {
+        toast.error('An input image is required to use WAN 2.5 image-to-video model. Please upload an image.');
+      } else if (selectedModel.startsWith('kling-') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use Kling image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes('seedance') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use Seedance image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes('pixverse') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use PixVerse image-to-video model. Please upload an image.');
+      } else if (selectedModel.includes('sora2') && selectedModel.includes('i2v')) {
+        toast.error('An input image is required to use Sora 2 image-to-video model. Please upload an image.');
+      } else if (selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo") {
+        toast.error('An input image is required to use this Runway model. Please upload an image.');
+      } else {
+        toast.error('An input image is required to use this model. Please upload an image.');
+      }
+      return;
+    }
+
+    if (caps.requiresReferenceImage && references.length === 0) {
+      toast.error('A reference image is required to use this model. Please upload a character reference image.');
+      return;
+    }
+
+    if (caps.requiresVideo && !uploadedVideo) {
+      toast.error('A source video is required to use this model. Please upload a video.');
+      return;
+    }
+
     // Validate model compatibility with generation mode
-    if (generationMode === "text_to_video" && !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel.includes("veo3") || selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('sora2') || selectedModel.includes('ltx2'))) {
-      setError("Text→Video mode supports MiniMax, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, Sora 2, and LTX V2 models. Please select a compatible model or switch to Image→Video mode.");
+    if (generationMode === "text_to_video" && !caps.supportsTextToVideo) {
+      toast.error('This model does not support text-to-video generation. An input image is required. Please upload an image or select a different model.');
       return;
     }
 
@@ -1300,7 +2300,52 @@ const InputBox = () => {
       let generationType: string;
       let apiEndpoint: string;
 
-      if (generationMode === "text_to_video") {
+      // Auto-determine mode based on model capabilities and user input
+      // Priority: If image is uploaded and model supports I2V, use I2V
+      // If only text is provided and model supports T2V, use T2V
+      let actualGenerationMode = generationMode;
+      
+      const hasImage = uploadedImages.length > 0 || references.length > 0;
+      const hasText = prompt.trim().length > 0;
+      
+      // Smart mode detection:
+      // 1. If image is uploaded and model supports I2V -> use I2V
+      // 2. If only text and model supports T2V -> use T2V
+      // 3. If model only supports I2V (like Runway) -> use I2V (will validate image requirement)
+      // 4. If model supports both -> choose based on input
+      
+      if (hasImage && caps.supportsImageToVideo) {
+        // Image uploaded and model supports I2V -> use image-to-video
+        actualGenerationMode = "image_to_video";
+        console.log('🖼️ Image detected, switching to image-to-video mode');
+      } else if (hasText && !hasImage && caps.supportsTextToVideo) {
+        // Only text provided and model supports T2V -> use text-to-video
+        // But check if model requires image (like Kling 2.1)
+        if (caps.requiresImage && !caps.supportsTextToVideo) {
+          // Model requires image but user only provided text
+          toast.error('This model requires an input image. Please upload an image to use this model.');
+          setIsGenerating(false);
+          return;
+        }
+        actualGenerationMode = "text_to_video";
+        console.log('📝 Text only, using text-to-video mode');
+      } else if (caps.supportsTextToVideo && caps.supportsImageToVideo) {
+        // Model supports both - check if image is uploaded
+        if (hasImage) {
+          actualGenerationMode = "image_to_video";
+          console.log('🖼️ Model supports both, image provided -> using image-to-video');
+        } else {
+          actualGenerationMode = "text_to_video";
+          console.log('📝 Model supports both, no image -> using text-to-video');
+        }
+      } else if (caps.supportsImageToVideo && !caps.supportsTextToVideo) {
+        // Model only supports I2V (like Runway models: gen4_turbo, gen3a_turbo)
+        actualGenerationMode = "image_to_video";
+        console.log('🎬 Model only supports I2V -> using image-to-video mode');
+        // Image requirement will be validated below
+      }
+
+      if (actualGenerationMode === "text_to_video") {
         // Text to video generation (MiniMax, Veo3, and WAN models)
         if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
           // Text-to-video: No image requirements (pure text generation)
@@ -1318,46 +2363,51 @@ const InputBox = () => {
           };
           generationType = "text-to-video";
           apiEndpoint = '/api/minimax/video';
-        } else if (selectedModel.includes("veo3.1")) {
-          // Veo 3.1 text-to-video generation
+        } else if (selectedModel.includes("veo3.1") && !selectedModel.includes("i2v")) {
+          // Veo 3.1 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
             generate_audio: true,
-            enhance_prompt: true,
             auto_fix: true,
             isPublic
           };
           generationType = "text-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3_1/text-to-video/fast/submit' : '/api/fal/veo3_1/text-to-video/submit';
-        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && !selectedModel.includes("i2v")) {
           // Veo3 text-to-video generation
           const isFast = selectedModel.includes("fast");
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
-            enhance_prompt: true,
             auto_fix: true,
             isPublic
           };
           generationType = "text-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3/text-to-video/fast/submit' : '/api/fal/veo3/text-to-video/submit';
-        } else if (selectedModel.includes("wan-2.5")) {
-          // WAN 2.5 text-to-video generation
+        } else if (selectedModel.includes("wan-2.5") && !selectedModel.includes("i2v")) {
+          // WAN 2.5 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-t2v-fast" : "wan-video/wan-2.5-t2v",
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration: duration, // 5 or 10 seconds
             size: frameSize, // WAN uses specific size format like "1280*720"
+            ...(uploadedAudio && { audio: uploadedAudio }), // Include audio if uploaded
             generationType: "text-to-video",
             isPublic,
           };
@@ -1365,16 +2415,45 @@ const InputBox = () => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
         } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
-          // Kling T2V - only v2.5-turbo-pro supports text-to-video
-          requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'text-to-video', isPublic };
+          // Kling T2V - only v2.5-turbo-pro supports pure T2V
+          // Kling v2.1 and v2.1-master require start_image (I2V only)
+          const isV25 = selectedModel.includes('v2.5');
+          const isV21 = selectedModel.includes('v2.1');
+          
+          if (isV21) {
+            // Kling 2.1 and 2.1 Master require an image (start_image is required)
+            toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
+            setIsGenerating(false);
+            return;
+          }
+          
+          // Only v2.5 supports pure T2V
+          if (!isV25) {
+            toast.error('This Kling model requires an input image. Please upload an image or select Kling 2.5 Turbo Pro for text-to-video.');
+            setIsGenerating(false);
+            return;
+          }
+          
+          const apiPrompt = getApiPrompt(prompt);
+          requestBody = {
+            model: 'kwaivgi/kling-v2.5-turbo-pro',
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
+            duration,
+            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+            generationType: 'text-to-video',
+            isPublic
+          };
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
           // Seedance T2V
           const isLite = selectedModel.includes('lite');
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             resolution: seedanceResolution,
             aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
@@ -1385,9 +2464,11 @@ const InputBox = () => {
           apiEndpoint = '/api/replicate/seedance-t2v/submit';
         } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
           // PixVerse T2V
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'pixverse/pixverse-v5',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             duration,
             quality: pixverseQuality,
             aspect_ratio: frameSize, // PixVerse supports 16:9, 9:16, 1:1
@@ -1399,14 +2480,46 @@ const InputBox = () => {
         } else if (selectedModel.includes('sora2') && !selectedModel.includes('i2v') && !selectedModel.includes('v2v')) {
           // Sora 2 T2V
           const isPro = selectedModel.includes('pro');
+          const apiPrompt = getApiPrompt(prompt);
+          
+          // Ensure duration is a number and one of [4, 8, 12]
+          let soraDuration = duration;
+          if (typeof duration !== 'number') {
+            soraDuration = parseInt(String(duration), 10) || 8;
+          }
+          // Clamp to valid values: 4, 8, or 12
+          if (![4, 8, 12].includes(soraDuration)) {
+            // Round to nearest valid value
+            if (soraDuration < 6) soraDuration = 4;
+            else if (soraDuration < 10) soraDuration = 8;
+            else soraDuration = 12;
+          }
+          
+          // Ensure resolution is valid
+          let soraResolution = selectedQuality || '720p';
+          if (isPro) {
+            // Pro supports 720p or 1080p
+            if (soraResolution !== '720p' && soraResolution !== '1080p') {
+              soraResolution = '1080p'; // Default to 1080p for Pro
+            }
+          } else {
+            // Standard only supports 720p
+            soraResolution = '720p';
+          }
+          
+          // Ensure aspect_ratio is valid
+          const soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "16:9");
+          
+          // Sora 2 validator only expects: prompt, resolution (optional), aspect_ratio (optional), duration (optional), api_key (optional)
+          // Backend service also uses isPublic for history, so we include it
+          // Do NOT send: generate_audio (not supported by Sora 2)
           requestBody = {
-            prompt,
-            resolution: selectedQuality, // 720p for standard, 720p/1080p for Pro
-            aspect_ratio: frameSize === "16:9" ? "16:9" : "9:16", // Sora 2 T2V supports 16:9, 9:16
-            duration, // 4, 8, or 12 seconds
-            generate_audio: generateAudio,
-            generationType: 'text-to-video',
-            isPublic,
+            prompt: apiPrompt,
+            resolution: soraResolution,
+            aspect_ratio: soraAspectRatio,
+            duration: soraDuration,
+            originalPrompt: prompt, // Backend uses this for history display
+            isPublic, // Backend uses this for history
           };
           generationType = 'text-to-video';
           apiEndpoint = isPro ? '/api/fal/sora2/text-to-video/pro/submit' : '/api/fal/sora2/text-to-video/submit';
@@ -1414,8 +2527,10 @@ const InputBox = () => {
           // LTX V2 Text-to-Video (Pro/Fast)
           const isPro = selectedModel.includes('pro');
           const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             resolution: normalizedRes,
             aspect_ratio: '16:9',
             duration,
@@ -1431,11 +2546,36 @@ const InputBox = () => {
           setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.");
           return;
         }
-      } else if (generationMode === "image_to_video") {
-        // Check if we need uploaded images (exclude S2V-01, Veo3, Veo 3.1, WAN, Seedance, PixVerse, and Sora 2 which only need references/images)
-        if (selectedModel !== "S2V-01" && !selectedModel.includes("veo3") && !selectedModel.includes("wan-2.5") && !selectedModel.includes('seedance') && !selectedModel.includes('pixverse') && !selectedModel.includes('sora2') && uploadedImages.length === 0) {
+      } else if (actualGenerationMode === "image_to_video") {
+        // Check if we need uploaded images
+        // S2V-01 uses references, others need uploadedImages
+        const needsImage = selectedModel !== "S2V-01" && 
+                          !selectedModel.includes("veo3") && 
+                          !selectedModel.includes("wan-2.5") && 
+                          !selectedModel.includes('seedance') && 
+                          !selectedModel.includes('pixverse') && 
+                          !selectedModel.includes('sora2') &&
+                          !selectedModel.includes('ltx2') &&
+                          !selectedModel.includes('kling-');
+        
+        if (needsImage && uploadedImages.length === 0) {
           setError("Please upload at least one image");
           return;
+        }
+        
+        // Validation: Ensure image is provided for I2V mode
+        // This should have been caught by mode detection, but double-check for safety
+        if (uploadedImages.length === 0 && references.length === 0) {
+          // If model supports both, we could fall back to T2V, but for I2V-only models we must error
+          if (!caps.supportsTextToVideo) {
+            setError("An input image is required for image-to-video generation with this model");
+            return;
+          } else {
+            // Model supports both but no image - should not happen due to mode detection, but handle gracefully
+            console.warn('⚠️ Image-to-video mode selected but no image provided, this should not happen');
+            setError("Please upload an image for image-to-video generation, or switch to text-to-video mode");
+            return;
+          }
         }
 
         if (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
@@ -1459,9 +2599,11 @@ const InputBox = () => {
             return;
           }
 
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: selectedModel,
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             // MiniMax-Hailuo-02: Include duration and resolution, first_frame_image based on requirements
             ...(selectedModel === "MiniMax-Hailuo-02" && {
               duration: selectedMiniMaxDuration,
@@ -1491,36 +2633,44 @@ const InputBox = () => {
           };
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
-        } else if (selectedModel.includes("veo3.1")) {
-          // Veo 3.1 image-to-video generation
-          if (uploadedImages.length === 0) {
+        } else if (selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
+          // Veo 3.1 image-to-video generation (i2v variant or when image is uploaded)
+          if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo 3.1 image-to-video requires an input image");
             return;
           }
           const isFast = selectedModel.includes("fast");
+          // Use uploaded image or reference image
+          const imageUrl = uploadedImages.length > 0 ? uploadedImages[0] : references[0];
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
-            prompt: prompt,
-            image_url: uploadedImages[0], // Veo 3.1 expects a single image URL
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
+            image_url: imageUrl, // Veo 3.1 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
-            duration: "8s", // Veo 3.1 I2V only supports 8s duration
+            duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
             generate_audio: true,
             isPublic
           };
           generationType = "image-to-video";
           apiEndpoint = isFast ? '/api/fal/veo3_1/image-to-video/fast/submit' : '/api/fal/veo3_1/image-to-video/submit';
-        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
-          // Veo3 image-to-video generation
-          if (uploadedImages.length === 0) {
+        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
+          // Veo3 image-to-video generation (i2v variant or when image is uploaded)
+          if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo3 image-to-video requires an input image");
             return;
           }
           const isFast = selectedModel.includes("fast");
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0], // Veo3 expects a single image URL
             aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
-            duration: "8s", // Veo3 I2V only supports 8s duration
+            duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
             isPublic
@@ -1534,35 +2684,58 @@ const InputBox = () => {
             return;
           }
           const isFast = selectedModel.includes("fast");
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isFast ? "wan-video/wan-2.5-i2v-fast" : "wan-video/wan-2.5-i2v",
-            prompt: prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0], // WAN expects image URL
             duration: duration, // 5 or 10 seconds
             resolution: frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p",
+            ...(uploadedAudio && { audio: uploadedAudio }), // Include audio if uploaded
             generationType: "image-to-video",
             isPublic,
           };
           generationType = "image-to-video";
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
-        } else if (selectedModel.startsWith('kling-') && selectedModel.includes('i2v')) {
-          // Kling I2V
+        } else if (selectedModel.startsWith('kling-')) {
+          // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
+          // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
           if (uploadedImages.length === 0) {
-            setError("Kling image-to-video requires an input image");
+            const isV21 = selectedModel.includes('v2.1');
+            if (isV21) {
+              toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
+            } else {
+              toast.error('Kling image-to-video requires an input image. Please upload an image.');
+            }
+            setIsGenerating(false);
             return;
           }
           const isV25 = selectedModel.includes('v2.5');
           if (isV25) {
-            requestBody = { model: 'kwaivgi/kling-v2.5-turbo-pro', prompt, image: uploadedImages[0], duration, aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), generationType: 'image-to-video', isPublic };
+            // Kling 2.5 Turbo Pro - uses 'image' parameter for I2V
+            const apiPrompt = getApiPrompt(prompt);
+            requestBody = { 
+              model: 'kwaivgi/kling-v2.5-turbo-pro', 
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              image: uploadedImages[0], 
+              duration, 
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), 
+              generationType: 'image-to-video', 
+              isPublic 
+            };
           } else {
-            // Kling v2.1 - check if it's master variant
+            // Kling v2.1 and v2.1-master - use 'start_image' parameter (required)
             const isMaster = selectedModel.includes('master');
             const modelName = isMaster ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.1';
+            const apiPrompt = getApiPrompt(prompt);
             requestBody = {
               model: modelName,
-              prompt,
-              start_image: uploadedImages[0],
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              start_image: uploadedImages[0], // Required for v2.1
               duration,
               aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
               mode: isMaster ? undefined : klingMode, // Only send mode for base v2.1, not master
@@ -1572,16 +2745,18 @@ const InputBox = () => {
           }
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/kling-i2v/submit';
-        } else if (selectedModel.includes('seedance') && selectedModel.includes('i2v')) {
-          // Seedance I2V
+        } else if (selectedModel.includes('seedance')) {
+          // Seedance I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("Seedance image-to-video requires an input image");
             return;
           }
           const isLite = selectedModel.includes('lite');
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             resolution: seedanceResolution,
@@ -1593,15 +2768,17 @@ const InputBox = () => {
           } as any;
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/seedance-i2v/submit';
-        } else if (selectedModel.includes('pixverse') && selectedModel.includes('i2v')) {
-          // PixVerse I2V
+        } else if (selectedModel.includes('pixverse')) {
+          // PixVerse I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("PixVerse image-to-video requires an input image");
             return;
           }
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'pixverse/pixverse-v5',
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             quality: pixverseQuality,
@@ -1611,27 +2788,58 @@ const InputBox = () => {
           };
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/pixverse-v5-i2v/submit';
-        } else if (selectedModel.includes('sora2') && selectedModel.includes('i2v')) {
-          // Sora 2 I2V
+        } else if (selectedModel.includes('sora2') && !selectedModel.includes('v2v')) {
+          // Sora 2 I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("Sora 2 image-to-video requires an input image");
             return;
           }
           const isPro = selectedModel.includes('pro');
+          const apiPrompt = getApiPrompt(prompt);
+          
+          // Ensure duration is a number and one of [4, 8, 12]
+          let soraDuration = duration;
+          if (typeof duration !== 'number') {
+            soraDuration = parseInt(String(duration), 10) || 8;
+          }
+          // Clamp to valid values: 4, 8, or 12
+          if (![4, 8, 12].includes(soraDuration)) {
+            // Round to nearest valid value
+            if (soraDuration < 6) soraDuration = 4;
+            else if (soraDuration < 10) soraDuration = 8;
+            else soraDuration = 12;
+          }
+          
+          // Ensure resolution is valid for I2V
+          let soraResolution = selectedQuality || 'auto';
+          if (isPro) {
+            // Pro supports auto, 720p, or 1080p
+            if (soraResolution !== 'auto' && soraResolution !== '720p' && soraResolution !== '1080p') {
+              soraResolution = 'auto'; // Default to auto for Pro I2V
+            }
+          } else {
+            // Standard supports auto or 720p
+            if (soraResolution !== 'auto' && soraResolution !== '720p') {
+              soraResolution = 'auto'; // Default to auto for Standard I2V
+            }
+          }
+          
+          // Ensure aspect_ratio is valid
+          let soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "auto");
+          
           requestBody = {
-            prompt,
+            prompt: apiPrompt,
             image_url: uploadedImages[0], // Sora 2 expects image_url
-            resolution: selectedQuality === "auto" ? "auto" : selectedQuality, // auto/720p for standard, auto/720p/1080p for Pro
-            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto", // Sora 2 I2V supports auto, 16:9, 9:16
-            duration, // 4, 8, or 12 seconds
-            generate_audio: generateAudio,
-            generationType: 'image-to-video',
-            isPublic,
+            resolution: soraResolution,
+            aspect_ratio: soraAspectRatio,
+            duration: soraDuration,
+            originalPrompt: prompt, // Backend uses this for history display
+            isPublic, // Backend uses this for history
           };
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/sora2/image-to-video/pro/submit' : '/api/fal/sora2/image-to-video/submit';
-        } else if (selectedModel.includes('ltx2') && selectedModel.includes('i2v')) {
-          // LTX V2 Image-to-Video (Pro/Fast)
+        } else if (selectedModel.includes('ltx2')) {
+          // LTX V2 Image-to-Video (Pro/Fast) - supports both t2v and i2v variants, use I2V when image is uploaded
           const isPro = selectedModel.includes('pro');
           const normalizedRes = (selectedResolution || '1080p').toLowerCase();
           const ratio = frameSize === '9:16' ? '9:16' : (frameSize === '16:9' ? '16:9' : 'auto');
@@ -1639,8 +2847,10 @@ const InputBox = () => {
             setError('LTX V2 image-to-video requires an input image');
             return;
           }
+          const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            prompt,
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0],
             resolution: normalizedRes,
             aspect_ratio: ratio,
@@ -1652,23 +2862,46 @@ const InputBox = () => {
           } as any;
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/ltx2/image-to-video/pro/submit' : '/api/fal/ltx2/image-to-video/fast/submit';
-        } else {
-          // Runway image to video
+        } else if (selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+          // Runway image to video - only for gen4_turbo and gen3a_turbo
+          // Ensure image is provided
+          if (uploadedImages.length === 0) {
+            setError("An input image is required for Runway image-to-video generation");
+            return;
+          }
+          
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
+          const apiPrompt = getApiPrompt(prompt);
+          const imageToVideoBody = buildImageToVideoBody({
+            model: selectedModel as "gen4_turbo" | "gen3a_turbo",
+            ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
+            promptText: apiPrompt,
+            duration: duration as 5 | 10,
+            promptImage: uploadedImages[0]
+          });
+          
+          console.log('🎬 Runway I2V payload:', {
+            mode: "image_to_video",
+            sku: runwaySku,
+            imageToVideo: {
+              ...imageToVideoBody,
+              promptImage: imageToVideoBody.promptImage ? 'provided' : 'missing'
+            }
+          });
+          
           requestBody = {
             mode: "image_to_video",
             sku: runwaySku,
-            imageToVideo: buildImageToVideoBody({
-              model: selectedModel as "gen4_turbo" | "gen3a_turbo",
-              ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
-              promptText: prompt,
-              duration: duration as 5 | 10,
-              promptImage: uploadedImages[0]
-            }),
+            imageToVideo: imageToVideoBody,
+            originalPrompt: prompt, // Store original prompt for display
             generationType: "image-to-video",
             isPublic,
           };
           apiEndpoint = '/api/runway/video';
+        } else {
+          // Unknown model for image-to-video mode
+          setError(`Model "${selectedModel}" does not support image-to-video generation. Please select a different model.`);
+          return;
         }
         generationType = "image-to-video";
       } else {
@@ -1730,6 +2963,64 @@ const InputBox = () => {
           };
           generationType = 'video-to-video';
           apiEndpoint = '/api/fal/sora2/video-to-video/remix/submit';
+        } else if (selectedModel === "kling-lip-sync") {
+          // Kling Lipsync - requires video_url or video_id, and text or audio_file
+          if (!uploadedVideo && !sourceHistoryEntryId) {
+            setError("Kling Lip Sync requires a video input. Please upload a video or select a source video.");
+            setIsGenerating(false);
+            return;
+          }
+          if (!prompt.trim() && !uploadedAudio) {
+            setError("Kling Lip Sync requires either text or audio file input.");
+            setIsGenerating(false);
+            return;
+          }
+          
+          requestBody = {
+            model: 'kwaivgi/kling-lip-sync',
+            video_url: uploadedVideo || undefined, // Use video_url if uploaded
+            video_id: sourceHistoryEntryId || undefined, // Use video_id if from history
+            text: prompt.trim() || undefined, // Text for lip sync
+            audio_file: uploadedAudio || undefined, // Audio file if uploaded
+            voice_id: 'en_AOT', // Default voice_id (can be made configurable later)
+            voice_speed: 1, // Default voice speed (can be made configurable later)
+            generationType: 'video-to-video',
+            isPublic,
+            originalPrompt: prompt.trim() || '', // Store original prompt for display
+          };
+          generationType = 'video-to-video';
+          apiEndpoint = '/api/replicate/kling-lipsync/submit';
+        } else if (selectedModel === "wan-2.2-animate-replace") {
+          // WAN 2.2 Animate Replace - requires video and character_image
+          if (!uploadedVideo) {
+            toast.error("Video upload is mandatory");
+            setIsGenerating(false);
+            return;
+          }
+          if (!uploadedCharacterImage && uploadedImages.length === 0) {
+            toast.error("Character image upload is mandatory");
+            setIsGenerating(false);
+            return;
+          }
+          
+          const characterImage = uploadedCharacterImage || uploadedImages[0];
+          
+          requestBody = {
+            model: 'wan-video/wan-2.2-animate-replace',
+            video: uploadedVideo,
+            character_image: characterImage,
+            resolution: wanAnimateResolution,
+            refert_num: wanAnimateRefertNum,
+            go_fast: wanAnimateGoFast,
+            merge_audio: wanAnimateMergeAudio,
+            frames_per_second: wanAnimateFps,
+            ...(wanAnimateSeed !== undefined && { seed: wanAnimateSeed }),
+            generationType: 'video-to-video',
+            isPublic,
+            originalPrompt: prompt.trim() || '', // Store original prompt for display
+          };
+          generationType = 'video-to-video';
+          apiEndpoint = '/api/replicate/wan-2-2-animate-replace/submit';
         } else if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("wan-2.5")) {
           // MiniMax and WAN models don't support video to video
           setError("MiniMax and WAN models don't support video to video generation");
@@ -1811,23 +3102,65 @@ const InputBox = () => {
         const { data } = await api.post(apiEndpoint, requestBody);
         result = data?.data || data;
       } catch (e: any) {
+        // Check if this is a network error (no response from server)
+        const isNetworkError = !e?.response && (e?.code === 'ECONNABORTED' || e?.code === 'ERR_NETWORK' || e?.code === 'ETIMEDOUT' || e?.message?.includes('Network Error') || e?.message?.includes('Failed to fetch') || e?.message?.includes('timeout'));
+        
+        if (isNetworkError) {
+          const baseUrl = api.defaults.baseURL || 'the server';
+          const errorMsg = `Network error: Unable to connect to ${baseUrl}. Please check your internet connection and try again.`;
+          console.error('❌ Network error details:', {
+            code: e?.code,
+            message: e?.message,
+            endpoint: apiEndpoint,
+            baseURL: baseUrl,
+            stack: e?.stack
+          });
+          throw new Error(errorMsg);
+        }
+
         // Some providers may return 5xx while the task actually got queued; try to salvage known success fields
         const statusCode = e?.response?.status;
         const body = e?.response?.data;
         const msg = body?.message || e?.message || 'Request failed';
         const queuedRequestId = body?.data?.requestId || body?.requestId;
+        
         if (String(statusCode) === '413' || /request entity too large/i.test(String(msg))) {
           toast.error('Video too large for provider. Max 16MB. Please upload ≤ 14MB');
           console.error('❌ API 413 payload too large');
           throw new Error(`HTTP ${statusCode || 500}: ${msg}`);
         }
+        
         // If a requestId is present despite error status, proceed as submitted
         if (queuedRequestId) {
           console.warn('⚠️ Provider returned error but included requestId; proceeding as submitted', { statusCode, msg, queuedRequestId });
           result = { requestId: queuedRequestId, historyId: body?.data?.historyId || body?.historyId, status: 'submitted' };
         } else {
-          console.error('❌ API response not ok:', statusCode || '-', msg, body);
-          throw new Error(`HTTP ${statusCode || 500}: ${msg}`);
+          // Provide more detailed error information
+          const errorDetails = {
+            statusCode: statusCode || 'No status',
+            message: msg,
+            endpoint: apiEndpoint,
+            baseURL: api.defaults.baseURL,
+            responseData: body,
+            originalError: e?.message
+          };
+          console.error('❌ API response not ok:', errorDetails);
+          
+          // Create a more helpful error message
+          let userFriendlyMsg = msg;
+          if (statusCode === 401) {
+            userFriendlyMsg = 'Authentication failed. Please try logging out and back in.';
+          } else if (statusCode === 403) {
+            userFriendlyMsg = 'Access denied. You may not have permission to perform this action.';
+          } else if (statusCode === 404) {
+            userFriendlyMsg = `API endpoint not found: ${apiEndpoint}. Please contact support.`;
+          } else if (statusCode === 500 || statusCode === 502 || statusCode === 503) {
+            userFriendlyMsg = 'Server error. The service may be temporarily unavailable. Please try again in a few moments.';
+          } else if (!statusCode) {
+            userFriendlyMsg = `Request failed: ${msg}. Please check your connection and try again.`;
+          }
+          
+          throw new Error(userFriendlyMsg);
         }
       }
       console.log('📥 API response:', result);
@@ -1883,6 +3216,12 @@ const InputBox = () => {
       if (selectedModel.startsWith('kling-') && !result.requestId) {
         console.error('❌ Kling API response missing requestId:', result);
         throw new Error('Kling API response missing requestId');
+      }
+
+      // Validate that we have a requestId for WAN 2.2 Animate Replace
+      if (selectedModel === "wan-2.2-animate-replace" && !result.requestId) {
+        console.error('❌ WAN Animate Replace API response missing requestId:', result);
+        throw new Error('WAN Animate Replace API response missing requestId');
       }
 
       // Validate that we have a requestId for Sora 2 models
@@ -2204,6 +3543,109 @@ const InputBox = () => {
           console.error('❌ Expected videos array or video object with URL');
           throw new Error('WAN 2.5 video generation did not complete in time');
         }
+      } else if (selectedModel === "wan-2.2-animate-replace") {
+        // WAN 2.2 Animate Replace flow - queue-based polling (same as WAN 2.5)
+        console.log('🎬 WAN 2.2 Animate Replace video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        // Poll for completion using Replicate queue status
+        let videoResult: any;
+        const maxAttempts = 900; // 15 minutes max for WAN models
+        console.log(`🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`);
+
+        for (let attempts = 0; attempts < maxAttempts; attempts++) {
+          try {
+            console.log(`🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`);
+            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
+            const statusRes = await api.get('/api/replicate/queue/status', {
+              params: { requestId: result.requestId }
+            });
+            console.log(`🎬 Raw status response:`, statusRes.data);
+            const status = statusRes.data?.data || statusRes.data;
+
+            console.log(`🎬 WAN 2.2 Animate Replace status check result:`, status);
+            // Normalize status for robust comparisons
+            const statusValue = String(status?.status || '').toLowerCase();
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
+              console.log('✅ WAN 2.2 Animate Replace generation completed, fetching result...');
+              // Get the result
+              const resultRes = await api.get('/api/replicate/queue/result', {
+                params: { requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              console.log('✅ WAN 2.2 Animate Replace result fetched:', videoResult);
+              break;
+            }
+            if (statusValue === 'failed' || statusValue === 'error') {
+              console.error('❌ WAN 2.2 Animate Replace generation failed with status:', status);
+              throw new Error('WAN 2.2 Animate Replace video generation failed');
+            }
+
+            // Handle other possible statuses
+            if (statusValue === 'processing' || statusValue === 'pending') {
+              console.log(`🎬 WAN 2.2 Animate Replace status: ${status.status} - continuing to poll...`);
+            } else if (statusValue) {
+              console.log(`🎬 WAN 2.2 Animate Replace unknown status: ${status.status} - continuing to poll...`);
+            } else {
+              console.log('🎬 WAN 2.2 Animate Replace no status returned - continuing to poll...');
+            }
+
+            // Log progress every 30 seconds
+            if (attempts % 30 === 0 && attempts > 0) {
+              console.log(`🎬 WAN 2.2 Animate Replace still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+
+              // Fallback: Check if video is available in history after 2 minutes
+              if (attempts >= 120 && result.historyId) {
+                try {
+                  console.log(`🎬 Fallback: Checking history entry for completed video...`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyData = historyRes.data?.data || historyRes.data;
+
+                  if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
+                    const completedVideo = historyData.videos.find((v: any) => v.status === 'completed' || v.url);
+                    if (completedVideo?.url) {
+                      console.log('✅ WAN 2.2 Animate Replace video found in history:', completedVideo);
+                      videoResult = { videos: [completedVideo] };
+                      break;
+                    }
+                  }
+                } catch (historyError) {
+                  console.log('🎬 Fallback history check failed:', historyError);
+                }
+              }
+            }
+          } catch (statusError) {
+            console.error('❌ WAN 2.2 Animate Replace status check failed:', statusError);
+            if (attempts === maxAttempts - 1) {
+              console.error('❌ WAN 2.2 Animate Replace polling exhausted all attempts');
+              throw statusError;
+            }
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL:', videoUrl);
+        } else if (videoResult?.video && videoResult.video?.url) {
+          // Fallback: check for single video object
+          videoUrl = videoResult.video.url;
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL (fallback):', videoUrl);
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          // Replicate-like payload where 'output' is a direct URL
+          videoUrl = videoResult.output;
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL (output string):', videoUrl);
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          // Replicate-like payload where 'output' is an array of URLs
+          videoUrl = videoResult.output[0];
+          console.log('✅ WAN 2.2 Animate Replace video completed with URL (output array):', videoUrl);
+        } else {
+          console.error('❌ WAN 2.2 Animate Replace video generation did not complete properly');
+          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
+          console.error('❌ Expected videos array or video object with URL');
+          throw new Error('WAN 2.2 Animate Replace video generation did not complete in time');
+        }
       } else if (selectedModel.startsWith('kling-')) {
         // Kling flow - queue-based polling via replicate queue endpoints
         console.log('🎬 Kling video generation started, request ID:', result.requestId);
@@ -2499,10 +3941,24 @@ const InputBox = () => {
       // Confirm credit transaction as successful
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
+      
+      // Clear all inputs and configurations
+      clearInputs();
 
-      // Refresh history to show the new video
-      dispatch(clearFilters());
-      dispatch(loadHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 50 } }));
+  // Refresh only the single completed generation instead of reloading all
+  if (result.historyId) {
+    await refreshSingleGeneration(result.historyId);
+  } else {
+    // Fallback to full refresh if no historyId
+    dispatch(clearFilters());
+    dispatch(loadHistory({ 
+      filters: { mode: 'video' } as any, 
+      paginationParams: { limit: 50 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-video',
+      debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+    } as any));
+  }
 
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -2570,9 +4026,11 @@ const InputBox = () => {
     }
   };
 
+  // (Removed duplicate hook declaration; initial load handled earlier)
+
   return (
     <React.Fragment>
-      {(historyEntries.length > 0 || localVideoPreview) && (
+      {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0 ">
           <div className="md:py-6 py-0 md:pl-4 pl-0 ">
             {/* History Header - Fixed during scroll */}
@@ -2667,79 +4125,114 @@ const InputBox = () => {
                   {/* All Videos for this Date - Horizontal Layout */}
                   <div className="flex flex-wrap gap-2 md:gap-3 ml-0 md:ml-9 px-3 md:px-0">
                     {/* Prepend local video preview to today's row to push existing items right */}
-                    {date === todayKey && localVideoPreview && (
-                      <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                        {localVideoPreview.status === 'generating' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-black/90">
-                            <div className="flex flex-col items-center gap-2">
-                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                              <div className="text-xs text-white/60 text-center">Generating...</div>
-                            </div>
-                          </div>
-                        ) : localVideoPreview.status === 'failed' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                            <div className="flex flex-col items-center gap-2">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                              <div className="text-xs text-red-400">Failed</div>
-                            </div>
-                          </div>
-                        ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                          <div className="relative w-full h-full">
-                            <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                          </div>
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                            <div className="text-xs text-white/60">No preview</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {groupedByDate[date].map((entry: HistoryEntry) => {
-                      // More defensive approach to get media items
-                      let mediaItems: any[] = [];
-                      if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
-                        mediaItems = entry.images;
-                      } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-                        mediaItems = entry.videos;
-                      } else {
-                        // Fallback: check if videos are stored in a different structure
-                        console.log(`[VideoPage] No valid media found for entry ${entry.id}, checking structure:`, {
-                          images: entry.images,
-                          videos: entry.videos,
-                          videosType: typeof entry.videos,
-                          videosIsArray: Array.isArray(entry.videos),
-                          videosContent: entry.videos,
-                          allKeys: Object.keys(entry)
-                        });
-                      }
-                      console.log(`[VideoPage] Rendering entry ${entry.id}:`, {
-                        generationType: entry.generationType,
-                        status: entry.status,
-                        imagesCount: entry.images?.length || 0,
-                        videosCount: entry.videos?.length || 0,
-                        mediaItemsCount: mediaItems.length,
-                        images: entry.images,
-                        videos: entry.videos,
-                        videosType: typeof entry.videos,
-                        videosIsArray: Array.isArray(entry.videos),
-                        videosContent: entry.videos
+                    {date === todayKey && localVideoPreview && (() => {
+                      const localEntryId = localVideoPreview.id;
+                      const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+                      
+                      // Check if this local preview already exists in history
+                      const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
+                                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
+                      const existsInHistory = historyEntries.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
                       });
+                      const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      // If entry exists anywhere, don't render local preview
+                      if (existsInRef || existsInHistory || existsInGrouped) {
+                        return null;
+                      }
+                      
+                      // Safety check: if local preview is completed and history exists, don't show it
+                      if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
+                        return null;
+                      }
+                      
+                      return (
+                        <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                          {localVideoPreview.status === 'generating' ? (
+                            <div className="w-full h-full flex items-center justify-center bg-black/90">
+                              <div className="flex flex-col items-center gap-2">
+                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                <div className="text-xs text-white/60 text-center">Generating...</div>
+                              </div>
+                            </div>
+                          ) : localVideoPreview.status === 'failed' ? (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                              <div className="flex flex-col items-center gap-2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                </svg>
+                                <div className="text-xs text-red-400">Failed</div>
+                              </div>
+                            </div>
+                          ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                            <div className="relative w-full h-full">
+                              <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                            </div>
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                              <div className="text-xs text-white/60">No preview</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      // Create a set of all local preview IDs for fast lookup
+                      const localPreviewIds = new Set<string>();
+                      if (date === todayKey && localVideoPreview) {
+                        const localEntryId = localVideoPreview.id;
+                        const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+                        if (localEntryId) localPreviewIds.add(localEntryId);
+                        if (localFirebaseId) localPreviewIds.add(localFirebaseId);
+                      }
+                      
+                      // Filter out history entries that match local preview
+                      const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
+                        if (localPreviewIds.size === 0) return true;
+                        const entryId = entry.id;
+                        const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+                        if (entryId && localPreviewIds.has(entryId)) return false;
+                        if (entryFirebaseId && localPreviewIds.has(entryFirebaseId)) return false;
+                        return true;
+                      });
+                      
+                      return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
+                        // More defensive approach to get media items
+                        let mediaItems: any[] = [];
+                        if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
+                          mediaItems = entry.images;
+                        } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+                          mediaItems = entry.videos;
+                        }
 
-                      return mediaItems.map((video: any) => (
-                        <div
-                          key={`${entry.id}-${video.id}`}
-                          data-video-id={`${entry.id}-${video.id}`}
-                          onClick={(e) => {
-                            // Don't open preview if clicking on copy button
-                            if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
-                              return;
-                            }
-                            setPreview({ entry, video });
-                          }}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                        >
+                        return mediaItems.map((video: any, videoIdx: number) => {
+                          const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
+                          const isVideoLoaded = loadedVideos.has(uniqueVideoKey);
+                          
+                          return (
+                            <div
+                              key={uniqueVideoKey}
+                              data-video-id={uniqueVideoKey}
+                              onClick={(e) => {
+                                // Don't open preview if clicking on copy button
+                                if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
+                                  return;
+                                }
+                                setPreview({ entry, video });
+                              }}
+                              className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                            >
                           {entry.status === "generating" ? (
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -2767,78 +4260,59 @@ const InputBox = () => {
                               </div>
                             </div>
                           ) : (
-                            // Completed video thumbnail with shimmer loading
+                            // Completed video thumbnail (exact same as History.tsx)
                             <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
                               {(video.firebaseUrl || video.url) ? (
-                                <div className="relative w-full h-full">
-                                  {(() => {
-                                    const raw = (video.firebaseUrl || video.url) as string;
-                                    const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
-                                    const path = raw?.startsWith(ZATA_PREFIX) ? raw.substring(ZATA_PREFIX.length) : raw;
-                                    const proxied = `/api/proxy/media/${encodeURIComponent(path)}`;
-                                    return (
-                                      <video
-                                        src={proxied}
-                                        className="w-full h-full object-cover transition-opacity duration-200"
-                                        crossOrigin="anonymous"
-                                        muted
-                                        playsInline
-                                        loop
-                                        preload="metadata"
-                                        poster={toThumbUrl(raw, { w: 640, q: 60 }) || undefined}
-                                        onLoadedData={(e) => {
-                                          // Create a thumbnail poster if none available (non-Zata sources)
-                                          const videoElement = e.target as HTMLVideoElement;
+                                (() => {
+                                  const mediaUrl = video.firebaseUrl || video.url;
+                                  const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                  const vsrc = proxied || mediaUrl;
+                                  return (
+                                    <video 
+                                      src={vsrc} 
+                                      className="w-full h-full object-cover transition-opacity duration-200" 
+                                      muted 
+                                      playsInline 
+                                      loop 
+                                      preload="metadata"
+                                      poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
+                                      onMouseEnter={async (e) => { 
+                                        try { 
+                                          await (e.currentTarget as HTMLVideoElement).play();
+                                        } catch { } 
+                                      }}
+                                      onMouseLeave={(e) => { 
+                                        const v = e.currentTarget as HTMLVideoElement; 
+                                        try { v.pause(); v.currentTime = 0 } catch { }
+                                      }}
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const videoEl = e.currentTarget;
+                                        
+                                        if (videoEl.paused) {
                                           try {
-                                            const needsPoster = !videoElement.poster || videoElement.poster.trim() === '';
-                                            if (needsPoster) {
-                                              const capture = () => {
-                                                if (!videoElement.videoWidth || !videoElement.videoHeight) return;
-                                                const canvas = document.createElement('canvas');
-                                                canvas.width = videoElement.videoWidth;
-                                                canvas.height = videoElement.videoHeight;
-                                                const ctx = canvas.getContext('2d');
-                                                if (ctx) {
-                                                  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                                                  try {
-                                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                                                    if (dataUrl) videoElement.poster = dataUrl;
-                                                  } catch { }
-                                                }
-                                              };
-                                              if (videoElement.readyState >= 2) {
-                                                // Seek a tiny offset to ensure frame is decodable on some browsers
-                                                const target = Math.min(0.1, Math.max(0.01, (videoElement.duration || 0.2) / 20));
-                                                const onSeeked = () => { videoElement.removeEventListener('seeked', onSeeked); capture(); };
-                                                videoElement.addEventListener('seeked', onSeeked, { once: true });
-                                                try { videoElement.currentTime = target; } catch { capture(); }
-                                              } else {
-                                                const onLoaded = () => { videoElement.removeEventListener('loadedmetadata', onLoaded); capture(); };
-                                                videoElement.addEventListener('loadedmetadata', onLoaded, { once: true });
-                                              }
-                                            }
-                                          } catch { }
-
-                                          // Remove shimmer when video loads
-                                          setTimeout(() => {
-                                            const shimmer = document.querySelector(`[data-video-id="${entry.id}-${video.id}"] .shimmer`) as HTMLElement;
-                                            if (shimmer) {
-                                              shimmer.style.opacity = '0';
-                                            }
-                                          }, 100);
-
-                                          console.log('🎥 VIDEO DATA LOADED (InputBox):', {
-                                            videoId: `${entry.id}-${video.id}`,
-                                            videoDuration: videoElement.duration,
-                                            videoReadyState: videoElement.readyState
-                                          });
-                                        }}
-                                      />
-                                    );
-                                  })()}
-                                  {/* Shimmer loading effect */}
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                </div>
+                                            await videoEl.play();
+                                          } catch (error) {
+                                            // silent
+                                          }
+                                        } else {
+                                          videoEl.pause();
+                                          videoEl.currentTime = 0;
+                                        }
+                                      }}
+                                      onLoadStart={() => { 
+                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                      }}
+                                      onLoadedData={() => { 
+                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                      }}
+                                      onCanPlay={() => { 
+                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                      }}
+                                    />
+                                  );
+                                })()
                               ) : (
                                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                   <span className="text-gray-400 text-xs">Video not available</span>
@@ -2879,8 +4353,10 @@ const InputBox = () => {
                           )}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                         </div>
-                      ));
-                    })}
+                        );
+                      });
+                      });
+                    })()}
                   </div>
                 </div>
               ))}
@@ -2897,7 +4373,6 @@ const InputBox = () => {
               {/* Sentinel for IO-based infinite scroll */}
               <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
             </div>
-          </div>
         </div>
       )}
 
@@ -2986,7 +4461,7 @@ const InputBox = () => {
             <div className="flex-1 flex items-start  gap-2 bg-transparent rounded-lg pr-4 relative">
               <textarea
                 ref={inputEl}
-                placeholder="Type your video prompt..."
+                placeholder={placeholder}
                 value={prompt}
                 onChange={(e) => {
                   setPrompt(e.target.value);
@@ -3156,7 +4631,7 @@ const InputBox = () => {
                     )}
 
                   {/* References Upload (for video-to-video and S2V-01 character reference) */}
-                  {(generationMode === "video_to_video" || (generationMode === "image_to_video" && selectedModel === "S2V-01")) && (
+                  {(currentModelCapabilities.requiresReferenceImage || (currentModelCapabilities.supportsVideoToVideo && uploadedVideo)) && (
                     <div className="relative">
                       <button
                         className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
@@ -3230,9 +4705,11 @@ const InputBox = () => {
                     </div>
                   )}
 
-                  {/* Image Upload for Runway and WAN Models (image-to-video only) */}
-                  {generationMode === "image_to_video" &&
-                    !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && (
+                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01 which have separate handlers) */}
+                  {currentModelCapabilities.supportsImageToVideo && 
+                   !selectedModel.includes("MiniMax") && 
+                   selectedModel !== "I2V-01-Director" && 
+                   selectedModel !== "S2V-01" && (
                       <div className="relative">
                         <button
                           className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3249,8 +4726,9 @@ const InputBox = () => {
                       </div>
                     )}
 
-                  {/* MiniMax Image Uploads - Consolidated (Image-to-Video only) */}
-                  {generationMode === "image_to_video" && (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "I2V-01-Director") && (
+                  {/* MiniMax/I2V-01-Director Image Uploads - Show when model requires first frame */}
+                  {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") && 
+                    (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
                     <div className="relative">
                       <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3282,7 +4760,9 @@ const InputBox = () => {
                   )}
 
                   {/* Arrow icon between first and last frame uploads */}
-                  {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                  {selectedModel === "MiniMax-Hailuo-02" && 
+                   (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                   currentModelCapabilities.supportsImageToVideo && (
                     <div className="flex items-center justify-center">
                       <Image
                         src="/icons/arrow-right-left.svg"
@@ -3294,8 +4774,10 @@ const InputBox = () => {
                     </div>
                   )}
 
-                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) - Image-to-Video only */}
-                  {generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
+                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) */}
+                  {selectedModel === "MiniMax-Hailuo-02" && 
+                   (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                   currentModelCapabilities.supportsImageToVideo && (
                     <div className="relative ">
                       <label
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3339,8 +4821,8 @@ const InputBox = () => {
                     </div>
                   )}
 
-                  {/* Video Upload (only for video-to-video) */}
-                  {generationMode === "video_to_video" && (
+                  {/* Video Upload (for video-to-video models) */}
+                  {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
                     <div className="relative">
                       <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -3354,7 +4836,32 @@ const InputBox = () => {
                             size={30}
                             className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
                           />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Upload video</div>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {selectedModel === "wan-2.2-animate-replace" && activeFeature === 'Animate' ? 'Upload video (mandatory)' : 'Upload video'}
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Character Image Upload (for WAN 2.2 Animate Replace) */}
+                  {(selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) && (
+                    <div className="relative">
+                      <button
+                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        onClick={() => {
+                          setUploadModalType('image');
+                          setIsUploadModalOpen(true);
+                        }}
+                      >
+                        <div className="relative">
+                          <FilePlus2
+                            size={30}
+                            className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110"
+                          />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            Upload character
+                          </div>
                         </div>
                       </button>
                     </div>
@@ -3469,6 +4976,50 @@ const InputBox = () => {
                 </div>
               </div>
             )}
+
+            {/* Uploaded Character Image (for WAN 2.2 Animate Replace) */}
+            {uploadedCharacterImage && (
+              <div className="mb-3">
+                <div className="text-xs text-white/60 mb-2">Character Image</div>
+                <div className="relative group">
+                  <div
+                    className="w-32 h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                    onClick={() => {
+                      const previewEntry: HistoryEntry = {
+                        id: "preview-character",
+                        prompt: "Character Image",
+                        model: "preview",
+                        frameSize: "1:1",
+                        images: [{ id: "char-1", url: uploadedCharacterImage, originalUrl: uploadedCharacterImage, firebaseUrl: uploadedCharacterImage }],
+                        status: "completed",
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: 1,
+                        generationType: "text-to-video" as const,
+                        style: undefined
+                      };
+                      setPreview({ entry: previewEntry, video: uploadedCharacterImage });
+                    }}
+                  >
+                    <img
+                      src={uploadedCharacterImage}
+                      alt="Character"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      aria-label="Remove character image"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow bg-black/40"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedCharacterImage("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom row: pill options */}
@@ -3495,6 +5046,7 @@ const InputBox = () => {
                     generationMode={generationMode}
                     selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
                     selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
+                    activeFeature={activeFeature}
                     onCloseOtherDropdowns={() => {
                       // Close frame size dropdown
                       setCloseFrameSizeDropdown(true);
@@ -3511,6 +5063,123 @@ const InputBox = () => {
               <div className="w-full flex flex-wrap items-center gap-2">
                 {/* Dynamic Controls Based on Model Capabilities */}
                 {(() => {
+                  // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
+                  // MUST BE FIRST CHECK to prevent other controls from showing
+                  const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" || 
+                                              (activeFeature === 'Animate' && selectedModel && 
+                                               (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
+                  
+                  if (isWanAnimateReplace) {
+                    return (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-row gap-2 flex-wrap">
+                          {/* Resolution Dropdown - 480 or 720 ONLY */}
+                          <div className="relative">
+                            <select
+                              value={wanAnimateResolution}
+                              onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
+                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                            >
+                              <option value="720">720p</option>
+                              <option value="480">480p</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </div>
+                          </div>
+                          {/* Refert Num - 1 or 5 */}
+                          <div className="relative">
+                            <select
+                              value={wanAnimateRefertNum}
+                              onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
+                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                            >
+                              <option value="1">Ref Frames: 1</option>
+                              <option value="5">Ref Frames: 5</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </div>
+                          </div>
+                          {/* Seed Input (Optional) */}
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={wanAnimateSeed || ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                                if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
+                                  setWanAnimateSeed(val);
+                                }
+                              }}
+                              placeholder="Seed (optional)"
+                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-row gap-4 items-center">
+                          {/* Go Fast Checkbox */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={wanAnimateGoFast}
+                              onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                              className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-white/80">Go fast</span>
+                            <span className="text-xs text-white/50">(Default: true)</span>
+                          </label>
+                          {/* Merge Audio Checkbox */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={wanAnimateMergeAudio}
+                              onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                              className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-white/80">Merge audio</span>
+                            <span className="text-xs text-white/50">(Default: true)</span>
+                          </label>
+                        </div>
+                        {/* FPS Input with Slider */}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-white/80">Frames per second:</label>
+                            <input
+                              type="number"
+                              min={5}
+                              max={60}
+                              value={wanAnimateFps}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (!isNaN(val) && val >= 5 && val <= 60) {
+                                  setWanAnimateFps(val);
+                                }
+                              }}
+                              className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
+                            />
+                            <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={5}
+                            max={60}
+                            value={wanAnimateFps}
+                            onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
+                            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                            style={{
+                              background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
                   if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
                     return (
@@ -3576,9 +5245,18 @@ const InputBox = () => {
                         {/* Audio toggle for Sora 2 - hidden on mobile (shown next to models) */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className="hidden md:block h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
+                          className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                         >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
                         </button>
                       </div>
                     );
@@ -3640,6 +5318,22 @@ const InputBox = () => {
                             FPS: {fps}
                           </button>
                         </div>
+                        {/* Audio toggle for LTX V2 - hidden on mobile (shown next to models) */}
+                        <button
+                          onClick={() => setGenerateAudio(v => !v)}
+                          className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
+                        >
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
+                        </button>
                       </div>
                     );
                   }
@@ -3688,13 +5382,24 @@ const InputBox = () => {
                             onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                           />
                         )}
-                        {/* Audio toggle for Veo 3.1 - hidden on mobile (shown next to models) */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className="hidden md:block h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
-                        >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </button>
+                        {/* Audio toggle for Veo 3.1 - Hide in Lipsync feature, hidden on mobile (shown next to models) */}
+                        {!(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1")) && (
+                          <button
+                            onClick={() => setGenerateAudio(v => !v)}
+                            className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                              generateAudio 
+                                ? 'bg-transparent text-white ' 
+                                : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                            }`}
+                          >
+                            <div className="relative">
+                              {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                                {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                              </div>
+                            </div>
+                          </button>
+                        )}
                       </div>
                     );
                   }
@@ -3746,9 +5451,18 @@ const InputBox = () => {
                         {/* Audio toggle for Veo 3 - hidden on mobile (shown next to models) */}
                         <button
                           onClick={() => setGenerateAudio(v => !v)}
-                          className="hidden md:block h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5"
+                          className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio 
+                              ? 'bg-transparent text-white ' 
+                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                         >
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
                         </button>
                       </div>
                     );
@@ -3812,8 +5526,8 @@ const InputBox = () => {
                     );
                   }
 
-                  // WAN 2.5 Models: Full customization
-                  if (selectedModel.includes("wan-2.5")) {
+                  // WAN 2.5 Models: Full customization (exclude wan-2.2-animate-replace)
+                  if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
                     return (
                       <div className="flex flex-row gap-2 flex-wrap">
                         {/* Aspect Ratio - Always shown for WAN models */}
@@ -3848,6 +5562,36 @@ const InputBox = () => {
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
+                        {/* Audio Upload - Only for WAN models */}
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-wan"
+                          />
+                          <label
+                            htmlFor="audio-upload-wan"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                          >
+                            <Music className="w-4 h-4" />
+                            {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
+                          </label>
+                          {uploadedAudio && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedAudio("");
+                                toast.success('Audio file removed');
+                              }}
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                              title="Remove audio"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   }
@@ -3978,8 +5722,10 @@ const InputBox = () => {
                     );
                   }
 
-                  // Runway Models: Full customization
-                  if (selectedModel.includes("gen4") || selectedModel.includes("gen3a")) {
+                  // Runway Models: Full customization (exclude wan-2.2-animate-replace)
+                  if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) && 
+                      selectedModel !== "wan-2.2-animate-replace" && 
+                      !selectedModel.includes("wan-2.2-animate")) {
                     return (
                       <div className="flex flex-row gap-2 flex-wrap">
                         {/* Aspect Ratio - Always shown for Runway models */}
@@ -4653,9 +6399,11 @@ const InputBox = () => {
                   disabled={(() => {
                     const disabled = isGenerating || !prompt.trim() ||
                       // Mode-specific validations
-                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && uploadedImages.length === 0) ||
+                      // Note: gen4_turbo, gen3a_turbo, and Kling 2.1 validation is handled in handleGenerate with toast message, button stays enabled
+                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && uploadedImages.length === 0) ||
                       (generationMode === "video_to_video" && !uploadedVideo) ||
                       // Model-specific validations (only for image-to-video)
+                      // Note: Kling 2.1, Gen-4 Turbo, Gen-3a Turbo validation is handled in handleGenerate with toast message, button stays enabled
                       (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
                       (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
                       (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) ||
@@ -4692,21 +6440,84 @@ const InputBox = () => {
       )}
 
       {/* UploadModal for image and reference uploads */}
-      {uploadModalType !== 'video' && (
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onAdd={handleImageUploadFromModal}
-          historyEntries={libraryImageEntries.length > 0 ? libraryImageEntries : imageHistoryEntries}
-          remainingSlots={uploadModalType === 'image' ?
-            (selectedModel === "S2V-01" ? 0 : 1) : // S2V-01 doesn't use uploadedImages
-            (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
-          }
-          onLoadMore={async () => { await fetchLibraryImages(false); }}
-          hasMore={libraryImageEntries.length > 0 ? libraryImageHasMore : hasMore}
-          loading={libraryImageEntries.length > 0 ? libraryImageLoading : loading}
-        />
-      )}
+      {uploadModalType !== 'video' && (() => {
+        // Use libraryImageEntries if available, otherwise fall back to imageHistoryEntries
+        // Always create a new array reference to ensure React detects changes
+        // When modal is open, always use libraryImageEntries (even if empty initially)
+        // This ensures we show the fetched data once it loads
+        const modalHistoryEntries = isUploadModalOpen 
+          ? [...libraryImageEntries] 
+          : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
+        
+        // Log what's being passed to the modal (only when modal is open to avoid spam)
+        if (isUploadModalOpen && libraryImageEntries.length > 0) {
+          console.log('[VideoPage] UploadModal historyEntries prop:', {
+            source: 'libraryImageEntries',
+            count: modalHistoryEntries.length,
+            libraryImageEntriesCount: libraryImageEntries.length,
+            imageHistoryEntriesCount: imageHistoryEntries.length,
+            entriesWithImages: modalHistoryEntries.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length,
+            sample: modalHistoryEntries.slice(0, 3).map((e: any) => ({
+              id: e.id,
+              imagesCount: e.images?.length || 0,
+              hasImages: Array.isArray(e.images) && e.images.length > 0,
+              firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...'
+            }))
+          });
+        }
+        
+        return (
+          <UploadModal
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onAdd={handleImageUploadFromModal}
+            historyEntries={modalHistoryEntries}
+            remainingSlots={uploadModalType === 'image' ?
+              // For WAN 2.2 Animate Replace character image, only 1 slot
+              ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
+              (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
+              (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
+            }
+            onLoadMore={async () => {
+              // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
+              // This ensures video history remains intact
+              const currentCursor = libraryImageNextCursorRef.current;
+              console.log('[VideoPage] onLoadMore called:', { 
+                libraryImageLoading: libraryImageLoadingRef.current, 
+                libraryImageHasMore, 
+                isUploadModalOpen, 
+                entriesCount: libraryImageEntries.length,
+                nextCursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'null',
+                cursorType: typeof currentCursor
+              });
+              // Only check loading state using ref - fetchLibraryImages will handle hasMore check internally
+              // IMPORTANT: Also check that we have a cursor for pagination (unless it's the first load)
+              if (!libraryImageLoadingRef.current && isUploadModalOpen && libraryImageHasMore) {
+                // For pagination, we must have a cursor (initial load doesn't need one)
+                if (libraryImageEntries.length > 0 && !currentCursor) {
+                  console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available! Setting hasMore to false.');
+                  setLibraryImageHasMore(false);
+                  return;
+                }
+                console.log('[VideoPage] ✅ Fetching more library images...', {
+                  hasCursor: !!currentCursor,
+                  cursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'none'
+                });
+                await fetchLibraryImages(false);
+              } else {
+                console.log('[VideoPage] onLoadMore blocked:', { 
+                  loading: libraryImageLoadingRef.current, 
+                  isUploadModalOpen, 
+                  hasMore: libraryImageHasMore,
+                  hasCursor: !!currentCursor
+                });
+              }
+            }}
+            hasMore={isUploadModalOpen ? libraryImageHasMore : false}
+            loading={isUploadModalOpen ? libraryImageLoading : false}
+          />
+        );
+      })()}
 
       {/* VideoUploadModal for video uploads */}
       {uploadModalType === 'video' && (

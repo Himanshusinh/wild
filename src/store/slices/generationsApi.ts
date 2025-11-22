@@ -19,6 +19,13 @@ export const bflGenerate = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Normalize isPublic: if caller didn't supply it, resolve from /me policy like Nano Banana flow
+      try {
+        if (typeof (payload as any)?.isPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          (payload as any).isPublic = await mod.getIsPublic();
+        }
+      } catch {}
       const api = getApiClient();
       const res = await api.post('/api/bfl/generate', payload);
       return res.data?.data || res.data;
@@ -35,6 +42,12 @@ export const runwayGenerate = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      try {
+        if (typeof body?.isPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          body.isPublic = await mod.getIsPublic();
+        }
+      } catch {}
       const api = getApiClient();
       const res = await api.post('/api/runway/generate', body);
       return res.data?.data || res.data;
@@ -74,6 +87,12 @@ export const minimaxGenerate = createAsyncThunk(
   'generations/minimaxGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
+      try {
+        if (typeof payload?.isPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          payload.isPublic = await mod.getIsPublic();
+        }
+      } catch {}
       const api = getApiClient();
       const res = await api.post('/api/minimax/generate', payload);
       return res.data?.data || res.data;
@@ -101,7 +120,8 @@ export const listGenerations = createAsyncThunk(
   async (params: { limit?: number; cursor?: string; status?: string; generationType?: string } = {}, { rejectWithValue }) => {
     try {
       const api = getApiClient();
-      const res = await api.get('/api/generations', { params });
+      const reqParams = { ...params, sortBy: 'createdAt' } as any;
+      const res = await api.get('/api/generations', { params: reqParams });
       return res.data?.data || res.data;
     } catch (e: any) {
       return rejectWithValue(e?.response?.data?.message || e?.message || 'List generations failed');
@@ -113,6 +133,12 @@ export const falGenerate = createAsyncThunk(
   'generations/falGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
+      try {
+        if (typeof payload?.isPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          payload.isPublic = await mod.getIsPublic();
+        }
+      } catch {}
       const api = getApiClient();
       const res = await api.post('/api/fal/generate', payload);
       return res.data?.data || res.data;
@@ -122,10 +148,40 @@ export const falGenerate = createAsyncThunk(
   }
 );
 
+export const falElevenTts = createAsyncThunk(
+  'generations/falElevenTts',
+  async (payload: any, { rejectWithValue }) => {
+    try {
+      const api = getApiClient();
+      const modelLower = payload?.model?.toLowerCase() || '';
+      const hasInputsArray = Array.isArray(payload?.inputs) && payload.inputs.length > 0;
+      // Route to appropriate endpoint based on model
+      let endpoint = '/api/fal/eleven/tts'; // Default to ElevenLabs TTS
+      if (modelLower.includes('dialogue') || hasInputsArray) {
+        endpoint = '/api/fal/eleven/dialogue'; // Use dedicated dialogue endpoint
+      } else if (modelLower.includes('chatterbox')) {
+        endpoint = '/api/fal/chatterbox/multilingual';
+      } else if (modelLower.includes('maya')) {
+        endpoint = '/api/fal/maya/tts';
+      }
+      const res = await api.post(endpoint, payload);
+      return res.data?.data || res.data;
+    } catch (e: any) {
+      return rejectWithValue(e?.response?.data?.message || e?.message || 'TTS generation failed');
+    }
+  }
+);
+
 export const replicateGenerate = createAsyncThunk(
   'generations/replicateGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
+      try {
+        if (typeof payload?.isPublic !== 'boolean') {
+          const mod = await import('@/lib/publicFlag');
+          payload.isPublic = await mod.getIsPublic();
+        }
+      } catch {}
       const api = getApiClient();
       const res = await api.post('/api/replicate/generate', payload);
       return res.data?.data || res.data;

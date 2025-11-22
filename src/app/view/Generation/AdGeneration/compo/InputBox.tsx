@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory } from '@/store/slices/historySlice';
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import { uploadGeneratedImages } from '@/lib/imageUpload';
 import { BackendPromptV1 } from '@/types/backendPrompt';
 import AdImagePreview from './AdImagePreview';
@@ -9,7 +10,8 @@ import AdvancedManualForm from './AdvancedManualForm';
 import { bflGenerate, runwayVideo } from '@/store/slices/generationsApi';
 import { waitForRunwayVideoCompletion } from '@/lib/runwayVideoService';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
-import { setFilters, clearHistory } from '@/store/slices/historySlice';
+// setFilters/clearHistory no longer needed with unified loader
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 
 const AdGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -30,8 +32,7 @@ const AdGenerationInputBox: React.FC = () => {
   const hasMore = useAppSelector((state) => state.history.hasMore);
   const loading = useAppSelector((state) => state.history.loading);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const loadingMoreRef = useRef(false);
-  const hasUserScrolledRef = useRef(false);
+  const hasUserScrolledRef = useRef(false); // gating until user scrolls
   const loadLockRef = useRef(false);
 
   // Filter history for ad generation (read-only)
@@ -56,70 +57,32 @@ const AdGenerationInputBox: React.FC = () => {
     // Mark user scroll to prevent auto-triggering IO before user interacts
     const onScroll = () => { hasUserScrolledRef.current = true; };
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll as any);
+    window.addEventListener('wheel', onScroll, { passive: true });
+    window.addEventListener('touchmove', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll as any);
+      window.removeEventListener('wheel', onScroll as any);
+      window.removeEventListener('touchmove', onScroll as any);
+    };
   }, []);
 
-  useEffect(() => {
-    // Initial fetch from backend — single request with filter + limit
-    (async () => {
-      try {
-        if (loadLockRef.current) return;
-        loadLockRef.current = true;
-        const baseFilters: any = { generationType: 'ad-generation' };
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        await (dispatch as any)(loadHistory({ filters: baseFilters, paginationParams: { limit: 10 } })).unwrap();
-      } catch (e) {
-        // ignore
-      }
-    })();
-  }, [dispatch]);
+  // Unified initial load for ad-generation
+  const { refresh: refreshHistoryDebounced } = useHistoryLoader({ generationType: 'ad-generation', initialLimit: 10 });
 
-  useEffect(() => {
-    // IntersectionObserver-based infinite scroll
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      if (!hasUserScrolledRef.current) return;
-      
-      // CRITICAL: Check hasMore FIRST
-      if (!hasMore) {
-        console.log('[Ad] IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('[Ad] IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
-      console.log('[Ad] IO: loadMore start', { hasMore });
-      
+  // Standardized infinite scroll using shared hook
+  useBottomScrollPagination({
+    containerRef: undefined, // window scroll context
+    hasMore,
+    loading,
+    requireUserScroll: true,
+    bottomOffset: 800,
+    throttleMs: 200,
+    loadMore: async () => {
       try {
         await (dispatch as any)(loadMoreHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } })).unwrap();
-        console.log('[Ad] IO: loadMore success');
-      } catch (e: any) {
-        if (e?.message?.includes('no more pages')) {
-          console.log('[Ad] IO: loadMore skipped - no more pages');
-        } else {
-          console.error('[Ad] IO: loadMore error', e);
-        }
-      } finally {
-        loadingMoreRef.current = false;
-      }
-    }, { root: null, threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('[Ad] IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('[Ad] IO: observer disconnected');
-    };
-  }, [hasMore, loading, dispatch]);
+      } catch {/* swallow */}
+    }
+  });
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -230,7 +193,7 @@ const AdGenerationInputBox: React.FC = () => {
       await uploadGeneratedImages([generatedVideo]);
 
       // Refresh history from backend (read-only)
-      await dispatch(loadHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } }));
+  refreshHistoryDebounced();
 
       console.log('[DONE] UGC ad generated successfully (Runway).');
       console.timeEnd('UGC Auto Flow Total');
@@ -275,7 +238,7 @@ const AdGenerationInputBox: React.FC = () => {
       await uploadGeneratedImages([generatedVideo]);
 
       // Refresh history from backend after completion
-      await dispatch(loadHistory({ filters: { generationType: 'ad-generation' }, paginationParams: { limit: 10 } }));
+  refreshHistoryDebounced();
 
       console.log('Manual mode video generated successfully!');
       setShowManualForm(false);
@@ -295,11 +258,7 @@ const AdGenerationInputBox: React.FC = () => {
     element.style.height = Math.min(element.scrollHeight, 96) + 'px';
   };
 
-  const loadMoreHistoryHandler = () => {
-    if (!loading && hasMore) {
-      dispatch(loadMoreHistory({ filters: { generationType: 'ad-generation' } }));
-    }
-  };
+  // Removed local loadMoreHistoryHandler in favor of standardized hook logic.
 
   return (
     <>

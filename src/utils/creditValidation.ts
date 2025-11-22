@@ -1,7 +1,7 @@
 // @ts-ignore
 import { creditDistributionData, ModelCreditInfo } from './creditDistribution';
 import { buildCreditModelName, getModelMapping } from './modelMapping';
-import { getCreditsForModel } from './modelCredits';
+import { getCreditsForModel, MODEL_CREDITS_MAPPING } from './modelCredits';
 
 /**
  * Get credit cost for a specific model
@@ -28,13 +28,63 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
     return 0;
   }
 
-        // For models that use dynamic pricing (like Seedance, WAN, Kling, PixVerse, Veo 3.1), use getCreditsForModel
+        // For models that use dynamic pricing (like Seedance, WAN, Kling, PixVerse, Veo 3.1, Gen-4 Turbo, Gen-3a Turbo), use getCreditsForModel
         // This handles models with duration/resolution variants that might not be in creditDistributionData
-        if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2')) {
-          const cost = getCreditsForModel(frontendModel, duration ? `${duration}s` : undefined, resolution);
+        // Kling Lip Sync uses per-second pricing (2 credits per second)
+        if (frontendModel === 'kling-lip-sync') {
+          // Kling Lip Sync: $0.014 per second = 2 credits per second (rounded up)
+          const durationSeconds = duration || 5;
+          const costPerSecond = 2;
+          const totalCost = Math.ceil(durationSeconds * costPerSecond);
+          const finalCost = Math.max(2, totalCost); // Minimum 2 credits
+          console.log(`Kling Lip Sync cost: ${finalCost} credits for ${durationSeconds} seconds`);
+          return finalCost;
+        }
+        // WAN 2.2 Animate Replace uses per-second pricing (1 credit per second)
+        if (frontendModel === 'wan-2.2-animate-replace') {
+          // WAN 2.2 Animate Replace: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second
+          const runtimeSeconds = duration || 5; // Estimate based on input video duration
+          const costPerSecond = 1;
+          const totalCost = Math.ceil(runtimeSeconds * costPerSecond);
+          const finalCost = Math.max(1, totalCost); // Minimum 1 credit
+          console.log(`WAN 2.2 Animate Replace cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
+          return finalCost;
+        }
+        if (frontendModel === 'wan-2.2-animate-animation') {
+          // WAN 2.2 Animate Animation: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second
+          const runtimeSeconds = duration || 5; // Estimate based on input video duration
+          const costPerSecond = 1;
+          const totalCost = Math.ceil(runtimeSeconds * costPerSecond);
+          const finalCost = Math.max(1, totalCost); // Minimum 1 credit
+          console.log(`WAN 2.2 Animate Animation cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
+          return finalCost;
+        }
+        // Runway Act-Two (act_two) - uses SKU-based pricing from backend
+        // Frontend shows estimated cost, actual cost calculated by backend
+        if (frontendModel === 'runway-act-two') {
+          // Estimate: similar to other Runway video models, use a default estimate
+          // Actual cost will be determined by backend using SKU
+          const estimatedCost = 50; // Placeholder estimate - backend will calculate actual cost
+          console.log(`Runway Act-Two estimated cost: ${estimatedCost} credits (actual cost calculated by backend)`);
+          return estimatedCost;
+        }
+        if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2') || frontendModel === 'gen4_turbo' || frontendModel === 'gen3a_turbo') {
+          // Use default values if not provided for WAN models to avoid "Unknown model" error
+          const defaultDuration = duration || 5;
+          const defaultResolution = resolution || '720p';
+          const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution);
           if (cost !== null && cost > 0) {
             console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
             return cost;
+          }
+          // If still no cost found, try with just the base model name (without duration/resolution)
+          // This provides a fallback to avoid "Unknown model" error
+          if (frontendModel.includes('wan-2.5')) {
+            const baseCost = getCreditsForModel(frontendModel, '5s', '720p');
+            if (baseCost !== null && baseCost > 0) {
+              console.log(`Found fallback cost via getCreditsForModel: ${baseCost} for model: ${frontendModel}`);
+              return baseCost;
+            }
           }
         }
 
@@ -70,14 +120,29 @@ export const getRunwayVideoCreditCost = (model: string, duration?: number): numb
  */
 export const getMusicCreditCost = (frontendModel: string, duration?: number): number => {
   const mapping = getModelMapping(frontendModel);
-  if (!mapping || mapping.generationType !== 'music') {
+  // Accept both 'music' and 'sfx' generation types for audio-related models
+  if (!mapping || (mapping.generationType !== 'music' && mapping.generationType !== 'sfx')) {
     console.warn(`Unknown or invalid music model: ${frontendModel}`);
     return 0;
   }
 
+  // First try to get cost from creditDistributionData using creditModelName
   console.log(`Looking for music model: ${mapping.creditModelName}`);
-  const cost = getCreditCostForModel(mapping.creditModelName);
-  console.log(`Found cost: ${cost} for model: ${mapping.creditModelName}`);
+  let cost = getCreditCostForModel(mapping.creditModelName);
+  
+  // If not found in creditDistributionData, try direct lookup in MODEL_CREDITS_MAPPING using frontend value
+  if (cost === 0) {
+    const directCost = MODEL_CREDITS_MAPPING[frontendModel];
+    if (directCost !== undefined && directCost > 0) {
+      cost = directCost;
+      console.log(`Found cost via direct mapping: ${cost} for model: ${frontendModel}`);
+    } else {
+      console.log(`Found cost: ${cost} for model: ${mapping.creditModelName}`);
+    }
+  } else {
+    console.log(`Found cost: ${cost} for model: ${mapping.creditModelName}`);
+  }
+  
   return cost;
 };
 

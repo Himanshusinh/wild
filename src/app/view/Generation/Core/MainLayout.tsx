@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { clearGenerationState } from '@/store/slices/generationSlice';
-import Nav from '../../HomePage/compo/Nav';
+import Nav from './Nav';
 import SidePannelFeatures from './SidePannelFeatures';
 import PageRouter from './PageRouter';
 import NotificationToast from '@/components/ui/NotificationToast';
@@ -164,8 +164,9 @@ export default function MainLayout({
         onGenerationTypeChange={handleGenerationTypeChange}
         onWildmindSkitClick={() => setShowWildmindSkitPopup(true)}
       />
-      <div className="ml-0 md:ml-[68px] pt-[62px]">
+      <div className="ml-[68px] pt-[62px]">
         <Suspense fallback={null}>
+          {/* Let PageRouter read from Redux; MainLayout already syncs UI state */}
           <PageRouter />
         </Suspense>
       </div>

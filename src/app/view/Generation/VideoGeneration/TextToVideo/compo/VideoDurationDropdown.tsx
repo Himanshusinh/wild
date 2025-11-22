@@ -164,6 +164,20 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel === "kling-lip-sync") {
+      // Kling Lip Sync supports 2-10 seconds
+      return [
+        { value: 2, label: "2 seconds", description: "Very short" },
+        { value: 3, label: "3 seconds", description: "Short" },
+        { value: 4, label: "4 seconds", description: "Quick video" },
+        { value: 5, label: "5 seconds", description: "Standard short" },
+        { value: 6, label: "6 seconds", description: "Medium" },
+        { value: 7, label: "7 seconds", description: "Medium long" },
+        { value: 8, label: "8 seconds", description: "Long" },
+        { value: 9, label: "9 seconds", description: "Very long" },
+        { value: 10, label: "10 seconds", description: "Maximum length" }
+      ];
+    }
     if (selectedModel?.includes("wan-2.5")) {
       // WAN 2.5 models support 5s and 10s
       return [
@@ -171,8 +185,16 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo") {
+      // Gen-4 Turbo and Gen-3a Turbo support only 5s and 10s (per backend validation)
+      return [
+        { value: 5, label: "5 seconds", description: "Short video" },
+        { value: 10, label: "10 seconds", description: "Standard length" }
+      ];
+    }
+    // Legacy check for other gen4/gen3a models (should not match gen4_turbo or gen3a_turbo)
     if (selectedModel?.includes("gen4") || selectedModel?.includes("gen3a")) {
-      // Runway models support 4s, 6s, and 10s
+      // Other Runway models (like gen4_aleph) may support different durations
       return [
         { value: 4, label: "4 seconds", description: "Quick video" },
         { value: 6, label: "6 seconds", description: "Short video" },
@@ -202,7 +224,7 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[28px] md:h-[32px] px-2 md:px-4 rounded-lg text-[10px] md:text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5`}
+        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
       >
         <Clock className="w-3 h-3 md:w-4 md:h-4 mr-1" />
         {selectedDurationInfo?.label || `${selectedDuration}s`}

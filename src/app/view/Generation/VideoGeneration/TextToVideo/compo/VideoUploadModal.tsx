@@ -4,6 +4,74 @@ import React from 'react';
 import Image from 'next/image';
 import { toMediaProxy, toThumbUrl } from '@/lib/thumb';
 
+// Helper functions for proxy URLs (same as InputBox.tsx and History.tsx)
+const toProxyPath = (urlOrPath: string | undefined) => {
+  if (!urlOrPath) return '';
+  
+  // Decode URL-encoded paths first (e.g., users%2Fvivek%2Fvideo%2F... -> users/vivek/video/...)
+  let decoded = urlOrPath;
+  try {
+    // Always try to decode if it contains encoded characters
+    if (urlOrPath.includes('%')) {
+      decoded = decodeURIComponent(urlOrPath);
+    }
+  } catch (e) {
+    // If decoding fails, use original
+    decoded = urlOrPath;
+  }
+  
+  const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+  if (decoded.startsWith(ZATA_PREFIX)) {
+    return decoded.substring(ZATA_PREFIX.length);
+  }
+  
+  // Allow direct storagePath-like values (users/...)
+  if (/^users\//.test(decoded)) {
+    return decoded;
+  }
+  
+  // Also check if it's already a URL-encoded users path (users%2F...)
+  // This handles cases where the API returns already-encoded paths
+  if (/^users%2F/i.test(urlOrPath)) {
+    try {
+      const decodedPath = decodeURIComponent(urlOrPath);
+      if (/^users\//.test(decodedPath)) {
+        return decodedPath;
+      }
+    } catch (e) {
+      // Decoding failed, continue
+    }
+  }
+  
+  // For external URLs (fal.media, etc.), do not proxy
+  return '';
+};
+
+const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
+  if (!urlOrPath) return '';
+  
+  // If it's already a full HTTP/HTTPS URL, use it directly
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    return urlOrPath;
+  }
+  
+  // If it's already a proxy URL, use it directly (don't double-encode)
+  if (urlOrPath.startsWith('/api/proxy/media/')) {
+    return urlOrPath;
+  }
+  
+  const path = toProxyPath(urlOrPath);
+  if (!path) {
+    // If toProxyPath returned empty, it might be an external URL - return as-is
+    return urlOrPath;
+  }
+  
+  // Path from toProxyPath is always decoded (users/vivek/video/...)
+  // Encode it once for the proxy URL
+  const encodedPath = encodeURIComponent(path);
+  return `/api/proxy/media/${encodedPath}`;
+};
+
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -22,11 +90,101 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
 
+  // Remember scroll positions so switching tabs preserves where user was
+  const scrollPositionsRef = React.useRef<{ [k in 'library' | 'computer']?: number }>({});
+  const STORAGE_KEY = 'wm_video_upload_modal_scroll_positions';
+  const prevTabRef = React.useRef<typeof tab | null>(null);
+  const visitedTabsRef = React.useRef<Record<string, boolean>>({});
+
+  // Load persisted scroll positions (if any) from sessionStorage on mount
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw || '{}');
+        if (parsed && typeof parsed === 'object') {
+          scrollPositionsRef.current = parsed;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Persist scroll positions to sessionStorage when unmounting
+  React.useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {}));
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
+
+  // Save previous tab scroll and restore per-tab scroll when modal opens or tab changes.
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const el = listRef.current;
+
+    // Save previous tab's scrollTop so it can be restored when user navigates back
+    const prev = prevTabRef.current;
+    if (prev && el) {
+      try { scrollPositionsRef.current[prev as 'library' | 'computer'] = el.scrollTop; } catch {}
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
+    }
+
+    // Only restore for library/computer list (drop area uses dropRef)
+    if (tab !== 'library' && tab !== 'computer') {
+      prevTabRef.current = tab;
+      return;
+    }
+
+    // Restore the saved position, or if this tab hasn't been visited yet, go to top
+    requestAnimationFrame(() => {
+      if (!el) return;
+      const saved = scrollPositionsRef.current[tab as 'library' | 'computer'];
+      const visited = visitedTabsRef.current[tab];
+      if (typeof saved === 'number' && visited) {
+        el.scrollTop = saved;
+      } else {
+        // first time visiting this tab during this modal open -> top
+        el.scrollTop = 0;
+      }
+      visitedTabsRef.current[tab] = true;
+    });
+
+    prevTabRef.current = tab;
+  }, [tab, isOpen]);
+
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
+    }
+  }, [isOpen]);
+
+  // Lock background scroll when modal is open
+  React.useEffect(() => {
+    if (isOpen) {
+      // Save current overflow values
+      const prevBodyOverflow = document.body.style.overflow;
+      const prevHtmlOverflow = (document.documentElement as HTMLElement).style.overflow;
+      const prevOverscrollBehavior = (document.documentElement as HTMLElement).style.overscrollBehavior;
+      
+      // Lock scrolling
+      document.body.style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+      
+      // Restore on cleanup
+      return () => {
+        document.body.style.overflow = prevBodyOverflow;
+        (document.documentElement as HTMLElement).style.overflow = prevHtmlOverflow;
+        (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscrollBehavior;
+      };
     }
   }, [isOpen]);
 
@@ -41,12 +199,12 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
         videoEntries.forEach((entry: any) => {
           const videos = entry.videos || [];
           const fallbackVideos = (entry.images || []).filter((img: any) => {
-            const url = img.url || img.firebaseUrl || img.originalUrl;
+            const url = img.firebaseUrl || img.url || img.originalUrl;
             return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
           });
           const allVideos = videos.length > 0 ? videos : fallbackVideos;
           allVideos.forEach((video: any) => {
-            const videoUrl = video.url || video.firebaseUrl || video.originalUrl;
+            const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
             if (chosen.includes(videoUrl) && entry.id) {
               entryMap.set(entry.id, entry); // Use entry ID as key to ensure uniqueness
             }
@@ -101,6 +259,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   ref={listRef}
                   onScroll={(e) => {
                     const el = e.currentTarget as HTMLDivElement;
+                    try { 
+                      scrollPositionsRef.current[tab] = el.scrollTop; 
+                      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
+                    } catch {}
                     if (!onLoadMore || loading) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
                     if (nearBottom && hasMore && !loading) onLoadMore();
@@ -111,63 +273,102 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     // Get videos from entry.videos or from entry.images (fallback)
                     const videos = entry.videos || [];
                     const fallbackVideos = (entry.images || []).filter((img: any) => {
-                      const url = img.url || img.firebaseUrl || img.originalUrl;
+                      const url = img.firebaseUrl || img.url || img.originalUrl;
                       return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
                     });
                     const allVideos = videos.length > 0 ? videos : fallbackVideos;
                     
                     return allVideos.map((video: any) => ({ entry, video }));
+                  }).filter(({ video }: any) => {
+                    // Filter out videos without valid URLs
+                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                    return !!videoUrl;
                   }).map(({ entry, video }: any) => {
-                    const selected = selection.has(video.url || video.firebaseUrl || video.originalUrl);
-                    const videoUrl = video.url || video.firebaseUrl || video.originalUrl;
+                    // Get video URL - prioritize firebaseUrl, then url, then originalUrl (same as InputBox.tsx)
+                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                    const selected = selection.has(videoUrl);
                     const key = `${entry.id}-${video.id || videoUrl}`;
+                    
+                    // Get thumbnail URL - prioritize thumbnailUrl/avifUrl from video object, fallback to toThumbUrl
+                    const thumbnailUrl = (video as any).thumbnailUrl || (video as any).avifUrl;
+                    const posterUrl = thumbnailUrl 
+                      ? (toFrontendProxyMediaUrl(thumbnailUrl) || thumbnailUrl)
+                      : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
+                    
+                    // Get video source URL with proxy support (exact same logic as InputBox.tsx)
+                    // Prioritize storagePath, then firebaseUrl, then url, then originalUrl
+                    const mediaUrl = (video as any)?.storagePath 
+                      || video.firebaseUrl 
+                      || video.url 
+                      || video.originalUrl;
+                    const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                    // If proxy URL is available, use it; otherwise fall back to original URL
+                    // But if original URL is a storage path (starts with users/), we must use proxy
+                    // Only use direct URL if it's a full HTTP/HTTPS URL
+                    const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
+                    
+                    // Debug logging for troubleshooting
+                    if (!vsrc && mediaUrl) {
+                      console.warn('[VideoUploadModal] No valid video source URL:', {
+                        mediaUrl,
+                        proxied,
+                        video: { firebaseUrl: video.firebaseUrl, url: video.url, originalUrl: video.originalUrl },
+                        entryId: entry.id,
+                        videoId: video.id
+                      });
+                    }
+                    
+                    // Additional debug logging for thumbnail
+                    if (!posterUrl && videoUrl) {
+                      console.warn('[VideoUploadModal] No valid poster URL:', {
+                        videoUrl,
+                        thumbnailUrl: (video as any).thumbnailUrl,
+                        avifUrl: (video as any).avifUrl,
+                        entryId: entry.id,
+                        videoId: video.id
+                      });
+                    }
+                    
                     return (
                       <button key={key} onClick={() => {
                         const next = new Set(selection);
                         if (selected) next.delete(videoUrl); else next.add(videoUrl);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        <video
-                          src={(toMediaProxy(videoUrl) || videoUrl)}
-                          className="w-full h-full object-cover transition-opacity duration-200"
-                          muted
-                          playsInline
-                          loop
-                          preload="metadata"
-                          poster={toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined}
-                          onLoadedData={(e) => {
-                            const el = e.currentTarget as HTMLVideoElement;
-                            try {
-                              if ((!el.poster || el.poster === '')) {
-                                const capture = () => {
-                                  if (!el.videoWidth || !el.videoHeight) return;
-                                  const c = document.createElement('canvas');
-                                  c.width = el.videoWidth;
-                                  c.height = el.videoHeight;
-                                  const ctx = c.getContext('2d');
-                                  if (ctx) {
-                                    ctx.drawImage(el, 0, 0, c.width, c.height);
-                                    try {
-                                      const dataUrl = c.toDataURL('image/jpeg', 0.7);
-                                      if (dataUrl) el.poster = dataUrl;
-                                    } catch {}
-                                  }
-                                };
-                                if (el.readyState >= 2) {
-                                  const target = Math.min(0.1, Math.max(0.01, (el.duration || 0.2) / 20));
-                                  const onSeeked = () => { el.removeEventListener('seeked', onSeeked); capture(); };
-                                  el.addEventListener('seeked', onSeeked, { once: true });
-                                  try { el.currentTime = target; } catch { capture(); }
-                                } else {
-                                  const onLoaded = () => { el.removeEventListener('loadedmetadata', onLoaded); capture(); };
-                                  el.addEventListener('loadedmetadata', onLoaded, { once: true });
-                                }
-                              }
-                            } catch {}
-                          }}
-                          
-                          
-                        />
+                        {vsrc ? (
+                          <video
+                            src={vsrc}
+                            className="w-full h-full object-cover transition-opacity duration-200"
+                            muted
+                            playsInline
+                            loop
+                            preload="metadata"
+                            poster={posterUrl}
+                            onMouseEnter={async (e) => { 
+                              try { 
+                                await (e.currentTarget as HTMLVideoElement).play();
+                              } catch { } 
+                            }}
+                            onMouseLeave={(e) => { 
+                              const v = e.currentTarget as HTMLVideoElement; 
+                              try { v.pause(); v.currentTime = 0 } catch { }
+                            }}
+                            onError={(e) => {
+                              console.error('[VideoUploadModal] Video load error:', {
+                                src: vsrc,
+                                videoUrl,
+                                posterUrl,
+                                error: e
+                              });
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        )}
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>

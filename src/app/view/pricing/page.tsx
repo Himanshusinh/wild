@@ -1,18 +1,17 @@
   'use client';
 
-import { StudentDiscount } from "@/app/view/pricing/compo";
-import AdditionalCredits from "@/app/view/pricing/compo/AdditionalCredits";
-import CompareTable from "@/app/view/pricing/compo/CompareTable";
-import CurrentPlan from "@/app/view/pricing/compo/currentPlan";
-import FAQs from "@/app/view/pricing/compo/FAQs";
-import Plans from "@/app/view/pricing/compo/Plans";
-import SidePannelFeatures from "../Generation/Core/SidePannelFeatures";
-import Nav from "../HomePage/compo/Nav";
-import FooterNew from "../core/FooterNew";
-import { useState } from "react";
-import { useRouter } from 'next/navigation';
-import { useAppDispatch } from '@/store/hooks';
-import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
+  import { StudentDiscount } from "@/app/view/pricing/compo";
+  import AdditionalCredits from "@/app/view/pricing/compo/AdditionalCredits";
+  import CompareTable from "@/app/view/pricing/compo/CompareTable";
+  import CurrentPlan from "@/app/view/pricing/compo/currentPlan";
+  import FAQs from "@/app/view/pricing/compo/FAQs";
+  import Plans from "@/app/view/pricing/compo/Plans";
+  // Nav and SidePannelFeatures are provided by the persistent root layout
+  import FooterNew from "../core/FooterNew";
+  import { useState } from "react";
+  import { useRouter } from 'next/navigation';
+  import { useAppDispatch } from '@/store/hooks';
+  import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 
   export default function Home() {
     const [isAnnual, setIsAnnual] = useState(false);
@@ -46,22 +45,8 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
 
     return (
       <div className="min-h-screen bg-[#07070B]">
-        {/* Navigation - fixed at top */}
-        <div className="fixed top-0 left-0 right-0 z-50">
-          <Nav />
-        </div>
-
-        {/* Main layout - side panel + content area */}
-        <div className="flex "> {/* pt-[80px] to account for fixed nav */}
-          {/* Side Panel - fixed width */}
-          <div className="w-0 md:w-[68px] flex-shrink-0">
-            <SidePannelFeatures
-              onViewChange={handleViewChange}
-              onGenerationTypeChange={handleGenerationTypeChange}
-            />
-          </div>
-
-          {/* Main Content Area - takes remaining width */}
+        {/* Main layout - content area (root layout provides Nav + SidePanel) */}
+        <div className="flex ml-[68px] pt-[80px]"> {/* spacing to account for persistent Nav + SidePanel */}
           <div className="flex-1 min-w-0">
             <main className="text-white min-h-screen">
               <section className="header space-y-4 px-4 sm:px-6 md:px-8 lg:px-12 py-6 w-full">

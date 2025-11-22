@@ -21,11 +21,101 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
 
+  // Persist scroll positions for tabs so when the user switches tabs
+  // the scrollbar returns to the same place they left it.
+  const scrollPositionsRef = React.useRef<{ [k in 'library' | 'uploads']?: number }>({});
+  const STORAGE_KEY = 'wm_upload_modal_scroll_positions';
+  const prevTabRef = React.useRef<typeof tab | null>(null);
+  const visitedTabsRef = React.useRef<Record<string, boolean>>({});
+
+  // Load persisted scroll positions (if any) from sessionStorage on mount
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw || '{}');
+        if (parsed && typeof parsed === 'object') {
+          scrollPositionsRef.current = parsed;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Save previous tab scroll and restore per-tab scroll when modal opens or tab changes.
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const el = listRef.current;
+
+    // Save previous tab's scrollTop so it can be restored when user navigates back
+    const prev = prevTabRef.current;
+    if (prev && el) {
+      try { scrollPositionsRef.current[prev as 'library' | 'uploads'] = el.scrollTop; } catch {}
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
+    }
+
+    // Only restore for library/uploads list (drop area uses dropRef)
+    if (tab !== 'library' && tab !== 'uploads') {
+      prevTabRef.current = tab;
+      return;
+    }
+
+    // Restore the saved position, or if this tab hasn't been visited yet, go to top
+    requestAnimationFrame(() => {
+      if (!el) return;
+      const saved = scrollPositionsRef.current[tab as 'library' | 'uploads'];
+      const visited = visitedTabsRef.current[tab];
+      if (typeof saved === 'number' && visited) {
+        el.scrollTop = saved;
+      } else {
+        // first time visiting this tab during this modal open -> top
+        el.scrollTop = 0;
+      }
+      visitedTabsRef.current[tab] = true;
+    });
+
+    prevTabRef.current = tab;
+  }, [tab, isOpen]);
+
+  // Persist scroll positions to sessionStorage when unmounting
+  React.useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {}));
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
+    }
+  }, [isOpen]);
+
+  // Lock background scroll when modal is open
+  React.useEffect(() => {
+    if (isOpen) {
+      // Save current overflow values
+      const prevBodyOverflow = document.body.style.overflow;
+      const prevHtmlOverflow = (document.documentElement as HTMLElement).style.overflow;
+      const prevOverscrollBehavior = (document.documentElement as HTMLElement).style.overscrollBehavior;
+      
+      // Lock scrolling
+      document.body.style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+      
+      // Restore on cleanup
+      return () => {
+        document.body.style.overflow = prevBodyOverflow;
+        (document.documentElement as HTMLElement).style.overflow = prevHtmlOverflow;
+        (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscrollBehavior;
+      };
     }
   }, [isOpen]);
 
@@ -98,6 +188,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   ref={listRef}
                   onScroll={(e) => {
                     const el = e.currentTarget as HTMLDivElement;
+                    // Save current scroll for this tab so we can restore it later
+                    try {
+                      scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
+                    } catch {}
                     if (!onLoadMore || loading) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
                     if (nearBottom && hasMore && !loading) onLoadMore();
@@ -110,17 +204,56 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                       ...((entry?.images || []) as any[]),
                       ...(((entry as any)?.videos || []) as any[]),
                     ];
+                    // Debug logging for library tab (only log first few to avoid spam)
+                    if (tab === 'library' && mediaItems.length > 0 && filteredHistoryEntries.indexOf(entry) < 3) {
+                      const firstMedia = mediaItems[0];
+                      console.log('[UploadModal] Processing entry (sample):', {
+                        entryId: entry.id,
+                        imagesCount: entry?.images?.length || 0,
+                        videosCount: (entry as any)?.videos?.length || 0,
+                        mediaItemsCount: mediaItems.length,
+                        firstMediaItem: firstMedia ? {
+                          id: firstMedia.id,
+                          hasUrl: !!firstMedia.url,
+                          url: firstMedia.url?.substring(0, 100),
+                          hasFirebaseUrl: !!firstMedia.firebaseUrl,
+                          hasOriginalUrl: !!firstMedia.originalUrl,
+                          hasThumbnailUrl: !!firstMedia.thumbnailUrl,
+                          hasAvifUrl: !!firstMedia.avifUrl,
+                          allKeys: Object.keys(firstMedia),
+                          fullObject: firstMedia
+                        } : null
+                      });
+                    }
                     return mediaItems.map((im: any) => ({ entry, im }));
                   }).map(({ entry, im }: any) => {
                     const selected = selection.has(im.url);
                     const key = `${entry.id}-${im.id}`;
+                    const imageSrc = im.thumbnailUrl || im.avifUrl || im.url || im.firebaseUrl || im.originalUrl;
+                    
+                    // Debug: Log if image source is missing
+                    if (!imageSrc && tab === 'library') {
+                      console.warn('[UploadModal] ⚠️ Image missing URL:', {
+                        entryId: entry.id,
+                        imageId: im.id,
+                        imageKeys: Object.keys(im),
+                        image: im
+                      });
+                    }
+                    
                     return (
                       <button key={key} onClick={() => {
                         const next = new Set(selection);
                         if (selected) next.delete(im.url); else next.add(im.url);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        <Image src={im.thumbnailUrl || im.avifUrl || im.url} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
+                        {imageSrc ? (
+                          <Image src={imageSrc} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
+                            No image
+                          </div>
+                        )}
                         {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>
@@ -146,7 +279,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
-                    const maxSize = 2 * 1024 * 1024;
+                    const maxSize = 20 * 1024 * 1024;
                     const urls: string[] = [];
                     for (const file of files) {
                       if (file.size > maxSize) continue;
@@ -166,7 +299,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 2 * 1024 * 1024;
+                      const maxSize = 20 * 1024 * 1024;
                       const urls: string[] = [];
                       for (const file of files) {
                         if (file.size > maxSize) { continue; }

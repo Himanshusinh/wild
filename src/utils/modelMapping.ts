@@ -6,12 +6,13 @@
 export interface ModelMapping {
   frontendValue: string;
   creditModelName: string;
-  generationType: 'image' | 'video' | 'music';
+  generationType: 'image' | 'video' | 'music' | 'sfx' | 'text-to-dialogue' ;
   provider: string;
   options?: {
     resolution?: string[];
     duration?: number[];
     frameSize?: string[];
+    frames_per_second?: number[];
   };
 }
 
@@ -118,7 +119,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'ideogram-ai/ideogram-v3-quality',
-    creditModelName: 'replicate/ideogram-ai/ideogram-v3-quality',
+    creditModelName: 'Ideogram 3 Quality',
     generationType: 'image',
     provider: 'replicate'
   },
@@ -130,7 +131,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'leonardoai/phoenix-1.0',
-    creditModelName: 'replicate/leonardoai/phoenix-1.0',
+    creditModelName: 'Phoenix 1.0',
     generationType: 'image',
     provider: 'replicate'
   },
@@ -207,6 +208,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'Gen-4 Aleph 10s',
     generationType: 'video',
     provider: 'runway'
+  },
+  {
+    frontendValue: 'runway-act-two',
+    creditModelName: 'Runway Act-Two', // Will use SKU-based pricing from backend
+    generationType: 'video',
+    provider: 'runway',
+    options: {
+      resolution: ['1280:720', '720:1280', '960:960', '1104:832', '832:1104', '1584:672']
+    }
   },
   {
     frontendValue: 'veo3-t2v-4s',
@@ -369,6 +379,35 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'video',
     provider: 'replicate',
     options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-lip-sync',
+    creditModelName: 'Kling Lip Sync',
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10] // Supports 2-10 seconds
+    }
+  },
+  {
+    frontendValue: 'wan-2.2-animate-replace',
+    creditModelName: 'WAN 2.2 Animate Replace',
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480', '720'],
+      frames_per_second: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60]
+    }
+  },
+  {
+    frontendValue: 'wan-2.2-animate-animation',
+    creditModelName: 'WAN 2.2 Animate Animation',
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480', '720'],
+      frames_per_second: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60]
+    }
   },
   
   // WAN 2.5 Fast Models
@@ -541,6 +580,36 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'Music 1.5 (Up to 90s)',
     generationType: 'music',
     provider: 'minimax'
+  },
+  {
+    frontendValue: 'elevenlabs-tts',
+    creditModelName: 'ElevenLabs TTS v3',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'chatterbox-multilingual',
+    creditModelName: 'Chatterbox Multilingual TTS',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'maya-tts',
+    creditModelName: 'Maya TTS',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue',
+    creditModelName: 'ElevenLabs Dialogue',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-sfx',
+    creditModelName: 'ElevenLabs Sound Effects',
+    generationType: 'sfx',
+    provider: 'fal'
   },
 
   // PROMPT ENHANCER MODELS

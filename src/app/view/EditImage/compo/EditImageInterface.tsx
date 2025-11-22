@@ -11,7 +11,8 @@ import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage
 import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
-import { loadHistory, loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
+import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand';
@@ -97,7 +98,7 @@ const EditImageInterface: React.FC = () => {
   const [expandHoverEdge, setExpandHoverEdge] = useState<string | null>(null);
   
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('nightmareai/real-esrgan');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('philz1337x/crystal-upscaler');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -108,6 +109,7 @@ const EditImageInterface: React.FC = () => {
     return 'compressed_sr: Upscale heavily compressed/low-bitrate images.';
   };
   const getUpscaleModelLabel = (m: string) => {
+    if (m === 'philz1337x/clarity-upscaler') return 'Clarity Upscaler';
     if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
     if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
     if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
@@ -163,7 +165,7 @@ const EditImageInterface: React.FC = () => {
 
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | 'replaceModel' | 'expandAspect' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | 'replaceModel' | 'expandAspect' | 'topazModel' | ''>('');
   // Vectorize controls
   const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
   const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
@@ -177,6 +179,7 @@ const EditImageInterface: React.FC = () => {
   const [vMaxIterations, setVMaxIterations] = useState<number>(10);
   const [vSpliceThreshold, setVSpliceThreshold] = useState<number>(45);
   const [vPathPrecision, setVPathPrecision] = useState<number>(3);
+  const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
@@ -192,12 +195,9 @@ const EditImageInterface: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize from query params: feature and image
+  // Initialize from query params: feature and image + self-managed history load for library images
+  useHistoryLoader({ generationType: 'text-to-image', initialLimit: 30 });
   useEffect(() => {
-    // Ensure we have some history for the upload modal library tab
-    (async () => {
-      try { await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 30 } })).unwrap(); } catch { }
-    })();
     try {
       // Allow tab selection via query or path (for /edit-image/fill)
       const featureParam = (searchParams?.get('feature') || '').toLowerCase() || (typeof window !== 'undefined' && window.location.pathname.includes('/edit-image/fill') ? 'fill' : '');
@@ -212,7 +212,7 @@ const EditImageInterface: React.FC = () => {
         if (validFeature === 'remove-bg') {
           setModel('851-labs/background-remover');
         } else if (validFeature === 'upscale') {
-          setModel('nightmareai/real-esrgan');
+          setModel('philz1337x/crystal-upscaler');
         } else if (validFeature === 'resize') {
           setModel('fal-ai/bria/expand');
         } else if (validFeature === 'fill') {
@@ -222,16 +222,18 @@ const EditImageInterface: React.FC = () => {
         }
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
-          const frontendProxied = `/api/proxy/resource/${encodeURIComponent(storagePathParam)}`;
+          const decodedPath = decodeURIComponent(storagePathParam).replace(/^\/+/, '');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const directUrl = decodedPath ? `${ZATA_PREFIX}${decodedPath}` : '';
           // Apply to all features so switching tabs preserves the same input
           setInputs({
-            'upscale': frontendProxied,
-            'remove-bg': frontendProxied,
-            'resize': frontendProxied,
-            'fill': frontendProxied,
-            'vectorize': frontendProxied,
-            'erase': frontendProxied,
-            'expand': frontendProxied,
+            'upscale': directUrl,
+            'remove-bg': directUrl,
+            'resize': directUrl,
+            'fill': directUrl,
+            'vectorize': directUrl,
+            'erase': directUrl,
+            'expand': directUrl,
           });
         } else if (imageParam && imageParam.trim() !== '') {
           setInputs({
@@ -538,6 +540,16 @@ const EditImageInterface: React.FC = () => {
   useEffect(() => {
     setOffset({ x: 0, y: 0 });
   }, [outputs[selectedFeature]]);
+
+  // Debug: Log when outputs change
+  useEffect(() => {
+    console.log('[EditImage] outputs changed:', { 
+      selectedFeature, 
+      'remove-bg': outputs['remove-bg'],
+      outputs: outputs[selectedFeature],
+      allOutputs: outputs 
+    });
+  }, [outputs, selectedFeature]);
 
   // Recompute fit scale when container resizes or natural size changes
   useEffect(() => {
@@ -1332,13 +1344,66 @@ const EditImageInterface: React.FC = () => {
       if (selectedFeature === 'vectorize') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error('Please upload an image to vectorize');
+        
+        let vectorizeInput = normalizedInput;
+        let vectorizeInputUrl = currentInput;
+        
+        // Super mode: First convert image to 2D vector using Seedream
+        if (vectorizeSuperMode) {
+          try {
+            // Step 1: Use Seedream to convert image to 2D vector
+            const seedreamPayload: any = {
+              prompt: 'convert into 2D vector image',
+              model: 'bytedance/seedream-4',
+              size: '2K',
+              image_input: [String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput],
+              sequential_image_generation: 'disabled',
+              max_images: 1,
+              isPublic: false, // Intermediate step, don't make public
+            };
+            
+            const seedreamRes = await axiosInstance.post('/api/replicate/generate', seedreamPayload);
+            const seedreamOut = seedreamRes?.data?.images?.[0]?.url || seedreamRes?.data?.data?.images?.[0]?.url || seedreamRes?.data?.data?.url || seedreamRes?.data?.url || '';
+            
+            if (!seedreamOut) {
+              throw new Error('Seedream conversion failed. Please try again.');
+            }
+            
+            // Step 2: Use the Seedream output as input for vectorization
+            // Convert to data URI if needed for vectorize API
+            try {
+              const seedreamNormalized = await toDataUriIfLocal(seedreamOut);
+              vectorizeInput = seedreamNormalized;
+              vectorizeInputUrl = seedreamOut;
+            } catch {
+              // If conversion fails, use URL directly
+              vectorizeInputUrl = seedreamOut;
+            }
+          } catch (seedreamError: any) {
+            console.error('[EditImage] Seedream conversion error:', seedreamError);
+            const errorMsg = seedreamError?.response?.data?.message || seedreamError?.message || 'Seedream conversion failed';
+            throw new Error(`Super mode failed: ${errorMsg}`);
+          }
+        }
+        
+        // Step 3: Vectorize the image (either original or Seedream output)
         if (vectorizeModel === 'fal-ai/recraft/vectorize') {
           const body: any = { isPublic };
-          if (String(normalizedInput).startsWith('data:')) body.image = normalizedInput;
-          else body.image_url = currentInput;
+          if (String(vectorizeInput).startsWith('data:')) body.image = vectorizeInput;
+          else body.image_url = vectorizeInputUrl;
           const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
+          // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-vectorize:${Date.now()}`,
+            }));
+          } catch {}
         } else {
           // fal-ai/image2svg
           const body: any = {
@@ -1355,10 +1420,20 @@ const EditImageInterface: React.FC = () => {
             splice_threshold: vSpliceThreshold,
             path_precision: vPathPrecision,
           };
-          if (String(normalizedInput).startsWith('data:')) body.image = normalizedInput; else body.image_url = currentInput;
+          if (String(vectorizeInput).startsWith('data:')) body.image = vectorizeInput; else body.image_url = vectorizeInputUrl;
           const res = await axiosInstance.post('/api/fal/image2svg', body);
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
+          // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-vectorize:${Date.now()}`,
+            }));
+          } catch {}
         }
         return;
       }
@@ -1744,12 +1819,20 @@ const EditImageInterface: React.FC = () => {
               input_image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
               masked_image: maskDataUrl,
               prompt: finalPrompt,
-              model,
+              model: 'google_nano_banana',
             };
             const res = await axiosInstance.post('/api/replace/edit', payload);
             const edited = res?.data?.data?.edited_image || res?.data?.edited_image || '';
             if (edited) setOutputs((prev) => ({ ...prev, [selectedFeature]: edited }));
             try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+            // Refresh global history so the Image Generation page sees the new edit entry immediately
+            try {
+              await (dispatch as any)(loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: 'page',
+                debugTag: `refresh-after-${selectedFeature}:${Date.now()}`,
+              }));
+            } catch {}
             return;
           } catch (replaceErr) {
             console.error(`[${selectedFeature === 'erase' ? 'Erase' : 'Replace'}] API Error:`, replaceErr);
@@ -1793,6 +1876,14 @@ const EditImageInterface: React.FC = () => {
           const out = imagesArray[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['fill']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new fill entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-fill:${Date.now()}`,
+            }));
+          } catch {}
           return;
         } catch (fillError) {
           console.error('[Fill] API Error:', fillError);
@@ -1822,6 +1913,14 @@ const EditImageInterface: React.FC = () => {
         const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh global history so the Image Generation page sees the new resize entry immediately
+        try {
+          await (dispatch as any)(loadHistory({
+            paginationParams: { limit: 60 },
+            requestOrigin: 'page',
+            debugTag: `refresh-after-resize:${Date.now()}`,
+          }));
+        } catch {}
         return;
       }
 
@@ -1878,8 +1977,30 @@ const EditImageInterface: React.FC = () => {
         }
         const res = await axiosInstance.post('/api/replicate/remove-bg', body);
         console.log('[EditImage] remove-bg.res', res?.data);
-        const out = res?.data?.data?.url || res?.data?.data?.image || res?.data?.data?.images?.[0]?.url || res?.data?.url || res?.data?.image || '';
-        if (out) setOutputs((prev) => ({ ...prev, ['remove-bg']: out }));
+        
+        // Extract URL from response - match upscale pattern exactly
+        // Backend returns { data: { images: [{ url, storagePath }] } }
+        const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
+        
+        if (first) {
+          console.log('[EditImage] remove-bg output URL:', { first, selectedFeature });
+          // Set output directly like upscale does - no URL conversion needed since backend returns full URL
+          setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
+          // Ensure processing is set to false
+          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new remove-bg entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-remove-bg:${Date.now()}`,
+            }));
+          } catch {}
+        } else {
+          console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
+          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+        }
       } else if (false) {
         // Route to provider based on selected model
         const chosenModel = selectedGeneratorModel || 'gemini-25-flash-image';
@@ -2019,10 +2140,11 @@ const EditImageInterface: React.FC = () => {
         const clarityScale = parseScale(2);
         const esrganScale = parseScale(4);
         let payload: any = { image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput, model };
-        // if (model === 'philz1337x/clarity-upscaler') {
-        //   payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
-        // } else 
-        if (model === 'nightmareai/real-esrgan') {
+        if (model === 'philz1337x/clarity-upscaler') {
+          const dyn = dynamic ? Number(dynamic) : 6;
+          const shp = sharpen ? Number(sharpen) : 0;
+          payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
+        } else if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
         } else if (model === 'philz1337x/crystal-upscaler') {
           const crystalScale = Math.max(1, Math.min(6, clarityScale));
@@ -2047,6 +2169,14 @@ const EditImageInterface: React.FC = () => {
           const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          // Refresh global history so the Image Generation page sees the new upscale entry immediately
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-upscale-topaz:${Date.now()}`,
+            }));
+          } catch {}
           return;
         } 
         // else if (model === 'fermatresearch/magic-image-refiner') {
@@ -2057,6 +2187,14 @@ const EditImageInterface: React.FC = () => {
         const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
         if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh global history so the Image Generation page sees the new upscale entry immediately
+        try {
+          await (dispatch as any)(loadHistory({
+            paginationParams: { limit: 60 },
+            requestOrigin: 'page',
+            debugTag: `refresh-after-upscale:${Date.now()}`,
+          }));
+        } catch {}
       }
     } catch (e) {
       console.error('[EditImage] run.error', e);
@@ -2082,7 +2220,7 @@ const EditImageInterface: React.FC = () => {
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
     } else if (selectedFeature === 'upscale') {
-      setModel('nightmareai/real-esrgan');
+      setModel('philz1337x/crystal-upscaler');
     } else if (selectedFeature === 'resize') {
       setModel('fal-ai/bria/expand');
     } else if (selectedFeature === 'vectorize') {
@@ -2325,7 +2463,7 @@ const EditImageInterface: React.FC = () => {
                     if (feature.id === 'remove-bg') {
                       setModel('851-labs/background-remover');
                     } else if (feature.id === 'upscale') {
-                      setModel('nightmareai/real-esrgan');
+                      setModel('philz1337x/crystal-upscaler');
                     } else if (feature.id === 'resize') {
                       setModel('fal-ai/bria/expand');
                     } else if (feature.id === 'vectorize') {
@@ -2335,7 +2473,7 @@ const EditImageInterface: React.FC = () => {
                   }}
                   className={`text-left bg-white/5 items-center justify-center rounded-lg p-1 h-18 w-auto border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                 >
-                  <div className="flex items-center gap-0 justify-center">
+                  <div className="flex items-center gap-0 justify-center ">
                     <div className={`w-6 h-6 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
                       {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="w-6 h-6" />)}
                       {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="w-6 h-6" />)}
@@ -2358,7 +2496,7 @@ const EditImageInterface: React.FC = () => {
           </div>
 
           {/* Feature Preview (GIF banner) */}
-          <div className="px-3 md:px-4 mb-2 pt-4">
+          <div className="px-3 md:px-4 mb-2 pt-4 z-10">
             <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
@@ -2375,6 +2513,37 @@ const EditImageInterface: React.FC = () => {
             <div className="px-3 md:px-4">
               {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
               <div className="space-y-2">
+                {/* Super Mode Toggle */}
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm">Mode</label>
+                  <div className="relative bg-white/5 border border-white/20 rounded-lg p-1 flex">
+                    <button
+                      onClick={() => setVectorizeSuperMode(false)}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        !vectorizeSuperMode
+                          ? 'bg-white text-black'
+                          : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      onClick={() => setVectorizeSuperMode(true)}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        vectorizeSuperMode
+                          ? 'bg-white text-black'
+                          : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      Super best for production
+                    </button>
+                  </div>
+                  {vectorizeSuperMode && (
+                    <div className="text-[11px] text-white/50 mt-1">
+                      First converts image to 2D vector using Seedream, then vectorizes the result
+                    </div>
+                  )}
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm ">Model</label>
                   <div className="relative edit-dropdown">
@@ -2386,7 +2555,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'vectorizeModel' && (
-                      <div className={`absolute top-full mt-2 z-70 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full mt-2 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {[
                           { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
                           { label: 'Image to SVG', value: 'fal-ai/image2svg' },
@@ -2528,7 +2697,7 @@ const EditImageInterface: React.FC = () => {
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'model' && (
-                      <div className={`absolute top-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {(selectedFeature === 'remove-bg'
                           ? [
                               { label: '851-labs/background-remover', value: '851-labs/background-remover' },
@@ -2539,9 +2708,9 @@ const EditImageInterface: React.FC = () => {
                                   { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
                             ]
                           : [
-                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                                   { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
                                   { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                             ]
                         ).map((opt) => (
                           <button
@@ -2756,7 +2925,7 @@ const EditImageInterface: React.FC = () => {
                               <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'resizeAspect' ? 'rotate-180' : ''}`} />
                             </button>
                             {activeDropdown === 'resizeAspect' && (
-                              <div className={`absolute bottom-full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-56 overflow-y-auto dropdown-scrollbar`}>
+                              <div className={`absolute top -full mt-2 z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-56 overflow-y-auto dropdown-scrollbar`}>
                                 {['1:1','2:3','3:2','3:4','4:3','4:5','5:4','9:16','16:9'].map((ar) => (
                                   <button key={ar} onClick={() => { setResizeAspectRatio(ar as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${resizeAspectRatio === ar ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{ar}</button>
                                 ))}
@@ -2887,7 +3056,7 @@ const EditImageInterface: React.FC = () => {
                   {model === 'nightmareai/real-esrgan' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale (0-10)</label>
+                        <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale (0-10)</label>
                         <input
                           type="number"
                           min={0}
@@ -2915,7 +3084,7 @@ const EditImageInterface: React.FC = () => {
                       {model === 'philz1337x/crystal-upscaler' && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Scale factor (1-6)</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale factor (1-6)</label>
                             <input
                               type="number"
                               min={1}
@@ -2927,7 +3096,7 @@ const EditImageInterface: React.FC = () => {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Output format</label>
                             <div className="relative edit-dropdown">
                               <button
                                 onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
@@ -2937,7 +3106,7 @@ const EditImageInterface: React.FC = () => {
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
                               </button>
                               {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                   {['png', 'jpg'].map((fmt) => (
                                     <button
                                       key={fmt}
@@ -2957,13 +3126,13 @@ const EditImageInterface: React.FC = () => {
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Model</label>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Model</label>
                               <div className="relative edit-dropdown">
-                                <button onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                                <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
                                   <span className="truncate">{topazModel}</span>
-                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
                                 </button>
-                                {activeDropdown === 'model' && (
+                                {activeDropdown === 'topazModel' && (
                                   <div className={`absolute z-30 top-full mt-2 left-0 w-56 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                     {['Low Resolution V2','Standard V2','CGI','High Fidelity V2','Text Refine','Recovery','Redefine','Recovery V2'].map((opt) => (
                                       <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
@@ -2973,7 +3142,7 @@ const EditImageInterface: React.FC = () => {
                               </div>
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Upscale factor</label>
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Upscale factor</label>
                               <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e)=>setTopazUpscaleFactor(Number(e.target.value)||2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                             </div>
                           </div>
@@ -3290,6 +3459,19 @@ const EditImageInterface: React.FC = () => {
                               fill
                               className="object-contain object-center"
                               style={{ objectPosition: 'center 55%' }}
+                              onError={(e) => {
+                                console.error('[EditImage] Output image failed to load:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e
+                                });
+                              }}
+                              onLoad={() => {
+                                console.log('[EditImage] Output image loaded successfully:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature
+                                });
+                              }}
                             />
                           </div>
                           <div className="absolute inset-0">
@@ -3338,6 +3520,18 @@ const EditImageInterface: React.FC = () => {
                             onLoad={(e) => {
                               const img = e.target as HTMLImageElement;
                               setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                              console.log('[EditImage] Zoom mode output image loaded:', {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                              });
+                            }}
+                            onError={(e) => {
+                              console.error('[EditImage] Zoom mode output image failed to load:', {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                error: e
+                              });
                             }}
                             onClick={handleImageClick}
                           />
@@ -3409,6 +3603,18 @@ const EditImageInterface: React.FC = () => {
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
                           setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                          console.log('[EditImage] No-input mode output image loaded:', {
+                            src: outputs[selectedFeature],
+                            selectedFeature,
+                            dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                          });
+                        }}
+                        onError={(e) => {
+                          console.error('[EditImage] No-input mode output image failed to load:', {
+                            src: outputs[selectedFeature],
+                            selectedFeature,
+                            error: e
+                          });
                         }}
                         onClick={handleImageClick}
                       />

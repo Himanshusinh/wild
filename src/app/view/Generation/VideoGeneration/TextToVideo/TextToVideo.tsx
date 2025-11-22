@@ -5,7 +5,7 @@ import VideoGenerationInputBox from './compo/VideoGenerationInputBox';
 
 const TextToVideo: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#07070B] p-6">
+    <div className="min-h-screen bg-[#07070B] p-0 ">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

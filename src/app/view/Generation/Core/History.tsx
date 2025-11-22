@@ -19,6 +19,7 @@
   // Replaced custom loader with Logo.gif
   import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
   import { getCreditsForModel } from '@/utils/modelCredits';
+  import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 
   const History = () => {
     const dispatch = useAppDispatch();
@@ -144,12 +145,7 @@
         setHasMore(nextHasMore);
       } catch (error) {
         // Handle condition aborts gracefully
-        if (error && typeof error === 'object' && 'message' in error && 
-            typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
-          console.log('loadFirstPage aborted - another request in progress');
-        } else {
-          console.error('Error in loadFirstPage:', error);
-        }
+        // silent
       } finally {
         loadLockRef.current = false;
       }
@@ -183,11 +179,13 @@
           if (viewMode === 'global') {
             const base: any = {};
             if (sortOrder) base.sortOrder = sortOrder;
+            if (searchQuery.trim()) base.search = searchQuery.trim();
             dispatch(setFilters(base));
             await loadFirstPage(base);
           } else {
             const f: any = { generationType: currentGenerationType };
             if (sortOrder) f.sortOrder = sortOrder;
+            if (searchQuery.trim()) f.search = searchQuery.trim();
             dispatch(setFilters(f));
             await loadFirstPage(f);
           }
@@ -195,17 +193,11 @@
           didInitialLoadRef.current = true;
         } catch (error) {
           // Handle condition aborts gracefully
-          if (error && typeof error === 'object' && 'message' in error && 
-              typeof error.message === 'string' && error.message.includes('condition callback returning false')) {
-            console.log('History load aborted - another request in progress');
-          } else {
-            console.error('Error loading history:', error);
-          }
+          // silent
         }
       };
       run();
-    }, [dispatch, viewMode, currentGenerationType]); // Run on mount and when view mode changes
-
+    }, [dispatch, viewMode, currentGenerationType, searchQuery]); // Run on mount and when view mode or search changes
 
     // Removed fallback loader to prevent duplicate initial requests.
 
@@ -216,6 +208,7 @@
     const finalFilters = { ...filters } as any;
         if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
         if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
+        if (searchQuery.trim()) (finalFilters as any).search = searchQuery.trim();
         dispatch(setFilters(finalFilters));
         setOverlayLoading(true);
         try {
@@ -239,46 +232,91 @@
       })();
     }, [sortOrder, dispatch]);
 
-    // Handle scroll to load more (only after user actually scrolls) - inside container
+    // Handle scroll to load more: attach both container and window listeners so we don't miss
+    // pagination events when layout changes. Use guards to avoid duplicate requests.
     useEffect(() => {
       const el = scrollContainerRef.current;
-      if (!el) return;
-      const handleScroll = () => {
-        if (!hasUserScrolledRef.current && el.scrollTop > 0) {
-          hasUserScrolledRef.current = true;
-        }
-        if (!hasUserScrolledRef.current) return;
+      // lastTriggerMillis prevents extremely rapid repeated calls (safety debounce)
+      const lastTriggerRef = { current: 0 } as { current: number };
 
-        if (el.clientHeight + el.scrollTop >= el.scrollHeight - 800) {
-          if (hasMore && !loading && !isFetchingMoreRef.current) {
-            isFetchingMoreRef.current = true;
-            const nextPage = page + 1;
-            setPage(nextPage);
-            const baseFilters = { ...filters } as any;
-            if (sortOrder) baseFilters.sortOrder = sortOrder;
-            const limit = sortOrder === 'asc' ? 30 : 10;
-            dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }))
-              .then((result: any) => {
-                const payload = result && result.payload ? result.payload : result;
-                const entries = (payload && Array.isArray(payload.entries)) ? payload.entries : [];
-                let nextHasMore: boolean;
-                if (payload && typeof payload.hasMore !== 'undefined') {
-                  nextHasMore = Boolean(payload.hasMore);
-                } else {
-                  nextHasMore = entries.length > 0 && entries.length >= limit;
-                }
-                if (entries.length === 0) nextHasMore = false;
-                setHasMore(nextHasMore);
-              })
-              .finally(() => {
-                isFetchingMoreRef.current = false;
-              });
+      const performLoadMore = (source: 'container' | 'window') => {
+        try {
+          const now = Date.now();
+          if (now - lastTriggerRef.current < 200) {
+            // throttle brief bursts
+            return;
           }
+          lastTriggerRef.current = now;
+          if (!hasMore || loading || isFetchingMoreRef.current) {
+            return;
+          }
+          isFetchingMoreRef.current = true;
+          const nextPage = page + 1;
+          setPage(nextPage);
+          const baseFilters = { ...filters } as any;
+          if (sortOrder) baseFilters.sortOrder = sortOrder;
+          if (searchQuery.trim()) baseFilters.search = searchQuery.trim();
+          const limit = sortOrder === 'asc' ? 30 : 10;
+          dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }))
+            .then((result: any) => {
+              const payload = result && result.payload ? result.payload : result;
+              const entries = (payload && Array.isArray(payload.entries)) ? payload.entries : [];
+              let nextHasMore: boolean;
+              if (payload && typeof payload.hasMore !== 'undefined') {
+                nextHasMore = Boolean(payload.hasMore);
+              } else {
+                nextHasMore = entries.length > 0 && entries.length >= limit;
+              }
+              if (entries.length === 0) nextHasMore = false;
+              setHasMore(nextHasMore);
+            })
+            .catch((_e) => {
+              // swallow
+            })
+            .finally(() => {
+              isFetchingMoreRef.current = false;
+            });
+        } catch (_e) {
+          // silent
         }
       };
 
-      el.addEventListener('scroll', handleScroll, { passive: true } as any);
-      return () => el.removeEventListener('scroll', handleScroll as any);
+      const handleContainerScroll = () => {
+        if (!el) return;
+        if (!hasUserScrolledRef.current && el.scrollTop > 0) hasUserScrolledRef.current = true;
+        if (!hasUserScrolledRef.current) return;
+        if (el.clientHeight + el.scrollTop >= el.scrollHeight - 800) {
+          performLoadMore('container');
+        }
+      };
+
+      const handleWindowScroll = () => {
+        if (!hasUserScrolledRef.current && window.scrollY > 0) hasUserScrolledRef.current = true;
+        if (!hasUserScrolledRef.current) return;
+        const winBottom = window.innerHeight + window.scrollY;
+        const docHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+        if (winBottom >= docHeight - 800) {
+          performLoadMore('window');
+        }
+      };
+
+      // Attach listeners (both) to be robust against layout changes that move scrolling to window
+      try {
+        if (el) el.addEventListener('scroll', handleContainerScroll as any, { passive: true });
+      } catch (_e) {
+        // silent
+      }
+      window.addEventListener('scroll', handleWindowScroll as any, { passive: true });
+
+      // Debug: log which listener is attached and basic metrics
+      // removed debug log
+
+      return () => {
+        try {
+          if (el) el.removeEventListener('scroll', handleContainerScroll as any);
+        } catch {}
+        try { window.removeEventListener('scroll', handleWindowScroll as any); } catch {}
+      };
     }, [hasMore, loading, page, dispatch, filters, sortOrder]);
 
     // Handle click outside to close filter popover
@@ -481,30 +519,24 @@
                   .then(() => {
                     dispatch(removeHistoryEntry(entry.id));
                     successCount++;
-                    console.log(`Deleted: ${entry.id}`);
                   })
-                  .catch(error => {
-                    console.error('Delete failed for', entry.id, error);
+                  .catch(() => {
                     failedDeletes.push(entry.id);
                   })
               );
             }
           });
         });
-
-        console.log(`Starting deletion of ${selectedImages.size} selected items...`);
         await Promise.all(deletePromises);
         
         if (failedDeletes.length > 0) {
-          console.warn(`${failedDeletes.length} deletions failed`);
           alert(`${failedDeletes.length} items couldn't be deleted. Please try again.`);
         } else {
-          console.log(`Successfully deleted all ${successCount} items`);
+          // success
         }
         
         clearSelection();
       } catch (error) {
-        console.error('Bulk delete failed:', error);
         alert('Delete failed. Please try again.');
       }
     };
@@ -561,11 +593,9 @@
             const duration = (entry as any).duration || (entry as any).videoDuration;
             const resolution = (entry as any).resolution || (entry as any).videoResolution;
             
-            console.log('[CreditCalculation] Entry:', entry.id, 'Model:', model, 'Duration:', duration, 'Resolution:', resolution);
             
             if (model) {
               const credits = getCreditsForModel(model, duration, resolution);
-              console.log('[CreditCalculation] Credits for model', model, ':', credits);
               if (credits !== null) {
                 totalCredits += credits;
               }
@@ -582,13 +612,13 @@
                 // Default image credits
                 totalCredits += 110; // Default flux-pro
               }
-              console.log('[CreditCalculation] Using default credits for', mediaType, ':', mediaType === 'video' ? 620 : mediaType === 'audio' ? 90 : 110);
+              // silent
             }
           }
         });
       });
       
-      console.log('[CreditCalculation] Total credits:', totalCredits);
+      // silent
       return totalCredits;
     };
 
@@ -643,25 +673,14 @@
     };
 
     // Helper functions to convert URLs to proxy URLs (like preview modals)
-    const toProxyPath = (urlOrPath: string | undefined) => {
-      if (!urlOrPath) return '';
-      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
-      if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
-      // Allow direct storagePath-like values (users/...)
-      if (/^users\//.test(urlOrPath)) return urlOrPath;
-      // For external URLs (fal.media, etc.), do not proxy
-      return '';
-    };
-
     const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
-      const path = toProxyPath(urlOrPath);
-      return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+      if (!urlOrPath) return '';
+      return toResourceProxy(urlOrPath) || '';
     };
 
     const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
-      const path = toProxyPath(urlOrPath);
-      return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
+      if (!urlOrPath) return '';
+      return toMediaProxy(urlOrPath) || '';
     };
 
     // Helper function to download single file using proxy URLs
@@ -673,8 +692,6 @@
           throw new Error('Unable to create proxy URL');
         }
 
-        console.log(`Downloading via proxy: ${proxyUrl} (original: ${url})`);
-        
         const response = await fetch(proxyUrl, { credentials: 'include' });
         
         if (!response.ok) {
@@ -695,8 +712,7 @@
         
         window.URL.revokeObjectURL(objectUrl);
         return true;
-      } catch (error) {
-        console.error('Download via proxy failed, falling back to direct link:', error);
+      } catch (_error) {
         try {
           // Fallback: open the original URL in a new tab; browser will handle download if allowed
           const a = document.createElement('a');
@@ -709,8 +725,7 @@
           a.click();
           document.body.removeChild(a);
           return true;
-        } catch (e) {
-          console.error('Direct open fallback failed:', e);
+        } catch (_e) {
           return false;
         }
       }
@@ -737,44 +752,35 @@
                 downloadCount++;
                 const fileType = getFileType(media, url);
                 
-                console.log(`Attempting download for ${key}:`, { url, fileType });
-                
                 downloadPromises.push(
                   downloadFileWithNaming(url, null, fileType)
                     .then(success => {
                       if (!success) {
-                        console.error(`Download failed for ${key}:`, url);
                         failedDownloads.push(key);
                       } else {
-                        console.log(`Downloaded: ${key}`);
+                        // success
                       }
                     })
-                    .catch(error => {
-                      console.error(`Download error for ${key}:`, error);
+                    .catch(() => {
                       failedDownloads.push(key);
                     })
                 );
               } else {
-                console.warn(`No valid URL found for ${key}`, { media });
                 failedDownloads.push(key);
               }
             }
           });
         });
-
-        console.log(`Starting download of ${downloadCount} selected items...`);
         await Promise.all(downloadPromises);
         
         if (failedDownloads.length > 0) {
-          console.warn(`${failedDownloads.length} downloads failed`);
           alert(`${failedDownloads.length} files couldn't be downloaded. Please try downloading them individually.`);
         } else {
-          console.log(`Successfully downloaded all ${downloadCount} items`);
+          // success
         }
         
         clearSelection();
       } catch (error) {
-        console.error('Bulk download failed:', error);
         alert('Download failed. Please try again.');
       }
     };
@@ -866,14 +872,13 @@
     };
 
     // Filter entries by search query
+    // Search is now handled server-side, so we can use historyEntries directly
+    // But keep this as a safety net for backward compatibility
     const filteredEntries = useMemo(() => {
-      if (!searchQuery.trim()) return historyEntries;
-      const query = searchQuery.trim().toLowerCase();
-      return historyEntries.filter((entry: HistoryEntry) => {
-        const prompt = (entry.prompt || '').toLowerCase();
-        return prompt.includes(query);
-      });
-    }, [historyEntries, searchQuery]);
+      // Backend should handle search, so just return entries as-is
+      // If backend doesn't filter, we can add client-side fallback here if needed
+      return historyEntries;
+    }, [historyEntries]);
 
     // Group entries by date to mirror TextToImage UI
     const groupedByDate = filteredEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
@@ -939,7 +944,9 @@
         ? 'Image Generation History'
         : `${getGenerationTypeLabel(currentGenerationType)} History`);
 
-    if (loading && historyEntries.length === 0 && !overlayLoading) {
+    // Only show full-screen loader on initial load, not during search
+    // If user is searching, don't show full-screen loader even if entries are empty
+    if (loading && historyEntries.length === 0 && !overlayLoading && !searchQuery.trim()) {
       return (
         <div className="flex items-center justify-center h-screen">
           <div className="flex flex-col items-center gap-4">
@@ -991,81 +998,118 @@
             <span className="text-sm sm:text-md text-white/80 whitespace-nowrap">• {getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
           </div>
           </div>
-          {/* Filter and Sort buttons container - mobile: stacked, desktop: inline */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pr-0 sm:pr-28 mb-2">
-            {/* Filter buttons row */}
-            <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-              <div className="flex justify-start gap-2 min-w-max flex-nowrap">
-              {([
-                { key: 'all', label: 'All' },
-                { key: 'images', label: 'Images' },
-                { key: 'videos', label: 'Videos' },
-                { key: 'music', label: 'Music' },
-                { key: 'logo', label: 'Logo' },
-                { key: 'sticker', label: 'Stickers' },
-                { key: 'product', label: 'Products' },
-                { key: 'user-uploads', label: 'Your Uploads' },
-              ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={async () => {
-                    setQuickFilter(key);
-                    setPillLoading(true);
-                    setOverlayLoading(true);
-                    let f: any = {};
-                    switch (key) {
-                      case 'images':
-                        f = { generationType: 'text-to-image' };
-                        break;
-                      case 'videos':
-                        f = { mode: 'video' };
-                        break;
-                      case 'music':
-                        f = { generationType: 'text-to-music' };
-                        break;
-                      case 'logo':
-                        f = { generationType: 'logo-generation' };
-                        break;
-                      case 'sticker':
-                        f = { generationType: 'sticker-generation' };
-                        break;
-                      case 'product':
-                        f = { generationType: 'product-generation' };
-                        break;
-                      case 'user-uploads':
-                        f = { isUserUpload: true };
-                        break;
-                      default:
-                        f = {};
-                    }
-                    // Preserve sort order and any date range
-                    if (sortOrder) (f as any).sortOrder = sortOrder;
-                    if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
-                    setLocalFilters(f);
-                    dispatch(setFilters(f));
-                    // Immediately clear current list so previous category tiles do not linger
-                    dispatch(clearHistory());
-                    await loadFirstPage(f);
-                    setPage(1);
-                    setPillLoading(false);
-                    setOverlayLoading(false);
-                  }}
-                  className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-colors flex-shrink-0 ${quickFilter === key ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'
-                    }`}
-                >
-                  {label}
-                </button>
-              ))}
-              {/* {pillLoading && (
-                <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                  Loading generations...
-                </div>
-              )} */}
+          <div className="flex items-center justify-between gap-2 pr-28 mb-2 i ">
+            <div className="flex justify-start gap-2">
+            {([
+              { key: 'all', label: 'All' },
+              { key: 'images', label: 'Images' },
+              { key: 'videos', label: 'Videos' },
+              { key: 'music', label: 'Music' },
+              { key: 'logo', label: 'Logo' },
+              { key: 'sticker', label: 'Stickers' },
+              { key: 'product', label: 'Products' },
+              { key: 'user-uploads', label: 'Your Uploads' },
+            ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={async () => {
+                  setQuickFilter(key);
+                  setPillLoading(true);
+                  setOverlayLoading(true);
+                  let f: any = {};
+                  switch (key) {
+                    case 'images':
+                      f = { generationType: 'text-to-image' };
+                      break;
+                    case 'videos':
+                      f = { mode: 'video' };
+                      break;
+                    case 'music':
+                      f = { generationType: 'text-to-music' };
+                      break;
+                    case 'logo':
+                      f = { generationType: 'logo-generation' };
+                      break;
+                    case 'sticker':
+                      f = { generationType: 'sticker-generation' };
+                      break;
+                    case 'product':
+                      f = { generationType: 'product-generation' };
+                      break;
+                    case 'user-uploads':
+                      f = { isUserUpload: true };
+                      break;
+                    default:
+                      f = {};
+                  }
+                  // Preserve sort order and any date range
+                  if (sortOrder) (f as any).sortOrder = sortOrder;
+                  if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                  setLocalFilters(f);
+                  dispatch(setFilters(f));
+                  // Immediately clear current list so previous category tiles do not linger
+                  dispatch(clearHistory());
+                  await loadFirstPage(f);
+                  setPage(1);
+                  setPillLoading(false);
+                  setOverlayLoading(false);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${quickFilter === key ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+            {/* {pillLoading && (
+              <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
+                Loading generations...
               </div>
+            )} */}
             </div>
-            {/* Sort buttons - below on mobile, inline on desktop */}
-            <div className="flex items-center justify-start sm:justify-end gap-1 sm:gap-2 flex-shrink-0 sm:ml-8">
+            
+            {/* Search Input and Buttons */}
+            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // Search is already applied via filteredEntries useMemo
+                    }
+                  }}
+                  placeholder="Search by prompt..."
+                  className="px-4 py-1.5 pr-10 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 w-48 md:w-64"
+                />
+                <button
+                  onClick={() => {
+                    // Search is already applied via filteredEntries useMemo
+                  }}
+                  className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                  aria-label="Search"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                  </svg>
+                </button>
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="px-3 py-1.5 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                  aria-label="Clear search"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
+            {/* Sort buttons */}
+            <div className="ml-8 flex items-right justify-end  gap-2">
               <button
                 onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
                   className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
@@ -1314,14 +1358,7 @@
             className="space-y-8 relative min-h-[300px]"
             onClick={handleContainerClick}
           >
-            {overlayLoading && (
-              <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
-                  <div className="text-white text-lg">Loading generations...</div>
-                </div>
-              </div>
-            )}  
+            {/* Removed full-screen overlay - use bottom loading indicator instead */}  
             {sortedDates.map((dateKey) => {
               // Check if this date has any filtered items for the active category
               const hasFilteredItems = groupedByDate[dateKey].some((entry: HistoryEntry) => {
@@ -1490,15 +1527,13 @@
                                         e.stopPropagation();
                                         const video = e.currentTarget;
                                         const videoId = `${entry.id}-${mediaIndex}`;
-                                        console.log('🎥 VIDEO CLICKED:', { videoId });
                                         
                                         if (video.paused) {
                                           try {
                                             await video.play();
-                                            console.log('✅ Video started playing on click!');
                                             setPlayingVideos(prev => new Set(prev).add(videoId));
                                           } catch (error) {
-                                            console.error('❌ Video play failed on click:', error);
+                                            // silent
                                           }
                                         } else {
                                           video.pause();
@@ -1508,28 +1543,11 @@
                                             newSet.delete(videoId);
                                             return newSet;
                                           });
-                                          console.log('🎥 Video paused on click');
                                         }
                                       }}
-                                      onLoadStart={() => {
-                                        console.log('🎥 VIDEO LOAD START:', {
-                                          videoId: `${entry.id}-${mediaIndex}`,
-                                          videoSrc: vsrc
-                                        });
-                                      }}
-                                      onLoadedData={(e) => {
-                                        console.log('🎥 VIDEO DATA LOADED:', {
-                                          videoId: `${entry.id}-${mediaIndex}`,
-                                          videoDuration: e.currentTarget.duration,
-                                          videoReadyState: e.currentTarget.readyState
-                                        });
-                                      }}
-                                      onCanPlay={(e) => {
-                                        console.log('🎥 VIDEO CAN PLAY:', {
-                                          videoId: `${entry.id}-${mediaIndex}`,
-                                          videoReadyState: e.currentTarget.readyState
-                                        });
-                                      }}
+                                      onLoadStart={() => { /* silent */ }}
+                                      onLoadedData={() => { /* silent */ }}
+                                      onCanPlay={() => { /* silent */ }}
                                     />
                                   );
                                 })()

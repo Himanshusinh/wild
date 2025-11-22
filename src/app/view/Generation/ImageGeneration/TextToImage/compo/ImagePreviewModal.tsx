@@ -10,7 +10,29 @@ import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { toResourceProxy, toMediaProxy, toZataPath } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
+
+// Helper function to extract proxy path (same as other components)
+const toProxyPath = (urlOrPath: string | undefined): string => {
+  if (!urlOrPath) return '';
+  return toZataPath(urlOrPath);
+};
+
+// Helper function for frontend proxy resource URL
+const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
+  if (!urlOrPath) return '';
+  return toResourceProxy(urlOrPath);
+};
+
+const extractStyleFromPrompt = (promptText: string): string | undefined => {
+  const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
+  return match?.[1]?.trim();
+};
+
+const getCleanPrompt = (promptText: string): string => {
+  return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
+};
 
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
@@ -21,24 +43,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
 
-  const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    // Allow direct storagePath-like values (users/...)
-    if (/^users\//.test(urlOrPath)) return urlOrPath;
-    // For external URLs (fal.media, etc.), return empty to indicate they should be used directly
-    return '';
-  }, []);
-
-  const toProxyResourceUrl = React.useCallback((urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    // Use frontend Next.js proxy instead of backend API to avoid SSL issues
-    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  }, [toProxyPath]);
+  // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
   
   // Move all hooks to the top before any conditional returns
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
@@ -50,14 +57,57 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // Local state to track the current entry (updated after deletion)
   const [currentEntry, setCurrentEntry] = React.useState<HistoryEntry | null>(preview?.entry || null);
   
-  // Update currentEntry when preview changes
+  // Update currentEntry and reset selected state immediately when preview changes
   React.useEffect(() => {
-    if (preview?.entry) {
-      setCurrentEntry(preview.entry);
-    }
-  }, [preview?.entry?.id, preview?.entry?.images?.length]);
+    // Reset local view state synchronously so we don't show stale media
+    setCurrentEntry(preview?.entry || null);
+    // compute index within the new entry's images if available
+    try {
+      const imgs = (preview?.entry as any)?.images || [];
+      const mId = (preview?.image as any)?.id;
+      const mUrl = (preview?.image as any)?.url;
+      let idx = 0;
+      if (imgs && imgs.length > 0) {
+        const found = imgs.findIndex((im: any) => (mId && im.id === mId) || (mUrl && im.url === mUrl));
+        if (found >= 0) idx = found;
+      }
+      setSelectedIndex(idx);
+    } catch {}
+    setObjectUrl('');
+    setImageDimensions(null);
+  }, [preview?.entry?.id, preview?.image?.id]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (!preview?.entry?.id) return;
+    let cancelled = false;
+    const fetchFullEntry = async () => {
+      try {
+        const res = await axiosInstance.get(`/api/generations/${preview.entry.id}`);
+        // Extract item from response: res.data.data.item or res.data.item or res.data
+        const detailedEntry = res?.data?.data?.item || res?.data?.item || res?.data?.data || res?.data;
+        if (!cancelled && detailedEntry) {
+          const mergedEntry = {
+            ...(preview?.entry || {}),
+            ...detailedEntry,
+          } as HistoryEntry;
+          console.log('[ImagePreviewModal] Fetched detailed entry:', {
+            hasInputImages: Array.isArray((mergedEntry as any)?.inputImages),
+            inputImagesCount: Array.isArray((mergedEntry as any)?.inputImages) ? (mergedEntry as any).inputImages.length : 0,
+            inputImages: (mergedEntry as any)?.inputImages,
+          });
+          setCurrentEntry(mergedEntry);
+        }
+      } catch (error) {
+        console.warn('[ImagePreviewModal] Failed to fetch detailed entry:', error);
+      }
+    };
+    fetchFullEntry();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview?.entry?.id]);
 
   // single dispatch instance
   // Fullscreen viewer state
@@ -334,74 +384,242 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     };
   }, [preview]);
 
-  // Helper to get media proxy URL
+  // Helper to get media proxy URL using shared helper
   const toMediaProxyUrl = React.useCallback((urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
-    // If it's already a full HTTP/HTTPS URL (external), use it directly
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    // If it's already an absolute URL, return it
+    try {
+      const u = new URL(urlOrPath);
       return urlOrPath;
+    } catch {
+      // Not an absolute URL - let toMediaProxy handle Zata-style paths
+      return toMediaProxy(urlOrPath) || urlOrPath;
     }
-    const path = toProxyPath(urlOrPath);
-    // If path is empty, it means it's not a Zata URL - use original URL directly
-    if (!path) return urlOrPath;
-    // For Zata paths, use proxy
-    return `/api/proxy/media/${encodeURIComponent(path)}`;
-  }, [toProxyPath]);
+  }, []);
 
+  // Abortable image fetch: cancel previous fetch when preview or selectedIndex changes
+  const fetchAbortRef = React.useRef<AbortController | null>(null);
+  const fetchTokenRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!preview) return;
-    
+
+    // Cancel previous fetch
+    try { fetchAbortRef.current?.abort(); } catch {}
+    fetchAbortRef.current = new AbortController();
+    const signal = fetchAbortRef.current.signal;
+
+    // Track a token to guard late responses
+    const currentToken = `${preview.entry?.id || 'noentry'}::${preview.image?.id || preview.image?.url || selectedIndex}`;
+    fetchTokenRef.current = currentToken;
+
     let revoke: string | null = null;
     setObjectUrl('');
     setImageDimensions(null); // Reset dimensions when image changes
+
     const run = async () => {
       try {
         const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
         const selectedImage = selectedPair.image || preview.image;
-        const imageUrl = selectedImage?.url || preview.image.url;
+        const imageUrl = (selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image.url;
         if (!imageUrl) return;
-        
-        // Use media proxy for Zata URLs, direct URL for external URLs (FAL, etc.)
-        const url = toMediaProxyUrl(imageUrl);
-        if (!url) return;
-        
-        // For external URLs (FAL), use CORS mode; for proxy URLs, use credentials
-        const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
-        const res = await fetch(url, {
+        const proxyUrl = toMediaProxy(imageUrl) || imageUrl;
+
+        const isExternalUrl = proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://');
+        const res = await fetch(proxyUrl, {
+          signal,
           credentials: isExternalUrl ? 'omit' : 'include',
           mode: isExternalUrl ? 'cors' : 'same-origin'
         });
         if (!res.ok) {
-          console.warn('[ImagePreviewModal] Failed to fetch image:', url, res.status);
+          console.warn('[ImagePreviewModal] Failed to fetch image:', proxyUrl, res.status);
           return;
         }
         const blob = await res.blob();
         const obj = URL.createObjectURL(blob);
+        // Ensure this response is still relevant (user may have clicked another preview)
+        if (fetchTokenRef.current !== currentToken) {
+          URL.revokeObjectURL(obj);
+          return;
+        }
         revoke = obj;
         setObjectUrl(obj);
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return; // expected on cancel
         console.error('[ImagePreviewModal] Error loading image:', err);
       }
     };
     run();
     return () => {
+      try { fetchAbortRef.current?.abort(); } catch {}
       if (revoke) URL.revokeObjectURL(revoke);
+      fetchTokenRef.current = null;
     };
-  }, [selectedIndex, preview, sameDateGallery, toMediaProxyUrl]);
+  }, [selectedIndex, preview?.entry?.id, preview?.image?.id, sameDateGallery, toMediaProxyUrl]);
+
+  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
+  const selectedImage: any = selectedPair.image || preview?.image;
+  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+  const isUserUploadSelected = false;
+
+  const normalizeInputMediaUrl = React.useCallback((item: any): string => {
+    if (!item) return '';
+    
+    // Priority 1: Use storagePath if available (most reliable for input images)
+    const storagePath = typeof item === 'string'
+      ? (item.startsWith('users/') ? item : '')
+      : (item?.storagePath || item?.path || '');
+    if (storagePath) {
+      const cleaned = storagePath.replace(/^\/+/, '');
+      const proxyUrl = toMediaProxy(cleaned);
+      if (proxyUrl) return proxyUrl;
+      // Fallback: construct Zata URL directly
+      return `${ZATA_PREFIX}${cleaned}`;
+    }
+    
+    // Priority 2: Use url (the stored input image URL, not originalUrl)
+    // originalUrl might point to a different image (the source before upload)
+    if (typeof item === 'string') {
+      return toMediaProxy(item) || item;
+    }
+    
+    // Prefer url over originalUrl for input images
+    const preferredUrl = item?.url || item?.firebaseUrl;
+    if (preferredUrl) {
+      const proxyUrl = toMediaProxy(preferredUrl);
+      if (proxyUrl) return proxyUrl;
+      return preferredUrl;
+    }
+    
+    // Last resort: use originalUrl, thumbnailUrl, or avifUrl
+    const fallbackUrl = item?.originalUrl || item?.thumbnailUrl || item?.avifUrl || '';
+    if (!fallbackUrl) return '';
+    const proxyUrl = toMediaProxy(fallbackUrl);
+    if (proxyUrl) return proxyUrl;
+    return fallbackUrl;
+  }, [ZATA_PREFIX]);
+
+  const inputImageItems = React.useMemo(() => {
+    try {
+      const inputs = Array.isArray((selectedEntry as any)?.inputImages)
+        ? (selectedEntry as any).inputImages
+        : [];
+      console.log('[ImagePreviewModal] Processing inputImages:', {
+        hasInputImages: inputs.length > 0,
+        count: inputs.length,
+        rawInputs: inputs,
+        selectedEntryId: (selectedEntry as any)?.id,
+      });
+      const processed = inputs
+        .map((item: any, idx: number) => {
+          console.log(`[ImagePreviewModal] Processing input image ${idx}:`, {
+            item,
+            storagePath: item?.storagePath,
+            url: item?.url,
+            originalUrl: item?.originalUrl,
+          });
+          const url = normalizeInputMediaUrl(item);
+          console.log(`[ImagePreviewModal] Normalized URL for input ${idx}:`, url);
+          if (!url) {
+            console.warn('[ImagePreviewModal] Failed to normalize input image URL:', item);
+            return null;
+          }
+          return {
+            key: (item?.id || `input-${idx}`),
+            url,
+          };
+        })
+        .filter(Boolean);
+      if (inputs.length > 0 && processed.length === 0) {
+        console.warn('[ImagePreviewModal] Had inputImages but none processed successfully:', inputs);
+      }
+      console.log('[ImagePreviewModal] Final inputImageItems:', processed);
+      return processed;
+    } catch (err) {
+      console.error('[ImagePreviewModal] Error processing inputImageItems:', err);
+      return [];
+    }
+  }, [selectedEntry, normalizeInputMediaUrl]);
+
+  const calculateAspectRatio = (width: number, height: number): string => {
+    if (!width || !height || width <= 0 || height <= 0) return '—';
+    const ratio = width / height;
+    const tolerance = 0.01;
+    const commonRatios: Array<{ ratio: number; label: string }> = [
+      { ratio: 1.0, label: '1:1' },
+      { ratio: 4 / 3, label: '4:3' },
+      { ratio: 3 / 4, label: '3:4' },
+      { ratio: 16 / 9, label: '16:9' },
+      { ratio: 9 / 16, label: '9:16' },
+      { ratio: 3 / 2, label: '3:2' },
+      { ratio: 2 / 3, label: '2:3' },
+      { ratio: 21 / 9, label: '21:9' },
+      { ratio: 9 / 21, label: '9:21' },
+      { ratio: 16 / 10, label: '16:10' },
+      { ratio: 10 / 16, label: '10:16' },
+      { ratio: 5 / 4, label: '5:4' },
+      { ratio: 4 / 5, label: '4:5' },
+    ];
+    for (const common of commonRatios) {
+      if (Math.abs(ratio - common.ratio) < tolerance || Math.abs(ratio - 1 / common.ratio) < tolerance) {
+        return common.label;
+      }
+    }
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const divisor = gcd(width, height);
+    const w = width / divisor;
+    const h = height / divisor;
+    if (w <= 100 && h <= 100) return `${w}:${h}`;
+    return `${Math.round(ratio * 100) / 100}:1`;
+  };
+
+  const getAspectRatio = (): string => {
+    const stored = selectedEntry?.frameSize || selectedEntry?.aspect_ratio || selectedEntry?.aspectRatio;
+    if (stored && stored !== '—' && stored !== null && stored !== undefined) return stored;
+    const imgWidth = (selectedImage as any)?.width || (selectedEntry as any)?.width;
+    const imgHeight = (selectedImage as any)?.height || (selectedEntry as any)?.height;
+    if (imgWidth && imgHeight) return calculateAspectRatio(imgWidth, imgHeight);
+    if (imageDimensions?.width && imageDimensions?.height) {
+      return calculateAspectRatio(imageDimensions.width, imageDimensions.height);
+    }
+    return '—';
+  };
+
+  const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
+  const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
+  const displayedAspect = getAspectRatio();
+  const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
+  const cleanPrompt = getCleanPrompt(promptToDisplay);
+  const isLongPrompt = cleanPrompt.length > 280;
+  
+  // Check if this is a vectorize generation (should hide certain action buttons)
+  const generationType = (selectedEntry as any)?.generationType || '';
+  const normalizedGenType = String(generationType).toLowerCase().replace(/[_-]/g, '-');
+  const isVectorizeGeneration = normalizedGenType === 'vectorize' || 
+                                 normalizedGenType === 'image-vectorize' || 
+                                 normalizedGenType === 'image-to-svg' ||
+                                 normalizedGenType === 'image_to_svg' ||
+                                 normalizedGenType.includes('vector');
+  const entryTimestamp = selectedEntry?.timestamp || selectedEntry?.createdAt || selectedEntry?.updatedAt;
+  const formattedDateTime = React.useMemo(() => {
+    if (!entryTimestamp) return '—';
+    try {
+      const d = new Date(entryTimestamp);
+      if (Number.isNaN(d.getTime())) return '—';
+      const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+      const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `${time} ${date}`;
+    } catch {
+      return '—';
+    }
+  }, [entryTimestamp]);
 
   if (!preview) return null;
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+    return toResourceProxy(urlOrPath || '') || '';
   };
 
   // removed earlier duplicate definition; using single helper below near navigation
-
-  const extractStyleFromPrompt = (promptText: string): string | undefined => {
-    const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
-    return match?.[1]?.trim();
-  };
 
   const handleDelete = async () => {
     try {
@@ -425,6 +643,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       if (remainingImages.length === 0) {
         await axiosInstance.delete(`/api/generations/${entry.id}`);
         try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        // Clear/reset document title when image is deleted
+        if (typeof document !== 'undefined') {
+          document.title = 'WildMind';
+        }
         onClose();
       } else {
         // Otherwise, update the entry to remove just this image
@@ -453,10 +675,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-
-  const getCleanPrompt = (promptText: string): string => {
-    return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
-  };
 
   const copyPrompt = async (prompt: string, buttonId: string) => {
     try {
@@ -511,18 +729,24 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         return;
       }
 
-      // Fetch the image as a blob
-      const downloadUrl = toProxyDownloadUrl(url);
-      if (!downloadUrl) return;
-      
-      const response = await fetch(downloadUrl, {
+      // Fetch the original resource (use resource proxy for Zata paths)
+      const resourceUrl = toResourceProxy(url) || url;
+      const response = await fetch(resourceUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
-      const fileName = (toProxyPath(url) || 'generated-image').split('/').pop() || 'generated-image.jpg';
-      
+      let fileName = 'generated-image.jpg';
+      try {
+        const storagePath = (selectedImage as any)?.storagePath || '';
+        if (storagePath) fileName = storagePath.split('/').pop() || fileName;
+        else {
+          const parsed = new URL(url);
+          fileName = parsed.pathname.split('/').pop() || fileName;
+        }
+      } catch {}
+
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
       
@@ -574,88 +798,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   };
 
-  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
-  const selectedImage: any = selectedPair.image || preview?.image;
-  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
-  const isUserUploadSelected = false;
-
   // Helper function to calculate aspect ratio from dimensions
-  const calculateAspectRatio = (width: number, height: number): string => {
-    if (!width || !height || width <= 0 || height <= 0) return '—';
-    
-    const ratio = width / height;
-    const tolerance = 0.01; // 1% tolerance for matching common ratios
-    
-    // Common aspect ratios with their decimal values
-    const commonRatios: Array<{ ratio: number; label: string }> = [
-      { ratio: 1.0, label: '1:1' },
-      { ratio: 4/3, label: '4:3' },
-      { ratio: 3/4, label: '3:4' },
-      { ratio: 16/9, label: '16:9' },
-      { ratio: 9/16, label: '9:16' },
-      { ratio: 3/2, label: '3:2' },
-      { ratio: 2/3, label: '2:3' },
-      { ratio: 21/9, label: '21:9' },
-      { ratio: 9/21, label: '9:21' },
-      { ratio: 16/10, label: '16:10' },
-      { ratio: 10/16, label: '10:16' },
-      { ratio: 5/4, label: '5:4' },
-      { ratio: 4/5, label: '4:5' },
-    ];
-    
-    // Check if ratio matches any common ratio (within tolerance)
-    for (const common of commonRatios) {
-      if (Math.abs(ratio - common.ratio) < tolerance || Math.abs(ratio - 1/common.ratio) < tolerance) {
-        return common.label;
-      }
-    }
-    
-    // If no match, calculate simplified ratio using GCD
-    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
-    const divisor = gcd(width, height);
-    const w = width / divisor;
-    const h = height / divisor;
-    
-    // If the simplified ratio is reasonable, return it
-    if (w <= 100 && h <= 100) {
-      return `${w}:${h}`;
-    }
-    
-    // Otherwise, return a rounded decimal ratio
-    return `${Math.round(ratio * 100) / 100}:1`;
-  };
-
-  // Get aspect ratio from entry or calculate from image dimensions
-  const getAspectRatio = (): string => {
-    // First try to get from stored fields
-    const stored = selectedEntry?.frameSize || selectedEntry?.aspect_ratio || selectedEntry?.aspectRatio;
-    if (stored && stored !== '—' && stored !== null && stored !== undefined) return stored;
-    
-    // Try to get from image metadata (stored in database)
-    const imgWidth = (selectedImage as any)?.width || (selectedEntry as any)?.width;
-    const imgHeight = (selectedImage as any)?.height || (selectedEntry as any)?.height;
-    if (imgWidth && imgHeight) {
-      return calculateAspectRatio(imgWidth, imgHeight);
-    }
-    
-    // Try to get from loaded image dimensions (from onLoad event)
-    if (imageDimensions && imageDimensions.width && imageDimensions.height) {
-      return calculateAspectRatio(imageDimensions.width, imageDimensions.height);
-    }
-    
-    return '—';
-  };
-
-  const displayedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '—';
-  const displayedAspect = getAspectRatio();
-  const cleanPrompt = getCleanPrompt(selectedEntry?.prompt || '');
-  const isLongPrompt = cleanPrompt.length > 280;
-
-
 
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/resource/${encodeURIComponent(path)}` : '';
+    return toResourceProxy(urlOrPath || '') || '';
   };
 
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
@@ -663,9 +809,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const navigateToEdit = (feature: 'upscale' | 'remove-bg' | 'resize') => {
     try {
       const storagePath = (selectedImage as any)?.storagePath || (() => {
-        const original = selectedImage?.url || '';
-        const pathCandidate = toProxyPath(original);
-        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = selectedImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
       })();
 
       // Prefer stable frontend proxy from storagePath; fallback to http(s) url; never use blob:/data:
@@ -685,9 +835,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     try {
       // Navigate to Live Canvas with the current image
       const storagePath = (selectedImage as any)?.storagePath || (() => {
-        const original = selectedImage?.url || '';
-        const pathCandidate = toProxyPath(original);
-        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = selectedImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
       })();
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
       const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
@@ -706,9 +860,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       // Navigate to Video Generation with the current image as input
       // Use the same approach as Remix button - use storagePath to construct direct Zata URL
       const storagePath = (selectedImage as any)?.storagePath || (() => {
-        const original = selectedImage?.url || '';
-        const pathCandidate = toProxyPath(original);
-        return pathCandidate && pathCandidate !== original ? pathCandidate : '';
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = selectedImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
       })();
       
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
@@ -762,7 +920,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
     <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-6 right-10 z-[100] md:p-0 p-0 touch-manipulation" onClick={onClose}>✕</button>
       <div 
-        className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
+        className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
       > 
         {/* Header */}
@@ -782,12 +940,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         {/* Content */}
         <div className=" md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[35vh] md:h-[84vh] md:flex-1 group flex items-center justify-center ">
-            {selectedImage?.url && (
+          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center ">
+            { (selectedImage?.avifUrl || selectedImage?.url) && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
-                  src={objectUrl || toMediaProxyUrl(selectedImage.url)}
-                  alt={selectedEntry?.prompt}
+                  src={objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage.url) || (selectedImage as any)?.avifUrl || selectedImage.url)}
+                  alt={selectedEntry?.prompt || ""}
+                  aria-hidden="true"
+                  decoding="async"
+                  fetchPriority="high"
                   className="object-contain w-auto h-auto max-w-full max-h-full mx-auto"
                   onLoad={(e) => {
                     const img = e.target as HTMLImageElement;
@@ -798,6 +959,29 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 />
                 {isUserUploadSelected && (
                   <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm ">User upload</div>
+                )}
+                {/* Left/Right Navigation Buttons */}
+                {sameDateGallery.length > 1 && (
+                  <>
+                    <button
+                      aria-label="Previous image"
+                      onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      aria-label="Next image"
+                      onClick={(e) => { e.stopPropagation(); goNext(e); }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -822,7 +1006,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <div className="flex gap-2">
               <div className="relative group flex-1">
                 <button
-                  onClick={() => downloadImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => downloadImage((selectedImage as any)?.url || (preview.image as any)?.url || (selectedImage as any)?.avifUrl || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -831,17 +1015,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                     <path d="M5 19h14" />
                   </svg>
                 </button>
-                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
+                <div className="pointer-events-none absolute  left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download</div>
               </div>
 
               <div className="relative group flex-1">
                 <button
-                  onClick={() => shareImage(selectedImage?.url || preview.image.url)}
+                  onClick={() => shareImage((selectedImage as any)?.url || (preview.image as any)?.url || (selectedImage as any)?.avifUrl || preview.image.url)}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm"
                 >
                   <Share className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
               </div>
 
               <div className="relative group flex-1">
@@ -852,25 +1036,29 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
               </div>
 
               <div className="relative group flex-1">
                 <button
                   onClick={toggleVisibility}
-                  className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm`}
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm`}
                   aria-pressed={isPublicFlag}
                   aria-label="Toggle visibility"
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
-                  {isPublicFlag ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
-                  )}
+                  <Image 
+                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                    alt={isPublicFlag ? "Public" : "Private"} 
+                    width={16} 
+                    height={16} 
+                    className="w-5 h-5"
+                  />
                 </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
               </div>
+
+              
             </div>
             </div>
 
@@ -879,7 +1067,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
              {/* Date */}
              <div className="mb-1 ">
               <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
-              <div className="text-white/80 text-sm">{new Date(selectedEntry?.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(selectedEntry?.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+              <div className="text-white/80 text-sm">{formattedDateTime}</div>
             </div>
 
             
@@ -935,10 +1123,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Model:</span>
                   <span className="text-white/80 text-sm">{getModelDisplayName(selectedEntry?.model)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Style:</span>
-                  <span className="text-white/80 text-sm">{displayedStyle}</span>
-                </div>
+                {displayedStyle && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Style:</span>
+                    <span className="text-white/80 text-sm">{displayedStyle}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Aspect ratio:</span>
                   <span className="text-white/80 text-sm">{displayedAspect}</span>
@@ -947,8 +1137,36 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Image</span>
                 </div>
+                {imageDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{imageDimensions.width} × {imageDimensions.height}</span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {inputImageItems.length > 0 && (
+              <div className="mb-4">
+                <div className="text-white/80 text-sm uppercase tracking-wider mb-1">Your Upload</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {inputImageItems.map((item: { key: string; url: string }) => (
+                    <div
+                      key={item.key}
+                      className="relative w-full aspect-square rounded-lg overflow-hidden border border-white/15 bg-white/5"
+                    >
+                      <img
+                        src={item.url}
+                        alt="Input upload"
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Gallery - show all images from this generation run in original order */}
             {Array.isArray((selectedEntry as any)?.images) && (selectedEntry as any).images.length > 1 && (
               <div className="mb-4">
@@ -962,7 +1180,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
-                      <img src={toMediaProxyUrl(pair.image?.url) || pair.image?.url} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                      {(() => {
+                        const thumbBest = (pair.image?.thumbnailUrl || pair.image?.avifUrl || pair.image?.url);
+                        const thumbSrc = toMediaProxy(thumbBest) || thumbBest;
+                        return <img src={thumbSrc} alt={`Image ${idx+1}`} aria-hidden="true" decoding="async" className="w-full h-full object-cover" />
+                      })()}
                     </button>
                   ))}
                 </div>
@@ -970,86 +1192,108 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             )}
 
             {/* Actions */}
-            <div className="mt-6 space-y-2">
-              <div className="flex gap-2">
+            {!isVectorizeGeneration && (
+              <div className="mt-6 space-y-2">
+                <div className="flex gap-2">
+
+                {!isVectorizeGeneration && (
+                  <button
+                    onClick={() => navigateToEdit('upscale')}
+                    className="flex-1 px-3 py-2 items-center justify-center rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                  Edit Image                   
+                  </button>
+              )}
+                  <button
+                    onClick={() => navigateToEdit('upscale')}
+                    className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Upscale
+                  </button>
+                  {/* <button
+                    onClick={() => navigateToEdit('remove-bg')}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Remove background
+                  </button>
+                   */}
+                </div>
+
+                <div className="flex gap-2">
                 <button
-                  onClick={() => navigateToEdit('upscale')}
-                  className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  Upscale
-                </button>
+                    onClick={handleCreateVideo}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    {/* <Video className="h-4 w-4" /> */}
+                    Create Video
+                  </button>
                 <button
-                  onClick={() => navigateToEdit('remove-bg')}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  onClick={() => {
+                    try {
+                      const storagePath = (selectedImage as any)?.storagePath || (() => {
+                        try {
+                          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+                          const original = selectedImage?.url || '';
+                          if (!original) return '';
+                          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+                        } catch {}
+                        return '';
+                      })();
+                      const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+                      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+                      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+                      const qs = new URLSearchParams();
+                      // Use userPrompt for remix if available, otherwise use cleanPrompt
+                      const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
+                      qs.set('prompt', remixPrompt);
+                      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+                      if (storagePath) {
+                        qs.set('sp', storagePath);
+                      } else if (imgUrl) {
+                        // If no storagePath, set image URL directly
+                        qs.set('image', imgUrl);
+                      }
+                      // also pass model, frameSize and style for preselection
+                      console.log('preview.entry', selectedEntry);
+                      if (selectedEntry?.model) {
+                        // Map backend model ids to UI dropdown ids where needed
+                        const m = String(selectedEntry.model);
+                        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+                        qs.set('model', mapped);
+                      }
+                      if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
+                      const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
+                      if (sty) qs.set('style', String(sty));
+                      // Client-side navigation to avoid full page reload
+                      router.push(`/text-to-image?${qs.toString()}`);
+                      onClose();
+                    } catch {}
+                  }}
+                  className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 >
-                  Remove background
+                  Recreate 
                 </button>
+                </div>
+
+                {/* New buttons row */}
+                {/* <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={handleEditInLiveCanvas}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    <Palette className="h-4 w-4" />
+                    Edit in Live Canvas
+                  </button>
+                  <button
+                    onClick={handleCreateVideo}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                  >
+                    Create Video
+                  </button>
+                </div> */}
                 
               </div>
-
-              <div className="flex gap-2">
-              <button
-                  onClick={() => navigateToEdit('resize')}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  Resize
-                </button>
-              <button
-                onClick={() => {
-                  try {
-                    const storagePath = (selectedImage as any)?.storagePath || (() => {
-                      const original = selectedImage?.url || '';
-                      const pathCandidate = toProxyPath(original);
-                      return pathCandidate && pathCandidate !== original ? pathCandidate : '';
-                    })();
-                    const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-                    const imgUrl = toFrontendProxyResourceUrl(storagePath) || fallbackHttp;
-                    const qs = new URLSearchParams();
-                    qs.set('prompt', cleanPrompt);
-                    if (imgUrl) qs.set('image', imgUrl);
-                    if (storagePath) qs.set('sp', storagePath);
-                    // also pass model, frameSize and style for preselection
-                    console.log('preview.entry', selectedEntry);
-                    if (selectedEntry?.model) {
-                      // Map backend model ids to UI dropdown ids where needed
-                      const m = String(selectedEntry.model);
-                      const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
-                      qs.set('model', mapped);
-                    }
-                    if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
-                    const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
-                    if (sty) qs.set('style', String(sty));
-                    // Client-side navigation to avoid full page reload
-                    router.push(`/text-to-image?${qs.toString()}`);
-                    onClose();
-                  } catch {}
-                }}
-                className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-              >
-                Remix 
-              </button>
-              </div>
-
-              {/* New buttons row */}
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleEditInLiveCanvas}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  {/* <Palette className="h-4 w-4" /> */}
-                  Edit in Live Canvas
-                </button>
-                <button
-                  onClick={handleCreateVideo}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  {/* <Video className="h-4 w-4" /> */}
-                  Create Video
-                </button>
-              </div>
-              
-            </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -1100,8 +1344,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               }}
             >
               <img
-                src={objectUrl || toMediaProxyUrl(selectedImage?.url) || toMediaProxyUrl(preview.image.url)}
-                alt={selectedEntry?.prompt}
+                src={objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage?.url) || (selectedImage as any)?.avifUrl || selectedImage?.url) || (toMediaProxy((preview.image as any)?.avifUrl || preview.image.url) || (preview.image as any)?.avifUrl || preview.image.url)}
+                alt={selectedEntry?.prompt || ""}
+                aria-hidden="true"
+                decoding="async"
+                fetchPriority="high"
                 onLoad={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
                   setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });

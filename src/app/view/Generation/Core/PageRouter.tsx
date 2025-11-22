@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import TextToImageInputBox from '../ImageGeneration/TextToImage/compo/InputBox';
+import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
 import LogoGenerationInputBox from '../ImageGeneration/LogoGeneration/compo/InputBox';
 import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
-import TextToVideoInputBox from '../VideoGeneration/TextToVideo/compo/InputBox';
-import TextToMusicInputBox from '../MusicGeneration/TextToMusic/compo/InputBox';
+import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
+import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
+import MusicGenerationPage from '../MusicGeneration/MusicGenerationPage';
 import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';
 import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithModelPoseInputBox';
 import AdGenerationInputBox from '../AdGeneration/compo/InputBox';
@@ -32,11 +34,11 @@ const generators: GeneratorComponentMap = {
   'sticker-generation': StickerGenerationInputBox,
   
   // Video Generation Features
-  'text-to-video': TextToVideoInputBox,
-  'image-to-video': TextToVideoInputBox, // Uses same component as text-to-video (supports image-to-video mode)
+  'text-to-video': VideoGenerationPage,
+  'image-to-video': VideoGenerationPage, // Uses same component as text-to-video (supports image-to-video mode)
   
   // Music Generation Features
-  'text-to-music': TextToMusicInputBox,
+  'text-to-music': MusicGenerationPage,
   
   // Branding Kit Features
   'mockup-generation': MockupGenerationInputBox,
@@ -49,10 +51,25 @@ const generators: GeneratorComponentMap = {
   'edit-video': EditVideoInterface,
 };
 
-export default function PageRouter() {
+export default function PageRouter({ currentView: propCurrentView, currentGenerationType: propCurrentGenerationType }: { currentView?: ViewType; currentGenerationType?: GenerationType } = {}) {
   const dispatch = useAppDispatch();
-  const currentView = useAppSelector((state: any) => state.ui?.currentView || 'generation');
-  const currentGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image') as GenerationType;
+  const selectedView = useAppSelector((state: any) => state.ui?.currentView || 'generation');
+  const selectedGenerationType = useAppSelector((state: any) => state.ui?.currentGenerationType || 'text-to-image') as GenerationType;
+  const currentView = propCurrentView ?? selectedView;
+  const currentGenerationType = propCurrentGenerationType ?? selectedGenerationType;
+  // Derive generation type directly from the URL path to avoid first-render mismatch on refresh
+  const pathname = usePathname();
+  const pathType: GenerationType | undefined = React.useMemo(() => {
+    const p = pathname || '';
+    if (p.startsWith('/text-to-image') || p.startsWith('/image-to-image')) return 'text-to-image';
+    if (p.startsWith('/text-to-video')) return 'text-to-video';
+    if (p.startsWith('/image-to-video')) return 'image-to-video';
+    if (p.startsWith('/text-to-music')) return 'text-to-music';
+    if (p.startsWith('/edit-image')) return 'edit-image';
+    if (p.startsWith('/edit-video')) return 'edit-video';
+    return undefined;
+  }, [pathname]) as GenerationType | undefined;
+  const effectiveGenerationType: GenerationType = pathType ?? currentGenerationType;
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false);
@@ -116,8 +133,13 @@ export default function PageRouter() {
 
         // Skip central fetch for self-managed pages that load their own history (to prevent duplicate requests)
         const selfManagedTypes = new Set<GenerationType>([
+          // Pages that now manage their own initial loads via a unified hook
+          'text-to-image',
+          'text-to-video',
+          'image-to-video',
           'logo',
           'sticker-generation',
+          'text-to-music',
           'product-generation',
           'ad-generation',
           'mockup-generation',
@@ -248,7 +270,7 @@ export default function PageRouter() {
   }
 
   // Handle generation features
-  const GeneratorComponent = generators[currentGenerationType] || TextToImageInputBox;
+  const GeneratorComponent = generators[effectiveGenerationType] || TextToImageInputBox;
   
   return (
     <div className="relative min-h-screen">

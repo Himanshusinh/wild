@@ -8,6 +8,7 @@ import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import ToastMount from './toast-mount'
 import ConsoleSilencer from "@/components/ConsoleSilencer";
+import ChromeMount from './chrome-mount'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,6 +71,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ReduxProvider>
           <AuthBootstrap />
           <ConsoleSilencer />
+          {/* App chrome (Nav + SidePanel) mounted conditionally; hidden on landing page */}
+          <ChromeMount />
           {children}
           <Toaster
             position="top-center"

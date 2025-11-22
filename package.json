@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "node --max-old-space-size=8192 node_modules/next/dist/bin/next build",
     "postbuild": "next-sitemap",
     "ping-sitemap": "node scripts/ping-sitemap.js",
     "postdeploy": "npm run ping-sitemap",
@@ -37,6 +37,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.0.1",
     "next-sitemap": "4.2.3",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",

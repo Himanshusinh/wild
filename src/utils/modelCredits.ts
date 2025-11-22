@@ -37,6 +37,11 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 
   // Music Generation Models
   'music-1.5': 90,              // Music 1.5 (Up to 90s)
+  'elevenlabs-tts': 98,         // ElevenLabs TTS v3
+  'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS
+  'maya-tts': 98,                // Maya TTS
+  'elevenlabs-dialogue': 98,     // ElevenLabs Dialogue
+  'elevenlabs-sfx': 98,          // ElevenLabs Sound Effects
 
   // Ad Generation Models (same as image generation)
   'flux-kontext-pro-ad': 110,

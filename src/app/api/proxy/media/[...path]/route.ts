@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic';
 const FORWARD_HEADERS = ['content-type','content-length','accept-ranges','content-range','cache-control','etag','last-modified','content-disposition'];
 
 export async function GET(req: Request, context: { params: Promise<{ path?: string[] }> }) {
+  let encodedPath = '';
   try {
     const { path } = await context.params;
-    const encodedPath = (path || []).join('/');
+    encodedPath = (path || []).join('/');
     if (!encodedPath) {
       return new Response(JSON.stringify({ error: 'Missing path' }), { status: 400 });
     }
@@ -13,9 +14,12 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
     // Decode the path to get the actual storage path
     const decodedPath = decodeURIComponent(encodedPath);
     
-    // Construct Zata URL directly
+    // Check if the path is already a full external URL (provider URL like fal.media, replicate.delivery, etc.)
+    const isExternalUrl = /^https?:\/\//i.test(decodedPath);
+    
+    // Construct target URL: use decoded path directly if external, otherwise construct Zata URL
     const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    const targetUrl = `${ZATA_PREFIX}${decodedPath}`;
+    const targetUrl = isExternalUrl ? decodedPath : `${ZATA_PREFIX}${decodedPath}`;
 
     const forwardHeaders: Record<string, string> = {};
     const range = req.headers.get('range');
@@ -26,20 +30,28 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
     // Add CORS headers for video streaming
     forwardHeaders['Accept'] = '*/*';
     
+    // Add timeout for fetch requests
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     const resp = await fetch(targetUrl, { 
       method: 'GET', 
       headers: forwardHeaders,
       // Important: Don't follow redirects automatically for video files
-      redirect: 'follow'
-    });
+      redirect: 'follow',
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
 
     // If the backend proxy doesn't exist, try direct Zata access
-    if (!resp.ok && resp.status === 404) {
-      // Try direct fetch from Zata
+    if (!resp.ok && resp.status === 404 && !isExternalUrl) {
+      // Try direct fetch from Zata (only for internal paths, not external URLs)
+      const directController = new AbortController();
+      const directTimeout = setTimeout(() => directController.abort(), 30000);
       const directResp = await fetch(targetUrl, { 
         method: 'GET', 
-        headers: { 'Range': range || '' }
-      });
+        headers: { 'Range': range || '' },
+        signal: directController.signal
+      }).finally(() => clearTimeout(directTimeout));
       
       if (directResp.ok) {
         const outHeaders = new Headers();
@@ -88,6 +100,24 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
 
     return new Response(resp.body, { status: resp.status, headers: outHeaders });
   } catch (err: any) {
+    // Handle timeout errors
+    if (err?.name === 'AbortError') {
+      console.error('[Proxy Media] Timeout:', encodedPath);
+      return new Response(JSON.stringify({ error: 'Request timeout' }), { 
+        status: 504,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Handle fetch errors
+    if (err?.message?.includes('fetch failed')) {
+      console.error('[Proxy Media] Fetch failed:', err?.message, 'for path:', encodedPath);
+      return new Response(JSON.stringify({ error: 'Failed to fetch resource', details: err?.message }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     console.error('[Proxy Media] Error:', err?.message || err);
     return new Response(JSON.stringify({ error: 'Proxy failed', details: err?.message }), { 
       status: 500,

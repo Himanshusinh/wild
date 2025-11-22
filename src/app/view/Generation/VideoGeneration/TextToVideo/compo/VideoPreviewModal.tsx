@@ -1,12 +1,14 @@
  'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
+import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 interface VideoPreviewModalProps {
@@ -32,34 +34,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
 
-  const toProxyPath = (urlOrPath: any): string => {
-    if (!urlOrPath) return '';
-    if (typeof urlOrPath !== 'string') return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
-    // If it's already a storagePath-like value, return as-is
-    if (/^users\//.test(urlOrPath)) return urlOrPath;
-    // Otherwise, external URL – do not proxy
-    return '';
-  };
-
-  const toProxyResourceUrl = (urlOrPath: any) => {
-    const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS (Zata only)
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
-
-  const toProxyDownloadUrl = (urlOrPath: any) => {
-    const path = toProxyPath(urlOrPath);
-    // Use frontend-origin proxy route to avoid CORS (Zata only)
-    return path ? `/api/proxy/download/${encodeURIComponent(path)}` : '';
-  };
-
-  const toFrontendProxyResourceUrl = (urlOrPath: any) => {
-    if (!urlOrPath || typeof urlOrPath !== 'string') return '';
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
+  // Use shared helpers `toMediaProxy` and `toResourceProxy` from '@/lib/thumb' for proxying
 
   const extractStyleFromPrompt = (promptText: string): string | undefined => {
     const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
@@ -155,15 +130,15 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         return;
       }
 
-      const path = toProxyPath((preview.video as any)?.storagePath || url);
-      const downloadUrl = toProxyDownloadUrl(path || url);
-      if (!downloadUrl) return;
-      
-      const response = await fetch(downloadUrl, {
+      const path = (preview.video as any)?.storagePath || url;
+      const resourceUrl = toResourceProxy(path || url) || url;
+      if (!resourceUrl) return;
+
+      const response = await fetch(resourceUrl, {
         credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
-      
+
       const blob = await response.blob();
       const baseName = (path || 'video').split('/').pop() || `video-${Date.now()}.mp4`;
       const fileName = /\.[a-zA-Z0-9]+$/.test(baseName) ? baseName : `video-${Date.now()}.mp4`;
@@ -172,7 +147,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       
       await navigator.share({
         title: 'Wild Mind AI Generated Video',
-        text: `Check out this AI-generated video!\n${getCleanPrompt(preview.entry.prompt).substring(0, 100)}...`,
+        text: `Check out this AI-generated video!\n${getCleanPrompt((preview.entry as any).originalPrompt || preview.entry.prompt).substring(0, 100)}...`,
         files: [file]
       });
       
@@ -217,7 +192,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     } catch {}
   };
 
-  const displayedStyle = preview.entry.style || extractStyleFromPrompt(preview.entry.prompt) || '—';
+  const extractedStyle = preview.entry.style || extractStyleFromPrompt((preview.entry as any).originalPrompt || preview.entry.prompt);
+  const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = preview.entry.frameSize || '16:9';
 
   // Extract video URL and route through proxy for cross-origin safety
@@ -255,7 +231,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
   } else {
     const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-    const proxied = toProxyResourceUrl(videoPath);
+    const proxied = toMediaProxy(videoPath) || '';
     videoUrl = proxied || rawVideoUrl;
   }
 
@@ -264,11 +240,21 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   console.log('Extracted video URL:', videoUrl);
   console.log('Original video object:', preview.video);
 
-  const cleanPrompt = getCleanPrompt(preview.entry.prompt);
+  // Use originalPrompt if available (for Lipsync with hardcoded prefix), otherwise use prompt
+  // Prioritize originalPrompt from entry, then check video object, then fallback to prompt
+  const displayPrompt = (preview.entry as any).originalPrompt || (preview.video as any)?.originalPrompt || preview.entry.prompt;
+  // Debug: Log which prompt is being used
+  if ((preview.entry as any).originalPrompt) {
+    console.log('[VideoPreviewModal] Using originalPrompt:', (preview.entry as any).originalPrompt);
+  } else {
+    console.log('[VideoPreviewModal] originalPrompt not found, using prompt:', preview.entry.prompt);
+  }
+  const cleanPrompt = getCleanPrompt(displayPrompt);
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const [videoDuration, setVideoDuration] = React.useState<number | null>(null);
+  const [videoDimensions, setVideoDimensions] = React.useState<{ width: number; height: number } | null>(null);
   const isLongPrompt = cleanPrompt.length > 280;
   
   // Update isPublicFlag based on selected video
@@ -277,9 +263,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     setIsPublicFlag(isPublic);
   }, [preview.video]);
 
-  // Reset video duration when preview changes
+  // Reset video duration and dimensions when preview changes
   React.useEffect(() => {
     setVideoDuration(null);
+    setVideoDimensions(null);
   }, [preview]);
 
   // ---- Fullscreen helpers (unconditional hooks) ----
@@ -433,6 +420,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   onLoadedData={() => console.log('Video loaded successfully:', videoUrl)}
                   onLoadedMetadata={(e) => {
                     const video = e.currentTarget;
+                    if (video.videoWidth && video.videoHeight) {
+                      setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+                    }
                     if (video.duration && !isNaN(video.duration)) {
                       setVideoDuration(video.duration);
                       console.log('Video duration captured:', video.duration);
@@ -528,11 +518,13 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   aria-label="Toggle visibility"
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
-                  {isPublicFlag ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
-                  )}
+                  <Image 
+                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                    alt={isPublicFlag ? "Public" : "Private"} 
+                    width={16} 
+                    height={16} 
+                    className="w-4 h-4"
+                  />
                 </button>
                 <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
               </div>
@@ -597,10 +589,12 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Model:</span>
                   <span className="text-white/80 text-sm">{getModelDisplayName(preview.entry.model)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Style:</span>
-                  <span className="text-white/80 text-sm">{displayedStyle}</span>
-                </div>
+                {displayedStyle && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Style:</span>
+                    <span className="text-white/80 text-sm">{displayedStyle}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/60 text-sm">Aspect ratio:</span>
                   <span className="text-white/80 text-sm">{displayedAspect}</span>
@@ -615,66 +609,91 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Video</span>
                 </div>
+                {videoDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{videoDimensions.width} × {videoDimensions.height}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Action Button */}
-            <div className="mt-6">
-              <button 
-                onClick={onClose}
-                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
-              >
-                Close Preview
-              </button>
-            </div>
-            </div>
+            {/* Your Uploads (images/videos) */}
+            {(inputImages.length + inputVideos.length) > 0 && (
+              <div className="mb-4">
+                                {/* <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads ({inputImages.length + inputVideos.length})</div> */}
+
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {inputImages.map((img: any, idx: number) => {
+                    const src = toResourceProxy(img?.storagePath || img?.url || img?.firebaseUrl || img?.originalUrl || '');
+                    if (!src) return null;
+                    return (
+                      <div key={`up-img-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
+                        <Image src={src} alt={`Upload ${idx + 1}`} fill className="object-cover" />
+                      </div>
+                    );
+                  })}
+                  {inputVideos.map((vid: any, idx: number) => {
+                    const vsrc = toMediaProxy(vid?.storagePath || vid?.url || vid?.firebaseUrl || vid?.originalUrl || '');
+                    if (!vsrc) return null;
+                    return (
+                      <div key={`up-vid-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
+                        <video src={vsrc} className="w-full h-full object-cover" muted autoPlay loop playsInline />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* No explicit close button per request */}
           </div>
         </div>
-        {/* Fullscreen viewer overlay */}
-        {isFsOpen && (
-          <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            <div className="absolute top-3 right-4 z-[90]">
-              <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
-            </div>
+      </div>
+      {isFsOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute top-3 right-4 z-[90]">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
+          </div>
+          <div
+            ref={fsContainerRef}
+            className="relative w-full h-full cursor-zoom-in"
+            onWheel={fsOnWheel}
+            onMouseDown={fsOnMouseDown}
+            onMouseMove={fsOnMouseMove}
+            onMouseUp={fsOnMouseUp}
+            onMouseLeave={fsOnMouseUp}
+            onContextMenu={(e)=>{e.preventDefault();}}
+            style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+          >
             <div
-              ref={fsContainerRef}
-              className="relative w-full h-full cursor-zoom-in"
-              onWheel={fsOnWheel}
-              onMouseDown={fsOnMouseDown}
-              onMouseMove={fsOnMouseMove}
-              onMouseUp={fsOnMouseUp}
-              onMouseLeave={fsOnMouseUp}
-              onContextMenu={(e)=>{e.preventDefault();}}
-              style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}
             >
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}
-              >
-                <video
-                  key={videoUrl}
-                  src={videoUrl}
-                  controls
-                  autoPlay={true}
-                  muted={false}
-                  className="max-w-full max-h-full object-contain select-none"
-                  onLoadedMetadata={(e) => {
-                    const v = e.currentTarget as HTMLVideoElement;
-                    setFsNaturalSize({ width: v.videoWidth || 1280, height: v.videoHeight || 720 });
-                    if (v.duration && !isNaN(v.duration)) {
-                      setVideoDuration(v.duration);
-                      console.log('Fullscreen video duration captured:', v.duration);
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
-              Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
+              <video
+                key={videoUrl}
+                src={videoUrl}
+                controls
+                autoPlay={true}
+                muted={false}
+                className="max-w-full max-h-full object-contain select-none"
+                onLoadedMetadata={(e) => {
+                  const v = e.currentTarget as HTMLVideoElement;
+                  setFsNaturalSize({ width: v.videoWidth || 1280, height: v.videoHeight || 720 });
+                  if (v.duration && !isNaN(v.duration)) {
+                    setVideoDuration(v.duration);
+                    console.log('Fullscreen video duration captured:', v.duration);
+                  }
+                }}
+              />
             </div>
           </div>
-        )}
-      </div>
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
+            Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
+          </div>
+        </div>
+      )}
     </div>
   );
 };

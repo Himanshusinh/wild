@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { usePathname, useSearchParams } from 'next/navigation';
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import NextImage from "next/image";
 import { ChevronUp } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
@@ -27,19 +27,19 @@ import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenera
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
-  loadHistory,
-  setFilters,
-  clearHistory,
   removeHistoryEntry,
+  loadHistory,
+  addHistoryEntry,
+  updateHistoryEntry,
 } from "@/store/slices/historySlice";
+import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import toast from 'react-hot-toast';
+import { enhancePromptAPI } from '@/lib/api/geminiApi';
 // Frontend history writes removed; rely on backend history service
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
-// No-op action creators to satisfy existing dispatch calls without affecting store
-const updateHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
-const addHistoryEntry = (_: any) => ({ type: 'history/noop' } as any);
+// Note: addHistoryEntry and updateHistoryEntry are now imported from historySlice
 
 // Import the new components
 import ModelsDropdown from "./ModelsDropdown";
@@ -58,9 +58,14 @@ import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
+import { toResourceProxy, toZataPath } from '@/lib/thumb';
+// Replaced per-page IntersectionObserver with unified bottom scroll pagination
+import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
+import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
@@ -78,19 +83,119 @@ const InputBox = () => {
   
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  
+  // Track which images have loaded to hide shimmer effect
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  // Local state to track prompt enhancement (loading skeleton)
+  const [isEnhancing, setIsEnhancing] = useState(false);
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
+  
+  // Track entries that have been added to history to prevent duplicate rendering
+  // This ref is updated immediately when entries are added, before React re-renders
+  const historyEntryIdsRef = useRef<Set<string>>(new Set());
+
+  // Get current entries from Redux (will be updated on each render)
+  const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
 
   // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
+  // Also check if the entry already exists in Redux history to prevent duplicates
   useEffect(() => {
     const entry = localGeneratingEntries[0] as any;
-    if (!entry) return;
-    if (entry.status === 'completed' || entry.status === 'failed') {
-      const timer = setTimeout(() => setLocalGeneratingEntries([]), 1500);
-      return () => clearTimeout(timer);
+    if (!entry) {
+      // Don't reset button state here - only reset when entry status changes to completed/failed
+      // This ensures button stays in "Generating..." state during generation
+      return;
     }
-  }, [localGeneratingEntries]);
+    
+    // Check if this entry already exists in Redux history (by id or firebaseHistoryId)
+    // Check all possible ID combinations to catch duplicates
+    const entryId = entry.id;
+    const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+    
+    // FIRST: Check ref (updated immediately when entry is added to history)
+    // This catches duplicates even before Redux state propagates
+    const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
+                       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
+    
+    console.log('[DEBUG useEffect] Checking local entry:', {
+      entryId,
+      entryFirebaseId,
+      entryStatus: entry.status,
+      refSize: historyEntryIdsRef.current.size,
+      refContents: Array.from(historyEntryIdsRef.current),
+      existsInRef,
+      entryIdInRef: entryId ? historyEntryIdsRef.current.has(entryId) : false,
+      entryFirebaseIdInRef: entryFirebaseId ? historyEntryIdsRef.current.has(entryFirebaseId) : false
+    });
+    
+    // SECOND: Check Redux state
+    const existsInHistory = existingEntries.some((e: HistoryEntry) => {
+      const eId = e.id;
+      const eFirebaseId = (e as any)?.firebaseHistoryId;
+      // Check all possible ID matches
+      if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
+      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
+      return false;
+    });
+    
+    const matchingHistoryEntry = existingEntries.find((e: HistoryEntry) => {
+      const eId = e.id;
+      const eFirebaseId = (e as any)?.firebaseHistoryId;
+      if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
+      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
+      return false;
+    });
+    
+    console.log('[DEBUG useEffect] Redux state check:', {
+      existsInHistory,
+      existingEntriesCount: existingEntries.length,
+      matchingEntry: matchingHistoryEntry ? {
+        id: matchingHistoryEntry.id,
+        firebaseId: (matchingHistoryEntry as any)?.firebaseHistoryId,
+        status: matchingHistoryEntry.status
+      } : null
+    });
+    
+    // CRITICAL: If entry exists in ref OR history, immediately clear local entry
+    // This prevents flickering - once in history, history handles all rendering
+    if (existsInRef || existsInHistory) {
+      console.log('[DEBUG useEffect] CLEARING local entry (duplicate found):', {
+        existsInRef,
+        existsInHistory,
+        entryId,
+        entryFirebaseId
+      });
+      setIsGeneratingLocally(false);
+      setLocalGeneratingEntries((prev) => {
+        const beforeCount = prev.length;
+        const filtered = prev.filter((e) => {
+          const eId = e.id || (e as any)?.firebaseHistoryId;
+          const entryIdToMatch = entry.id || (entry as any)?.firebaseHistoryId;
+          return eId !== entryIdToMatch;
+        });
+        console.log('[DEBUG useEffect] Local entries after filter:', {
+          before: beforeCount,
+          after: filtered.length,
+          removed: beforeCount - filtered.length
+        });
+        return filtered;
+      });
+      return;
+    }
+    
+    console.log('[DEBUG useEffect] Keeping local entry (no duplicates found):', {
+      entryId,
+      entryFirebaseId
+    });
+    
+    // If entry completes/fails but not in history yet, reset button state
+    if (entry.status === 'completed' || entry.status === 'failed') {
+      setIsGeneratingLocally(false);
+    }
+    // Keep button in "Generating..." state while status is 'generating' or any other status
+  }, [localGeneratingEntries, existingEntries]);
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
@@ -102,12 +207,21 @@ const InputBox = () => {
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
+      
+      // Handle image upload - prioritize sp (storage path) over image URL
       if (sp) {
-        const proxied = `/api/proxy/resource/${encodeURIComponent(sp)}`;
-        dispatch(setUploadedImages([proxied] as any));
+        const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const directUrl = `${zataBase}${decodedPath}`;
+        dispatch(setUploadedImages([directUrl] as any));
       } else if (img) {
-        dispatch(setUploadedImages([img] as any));
+        // Ensure the image URL is valid and not a blob/data URL
+        const imageUrl = img.trim();
+        if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+          dispatch(setUploadedImages([imageUrl] as any));
+        }
       }
+      
       if (prm) dispatch(setPrompt(prm));
       if (mdl) {
         const mapIncomingModel = (m: string): string => {
@@ -135,52 +249,126 @@ const InputBox = () => {
         window.history.replaceState({}, '', current.toString());
       }
     } catch {}
-  }, [dispatch, searchParams]);
+  }, [dispatch, searchParams, pathname]);
 
-  // Load history on mount (scoped to text-to-image) — single initial request, no auto-fill loop (match Sticker UX)
+  // Unified initial load (single guarded request) via custom hook
+  const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-image', initialLimit: 50 });
+  
+  // Also load vectorize / upscale / edit generations once, without triggering backend validation errors.
+  // Backend validators do not allow querying these generationType values, so we perform one broad
+  // unfiltered request and client-filter the operation entries immediately (no 1s delay).
   useEffect(() => {
-    console.log('[Image] useEffect: mount -> loading image history');
-    (async () => {
+    const loadAdditionalOps = async () => {
       try {
-        // Skip if route already changed during navigation
-        if (typeof pathname === 'string' && !pathname.includes('/text-to-image')) {
-          console.log('[Image] initial load skipped: pathname not text-to-image', { pathname });
-          return;
-        }
-        if (loadLockRef.current) {
-          console.log('[Image] initial load skipped (lock)');
-          return;
-        }
-        loadLockRef.current = true;
-        
-        const baseFilters: any = { generationType: 'text-to-image' };
-        const debugTag = `page:image:${Date.now()}`;
-        // Set filters early so other observers (PageRouter) show correct type immediately
-        dispatch(setFilters(baseFilters));
-        dispatch(clearHistory());
-        console.log('[Image] dispatch loadHistory', { baseFilters, limit: 50, debugTag });
-        await (dispatch as any)(loadHistory({ 
-          filters: baseFilters,
-          paginationParams: { limit: 50 },
-          requestOrigin: 'page',
-          expectedType: 'text-to-image',
-          debugTag
-        })).unwrap();
-        console.log('[Image] initial loadHistory fulfilled');
-      } catch (e: any) {
-        if (e && e.name === 'ConditionError') {
-          // benign: another in-flight request finished first
-        } else {
-          console.error('[Image] initial loadHistory error', e);
-        }
-      } finally {
+        const client = axiosInstance;
+        const params: any = { limit: 60, sortBy: 'createdAt' }; // omit generationType entirely
+        const res = await client.get('/api/generations', { params });
+        const result = res.data?.data || { items: [] };
+        const raw = (result.items || []).map((it: any) => {
+          const created = it?.createdAt || it?.updatedAt || it?.timestamp;
+          const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+          return { ...it, timestamp: iso, createdAt: iso };
+        });
+        const wanted = new Set(['image-upscale','image_upscale','image-edit','image_edit','image-to-svg','image_to_svg','vectorize','image-vectorize']);
+        const filtered = raw.filter((it: any) => wanted.has(String(it.generationType)));
+        setAdditionalOpEntries(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const storeIds = new Set((historyEntriesRawRef.current || []).map((e: any) => e.id));
+          const merged = [...prev];
+          filtered.forEach((it: { id: string }) => {
+            if (!existingIds.has(it.id) && !storeIds.has(it.id)) merged.push(it);
+          });
+          return merged;
+        });
+        console.log('[additionalOps] loaded', { totalFetched: raw.length, operations: filtered.length });
+      } catch (e) {
+        try {
+          const err: any = e;
+          console.warn('[additionalOps] broad fetch failed', { status: err?.response?.status, message: err?.response?.data?.message || err?.message });
+        } catch {}
       }
-    })();
-  }, [dispatch, pathname]);
+    };
+    loadAdditionalOps();
+  }, [dispatch]);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
+  };
+
+  // Helper function to extract style from prompt
+  const extractStyleFromPrompt = (promptText: string): string | undefined => {
+    const match = promptText.match(/\[\s*Style:\s*([^\]]+)\]/i);
+    return match?.[1]?.trim();
+  };
+
+  // Helper function to check if URL is blob or data URL
+  const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
+
+  // Helper function for frontend proxy resource URL
+  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
+    if (!urlOrPath) return '';
+    return toResourceProxy(urlOrPath);
+  };
+
+  // Handle recreate - navigate to text-to-image with entry parameters (same as ImagePreviewModal)
+  const handleRecreate = (e: React.MouseEvent, entry: HistoryEntry) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // Get the first image from the entry
+      const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
+      
+      // Extract storagePath from image
+      const storagePath = (entryImage as any)?.storagePath || (() => {
+        try {
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const original = entryImage?.url || '';
+          if (!original) return '';
+          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+        } catch {}
+        return '';
+      })();
+      
+      // Get fallback HTTP URL (not blob/data URLs)
+      const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
+      
+      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+      
+      const qs = new URLSearchParams();
+      
+      // Use userPrompt for remix if available, otherwise use cleanPrompt
+      const cleanPrompt = getCleanPrompt(entry.prompt || '');
+      const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
+      if (remixPrompt) qs.set('prompt', remixPrompt);
+      
+      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+      if (storagePath) {
+        qs.set('sp', storagePath);
+      } else if (imgUrl) {
+        // If no storagePath, set image URL directly
+        qs.set('image', imgUrl);
+      }
+      
+      // Also pass model, frameSize and style for preselection
+      if (entry.model) {
+        // Map backend model ids to UI dropdown ids where needed
+        const m = String(entry.model);
+        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+        qs.set('model', mapped);
+      }
+      if (entry.frameSize) qs.set('frame', String(entry.frameSize));
+      
+      const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
+      if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
+      
+      // Client-side navigation to avoid full page reload
+      router.push(`/text-to-image?${qs.toString()}`);
+    } catch (error) {
+      console.error('Error recreating image:', error);
+    }
   };
 
   // Adjust natural language references like "image 4" -> "image 3" (zero-based)
@@ -353,6 +541,10 @@ const InputBox = () => {
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
       try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      // Clear/reset document title when image is deleted
+      if (typeof document !== 'undefined') {
+        document.title = 'WildMind';
+      }
       toast.success('Image deleted');
     } catch (err) {
       console.error('Delete failed:', err);
@@ -383,20 +575,173 @@ const InputBox = () => {
   };
 
   // Fetch only first page on mount; further pages load on scroll
-  const refreshAllHistory = async () => {
+  // Replace legacy refresh helpers with hook-driven variants (wrapped with cooldown guard)
+  const rawRefreshHistory = () => refreshHistoryDebounced();
+  const refreshAllHistory = () => refreshHistoryImmediate();
+  const lastRefreshTimeRef = useRef(0);
+  const REFRESH_COOLDOWN_MS = 2000; // suppress clustered refreshes that follow a generation completion
+  
+  // Function to fetch and add/update a single generation instead of reloading all
+  const refreshSingleGeneration = async (historyId: string) => {
     try {
-      await (dispatch as any)(loadHistory({ filters: { generationType: 'text-to-image' }, paginationParams: { limit: 50 } })).unwrap();
-    } catch { }
+      const client = axiosInstance;
+      const res = await client.get(`/api/generations/${historyId}`);
+      const item = res.data?.data?.item;
+      if (!item) {
+        console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
+        refreshHistory();
+        return;
+      }
+      
+      // Normalize the item to match HistoryEntry format
+      const created = item?.createdAt || item?.updatedAt || item?.timestamp;
+      const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+      const normalizedEntry: HistoryEntry = {
+        ...item,
+        id: item.id || historyId,
+        timestamp: iso,
+        createdAt: iso,
+      } as HistoryEntry;
+      
+      // Check if entry already exists in current Redux state
+      // Note: existingEntries is from useAppSelector, so it's current at render time
+      // For async operations, we'll check again by reading from store if needed
+      const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
+      
+      // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
+      // This ensures we can check it in the same render cycle
+      console.log('[DEBUG refreshSingleGeneration] Tracking entry IDs:', {
+        historyId,
+        normalizedEntryId: normalizedEntry.id,
+        firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
+        currentRefSize: historyEntryIdsRef.current.size,
+        currentRefContents: Array.from(historyEntryIdsRef.current)
+      });
+      
+      historyEntryIdsRef.current.add(historyId);
+      if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
+      if ((normalizedEntry as any)?.firebaseHistoryId) {
+        historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
+      }
+      
+      console.log('[DEBUG refreshSingleGeneration] After adding to ref:', {
+        newRefSize: historyEntryIdsRef.current.size,
+        newRefContents: Array.from(historyEntryIdsRef.current)
+      });
+      
+      if (exists) {
+        // Update existing entry - only update changed fields to avoid overwriting
+        console.log('[DEBUG refreshSingleGeneration] Updating existing entry:', historyId);
+        dispatch(updateHistoryEntry({ 
+          id: historyId, 
+          updates: {
+            status: normalizedEntry.status,
+            images: normalizedEntry.images,
+            imageCount: normalizedEntry.imageCount,
+            timestamp: normalizedEntry.timestamp,
+          }
+        }));
+        console.log('[refreshSingleGeneration] Updated existing generation:', historyId);
+      } else {
+        // Add new entry at the beginning
+        console.log('[DEBUG refreshSingleGeneration] Adding new entry to Redux:', {
+          historyId,
+          entryId: normalizedEntry.id,
+          firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
+          status: normalizedEntry.status,
+          imageCount: normalizedEntry.images?.length || 0
+        });
+        dispatch(addHistoryEntry(normalizedEntry));
+        console.log('[refreshSingleGeneration] Added new generation:', historyId);
+      }
+      
+      // CRITICAL: Immediately clear local entry when history entry is added/updated
+      // Since there's only one local entry at a time (the most recent generation),
+      // and this history entry just completed, we should clear ALL local entries
+      // that are completed or match by ID
+      setLocalGeneratingEntries((prev) => {
+        console.log('[DEBUG refreshSingleGeneration] Checking local entries to clear:', {
+          localEntriesCount: prev.length,
+          localEntryIds: prev.map(e => ({ 
+            id: e.id, 
+            firebaseId: (e as any)?.firebaseHistoryId,
+            status: e.status 
+          })),
+          historyId,
+          normalizedEntryId: normalizedEntry.id,
+          normalizedFirebaseId: (normalizedEntry as any)?.firebaseHistoryId
+        });
+        
+        const filtered = prev.filter((e) => {
+          const eId = e.id;
+          const eFirebaseId = (e as any)?.firebaseHistoryId;
+          
+          // FIRST: Check if IDs match (exact match)
+          if (eId === historyId || eFirebaseId === historyId) {
+            console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches historyId):', { eId, eFirebaseId, historyId });
+            return false;
+          }
+          if (normalizedEntry.id && (eId === normalizedEntry.id || eFirebaseId === normalizedEntry.id)) {
+            console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches normalizedEntry.id):', { eId, eFirebaseId, normalizedEntryId: normalizedEntry.id });
+            return false;
+          }
+          const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
+          if (normalizedFirebaseId && (eId === normalizedFirebaseId || eFirebaseId === normalizedFirebaseId)) {
+            console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches normalizedFirebaseId):', { eId, eFirebaseId, normalizedFirebaseId });
+            return false;
+          }
+          
+          // SECOND: If local entry is completed and we just added a completed history entry,
+          // clear it (since there's only one local entry at a time, this must be the one)
+          if (e.status === 'completed' && normalizedEntry.status === 'completed') {
+            console.log('[DEBUG refreshSingleGeneration] Removing local entry (both completed - must be the same generation):', { 
+              eId, 
+              eFirebaseId, 
+              localStatus: e.status,
+              historyStatus: normalizedEntry.status 
+            });
+            return false;
+          }
+          
+          // Keep other entries (they might be for different generations that are still generating)
+          return true;
+        });
+        
+        if (filtered.length !== prev.length) {
+          console.log('[DEBUG refreshSingleGeneration] Cleared local entry:', {
+            before: prev.length,
+            after: filtered.length,
+            removed: prev.length - filtered.length,
+            historyId
+          });
+        } else {
+          console.log('[DEBUG refreshSingleGeneration] No local entries cleared - WARNING: Duplicate may occur!', {
+            localEntriesCount: prev.length,
+            localEntryIds: prev.map(e => ({ id: e.id, firebaseId: (e as any)?.firebaseHistoryId })),
+            historyId,
+            normalizedEntryId: normalizedEntry.id
+          });
+          // FALLBACK: If no match found but we have local entries and a completed history entry,
+          // clear all completed local entries to prevent duplicates
+          if (prev.length > 0 && normalizedEntry.status === 'completed') {
+            console.log('[DEBUG refreshSingleGeneration] FALLBACK: Clearing all completed local entries');
+            return prev.filter(e => e.status !== 'completed');
+          }
+        }
+        return filtered;
+      });
+    } catch (error) {
+      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
+      // Fallback to full refresh if single fetch fails
+      refreshHistory();
+    }
   };
-
-  // Simple refresh function like Logo Generation
-  const refreshHistory = async () => {
-    try {
-      await (dispatch as any)(loadHistory({ 
-        filters: { generationType: 'text-to-image' }, 
-        paginationParams: { limit: 50 } 
-      })).unwrap();
-    } catch { }
+  
+  const refreshHistory = () => {
+    const now = Date.now();
+    if (now - lastRefreshTimeRef.current < REFRESH_COOLDOWN_MS) return; // skip redundant refresh within cooldown
+    lastRefreshTimeRef.current = now;
+    rawRefreshHistory();
   };
 
   // Redux state
@@ -430,51 +775,82 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  // Additional image operation entries fetched manually (vectorize, upscale, edit)
+  const [additionalOpEntries, setAdditionalOpEntries] = useState<any[]>([]);
+  // Ref to raw store entries for deduplication when adding additional ops
+  const historyEntriesRawRef = useRef<any[]>([]);
 
   // Seedream-specific UI state
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const loadingMoreRef = useRef(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const hasUserScrolledRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
+  const hasUserScrolledRef = useRef(false); // legacy reference (no longer used by IO, kept for compatibility)
+  // Block pagination while generation finishes & initial history refresh occurs
+  const postGenerationBlockRef = useRef(false);
+  // Debug event storage removed; bottom scroll pagination doesn't emit IO events
 
   // Memoize the filtered entries and group by date
   const historyEntries = useAppSelector(
     (state: any) => {
       const allEntries = state.history?.entries || [];
-      // Show all text-to-image generations. Avoid filtering by prompt keywords
-      // so valid text-to-image generations (that happen to mention logo/sticker/product)
-      // are not accidentally hidden.
-      const filteredEntries = allEntries.filter((entry: any) =>
-        entry.generationType === 'text-to-image'
-      );
+      historyEntriesRawRef.current = allEntries;
+      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+      const baseFiltered = allEntries.filter((entry: any) => {
+        const normalizedType = normalize(entry.generationType);
+        const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
+        return normalizedType === 'text-to-image' || 
+               normalizedType === 'image-upscale' || 
+               normalizedType === 'image-to-svg' ||
+               normalizedType === 'image-edit' ||
+               isVectorize;
+      });
+      // Merge additional operation entries (dedup by id)
+      const extra = additionalOpEntries.filter(it => !baseFiltered.some((e: any) => e.id === it.id));
+      const combined = [...baseFiltered, ...extra];
+      // Sort strictly by createdAt/timestamp DESC so the newest (including vectorize/upscale/edit)
+      // operations appear first immediately after completion. History page relies on server ordering;
+      // the merge here could previously place freshly fetched operation entries in the middle.
+      const sortedCombined = combined.slice().sort((a: any, b: any) => {
+        const getTs = (x: any) => {
+          // Prefer updatedAt (completion time) then createdAt then fallback timestamp
+          const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+          const t = typeof raw === 'string' ? raw : (raw && raw.toString ? raw.toString() : '');
+          const ms = Date.parse(t);
+          return Number.isNaN(ms) ? 0 : ms;
+        };
+        return getTs(b) - getTs(a);
+      });
       console.log('🖼️ Image Generation - All entries:', allEntries.length);
-      console.log('🖼️ Image Generation - Filtered entries:', filteredEntries.length);
+      console.log('🖼️ Image Generation - Filtered base:', baseFiltered.length, 'Extra ops:', extra.length, 'Combined (pre-sort):', combined.length);
       console.log('🖼️ Image Generation - Current page:', page);
       console.log('🖼️ Image Generation - Has more:', hasMore);
-      return filteredEntries;
+      return sortedCombined;
     },
-    // Use shallowEqual to prevent unnecessary rerenders
     shallowEqual
   );
 
   // Sentinel element at bottom of list (place near end of render)
 
   // Group entries by date
-  const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
-    const date = new Date(entry.timestamp).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(entry);
-    return groups;
-  }, {});
+  // Memoize groupedByDate to prevent unnecessary recalculations
+  const groupedByDate = useMemo(() => {
+    return historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+      const date = new Date(entry.timestamp).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(entry);
+      return groups;
+    }, {});
+  }, [historyEntries]);
 
   // Sort dates in descending order (newest first)
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) =>
+  const sortedDates = useMemo(() => Object.keys(groupedByDate).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
-  );
+  ), [groupedByDate]);
   // Today key in the same format used for grouping
   const todayKey = new Date().toDateString();
   const uploadedImages = useAppSelector(
@@ -792,14 +1168,25 @@ const InputBox = () => {
   });
 
   // Function to clear input after successful generation
-  // Note: Selected characters are NOT cleared - they remain like the prompt
+  // Note: Selected characters and uploaded images are NOT cleared - they remain for easy remixing
   const clearInputs = () => {
+    // Clear prompt
+    dispatch(setPrompt(""));
+    
+    // Clear uploaded images
     dispatch(setUploadedImages([]));
-    // Don't clear selectedCharacters - they should remain like the prompt
-    // dispatch(clearSelectedCharacters());
+    
+    // Clear selected characters
+    dispatch(clearSelectedCharacters());
+    
     // Reset file input
     if (inputEl.current) {
       inputEl.current.value = "";
+    }
+    
+    // Clear contentEditable element
+    if (contentEditableRef.current) {
+      contentEditableRef.current.textContent = "";
     }
   };
 
@@ -819,82 +1206,104 @@ const InputBox = () => {
 
 
 
-  // Mark when the user has actually scrolled (to avoid auto-draining pages on initial mount)
-  useEffect(() => {
-    const onAnyScroll = () => {
-      hasUserScrolledRef.current = true;
-    };
-    const historyContainer = document.querySelector('.overflow-y-auto');
-    window.addEventListener('scroll', onAnyScroll, { passive: true });
-    if (historyContainer) historyContainer.addEventListener('scroll', onAnyScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onAnyScroll as any);
-      if (historyContainer) historyContainer.removeEventListener('scroll', onAnyScroll as any);
-    };
-  }, []);
-
-  // IntersectionObserver-based infinite scroll (prevents repeated triggers)
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(async (entries) => {
-      const entry = entries[0];
-      if (!entry.isIntersecting) return;
-      
-      // Require a user scroll before we begin auto-paginating
-      if (!hasUserScrolledRef.current) {
-        console.log('🖼️ IO: skip loadMore until user scrolls');
-        return;
-      }
-      
-      // CRITICAL: Check hasMore FIRST before any other checks
-      if (!hasMore) {
-        console.log('🖼️ IO: skip loadMore - NO MORE ITEMS', { hasMore });
-        return;
-      }
-      
-      if (loading || loadingMoreRef.current) {
-        console.log('🖼️ IO: skip loadMore - already loading', { loading, busy: loadingMoreRef.current });
-        return;
-      }
-      
-      loadingMoreRef.current = true;
+  // Bottom scroll pagination (History page style) with added post-load safeguards
+  const { userScrolledRef } = useBottomScrollPagination({
+    containerRef: scrollRootRef,
+    hasMore,
+    loading,
+    loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
-      console.log('🖼️ IO: loadMore start', { nextPage, hasMore });
-      
       try {
         await (dispatch as any)(loadMoreHistory({
           filters: { generationType: 'text-to-image' },
           paginationParams: { limit: 10 }
         })).unwrap();
-        console.log('🖼️ IO: loadMore success');
       } catch (e: any) {
-        // Check if it was rejected due to hasMore condition
-        if (e?.message?.includes('no more pages')) {
-          console.log('🖼️ IO: loadMore skipped - no more pages');
-        } else {
-          console.error('🖼️ IO: loadMore error', e);
-        }
-      } finally {
-        loadingMoreRef.current = false;
+        // swallow non-critical errors; backend handles end-of-pagination
       }
-    }, { root: null, rootMargin: '0px', threshold: 0.1 });
-    
-    observer.observe(el);
-    console.log('🖼️ IO: observer attached', { hasMore });
-    
-    return () => {
-      observer.disconnect();
-      console.log('🖼️ IO: observer disconnected');
-    };
-  }, [hasMore, loading, page, dispatch]);
+    },
+    bottomOffset: 800,
+    throttleMs: 250, // slightly higher throttle for heavier image grid
+    requireUserScroll: true,
+    requireScrollAfterLoad: true, // demand a real user scroll before another auto-trigger
+    postLoadCooldownMs: 1200, // suppress layout-driven immediate re-triggers
+    blockLoadRef: postGenerationBlockRef, // hard block during generation completion window
+  });
+
+  // IntersectionObserver removed; relying solely on bottom scroll pagination above.
+
+  // Removed legacy proactive loaders (scroll proximity, viewport deficiency, auto-fill loop)
+  // to prevent uncontrolled pagination bursts. IntersectionObserver above is now the sole
+  // trigger for pagination, honoring user scroll intent and existing hasMore/loading guards.
+  // If future UX requires prefetch, implement a lightweight, single-fire prefetch with strict
+  // cooldown and visibility metrics rather than looping effects.
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
-    // Set local generation state immediately
+    // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
+    // This ensures the loader shows instantly when the button is clicked
     setIsGeneratingLocally(true);
+    
+    // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
+    postGenerationBlockRef.current = true;
+
+    const originalPrompt = prompt;
+    let finalPrompt = originalPrompt;
+
+    // If prompt-enhance toggles are enabled for the selected model(s), call the backend enhancer first
+    if ((lucidPromptEnhance || phoenixPromptEnhance) && !isEnhancing) {
+      try {
+        setIsEnhancing(true);
+        // Explicitly pass 'image' as media type for image generation
+        const res = await enhancePromptAPI(originalPrompt, selectedModel as any, 'image');
+        if (res && res.ok && res.enhancedPrompt) {
+          finalPrompt = res.enhancedPrompt;
+          
+          // Update Redux state - this will trigger the useEffect that calls updateContentEditable
+          dispatch(setPrompt(finalPrompt));
+          
+          // Immediately update the contentEditable element for instant visual feedback
+          // This bypasses any Redux state propagation delays
+          const el = contentEditableRef.current as HTMLElement | null;
+          if (el) {
+            // Set text content directly for immediate update
+            el.textContent = finalPrompt;
+            
+            // Focus and position cursor at end
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const sel = window.getSelection();
+            if (sel) { 
+              sel.removeAllRanges(); 
+              sel.addRange(range); 
+            }
+          }
+          
+          // Let updateContentEditable run after Redux state has updated to properly format
+          // with character tags if needed (runs via useEffect watching prompt)
+          // Also call it directly after a brief delay to ensure proper formatting
+          setTimeout(() => {
+            try {
+              updateContentEditable();
+            } catch (err) {
+              console.error('Error in updateContentEditable after enhancement:', err);
+            }
+          }, 100);
+        } else {
+          // Non-fatal: show an error but continue with original prompt
+          if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
+        }
+      } catch (e: any) {
+        console.error('Prompt enhancement failed:', e);
+        toast.error(e?.message || 'Prompt enhancement failed. Using original prompt.');
+      } finally {
+        setIsEnhancing(false);
+      }
+    }
 
     // Clear any previous credit errors
     clearCreditsError();
@@ -904,10 +1313,11 @@ const InputBox = () => {
     try {
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
-      console.log('✅ Credits reserved for image generation:', creditResult);
     } catch (creditError: any) {
-      console.error('❌ Credit validation failed:', creditError);
       toast.error(creditError.message || 'Insufficient credits for generation');
+      setIsGeneratingLocally(false);
+      setLocalGeneratingEntries([]);
+      postGenerationBlockRef.current = false;
       return;
     }
 
@@ -915,7 +1325,7 @@ const InputBox = () => {
     const tempEntryId = `loading-${Date.now()}`;
     const tempEntry: HistoryEntry = {
       id: tempEntryId,
-      prompt,
+      prompt: finalPrompt,
       model: selectedModel,
       generationType: 'text-to-image',
       frameSize: frameSize || undefined,
@@ -930,6 +1340,19 @@ const InputBox = () => {
       imageCount: imageCount,
       status: 'generating'
     } as any;
+    
+    console.log('[DEBUG handleGenerate] Creating local entry:', {
+      tempEntryId,
+      entry: {
+        id: tempEntry.id,
+        firebaseHistoryId: (tempEntry as any)?.firebaseHistoryId,
+        status: tempEntry.status,
+        imageCount: tempEntry.imageCount,
+        prompt: tempEntry.prompt.substring(0, 50) + '...'
+      },
+      currentLocalEntriesCount: localGeneratingEntries.length
+    });
+    
     setLocalGeneratingEntries([tempEntry]);
 
     // No local writes to global history; backend tracks persistent history
@@ -974,6 +1397,38 @@ const InputBox = () => {
             frameSize,
             style
           });
+          
+          // Update localGeneratingEntries with firebaseHistoryId for matching
+          if (firebaseHistoryId) {
+            console.log('[DEBUG handleGenerate] Updating local entry with firebaseHistoryId:', {
+              tempEntryId,
+              firebaseHistoryId,
+              currentLocalEntry: localGeneratingEntries[0] ? {
+                id: localGeneratingEntries[0].id,
+                firebaseHistoryId: (localGeneratingEntries[0] as any)?.firebaseHistoryId
+              } : null
+            });
+            
+            setLocalGeneratingEntries((prev) => {
+              if (prev.length > 0 && prev[0].id === tempEntryId) {
+                const updated = [{
+                  ...prev[0],
+                  id: firebaseHistoryId!, // Update ID to match the real historyId
+                  firebaseHistoryId: firebaseHistoryId,
+                } as HistoryEntry];
+                
+                console.log('[DEBUG handleGenerate] Updated local entry:', {
+                  oldId: prev[0].id,
+                  newId: updated[0].id,
+                  firebaseHistoryId: (updated[0] as any)?.firebaseHistoryId
+                });
+                
+                return updated;
+              }
+              console.log('[DEBUG handleGenerate] No local entry found to update with firebaseHistoryId');
+              return prev;
+            });
+          }
           console.log('✅ Firebase history entry created with ID:', firebaseHistoryId);
           console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
 
@@ -1040,6 +1495,9 @@ const InputBox = () => {
               message: "gen4_image_turbo requires at least one reference image",
             })
           );
+          setIsGeneratingLocally(false);
+          setLocalGeneratingEntries([]);
+          postGenerationBlockRef.current = false;
           return;
         }
 
@@ -1087,7 +1545,7 @@ const InputBox = () => {
 
             // Make direct API call to avoid creating multiple history entries
             console.log(`=== MAKING RUNWAY API CALL FOR IMAGE ${index + 1} ===`);
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const combinedImages = getCombinedUploadedImages();
             console.log('API payload:', {
               promptText: `${promptAdjusted} [Style: ${style}]`,
@@ -1129,8 +1587,8 @@ const InputBox = () => {
                   runwayBaseRespToastShownRef.current = true;
                   baseRespToastShown = true;
                 }
-                // Stop loader immediately
-                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                // Stop loader immediately - clear entries on error
+                setLocalGeneratingEntries([]);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -1139,7 +1597,7 @@ const InputBox = () => {
               if (s === 'FAILED' || s === 'CANCELLED' || s === 'THROTTLED') {
                 terminalError = (status?.failure as string) || 'Runway task did not complete';
                 if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
-                setLocalGeneratingEntries(prev => prev.map(e => ({ ...e, status: 'failed' as any })));
+                setLocalGeneratingEntries([]);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -1208,7 +1666,7 @@ const InputBox = () => {
                     },
                   });
                   console.log(`✅ Firebase updated with image ${index + 1}`);
-                  await refreshHistory();
+                  // Don't refresh here - wait for final completion
                 } catch (firebaseError) {
                   console.error(`❌ Failed to update Firebase with image ${index + 1}:`, firebaseError);
                 }
@@ -1371,7 +1829,12 @@ const InputBox = () => {
           toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
           
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          if (firebaseHistoryId) {
+            await refreshSingleGeneration(firebaseHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           // Handle credit success
           if (transactionId) {
@@ -1390,7 +1853,7 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const result = await dispatch(
             generateMiniMaxImages({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -1438,7 +1901,12 @@ const InputBox = () => {
         toast.success(`MiniMax generation completed! Generated ${result.images.length} image(s)`);
         clearInputs();
         
-        await refreshHistory();
+        // Refresh only the single completed generation instead of reloading all
+        if (firebaseHistoryId) {
+          await refreshSingleGeneration(firebaseHistoryId);
+        } else {
+          await refreshHistory();
+        }
 
         // Handle credit success
         if (transactionId) {
@@ -1447,10 +1915,11 @@ const InputBox = () => {
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt, // Store original user-entered prompt
             model: selectedModel,
             // New schema: num_images + aspect_ratio
             num_images: imageCount,
@@ -1478,7 +1947,13 @@ const InputBox = () => {
         toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
         clearInputs();
         
-        await refreshHistory();
+        // Refresh only the single completed generation instead of reloading all
+        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+        if (resultHistoryId) {
+          await refreshSingleGeneration(resultHistoryId);
+        } else {
+          await refreshHistory();
+        }
 
           // Handle credit success
           if (transactionId) {
@@ -1486,6 +1961,10 @@ const InputBox = () => {
           }
         } catch (error) {
           console.error('FAL generate failed:', error);
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
 
           // Handle credit failure
           if (transactionId) {
@@ -1498,10 +1977,11 @@ const InputBox = () => {
       } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
         // Imagen 4 models via FAL generate endpoint
         try {
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(falGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt, // Store original user-entered prompt
             model: selectedModel,
             aspect_ratio: frameSize as any,
             num_images: imageCount,
@@ -1529,17 +2009,29 @@ const InputBox = () => {
         clearInputs();
         
         // Keep local entries visible for a moment before refreshing
+        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
         setTimeout(() => {
           setLocalGeneratingEntries([]);
         }, 1000);
         
-        await refreshHistory();
+        // Refresh only the single completed generation instead of reloading all
+        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+        if (resultHistoryId) {
+          await refreshSingleGeneration(resultHistoryId);
+        } else {
+          await refreshHistory();
+        }
 
           // Handle credit success
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1553,7 +2045,7 @@ const InputBox = () => {
           const seedreamAllowedAspect = new Set([
             'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
           ]);
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const payload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: 'bytedance/seedream-4',
@@ -1567,7 +2059,20 @@ const InputBox = () => {
             payload.width = Math.max(1024, Math.min(4096, Number(seedreamWidth) || 2048));
             payload.height = Math.max(1024, Math.min(4096, Number(seedreamHeight) || 2048));
           }
-          if (uploadedImages && uploadedImages.length > 0) payload.image_input = uploadedImages.slice(0, 10).map((u: string) => toAbsoluteFromProxy(u));
+          // Filter out SVG files - Seedream doesn't support SVG as input
+          if (uploadedImages && uploadedImages.length > 0) {
+            const validImages = uploadedImages
+              .slice(0, 10)
+              .map((u: string) => toAbsoluteFromProxy(u))
+              .filter((url: string) => {
+                // Exclude SVG files (vectorized images)
+                const lowerUrl = url.toLowerCase();
+                return !lowerUrl.includes('.svg') && !lowerUrl.includes('vectorized');
+              });
+            if (validImages.length > 0) {
+              payload.image_input = validImages;
+            }
+          }
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
           try {
@@ -1587,16 +2092,28 @@ const InputBox = () => {
         clearInputs();
         
         // Keep local entries visible for a moment before refreshing
+        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
         setTimeout(() => {
           setLocalGeneratingEntries([]);
         }, 1000);
         
-        await refreshHistory();
+        // Refresh only the single completed generation instead of reloading all
+        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+        if (resultHistoryId) {
+          await refreshSingleGeneration(resultHistoryId);
+        } else {
+          await refreshHistory();
+        }
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1616,7 +2133,7 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-turbo',
@@ -1667,12 +2184,23 @@ const InputBox = () => {
             setLocalGeneratingEntries([]);
           }, 1000);
           
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1692,7 +2220,7 @@ const InputBox = () => {
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
             // Sensible defaults (can be expanded to UI later)
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'ideogram-ai/ideogram-v3-quality',
@@ -1743,12 +2271,23 @@ const InputBox = () => {
             setLocalGeneratingEntries([]);
           }, 1000);
           
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1767,7 +2306,7 @@ const InputBox = () => {
           // Lucid Origin doesn't support multiple images in single request, so we make parallel requests
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
           const generationPromises = Array.from({ length: totalToGenerate }, async (_, index) => {
-            const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
               model: 'leonardoai/lucid-origin',
@@ -1815,12 +2354,23 @@ const InputBox = () => {
             setLocalGeneratingEntries([]);
           }, 1000);
           
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1886,12 +2436,23 @@ const InputBox = () => {
             setLocalGeneratingEntries([]);
           }, 1000);
           
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -1935,7 +2496,7 @@ const InputBox = () => {
           }
 
           // Call local image generation proxy (server uploads to Firebase)
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           const result = await dispatch(bflGenerate({
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -1962,7 +2523,13 @@ const InputBox = () => {
           // Show success notification
           toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`);
           clearInputs();
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           // Handle credit success
           if (transactionId) {
@@ -1975,7 +2542,7 @@ const InputBox = () => {
           // flux-dev uses frameSize conversion (handled in API route)
           const isFluxProModel = selectedModel === "flux-pro-1.1" || selectedModel === "flux-pro-1.1-ultra" || selectedModel === "flux-pro";
 
-          const promptAdjusted = adjustPromptImageNumbers(prompt, getCombinedUploadedImages(), selectedCharacters);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
           let generationPayload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -2032,7 +2599,13 @@ const InputBox = () => {
           toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
             } successfully!`);
           clearInputs();
-          await refreshHistory();
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           // Handle credit success
           if (transactionId) {
@@ -2045,11 +2618,10 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
-      // Mark local preview as failed
-      setLocalGeneratingEntries((prev) => prev.map((e) => ({
-        ...e,
-        status: 'failed'
-      })));
+      // Clear local generating entries on error - don't show generating logo or failed state
+      setLocalGeneratingEntries([]);
+      setIsGeneratingLocally(false);
+      postGenerationBlockRef.current = false;
 
       // Update loading entry to failed status
       // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
@@ -2090,11 +2662,76 @@ const InputBox = () => {
       if (!runwayBaseRespToastShownRef.current) {
         toast.error(error instanceof Error ? error.message : 'Failed to generate images');
       }
-    } finally {
-      // Always reset local generation state
+      
+      // Reset local generation state immediately on error
       setIsGeneratingLocally(false);
+      postGenerationBlockRef.current = false;
+    } finally {
+      // Release pagination block after short cooldown so compressed refreshes don't trigger immediate loadMore
+      // Note: isGeneratingLocally and localGeneratingEntries are reset in catch block, so we don't need to reset here
+      setTimeout(() => { postGenerationBlockRef.current = false; }, 2500);
       // Reset the base_resp toast guard for next run
       runwayBaseRespToastShownRef.current = false;
+    }
+  };
+
+  // Handle manual prompt enhancement (button)
+  const handleEnhancePrompt = async () => {
+    if (isEnhancing) return;
+    if (!prompt || !prompt.trim()) {
+      toast('Please enter a prompt to enhance');
+      return;
+    }
+
+    try {
+      setIsEnhancing(true);
+      // Explicitly pass 'image' as media type for image generation
+      const res = await enhancePromptAPI(prompt, selectedModel, 'image');
+      if (res.ok && res.enhancedPrompt) {
+        const enhancedPrompt = res.enhancedPrompt;
+        
+        // Update Redux state - this will trigger the useEffect that calls updateContentEditable
+        dispatch(setPrompt(enhancedPrompt));
+        
+        // Immediately update the contentEditable element for instant visual feedback
+        // This bypasses any Redux state propagation delays
+        const el = contentEditableRef.current as HTMLElement | null;
+        if (el) {
+          // Set text content directly for immediate update
+          el.textContent = enhancedPrompt;
+          
+          // Focus and position cursor at end
+          el.focus();
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          if (sel) { 
+            sel.removeAllRanges(); 
+            sel.addRange(range); 
+          }
+        }
+        
+        // Let updateContentEditable run after Redux state has updated to properly format
+        // with character tags if needed (runs via useEffect watching prompt)
+        // Also call it directly after a brief delay to ensure proper formatting
+        setTimeout(() => {
+          try {
+            updateContentEditable();
+          } catch (err) {
+            console.error('Error in updateContentEditable after enhancement:', err);
+          }
+        }, 100);
+        
+        toast.success('Prompt enhanced');
+      } else {
+        toast.error(res.error || 'Failed to enhance prompt');
+      }
+    } catch (e: any) {
+      console.error('Prompt enhancement error:', e);
+      toast.error(e?.message || 'Failed to enhance prompt. Please try again.');
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -2114,7 +2751,7 @@ const InputBox = () => {
   }, [activeDropdown, dispatch]);
 
   return (
-    <React.Fragment>
+    <>
       {/* Enhanced spell check styles */}
       <style jsx global>{`
         /* Remove underline from placeholder across browsers */
@@ -2151,7 +2788,7 @@ const InputBox = () => {
       `}</style>
       
       {(historyEntries.length > 0 || localGeneratingEntries.length > 0) && (
-        <div className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
+        <div ref={scrollRootRef} className=" inset-0  pl-0 pr-1 md:pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
           <div className="md:py-6 py-0 md:pl-4 pl-0 ">
             {/* History Header - Fixed during scroll */}
             <div className="relative md:fixed left-0 right-0 z-30 py-3 md:py-5 md:top-0 md:ml-18 px-4 md:px-0 md:pl-6 bg-transparent md:backdrop-blur-lg md:bg-transparent md:shadow-xl">
@@ -2170,63 +2807,7 @@ const InputBox = () => {
               </div>
             )}
 
-            {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
-            {localGeneratingEntries.length > 0 && !groupedByDate[todayKey] && (
-              <div className="space-y-4">
-                {/* Date Header */}
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-                  </div>
-                  <h3 className="text-sm font-medium text-white/70">{new Date(todayKey).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</h3>
-                </div>
-                <div className="grid grid-cols-2 md:flex md:flex-wrap md:gap-3 gap-1 md:ml-9 ml-0">
-                  {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                    <div key={`local-only-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                      {localGeneratingEntries[0].status === 'generating' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                          <div className="flex flex-col items-center gap-2">
-                            <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                            <div className="text-xs text-white/60 text-center">Generating...</div>
-                          </div>
-                        </div>
-                      ) : localGeneratingEntries[0].status === 'failed' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                          <div className="flex flex-col items-center gap-2">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
-                            <div className="text-xs text-red-400">Failed</div>
-                          </div>
-                        </div>
-                      ) : image.url ? (
-                        <div className="relative w-full h-full group">
-                          <Image 
-                            src={image.thumbnailUrl || image.avifUrl || image.url} 
-                            alt="" 
-                            fill 
-                            className="object-cover transition-opacity duration-300" 
-                            sizes="192px"
-                            onLoad={() => {
-                              // Smooth fade-in effect
-                              try { 
-                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
-                                if (img) img.style.opacity = '1';
-                              } catch {}
-                            }}
-                            style={{ opacity: 0 }}
-                          />
-                          {/* Shimmer loading effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 animate-pulse" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No image</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
             {/* History Entries - Grouped by Date */}
             <div className="mt-0 md:mt-0 space-y-8">
@@ -2257,146 +2838,320 @@ const InputBox = () => {
 
                   {/* All Images for this Date - Horizontal Layout */}
                   <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 md:gap-3 md:ml-9 ml-0 px-3 md:px-0">
-                    {/* Prepend local preview tiles at the start of today's row to push images right */}
-                    {date === todayKey && localGeneratingEntries.length > 0 && (
-                      <>
-                        {localGeneratingEntries[0].images.map((image: any, idx: number) => (
-                          <div key={`local-${idx}`} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                            {localGeneratingEntries[0].status === 'generating' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-xl border border-white/20">
+                    {/* CRITICAL: Only show localGeneratingEntries if they don't already exist in historyEntries to prevent duplicates */}
+                    {date === todayKey && localGeneratingEntries.length > 0 && (() => {
+                      const localEntry = localGeneratingEntries[0];
+                      const localEntryId = localEntry.id;
+                      const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
+                      
+                      console.log('[DEBUG LocalEntry Render] Checking if local entry should render:', {
+                        localEntryId,
+                        localFirebaseId,
+                        localEntryStatus: localEntry.status,
+                        localEntryImageCount: localEntry.images?.length || 0,
+                        refSize: historyEntryIdsRef.current.size,
+                        refContents: Array.from(historyEntryIdsRef.current),
+                        historyEntriesCount: historyEntries.length,
+                        groupedByDateCount: groupedByDate[date]?.length || 0
+                      });
+                      
+                      // FIRST CHECK: Check ref (updated immediately when entry is added to history)
+                      // This catches duplicates even before Redux state propagates
+                      const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
+                                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
+                      
+                      console.log('[DEBUG LocalEntry Render] Ref check result:', {
+                        existsInRef,
+                        localEntryIdInRef: localEntryId ? historyEntryIdsRef.current.has(localEntryId) : false,
+                        localFirebaseIdInRef: localFirebaseId ? historyEntryIdsRef.current.has(localFirebaseId) : false
+                      });
+                      
+                      // SECOND CHECK: Check historyEntries (from Redux selector)
+                      const existsInHistory = historyEntries.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        // Check all possible ID matches - comprehensive check
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      const matchingHistoryEntry = historyEntries.find((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      console.log('[DEBUG LocalEntry Render] History check result:', {
+                        existsInHistory,
+                        matchingEntry: matchingHistoryEntry ? {
+                          id: matchingHistoryEntry.id,
+                          firebaseId: (matchingHistoryEntry as any)?.firebaseHistoryId,
+                          status: matchingHistoryEntry.status,
+                          imageCount: matchingHistoryEntry.images?.length || 0
+                        } : null
+                      });
+                      
+                      // THIRD CHECK: Check groupedByDate (might have entries not yet in historyEntries)
+                      const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        // Check all possible ID matches
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      const matchingGroupedEntry = groupedByDate[date]?.find((e: HistoryEntry) => {
+                        const eId = e.id;
+                        const eFirebaseId = (e as any)?.firebaseHistoryId;
+                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                        return false;
+                      });
+                      
+                      console.log('[DEBUG LocalEntry Render] Grouped check result:', {
+                        existsInGrouped,
+                        matchingEntry: matchingGroupedEntry ? {
+                          id: matchingGroupedEntry.id,
+                          firebaseId: (matchingGroupedEntry as any)?.firebaseHistoryId,
+                          status: matchingGroupedEntry.status,
+                          imageCount: matchingGroupedEntry.images?.length || 0
+                        } : null
+                      });
+                      
+                      // CRITICAL: If entry exists ANYWHERE (ref, history, or grouped), IMMEDIATELY don't show local entry
+                      // This is the primary duplicate prevention - once in history, history handles all rendering
+                      if (existsInRef || existsInHistory || existsInGrouped) {
+                        console.log('[DEBUG LocalEntry Render] BLOCKING local entry render (duplicate detected):', {
+                          existsInRef,
+                          existsInHistory,
+                          existsInGrouped,
+                          localEntryId,
+                          localFirebaseId
+                        });
+                        return null;
+                      }
+                      
+                      // ADDITIONAL SAFETY CHECK: If local entry is completed and we have history entries,
+                      // don't show it (it should have been cleared, but if not, prevent duplicate)
+                      // Since there's only one local entry at a time, if it's completed and history exists, it's likely a duplicate
+                      if (localEntry.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
+                        console.log('[DEBUG LocalEntry Render] BLOCKING completed local entry (safety check - history exists):', {
+                          localEntryId,
+                          localFirebaseId,
+                          historyEntriesCount: historyEntries.length,
+                          groupedCount: groupedByDate[date]?.length || 0,
+                          status: localEntry.status
+                        });
+                        return null;
+                      }
+                      
+                      console.log('[DEBUG LocalEntry Render] ALLOWING local entry render (no duplicates found):', {
+                        localEntryId,
+                        localFirebaseId,
+                        status: localEntry.status
+                      });
+                      
+                      return (
+                        <>
+                          {localEntry.images.map((image: any, idx: number) => {
+                            // Generate unique key for local entries to prevent duplicates
+                            const localEntryId = localEntry.id || (localEntry as any)?.firebaseHistoryId || `local-${Date.now()}`;
+                            const uniqueImageKey = image?.id ? `local-${localEntryId}-${image.id}` : `local-${localEntryId}-img-${idx}`;
+                            
+                            return (
+                          <div key={uniqueImageKey} className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                            <div className="relative w-full h-full group">
+                              {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+                                <Image
+                                  src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                                  alt=""
+                                  fill
+                                  sizes="192px"
+                                  className="object-contain"
+                                  onLoad={() => {
+                                    // Mark this image as loaded
+                                    setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                  }}
+                                />
+                              ) : null}
+                              {!loadedImages.has(uniqueImageKey) && (
+                                <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                              )}
+                              {localEntry.status === 'generating' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                    <div className="text-xs text-white/60 text-center">Generating...</div>
+                                  </div>
+                                </div>
+                              )}
+                              {localEntry.status === 'failed' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                    </svg>
+                                    <div className="text-xs text-red-400">Failed</div>
+                                  </div>
+                                </div>
+                              )}
+                              {localEntry.status === 'completed' && (
+                                <>
+                                  {/* Hover copy button overlay */}
+                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                  <button
+                                    aria-label="Copy prompt"
+                                    className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  </button>
+                                </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          );
+                          })}
+                        </>
+                      );
+                    })()}
+                    {/* Render history entries - filter out any that match local entries to prevent duplicates */}
+                    {(() => {
+                      // Create a set of all local entry IDs for fast lookup
+                      const localEntryIds = new Set<string>();
+                      if (date === todayKey && localGeneratingEntries.length > 0) {
+                        localGeneratingEntries.forEach((localEntry) => {
+                          const localEntryId = localEntry.id;
+                          const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
+                          if (localEntryId) localEntryIds.add(localEntryId);
+                          if (localFirebaseId) localEntryIds.add(localFirebaseId);
+                        });
+                      }
+                      
+                      // Filter out history entries that match local entries
+                      const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
+                        if (localEntryIds.size === 0) return true; // No local entries, show all history
+                        const entryId = entry.id;
+                        const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+                        // If history entry matches any local entry ID, filter it out (local will show instead)
+                        if (entryId && localEntryIds.has(entryId)) return false;
+                        if (entryFirebaseId && localEntryIds.has(entryFirebaseId)) return false;
+                        return true;
+                      });
+                      
+                      return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
+                        // Check if entry has ready images
+                        const hasImages = entry.images && entry.images.length > 0;
+                        const hasReadyImages = hasImages && entry.images.some((img: any) => 
+                          img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
+                        );
+                        // Show loading if generating OR if completed but no ready images yet
+                        const shouldShowLoading = entry.status === "generating" || 
+                          (entry.status === "completed" && !hasReadyImages);
+                        
+                        return entry.images.map((image: any, imgIdx: number) => {
+                          // Generate unique key: use image.id if available, otherwise use index
+                          // This prevents duplicate keys when image.id is undefined
+                          const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
+                          const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
+                          const isImageLoaded = loadedImages.has(uniqueImageKey);
+                          
+                          return (
+                          <div
+                            key={uniqueImageKey}
+                            data-image-id={uniqueImageId}
+                            onClick={() => setPreview({ entry, image })}
+                            className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-[140px] h-[130px] max-w-[130px] max-h-[180px] rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          >
+                            {shouldShowLoading ? (
+                              // Loading frame - show if generating OR if completed but no images ready yet
+                              <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
                                   <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                                  <div className="text-xs text-white/60 text-center">Generating...</div>
+
+                                  <div className="text-xs text-white/60 text-center">
+                                    {entry.status === "generating" ? "Generating..." : "Loading..."}
+                                  </div>
                                 </div>
                               </div>
-                            ) : localGeneratingEntries[0].status === 'failed' ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            ) : entry.status === "failed" ? (
+                              // Error frame
+                              <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="text-red-400"
+                                  >
                                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                                   </svg>
                                   <div className="text-xs text-red-400">Failed</div>
                                 </div>
                               </div>
-                      ) : image.url ? (
-                        <div className="relative w-full h-full group">
-                          <Image 
-                            src={image.thumbnailUrl || image.avifUrl || image.url}
-                            alt="" 
-                            fill 
-                            className="object-contain transition-opacity duration-300" 
-                            sizes="192px"
-                            onLoad={() => {
-                              // Smooth fade-in effect
-                              try { 
-                                const img = document.querySelector(`[data-image-id="${image.id}"]`) as HTMLElement;
-                                if (img) img.style.opacity = '1';
-                              } catch {}
-                            }}
-                            style={{ opacity: 0 }}
-                          />
-                          {/* Hover copy button overlay */}
-                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                            <button
-                              aria-label="Copy prompt"
-                              className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
-                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                            </button>
-                          </div>
-                        </div>
                             ) : (
-                              <div className="w-full h-full bg-black/90 flex items-center justify-center text-white/60">
-                                <div className="text-xs text-white/60">No image</div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </>
-                    )}
-                    {groupedByDate[date].map((entry: HistoryEntry) =>
-                      entry.images.map((image: any) => (
-                        <div
-                          key={`${entry.id}-${image.id}`}
-                          data-image-id={`${entry.id}-${image.id}`}
-                          onClick={() => setPreview({ entry, image })}
-                          className="relative md:w-68 md:h-68 md:max-w-[300px] md:max-h-[300px] w-full aspect-square rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group"
-                        >
-                          {entry.status === "generating" ? (
-                            // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-black/90">
-                              <div className="flex flex-col items-center gap-2">
-                                <NextImage src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-
-                                <div className="text-xs text-white/60 text-center">
-                                  Generating...
+                              // Completed image with shimmer loading
+                              <div className="relative w-full h-full group">
+                                <Image
+                                  src={image.thumbnailUrl || image.avifUrl || image.url}
+                                  alt=""
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-200 "
+                                  sizes="192px"
+                                  onLoad={() => {
+                                    // Mark this image as loaded to remove shimmer
+                                    setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                  }}
+                                />
+                                {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                {!isImageLoaded && (
+                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                )}
+                                {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                                <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                  <button
+                                    aria-label="Recreate image"
+                                    className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                    onClick={(e) => handleRecreate(e, entry)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                  </button>
+                                  
+                                </div>
+                                <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                  <button
+                                    aria-label="Copy prompt"
+                                    className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                  </button>
+                                  <button
+                                    aria-label="Delete image"
+                                    className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                    onClick={(e) => handleDeleteImage(e, entry)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </div>
                               </div>
-                            </div>
-                          ) : entry.status === "failed" ? (
-                            // Error frame
-                            <div className="w-full h-full flex items-center justify-center bg-black/90">
-                              <div className="flex flex-col items-center gap-2">
-                                <svg
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="text-red-400"
-                                >
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                </svg>
-                                <div className="text-xs text-red-400">Failed</div>
-                              </div>
-                            </div>
-                          ) : (
-                            // Completed image with shimmer loading
-                            <div className="relative w-full h-full group">
-                              <Image
-                                src={image.thumbnailUrl || image.avifUrl || image.url}
-                                alt=""
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200 "
-                                sizes="192px"
-                                onLoad={() => {
-                                  // Remove shimmer when image loads
-                                  setTimeout(() => {
-                                    const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
-                                    if (shimmer) {
-                                      shimmer.style.opacity = '0';
-                                    }
-                                  }, 100);
-                                }}
-                              />
-                              {/* Shimmer loading effect */}
-                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              {/* Hover buttons overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                <button
-                                  aria-label="Copy prompt"
-                                  className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                  onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                </button>
-                                <button
-                                  aria-label="Delete image"
-                                  className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                  onClick={(e) => handleDeleteImage(e, entry)}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                        </div>
-                      ))
-                    )}
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          </div>
+                          );
+                        });
+                      });
+                    })()}
                   </div>
                 </div>
               ))}
@@ -2411,6 +3166,8 @@ const InputBox = () => {
                 </div>
               )}
             </div>
+            {/* Infinite scroll sentinel inside scroll container */}
+            <div ref={sentinelRef} style={{ height: 24 }} />
           </div>
         </div>
       )}
@@ -2551,10 +3308,19 @@ const InputBox = () => {
                 }}
                 data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
               />
+              {/* Enhancement overlay */}
+              {isEnhancing && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-40 rounded-lg pointer-events-none">
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin text-white/90" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div className="text-white/90 text-sm">Enhancing…</div>
+                  </div>
+                </div>
+              )}
               {/* Mobile inline Generate at right edge of prompt */}
               <button
                 onClick={handleGenerate}
-                disabled={isGeneratingLocally || !prompt.trim()}
+                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
                 aria-label="Generate"
                 className="md:hidden absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-[#2F6BFF] text-white disabled:opacity-60 disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
@@ -2674,7 +3440,24 @@ const InputBox = () => {
                     })}
                   </div>
                 )}
-                <div className="relative flex items-center gap-1.5 -mr-1 -mt-1.5">
+               <div className="relative flex items-center gap-1.5 -mr-1 -mt-1.5">
+                  {/* Enhance prompt button (manual trigger) */}
+                  <div className="relative">
+                    <button
+                      onClick={handleEnhancePrompt}
+                      disabled={isEnhancing || !prompt.trim()}
+                      type="button"
+                      title="Enhance prompt"
+                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition flex items-center gap-1 text-sm text-white/90"
+                      aria-pressed={isEnhancing}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+                        <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
+                        <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance</div>
+                  </div>
                   {/* Character upload button */}
                   <div className="relative">
                     <button
@@ -2869,18 +3652,18 @@ const InputBox = () => {
                 {error && <div className="text-red-500 text-sm">{error}</div>}
                 <button
                   onClick={handleGenerate}
-                  disabled={isGeneratingLocally || !prompt.trim()}
+                  disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
                   className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  aria-busy={isEnhancing}
                 >
-                  {isGeneratingLocally ? "Generating..." : "Generate"}
+                  {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} style={{ height: 1 }} />
+  {/* sentinel moved inside scroll container */}
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
       <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />
@@ -2909,13 +3692,15 @@ const InputBox = () => {
             if (!hasMore || loading) return;
             await (dispatch as any)(loadMoreHistory({
               filters: { generationType: 'text-to-image' },
-              paginationParams: { limit: 10 }
+              paginationParams: { limit: 20 }
             })).unwrap();
           } catch {}
         }}
         onAdd={(urls: string[]) => {
-          const next = [...uploadedImages, ...urls].slice(0, 10);
-          dispatch(setUploadedImages(next));
+          try {
+            const next = [...(uploadedImages||[]), ...urls];
+            dispatch(setUploadedImages(next.slice(0, 10)));
+          } catch {}
         }}
       />
 
@@ -2924,15 +3709,19 @@ const InputBox = () => {
         isOpen={isCharacterModalOpen}
         onClose={() => setIsCharacterModalOpen(false)}
         onAdd={(character: Character) => {
-          dispatch(addSelectedCharacter(character));
+          try {
+            dispatch(addSelectedCharacter(character));
+          } catch {}
         }}
         onRemove={(characterId: string) => {
-          dispatch(removeSelectedCharacter(characterId));
+          try {
+            dispatch(removeSelectedCharacter(characterId));
+          } catch {}
         }}
         selectedCharacters={selectedCharacters}
         maxCharacters={10}
       />
-    </React.Fragment>
+    </>
   );
 }
 

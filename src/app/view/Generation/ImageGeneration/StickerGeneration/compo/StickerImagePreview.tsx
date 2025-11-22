@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { toMediaProxy, toZataPath } from '@/lib/thumb';
+import { toMediaProxy, toResourceProxy } from '@/lib/thumb';
 import { X, Download, ExternalLink, Copy, Check, Share, MessageCircle, Trash2 } from 'lucide-react';
 import { HistoryEntry, GeneratedImage } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -42,6 +42,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const [fsIsPanning, setFsIsPanning] = React.useState(false);
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
+  const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
   const [isPublicFlag, setIsPublicFlag] = useState<boolean>(true);
@@ -84,34 +85,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
-  const toProxyPath = (urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) {
-      return urlOrPath.substring(ZATA_PREFIX.length);
-    }
-    return urlOrPath;
-  };
-
-  const toProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/resource/${encodeURIComponent(path)}` : '';
-  };
-
-  const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
-  };
-
-  const toFrontendProxyResourceUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
-
-  const toMediaProxyUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
+  // Use centralized helpers
 
   if (!isOpen) return null;
 
@@ -127,9 +101,21 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     const isPublic = ((selectedImage as any)?.isPublic !== false);
     setIsPublicFlag(isPublic);
   }, [selectedImage]);
+
+  // Reset image dimensions when selected image changes
+  React.useEffect(() => {
+    setImageDimensions(null);
+  }, [selectedImageIndex]);
   const isUserUploadSelected = selectedImageIndex < inputImages.length;
-  const selectedImagePath = (selectedImage as any)?.storagePath || toProxyPath(selectedImage?.url);
-  const selectedImageProxyUrl = toProxyResourceUrl(selectedImagePath);
+  const selectedImagePath = (selectedImage as any)?.storagePath || (() => {
+    try {
+      const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+      const original = selectedImage?.url || '';
+      if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+    } catch {}
+    return '';
+  })();
+  const selectedImageProxyUrl = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
   const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
 
   // ---- Fullscreen helpers ----
@@ -211,7 +197,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     const controller = new AbortController();
     const doFetch = async () => {
       try {
-        const url = toProxyResourceUrl(selectedImagePath);
+        const url = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
         if (!url) return;
         const res = await fetch(url, { credentials: 'include', signal: controller.signal });
         if (!res.ok) return;
@@ -295,7 +281,10 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     try {
       // Get username from user state or fallback to 'user'
       const username = user?.username || user?.displayName || null;
-      await downloadFileWithNaming(selectedImagePath, username, 'image', 'sticker');
+      // Prefer the absolute/original URL for download; downloadUtils will convert to resource proxy when needed
+      const downloadUrl = selectedImage?.url || selectedImagePath;
+      if (!downloadUrl) return;
+      await downloadFileWithNaming(downloadUrl, username, 'image', 'sticker');
     } catch (error) {
       console.error('Download failed:', error);
     }
@@ -459,11 +448,17 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
           <div className="relative bg-transparent h-[35vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {selectedImage && (
               <Image
-                src={selectedImageObjectUrl || toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                src={selectedImageObjectUrl || (toMediaProxy(selectedImage?.url) || selectedImage?.url)}
                 alt={entry.prompt}
                 fill
                 className="object-contain"
                 unoptimized
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (img.naturalWidth && img.naturalHeight) {
+                    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                  }
+                }}
               />
             )}
             {isUserUploadSelected && (
@@ -512,11 +507,13 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
 
                 <div className="relative group flex-1">
                   <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
-                    {isPublicFlag ? (
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
-                    )}
+                    <Image 
+                      src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                      alt={isPublicFlag ? "Public" : "Private"} 
+                      width={16} 
+                      height={16} 
+                      className="w-4 h-4"
+                    />
                   </button>
                   <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
                 </div>
@@ -606,6 +603,104 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
                 </div>
               </div>
 
+                <div className="relative group flex-1">
+                  <button onClick={() => shareImage()} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                    <Share className="h-4 w-4" />
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share</div>
+                </div>
+
+                <div className="relative group flex-1">
+                  <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-label="Delete image">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
+                </div>
+
+                <div className="relative group flex-1">
+                  <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
+                    {isPublicFlag ? (
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88"/><path d="M16.1 16.1C14.84 16.7 13.46 17 12 17 7 17 2.73 13.89 1 9.5a14.78 14.78 0 0 1 5.06-5.56"/></svg>
+                    )}
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+                </div>
+                {imageDimensions && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Resolution:</span>
+                    <span className="text-white/80 text-sm">{imageDimensions.width} × {imageDimensions.height}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-4 md:p-0 flex-1 overflow-y-auto custom-scrollbar pb-28 md:pb-0">
+              {/* WhatsApp export/share */}
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                <div className="relative group">
+                  <button onClick={shareToWhatsApp} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-emerald-600/30 hover:bg-emerald-600/40 text-sm">
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">Share to WhatsApp</span>
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Share sticker to WhatsApp (no download)</div>
+                </div>
+                <div className="relative group">
+                  <button onClick={() => exportForWhatsApp(false)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm">
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Export Pack</span>
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Download WhatsApp ZIP</div>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="mb-1 ">
+                <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
+                <div className="text-white/80 text-sm">{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+              </div>
+
+              {/* Gallery */}
+              {galleryImages.length > 1 && (
+                <div className="mb-4">
+                  <div className="text-white/80 text-sm uppercase tracking-wider mb-1">Stickers ({galleryImages.length})</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {galleryImages.map((image, index) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setSelectedImageIndex(index)}
+                        className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedImageIndex === index ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
+                      >
+                        <Image
+                          src={toMediaProxy((image as any)?.url) || (image as any)?.url}
+                          alt={`Sticker ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                        {index < inputImages.length && (
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">User upload</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Button */}
+              <div className="mt-6">
+                <button
+                  onClick={onClose}
+                  className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+
               {/* Gallery */}
               {galleryImages.length > 1 && (
                 <div className="mb-4">
@@ -667,7 +762,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
             >
               <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`, transformOrigin: 'center center', transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out' }}>
                 <img
-                  src={selectedImageObjectUrl || toMediaProxyUrl(selectedImage?.url) || selectedImage?.url}
+                  src={selectedImageObjectUrl || (toMediaProxy(selectedImage?.url) || selectedImage?.url)}
                   alt={entry.prompt}
                   onLoad={(e) => { const img = e.currentTarget as HTMLImageElement; setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight }); }}
                   className="max-w-full max-h-full object-contain select-none"

@@ -172,7 +172,19 @@ export function OptimizedImage({
   // Use Next.js Image component for optimization
   if (width && height) {
     return (
-      <div className={`relative ${className}`} onClick={onClick}>
+      <div
+        className={`relative overflow-hidden ${className}`}
+        onClick={onClick}
+        style={
+          blurDataUrl && !loaded
+            ? {
+                backgroundImage: `url(${blurDataUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }
+            : undefined
+        }
+      >
         <Image
           src={imageUrl}
           alt={alt}
@@ -181,16 +193,15 @@ export function OptimizedImage({
           quality={getQuality()}
           priority={priority}
           loading={priority ? undefined : loading}
-          placeholder={blurDataUrl ? 'blur' : 'empty'}
-          blurDataURL={blurDataUrl}
-          className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          // Use an empty placeholder — we show blur via wrapper background
+          placeholder="empty"
+          className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           style={{ objectFit }}
-          onLoad={() => setLoaded(true)}
+          onLoadingComplete={() => setLoaded(true)}
           onError={() => {
             console.warn('[OptimizedImage] Failed to load:', imageUrl);
             setError(true);
           }}
-          unoptimized={false}
         />
       </div>
     );
