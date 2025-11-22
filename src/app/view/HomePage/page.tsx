@@ -199,48 +199,113 @@ const HomePage: React.FC = () => {
         let page = 0
         const maxPages = 3
         while (page < maxPages && out.length < 48) {
-          const url = new URL(`${baseUrl}/api/feed`)
-          url.searchParams.set('limit', '24')
-          // Home page: prefer images for aesthetic layout
-          url.searchParams.set('mode', 'image')
-          if (nextCursor) url.searchParams.set('cursor', nextCursor)
-          const res = await fetch(url.toString(), { credentials: 'include' })
-          if (!res.ok) break
-          const data = await res.json()
-          const payload = data?.data || data
-          const items: any[] = payload?.items || []
-          nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
+          try {
+            const url = new URL(`${baseUrl}/api/feed`)
+            url.searchParams.set('limit', '24')
+            // Home page: prefer images for aesthetic layout
+            url.searchParams.set('mode', 'image')
+            if (nextCursor) url.searchParams.set('cursor', nextCursor)
+            
+            const res = await fetch(url.toString(), { credentials: 'include' })
+            
+            if (!res.ok) {
+              const errorText = await res.text().catch(() => 'Unknown error')
+              console.error(`[HomePage] Feed API error (page ${page}):`, res.status, errorText)
+              // If we have items already, use them; otherwise break
+              if (out.length > 0) break
+              // If first page fails, try to continue or break
+              break
+            }
+            
+            const data = await res.json()
+            console.log(`[HomePage] Feed API response (page ${page}):`, {
+              hasData: !!data,
+              responseStatus: data?.responseStatus,
+              hasDataField: !!data?.data,
+              itemsCount: data?.data?.items?.length || 0,
+              meta: data?.data?.meta,
+            })
+            
+            // Handle API response format: { responseStatus: 'success', data: { items: [], meta: {} } }
+            const payload = data?.data || data
+            const items: any[] = payload?.items || []
+            nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
-          items.forEach((it: any, idx: number) => {
-            const firstImage = (it.images && it.images[0])
-            const firstVideo = (it.videos && it.videos[0])
-            const firstAudio = (it.audios && it.audios[0])
-            const media = firstVideo || firstImage || firstAudio
-            const src = media?.url || ''
-            if (!src) return
-            const tRaw = (it.generationType || '')
-            const t = tRaw.toLowerCase()
-            const cat = (() => {
-              if (firstAudio) return 'Music'
-              if (t.includes('music') || t.includes('audio')) return 'Music'
-              if (t === 'text-to-image') return 'Images'
-              if (t === 'text-to-video') return 'Videos'
-              if (t === 'logo' || t === 'logo-generation') return 'Logos'
-              if (t === 'sticker-generation' || t === 'sticker') return 'Stickers'
-              if (t === 'product-generation' || t === 'product') return 'Products'
-              return 'All'
-            })() as any
-            const dim = dims[(out.length + idx) % dims.length]
-            const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
-            out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
-          })
+            console.log(`[HomePage] Processed page ${page}:`, {
+              itemsReceived: items.length,
+              itemsWithMedia: items.filter(it => {
+                const firstImage = (it.images && it.images[0])
+                const firstVideo = (it.videos && it.videos[0])
+                const firstAudio = (it.audios && it.audios[0])
+                const media = firstVideo || firstImage || firstAudio
+                return media?.url
+              }).length,
+              nextCursor: nextCursor ? 'yes' : 'no',
+            })
 
-          page += 1
-          if (!nextCursor) break
+            // If no items in this page, break to avoid infinite loop
+            if (items.length === 0) {
+              console.log(`[HomePage] No items in page ${page}, breaking`)
+              break
+            }
+
+            items.forEach((it: any, idx: number) => {
+              const firstImage = (it.images && Array.isArray(it.images) && it.images[0])
+              const firstVideo = (it.videos && Array.isArray(it.videos) && it.videos[0])
+              const firstAudio = (it.audios && Array.isArray(it.audios) && it.audios[0])
+              const media = firstVideo || firstImage || firstAudio
+              // Try multiple URL fields (same as ArtStation)
+              const src = media?.url || media?.firebaseUrl || media?.originalUrl || ''
+              if (!src) {
+                console.warn(`[HomePage] Item ${it.id} has no media URL:`, {
+                  hasImages: !!it.images,
+                  imagesLength: Array.isArray(it.images) ? it.images.length : 0,
+                  hasVideos: !!it.videos,
+                  videosLength: Array.isArray(it.videos) ? it.videos.length : 0,
+                  hasAudios: !!it.audios,
+                  audiosLength: Array.isArray(it.audios) ? it.audios.length : 0,
+                  mediaKeys: media ? Object.keys(media) : [],
+                })
+                return
+              }
+              const tRaw = (it.generationType || '')
+              const t = tRaw.toLowerCase()
+              const cat = (() => {
+                if (firstAudio) return 'Music'
+                if (t.includes('music') || t.includes('audio')) return 'Music'
+                if (t === 'text-to-image') return 'Images'
+                if (t === 'text-to-video') return 'Videos'
+                if (t === 'logo' || t === 'logo-generation') return 'Logos'
+                if (t === 'sticker-generation' || t === 'sticker') return 'Stickers'
+                if (t === 'product-generation' || t === 'product') return 'Products'
+                return 'All'
+              })() as any
+              const dim = dims[(out.length + idx) % dims.length]
+              const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
+              out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
+            })
+
+            page += 1
+            if (!nextCursor) {
+              console.log(`[HomePage] No nextCursor after page ${page}, breaking`)
+              break
+            }
+          } catch (pageError: any) {
+            console.error(`[HomePage] Error fetching page ${page}:`, pageError?.message || pageError)
+            // If we have items already, use them; otherwise continue to next page
+            if (out.length > 0) {
+              console.log(`[HomePage] Using ${out.length} items collected so far`)
+              break
+            }
+            // If first page fails, break to avoid infinite loop
+            break
+          }
         }
 
+        console.log(`[HomePage] Final result:`, { totalItems: out.length })
         setArtItems(out)
-      } catch (e) {
+      } catch (e: any) {
+        console.error('[HomePage] Fatal error fetching art:', e?.message || e)
         // fallback to static
         setArtItems([])
       }

@@ -6,7 +6,9 @@ import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
-  setPrompt
+  setPrompt,
+  setSelectedModel,
+  setImageCount
  } from '@/store/slices/generationSlice';
 import { bflGenerate, falGenerate } from '@/store/slices/generationsApi';
 import { 
@@ -416,8 +418,10 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       // Update local preview to completed
       setLocalGeneratingEntries([completedEntry]);
 
-      // Clear the prompt
+      // Clear all inputs and reset to defaults
       dispatch(setPrompt(""));
+      dispatch(setSelectedModel("gemini-25-flash-image"));
+      dispatch(setImageCount(1));
 
       // Show success notification
       try { const toast = (await import('react-hot-toast')).default; toast.success(`Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`); } catch {}

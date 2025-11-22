@@ -201,6 +201,11 @@ export default function CommunityCreations({
   const [active, setActive] = useState<Category>(initialFilter);
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // Debug log to see if items are being received
+  useEffect(() => {
+    console.log('[CommunityCreations] Received items:', items.length)
+  }, [items.length])
   const [preview, setPreview] = useState<Creation | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [currentUid, setCurrentUid] = useState<string | null>(null)
@@ -343,17 +348,24 @@ export default function CommunityCreations({
 
       {/* Masonry grid with conditional overlay */}
       <div className="relative">
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
-          {limited.map((item, idx) => (
-            <Card
-              key={item.id}
-              item={item}
-              isVisible={visibleTiles.has(item.id)}
-              setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
-              onClick={() => setPreview(item)}
-            />
-          ))}
-        </div>
+        {limited.length === 0 && !loading ? (
+          <div className="text-center py-12">
+            <p className="text-white/60 text-lg">No community creations to display</p>
+            <p className="text-white/40 text-sm mt-2">Items received: {items.length}</p>
+          </div>
+        ) : (
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
+            {limited.map((item, idx) => (
+              <Card
+                key={item.id}
+                item={item}
+                isVisible={visibleTiles.has(item.id)}
+                setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
+                onClick={() => setPreview(item)}
+              />
+            ))}
+          </div>
+        )}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center py-8">
