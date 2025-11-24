@@ -401,7 +401,7 @@ const Recentcreation: React.FC = () => {
 
   const filtered = useMemo(() => {
     const result = active === 'All' ? creationItems : creationItems.filter((i) => i.category === active)
-    console.log('Filtered items:', result.length, 'for category:', active)
+    // Removed console.log for production performance
     return result
   }, [active, creationItems])
 
@@ -442,14 +442,7 @@ const Recentcreation: React.FC = () => {
         ? (entry.images[0].url || entry.images[0].firebaseUrl || '')
         : '')
       
-      console.log('Music click debug:', {
-        entry: entry.generationType,
-        itemSrc: item.src,
-        audioUrl,
-        images: entry.images,
-        isAudio: audio,
-        isMusic: item.isMusic
-      })
+      // Removed console.log for production performance
       
       setAudioPreview({ entry, audioUrl })
     } else if (entry.generationType === 'logo') {
@@ -800,6 +793,8 @@ const Recentcreation: React.FC = () => {
                           loading="lazy"
                           decoding="async"
                           className="absolute inset-0 w-full h-full object-cover"
+                          // Optimize: Use fetchPriority for first few items
+                          fetchPriority="auto"
                           onLoad={(e) => {
                             try {
                               const img = e.currentTarget as HTMLImageElement;

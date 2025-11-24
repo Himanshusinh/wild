@@ -1260,7 +1260,10 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           {loading && items.length === 0 && (
             <div className="flex items-center justify-center py-28">
               <div className="flex flex-col items-center gap-4">
-                <Image src="/styles/Logo.gif" alt="Loading" width={112} height={112} className="w-28 h-28" />
+                {/* Using lightweight spinner instead of 604.6 KiB Logo.gif */}
+                <div className="w-28 h-28 flex items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
                 <div className="text-white text-lg">
                   Loading Art Station...
                 </div>

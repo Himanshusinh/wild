@@ -4,7 +4,6 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const nextConfig: NextConfig = {
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -30,9 +29,23 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize bundle splitting
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'react-hot-toast', '@tabler/icons-react', 'motion'],
+    // Enable partial prerendering for better performance
+    ppr: false, // Can enable if needed
+  },
+  // Target modern browsers to reduce legacy JavaScript polyfills (11 KiB savings)
+  // Next.js 15+ uses SWC which targets modern browsers by default, but we can be explicit
+  transpilePackages: [],
+  // Optimize production builds
+  productionBrowserSourceMaps: false, // Disable source maps in production for smaller bundles
+  // Compress output
+  compress: true,
+  // Note: swcMinify is enabled by default in Next.js 15+
   async headers() {
     // Ensure correct content-type for XML sitemaps on Vercel/Next
-    return [
+    const headers = [
       {
         source: '/:path*.xml',
         headers: [
@@ -46,6 +59,27 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+
+    // Add performance headers for static assets
+    if (!isDev) {
+      headers.push(
+        {
+          source: '/:path*.(js|css|woff|woff2|ttf|otf|jpg|jpeg|png|gif|svg|webp|avif|mp4|webm)',
+          headers: [
+            { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          ],
+        },
+        // Cache headers for API proxy routes (Zata images)
+        {
+          source: '/api/proxy/:path*',
+          headers: [
+            { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          ],
+        }
+      );
+    }
+
+    return headers;
   },
   async rewrites() {
     return [

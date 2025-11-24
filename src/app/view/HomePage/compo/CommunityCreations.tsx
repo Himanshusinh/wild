@@ -202,10 +202,7 @@ export default function CommunityCreations({
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
   
-  // Debug log to see if items are being received
-  useEffect(() => {
-    console.log('[CommunityCreations] Received items:', items.length)
-  }, [items.length])
+  // Removed debug log for production performance
   const [preview, setPreview] = useState<Creation | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [currentUid, setCurrentUid] = useState<string | null>(null)

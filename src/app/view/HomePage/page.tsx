@@ -1,19 +1,39 @@
 'use client';
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
-import Second from './compo/Second'
-import WorkflowCarousel, { WorkflowCard } from './compo/WorkflowCarousel'
-import CommunityCreations, { Creation } from './compo/CommunityCreations'
-import FooterNew from '../core/FooterNew'
-import Recentcreation from './compo/Recentcreation'
-import { WobbleCard } from '../Landingpage/components/wobble-card'
 import Image from 'next/image'
 import { getImageUrl, API_BASE } from './routes'
-import WelcomeModal from './compo/WelcomeModal'
+// Lazy load non-critical components for better performance
+import dynamic from 'next/dynamic'
+
+const Second = dynamic(() => import('./compo/Second'), {
+  loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+})
+const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
+  loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
+})
+const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
+  ssr: false
+})
+const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
+})
+const CommunityCreations = dynamic(() => import('./compo/CommunityCreations').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+})
+const WobbleCard = dynamic(() => import('../Landingpage/components/wobble-card').then(mod => ({ default: mod.WobbleCard })), {
+  loading: () => <div className="h-[500px] animate-pulse bg-white/5 rounded-lg" />
+})
+const FooterNew = dynamic(() => import('../core/FooterNew'), {
+  loading: () => <div className="h-32 animate-pulse bg-white/5 rounded-lg" />
+})
+
+import type { WorkflowCard } from './compo/WorkflowCarousel'
+import type { Creation } from './compo/CommunityCreations'
 
 import { ViewType, GenerationType } from '@/types/generation';
 
@@ -45,12 +65,11 @@ const HomePage: React.FC = () => {
         break;
     }
   };
+
   const onGenerationTypeChange = (type: GenerationType) => {
     setCurrentGenerationType(type);
     router.push(`/${type}`);
   };
-
-  console.log('🔍 HomePage - Rendered with state:', { currentView, currentGenerationType });
 
   // Check for first-time user and show welcome modal
   useEffect(() => {
@@ -176,25 +195,42 @@ const HomePage: React.FC = () => {
   const [artItems, setArtItems] = useState<Creation[]>([])
 
   const didInitArtRef = React.useRef(false)
+  
+  // Memoize dimensions array to prevent recreation
+  const dims = useMemo(() => [
+    { w: 900, h: 1400 },
+    { w: 1200, h: 1150 },
+    { w: 1000, h: 1000 },
+    { w: 1200, h: 1810 },
+    { w: 1600, h: 1400 },
+    { w: 1100, h: 1800 },
+    { w: 1500, h: 1000 },
+    { w: 1400, h: 1200 },
+    { w: 1200, h: 1200 },
+  ], []);
+
+  // Memoize base URL processing
+  const baseUrl = useMemo(() => API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE, []);
+
+  // Optimized category mapping function
+  const getCategory = useCallback((generationType: string, firstAudio: any) => {
+    if (firstAudio) return 'Music';
+    const t = generationType.toLowerCase();
+    if (t.includes('music') || t.includes('audio')) return 'Music';
+    if (t === 'text-to-image') return 'Images';
+    if (t === 'text-to-video') return 'Videos';
+    if (t === 'logo' || t === 'logo-generation') return 'Logos';
+    if (t === 'sticker-generation' || t === 'sticker') return 'Stickers';
+    if (t === 'product-generation' || t === 'product') return 'Products';
+    return 'All';
+  }, []);
+
   useEffect(() => {
     if (didInitArtRef.current) return; // Prevent React StrictMode double-invoke in dev
     didInitArtRef.current = true;
     const fetchHomeArt = async () => {
       try {
-        const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
         let nextCursor: string | undefined = undefined
-        const dims = [
-          { w: 900, h: 1400 },
-          { w: 1200, h: 1150 },
-          { w: 1000, h: 1000 },
-          { w: 1200, h: 1810 },
-          { w: 1600, h: 1400 },
-          { w: 1100, h: 1800 },
-          { w: 1500, h: 1000 },
-          { w: 1400, h: 1200 },
-          { w: 1200, h: 1200 },
-        ]
-
         const out: Creation[] = []
         let page = 0
         const maxPages = 3
@@ -206,7 +242,14 @@ const HomePage: React.FC = () => {
             url.searchParams.set('mode', 'image')
             if (nextCursor) url.searchParams.set('cursor', nextCursor)
             
-            const res = await fetch(url.toString(), { credentials: 'include' })
+            const res = await fetch(url.toString(), { 
+              credentials: 'include',
+              // Add cache headers for better performance
+              cache: 'default',
+              headers: {
+                'Accept': 'application/json',
+              }
+            })
             
             if (!res.ok) {
               const errorText = await res.text().catch(() => 'Unknown error')
@@ -218,34 +261,18 @@ const HomePage: React.FC = () => {
             }
             
             const data = await res.json()
-            console.log(`[HomePage] Feed API response (page ${page}):`, {
-              hasData: !!data,
-              responseStatus: data?.responseStatus,
-              hasDataField: !!data?.data,
-              itemsCount: data?.data?.items?.length || 0,
-              meta: data?.data?.meta,
-            })
+            // Removed verbose logging for production performance
             
             // Handle API response format: { responseStatus: 'success', data: { items: [], meta: {} } }
             const payload = data?.data || data
             const items: any[] = payload?.items || []
             nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
-            console.log(`[HomePage] Processed page ${page}:`, {
-              itemsReceived: items.length,
-              itemsWithMedia: items.filter(it => {
-                const firstImage = (it.images && it.images[0])
-                const firstVideo = (it.videos && it.videos[0])
-                const firstAudio = (it.audios && it.audios[0])
-                const media = firstVideo || firstImage || firstAudio
-                return media?.url
-              }).length,
-              nextCursor: nextCursor ? 'yes' : 'no',
-            })
+            // Removed verbose logging for production performance
 
             // If no items in this page, break to avoid infinite loop
             if (items.length === 0) {
-              console.log(`[HomePage] No items in page ${page}, breaking`)
+              // Removed verbose logging for production performance
               break
             }
 
@@ -257,29 +284,9 @@ const HomePage: React.FC = () => {
               // Try multiple URL fields (same as ArtStation)
               const src = media?.url || media?.firebaseUrl || media?.originalUrl || ''
               if (!src) {
-                console.warn(`[HomePage] Item ${it.id} has no media URL:`, {
-                  hasImages: !!it.images,
-                  imagesLength: Array.isArray(it.images) ? it.images.length : 0,
-                  hasVideos: !!it.videos,
-                  videosLength: Array.isArray(it.videos) ? it.videos.length : 0,
-                  hasAudios: !!it.audios,
-                  audiosLength: Array.isArray(it.audios) ? it.audios.length : 0,
-                  mediaKeys: media ? Object.keys(media) : [],
-                })
-                return
+                return // Skip items without media URL
               }
-              const tRaw = (it.generationType || '')
-              const t = tRaw.toLowerCase()
-              const cat = (() => {
-                if (firstAudio) return 'Music'
-                if (t.includes('music') || t.includes('audio')) return 'Music'
-                if (t === 'text-to-image') return 'Images'
-                if (t === 'text-to-video') return 'Videos'
-                if (t === 'logo' || t === 'logo-generation') return 'Logos'
-                if (t === 'sticker-generation' || t === 'sticker') return 'Stickers'
-                if (t === 'product-generation' || t === 'product') return 'Products'
-                return 'All'
-              })() as any
+              const cat = getCategory(it.generationType || '', firstAudio)
               const dim = dims[(out.length + idx) % dims.length]
               const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
               out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
@@ -287,7 +294,7 @@ const HomePage: React.FC = () => {
 
             page += 1
             if (!nextCursor) {
-              console.log(`[HomePage] No nextCursor after page ${page}, breaking`)
+              // Removed verbose logging for production performance
               break
             }
           } catch (pageError: any) {
@@ -302,7 +309,6 @@ const HomePage: React.FC = () => {
           }
         }
 
-        console.log(`[HomePage] Final result:`, { totalItems: out.length })
         setArtItems(out)
       } catch (e: any) {
         console.error('[HomePage] Fatal error fetching art:', e?.message || e)
@@ -311,7 +317,7 @@ const HomePage: React.FC = () => {
       }
     }
     fetchHomeArt()
-  }, [])
+  }, [baseUrl, dims, getCategory])
 
   return (
     <div className="min-h-screen bg-[#07070B]">
@@ -380,6 +386,8 @@ const HomePage: React.FC = () => {
                         className="object-cover rounded-r-2xl"
                         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
                         priority
+                        quality={85}
+                        loading="eager"
                       />
                     </div>
                   </div>
