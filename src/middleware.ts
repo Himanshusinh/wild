@@ -7,6 +7,16 @@ export function middleware(req: NextRequest) {
   const trimmedPath = pathname.replace(/\/+$/, '') || '/';
   const normalizedPath = trimmedPath.toLowerCase();
   const pathnameLower = trimmedPath.toLowerCase();
+  const blockPrefixes = [
+    '/view/home',
+    '/dashboard',
+    '/account',
+    '/profile',
+    '/settings',
+    '/auth',
+    '/login',
+    '/signup',
+  ];
 
   const legacyRedirects: Record<string, string> = {
     '/view/video-generation': '/text-to-video',
@@ -102,6 +112,16 @@ export function middleware(req: NextRequest) {
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
 
+  const shouldNoIndex =
+    blockPrefixes.some((prefix) => pathnameLower.startsWith(prefix)) ||
+    pathnameLower.startsWith('/_next') ||
+    pathnameLower.startsWith('/api') ||
+    pathnameLower.endsWith('.woff2');
+
+  if (shouldNoIndex) {
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+
   // Enforce auth for protected routes in all environments
 
   // Allow public pages
@@ -163,7 +183,7 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Protect everything except Next internals, public assets, and api routes you want open
-  matcher: ['/((?!_next|api|public|favicon.ico).*)'],
+  matcher: ['/((?!favicon\\.ico|robots\\.txt|sitemap\\.xml).*)'],
 };
 
 
