@@ -866,10 +866,9 @@ export default function ArtStationPage() {
 
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
-          {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
+          {/* Masonry columns similar to ArtStation */}
           <div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
-            style={{ gridAutoRows: '6px' }}
+            className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-0 [column-fill:balance] [overflow-anchor:none]"
           >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
@@ -886,7 +885,7 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className={`mb-0 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  className={`mb-0 break-inside-avoid cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
@@ -898,7 +897,8 @@ export default function ArtStationPage() {
                   ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
                   style={{
                     transitionDelay: `${(idx % 12) * 35}ms`,
-                    gridRowEnd: `span ${tileSpans[cardId] || 30}`
+                    gridRowEnd: `span ${tileSpans[cardId] || 30}`,
+                    breakInside: 'avoid'
                   }}
                 >
                   <div className="masonry-item-inner relative w-full rounded-lg overflow-hidden bg-transparent group" style={{ contain: 'paint' }}>
