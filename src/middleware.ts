@@ -50,10 +50,10 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, { status: 308 });
   }
 
-  if (!isLocalHost && forwardedHost?.startsWith('www.')) {
-    url.host = forwardedHost.replace(/^www\./, '');
-    return NextResponse.redirect(url, { status: 308 });
-  }
+  // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
+  // forwards all traffic to Next.js using the www.* host which causes an infinite
+  // redirect loop if we try to rewrite it at the edge. Canonical host enforcement
+  // is handled via DNS + <link rel="canonical"> tags instead.
 
   const redirectTarget = legacyRedirects[normalizedPath];
   if (redirectTarget) {
