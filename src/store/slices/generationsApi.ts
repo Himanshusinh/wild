@@ -158,7 +158,7 @@ export const falElevenTts = createAsyncThunk(
       // Route to appropriate endpoint based on model
       let endpoint = '/api/fal/eleven/tts'; // Default to ElevenLabs TTS
       if (modelLower.includes('minimax-music-2') || modelLower.includes('music-2')) {
-        endpoint = '/api/fal/minimax/music-2'; // MiniMax Music 2 endpoint
+        endpoint = '/api/minimax/music'; // MiniMax Music 2 endpoint (official API)
       } else if (modelLower.includes('dialogue') || hasInputsArray) {
         endpoint = '/api/fal/eleven/dialogue'; // Use dedicated dialogue endpoint
       } else if (modelLower.includes('chatterbox')) {

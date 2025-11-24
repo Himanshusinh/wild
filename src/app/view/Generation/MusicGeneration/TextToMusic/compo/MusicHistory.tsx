@@ -392,16 +392,28 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
                       ...(entry.audio ? [entry.audio] : [])
                     ].filter(Boolean); // Remove any null/undefined items
                     
-                    // If no media items found, skip this entry
+                    // If no media items found, but entry is generating or failed, still show it
                     if (mediaItems.length === 0) {
-                      console.warn('[MusicHistory] Entry has no media items:', {
-                        id: entry.id,
-                        model: entry.model,
-                        hasAudios: !!entry.audios?.length,
-                        hasImages: !!entry.images?.length,
-                        hasAudio: !!entry.audio
-                      });
-                      return null;
+                      // For generating or failed entries, create a placeholder media item so they render
+                      if (entry.status === 'generating' || entry.status === 'failed') {
+                        mediaItems.push({ 
+                          id: entry.id || 'placeholder', 
+                          url: '', 
+                          originalUrl: '', 
+                          type: 'audio',
+                          error: entry.error 
+                        });
+                      } else {
+                        console.warn('[MusicHistory] Entry has no media items:', {
+                          id: entry.id,
+                          model: entry.model,
+                          hasAudios: !!entry.audios?.length,
+                          hasImages: !!entry.images?.length,
+                          hasAudio: !!entry.audio,
+                          status: entry.status
+                        });
+                        return null;
+                      }
                     }
                     
                     return mediaItems.map((audio: any, audioIndex: number) => {
