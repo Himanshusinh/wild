@@ -23,6 +23,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "WildMind",
   description: "Your One-Stop AI-Powered Solution for Visual and Branding Needs",
+  alternates: {
+    canonical: "https://wildmindai.com",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

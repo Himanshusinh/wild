@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server';
 
 // Protect routes by requiring the backend session cookie (app_session) and add security headers
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const url = req.nextUrl.clone();
+  const { pathname } = url;
   const trimmedPath = pathname.replace(/\/+$/, '') || '/';
   const normalizedPath = trimmedPath.toLowerCase();
   const pathnameLower = trimmedPath.toLowerCase();
@@ -36,6 +37,17 @@ export function middleware(req: NextRequest) {
     '/$': '/view/Landingpage',
     '/&': '/view/Landingpage',
   };
+
+  if (url.protocol === 'http:') {
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, { status: 308 });
+  }
+
+  const host = req.headers.get('host') || url.host;
+  if (host?.startsWith('www.')) {
+    url.host = host.replace(/^www\./, '');
+    return NextResponse.redirect(url, { status: 308 });
+  }
 
   const redirectTarget = legacyRedirects[normalizedPath];
   if (redirectTarget) {
