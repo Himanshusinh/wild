@@ -6,6 +6,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const trimmedPath = pathname.replace(/\/+$/, '') || '/';
   const normalizedPath = trimmedPath.toLowerCase();
+  const pathnameLower = trimmedPath.toLowerCase();
 
   const legacyRedirects: Record<string, string> = {
     '/view/video-generation': '/text-to-video',
@@ -36,6 +37,31 @@ export function middleware(req: NextRequest) {
     url.pathname = targetPath;
     url.search = targetQuery ? `?${targetQuery}` : req.nextUrl.search;
     return NextResponse.redirect(url, { status: 308 });
+  }
+
+  const trackingParams = new Set([
+    'next',
+    'toast',
+    'ref',
+    'redirect',
+    'utm',
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+  ]);
+
+  const hasStrippableParams =
+    pathnameLower.startsWith('/view') &&
+    Array.from(req.nextUrl.searchParams.keys()).some(
+      (key) => trackingParams.has(key.toLowerCase()) || key.toLowerCase().startsWith('utm_')
+    );
+
+  if (hasStrippableParams) {
+    const cleanUrl = req.nextUrl.clone();
+    cleanUrl.search = '';
+    return NextResponse.redirect(cleanUrl, { status: 308 });
   }
 
   // Base response with security headers
