@@ -153,12 +153,32 @@ export const getImageGenerationCreditCost = (
   frontendModel: string, 
   count: number = 1,
   frameSize?: string,
-  style?: string
+  style?: string,
+  resolution?: string
 ): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== 'image') {
     console.warn(`Unknown or invalid image model: ${frontendModel}`);
     return 0;
+  }
+
+  // Handle resolution-based pricing for nano-banana-pro
+  if (frontendModel === 'google/nano-banana-pro') {
+    const res = resolution?.toUpperCase() || '2K';
+    let cost = 300; // Default to 1K/2K pricing
+    if (res === '4K') {
+      cost = 500; // 4K pricing
+    }
+    console.log(`Nano Banana Pro cost: ${cost} credits for resolution: ${res}`);
+    return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
+  }
+
+  // First try to get cost from MODEL_CREDITS_MAPPING (direct lookup)
+  // This handles models like nano-banana-pro that may not be in creditDistributionData with exact name
+  const directCost = MODEL_CREDITS_MAPPING[frontendModel];
+  if (directCost !== undefined && directCost > 0) {
+    console.log(`Found cost via direct mapping: ${directCost} for model: ${frontendModel}`);
+    return directCost * Math.max(1, Math.min(count, 4)); // Max 4 images
   }
 
   // First try to get cost from creditDistributionData using creditModelName
@@ -176,6 +196,12 @@ export const getImageGenerationCreditCost = (
     }
   } else {
     console.log(`Found base cost: ${baseCost} for model: ${mapping.creditModelName}`);
+  }
+  
+  // If still no cost found, return 0 (will trigger "Unknown model" error)
+  if (baseCost === 0) {
+    console.warn(`No cost found for model: ${frontendModel} (creditModelName: ${mapping.creditModelName})`);
+    return 0;
   }
   
   return baseCost * Math.max(1, Math.min(count, 4)); // Max 4 images

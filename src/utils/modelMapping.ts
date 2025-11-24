@@ -88,6 +88,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'google/nano-banana-pro',
+    creditModelName: 'Google nano banana pro 2K', // Default to 2K, will be resolved based on resolution
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      resolution: ['1K', '2K', '4K']
+    }
+  },
+  {
     frontendValue: 'imagen-4-ultra',
     creditModelName: 'Imagen 4 Ultra',
     generationType: 'image',

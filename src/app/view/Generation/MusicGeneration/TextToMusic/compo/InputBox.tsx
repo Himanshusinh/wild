@@ -329,7 +329,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
           )}
 
           {/* Music Input Box */}
-          <div className="w-full -mt-10 pt-4">
+          <div className="w-full -mt-10 pt-4 ">
             <MusicInputBox
               onGenerate={handleGenerate}
               isGenerating={isGenerating}

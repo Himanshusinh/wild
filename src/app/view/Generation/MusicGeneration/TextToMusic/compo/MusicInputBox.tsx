@@ -53,6 +53,49 @@ const MODEL_OPTIONS = [
   }
 ];
 
+const ELEVENLABS_STANDARD_VOICES = [
+  'Rachel',
+  'Aria',
+  'Roger',
+  'Sarah',
+  'Laura',
+  'Charlie',
+  'George',
+  'Callum',
+  'River',
+  'Liam',
+  'Charlotte',
+  'Alice',
+  'Matilda',
+  'Will',
+  'Jessica',
+  'Eric',
+  'Chris',
+  'Brian',
+  'Daniel',
+  'Lily',
+  'Antoni',
+  'Bella',
+  'Domi',
+  'Elli',
+  'Freya',
+  'Grace',
+  'James',
+  'Nicole',
+  'Dorothy',
+  'Michael',
+  'Ethan',
+  'Josh',
+  'Arnold',
+  'Adam',
+  'Thomas',
+  'Emily',
+  'Gigi'
+];
+
+const ELEVENLABS_TTS_DEFAULT_VOICE = 'Rachel';
+const ELEVENLABS_DIALOGUE_DEFAULT_VOICE = 'Aria';
+
 interface MusicInputBoxProps {
   onGenerate?: (payload: any) => void;
   isGenerating?: boolean;
@@ -86,7 +129,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   });
   const [outputFormat, setOutputFormat] = useState<'hex' | 'url'>('hex');
   // ElevenLabs TTS-specific state (new API schema)
-  const [elevenlabsVoice, setElevenlabsVoice] = useState('english');
+  const [elevenlabsVoice, setElevenlabsVoice] = useState(ELEVENLABS_TTS_DEFAULT_VOICE);
   const [elevenlabsCustomAudioLanguage, setElevenlabsCustomAudioLanguage] = useState('');
   const [elevenlabsExaggeration, setElevenlabsExaggeration] = useState(0.5);
   const [elevenlabsTemperature, setElevenlabsTemperature] = useState(0.8);
@@ -94,10 +137,16 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   
   // Chatterbox-specific state
   const [chatterboxVoice, setChatterboxVoice] = useState('english');
-  const [customAudioLanguage, setCustomAudioLanguage] = useState('');
+  const [customAudioLanguage, setCustomAudioLanguage] = useState('english');
   const [voiceFileName, setVoiceFileName] = useState('');
   const [uploadedVoiceFile, setUploadedVoiceFile] = useState<File | null>(null);
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+  const [userAudioFiles, setUserAudioFiles] = useState<Array<{ id: string; fileName: string; url: string; storagePath: string }>>([]);
+  const [isLoadingAudioFiles, setIsLoadingAudioFiles] = useState(false);
+  const [selectedUploadedAudio, setSelectedUploadedAudio] = useState<string>('');
+  const [uploadedAudioDropdownOpen, setUploadedAudioDropdownOpen] = useState(false);
+  const [audioFileNameInput, setAudioFileNameInput] = useState('');
+  const [fileNameError, setFileNameError] = useState('');
   const [exaggeration, setExaggeration] = useState(0.5);
   const [temperature, setTemperature] = useState(0.8);
   const [cfgScale, setCfgScale] = useState(0.5);
@@ -118,7 +167,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     voice: string;
   }
   const [dialogueInputs, setDialogueInputs] = useState<DialogueInput[]>([
-    { text: '', voice: 'Aria' }
+    { text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }
   ]);
   const [dialogueStability, setDialogueStability] = useState(0.5);
   const [dialogueUseSpeakerBoost, setDialogueUseSpeakerBoost] = useState(false);
@@ -185,6 +234,27 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const isDialogueModel = model.toLowerCase().includes('dialogue');
   const isSfxModel = model.toLowerCase().includes('sfx') || model.toLowerCase().includes('sound-effect');
 
+  // Helper function to ensure audio URL is a proper Zata URL
+  const ensureZataUrl = (audioFile: { url?: string; storagePath?: string }): string => {
+    if (!audioFile) return '';
+    
+    // If URL is already a full Zata URL, use it
+    if (audioFile.url && (audioFile.url.startsWith('https://idr01.zata.ai') || audioFile.url.startsWith('http://idr01.zata.ai'))) {
+      return audioFile.url;
+    }
+    
+    // If we have a storagePath, construct Zata URL from it
+    if (audioFile.storagePath) {
+      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+      // Remove leading slash from storagePath if present
+      const cleanPath = audioFile.storagePath.startsWith('/') ? audioFile.storagePath.slice(1) : audioFile.storagePath;
+      return `${ZATA_PREFIX.replace(/\/$/, '')}/${cleanPath}`;
+    }
+    
+    // Fallback to URL if available
+    return audioFile.url || '';
+  };
+
   // Auto-adjust textarea height
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
     element.style.height = 'auto';
@@ -216,6 +286,36 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setModel('elevenlabs-tts');
     }
   }, []); // Only run on mount
+
+  // Fetch user's uploaded audio files when Chatterbox model is selected
+  useEffect(() => {
+    if (isChatterboxModel) {
+      const fetchUserAudioFiles = async () => {
+        setIsLoadingAudioFiles(true);
+        try {
+          const { getApiClient } = await import('@/lib/axiosInstance');
+          const api = getApiClient();
+          const response = await api.get('/api/fal/audio-files');
+          if (response.data?.data?.audioFiles) {
+            // Ensure all audio files have proper Zata URLs
+            const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
+              ...audioFile,
+              url: ensureZataUrl(audioFile),
+            }));
+            setUserAudioFiles(audioFilesWithZataUrls);
+          }
+        } catch (error) {
+          console.error('Failed to fetch user audio files:', error);
+        } finally {
+          setIsLoadingAudioFiles(false);
+        }
+      };
+      fetchUserAudioFiles();
+    } else {
+      // Clear audio files when switching away from Chatterbox
+      setUserAudioFiles([]);
+    }
+  }, [isChatterboxModel]);
 
   // Auto-close timers for all dropdowns (20 seconds)
   useEffect(() => {
@@ -454,6 +554,31 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       // Reset model to default
       setModel(defaultModel);
       
+      // Fetch user's uploaded audio files when Chatterbox model is selected
+      if (isChatterboxModel) {
+        const fetchUserAudioFiles = async () => {
+          setIsLoadingAudioFiles(true);
+          try {
+            const { getApiClient } = await import('@/lib/axiosInstance');
+            const api = getApiClient();
+            const response = await api.get('/api/fal/audio-files');
+            if (response.data?.data?.audioFiles) {
+              // Ensure all audio files have proper Zata URLs
+              const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
+                ...audioFile,
+                url: ensureZataUrl(audioFile),
+              }));
+              setUserAudioFiles(audioFilesWithZataUrls);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user audio files:', error);
+          } finally {
+            setIsLoadingAudioFiles(false);
+          }
+        };
+        fetchUserAudioFiles();
+      }
+      
       // Reset audio settings to defaults
       setAudio({
         sample_rate: 44100,
@@ -465,7 +590,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setOutputFormat('hex');
       
       // Reset ElevenLabs TTS settings
-      setElevenlabsVoice('english');
+      setElevenlabsVoice(ELEVENLABS_TTS_DEFAULT_VOICE);
       setElevenlabsCustomAudioLanguage('');
       setElevenlabsExaggeration(0.5);
       setElevenlabsTemperature(0.8);
@@ -473,7 +598,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       
       // Reset Chatterbox settings
       setChatterboxVoice('english');
-      setCustomAudioLanguage('');
+      setCustomAudioLanguage('english');
       setExaggeration(0.5);
       setTemperature(0.8);
       setCfgScale(0.5);
@@ -489,7 +614,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setMayaOutputFormat('wav');
       
       // Reset Dialogue settings
-      setDialogueInputs([{ text: '', voice: 'Aria' }]);
+      setDialogueInputs([{ text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }]);
       setDialogueStability(0.5);
       setDialogueUseSpeakerBoost(false);
       setDialogueSeed('random');
@@ -545,7 +670,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         .filter(input => input.text.trim().length > 0)
         .map(input => ({
           text: input.text.trim(),
-          voice: input.voice.trim() || 'Aria'
+          voice: input.voice.trim() || ELEVENLABS_DIALOGUE_DEFAULT_VOICE
         }));
       if (validInputs.length === 0) {
         dispatch(addNotification({ type: 'error', message: 'Please add at least one dialogue input with text' }));
@@ -586,9 +711,33 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       // Chatterbox Multilingual TTS parameters
       payload.text = trimmedText;
       payload.model = 'chatterbox-multilingual';
-      if (chatterboxVoice.trim()) payload.voice = chatterboxVoice.trim();
-      if (customAudioLanguage.trim()) payload.custom_audio_language = customAudioLanguage.trim();
-      if (voiceFileName.trim()) payload.voice_file_name = voiceFileName.trim();
+      
+      // Validate: if user has uploaded a file but no name, require name
+      if (uploadedVoiceFile && !audioFileNameInput.trim()) {
+        dispatch(addNotification({ type: 'error', message: 'Please enter a name for the uploaded audio file before generating' }));
+        return;
+      }
+      
+      // Prioritize selectedUploadedAudio if it exists, otherwise use chatterboxVoice
+      const voiceValue = selectedUploadedAudio || chatterboxVoice;
+      
+      if (voiceValue && voiceValue.trim()) {
+        payload.voice = voiceValue.trim();
+        
+        // Only set custom_audio_language and voice_file_name if voice is a URL (custom audio)
+        const isCustomVoiceUrl = voiceValue && typeof voiceValue === 'string' && 
+          (voiceValue.startsWith('http://') || voiceValue.startsWith('https://'));
+        
+        if (isCustomVoiceUrl) {
+          if (customAudioLanguage.trim()) payload.custom_audio_language = customAudioLanguage.trim();
+          // Only include voice_file_name if it was set (meaning it's a new upload, not from dropdown)
+          // When selecting from dropdown, voiceFileName is set but we don't want to include it
+          // We only want voice_file_name for newly uploaded files
+          if (voiceFileName.trim() && uploadedVoiceFile) {
+            payload.voice_file_name = voiceFileName.trim();
+          }
+        }
+      }
       if (exaggeration != null) payload.exaggeration = Number(exaggeration.toFixed(2));
       if (temperature != null) payload.temperature = Number(temperature.toFixed(2));
       if (cfgScale != null) payload.cfg_scale = Number(cfgScale.toFixed(2));
@@ -597,7 +746,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     } else if (isTtsModel) {
       // ElevenLabs TTS parameters (new API schema)
       payload.text = trimmedText;
-      const voiceValue = elevenlabsVoice.trim() || 'english';
+      const voiceValue = elevenlabsVoice.trim() || ELEVENLABS_TTS_DEFAULT_VOICE;
       payload.voice = voiceValue;
       const isCustomVoiceUrl = voiceValue.startsWith('http://') || voiceValue.startsWith('https://');
       if (isCustomVoiceUrl && elevenlabsCustomAudioLanguage.trim()) payload.custom_audio_language = elevenlabsCustomAudioLanguage.trim();
@@ -694,7 +843,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     }, [isSFXMode, isDialogueMode, isTtsMode, filteredOptions.length]);
     
     return (
-      <div className="relative dropdown-container">
+      <div className="relative dropdown-container ">
         <button
           onClick={() => {
             setCloseStyleDropdown(true);
@@ -1058,12 +1207,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   );
 
   const TtsSettings = () => {
-    const voiceOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish', 
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay', 
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish', 
-      'swahili', 'turkish', 'chinese'
-    ];
+    const voiceOptions = ELEVENLABS_STANDARD_VOICES;
     
     const customAudioLanguageOptions = [
       'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish', 
@@ -1079,7 +1223,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative dropdown-container">
-            <label className="block text-white/70 text-sm mb-1">Voice</label>
+            <label className="block text-white/70 text-sm mb-1">Voice (string)</label>
             <button
               onClick={() => {
                 setElevenlabsVoiceDropdownOpen(!elevenlabsVoiceDropdownOpen);
@@ -1102,7 +1246,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               }}
               className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
             >
-              <span className="capitalize">{elevenlabsVoice || 'Select Voice'}</span>
+              <span className="text-white/90">{elevenlabsVoice || ELEVENLABS_TTS_DEFAULT_VOICE}</span>
               <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${elevenlabsVoiceDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {elevenlabsVoiceDropdownOpen && (
@@ -1118,7 +1262,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       elevenlabsVoice === option ? "bg-white text-black" : "text-white/90"
                     }`}
                   >
-                    <span className="capitalize">{option}</span>
+                    <span>{option}</span>
                     {elevenlabsVoice === option && (
                       <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
                     )}
@@ -1126,7 +1270,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 ))}
               </div>
             )}
-            <p className="text-white/50 text-xs mt-1">Language code (e.g., english, hindi) or custom audio URL</p>
+            <p className="text-white/50 text-xs mt-1">The voice to use for speech generation. Default value: "Rachel".</p>
           </div>
           {/* <div className="flex-1 relative">
             <label className="block text-white/70 text-sm mb-1">Custom Audio Language</label>
@@ -1188,7 +1332,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <RangeControl label="Temperature" value={elevenlabsTemperature} min={0.05} max={5.0} step={0.01} onChange={setElevenlabsTemperature} />
           <RangeControl label="CFG Scale" value={elevenlabsCfgScale} min={0.0} max={1.0} step={0.01} onChange={setElevenlabsCfgScale} />
         </div>
-        <div className="flex flex-col md:flex-row gap-3">
+        {/* <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1">
             <label className="block text-white/70 text-sm mb-1">Seed</label>
             <div className="flex items-center gap-2">
@@ -1218,7 +1362,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
             />
           </div>
-        </div>
+        </div> */}
       </div>
     );
   };
@@ -1353,88 +1497,6 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 </span>
                 <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  
-                  // Validate file type
-                  const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
-                  const allowedExtensions = /\.(wav|mp3)$/i;
-                  if (!allowedTypes.includes(file.type) && !file.name.match(allowedExtensions)) {
-                    dispatch(addNotification({ type: 'error', message: 'Please upload a WAV or MP3 audio file' }));
-                    e.target.value = '';
-                    return;
-                  }
-                  
-                  // Validate file size (max 15MB)
-                  const maxSize = 15 * 1024 * 1024;
-                  if (file.size > maxSize) {
-                    dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
-                    e.target.value = '';
-                    return;
-                  }
-                  
-                  setIsUploadingVoice(true);
-                  setUploadedVoiceFile(file);
-                  
-                  try {
-                    // Convert file to data URI
-                    const reader = new FileReader();
-                    const dataUri = await new Promise<string>((resolve, reject) => {
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(file);
-                    });
-                    
-                    // Upload to backend to get URL
-                    const { getApiClient } = await import('@/lib/axiosInstance');
-                    const api = getApiClient();
-                    const uploadResponse = await api.post('/api/fal/upload-voice', {
-                      audioData: dataUri,
-                      fileName: voiceFileName || file.name.replace(/\.[^/.]+$/, ''),
-                    });
-                    
-                    if (uploadResponse.data?.data?.url) {
-                      const uploadedUrl = uploadResponse.data.data.url;
-                      setChatterboxVoice(uploadedUrl);
-                      dispatch(addNotification({ type: 'success', message: 'Voice file uploaded successfully' }));
-                    } else {
-                      throw new Error('No URL returned from upload');
-                    }
-                  } catch (error: any) {
-                    console.error('Failed to upload voice file:', error);
-                    dispatch(addNotification({ type: 'error', message: error?.response?.data?.message || 'Failed to upload voice file' }));
-                    setUploadedVoiceFile(null);
-                  } finally {
-                    setIsUploadingVoice(false);
-                    e.target.value = '';
-                  }
-                }}
-                className="hidden"
-                id="voice-file-input-chatterbox"
-                disabled={isUploadingVoice}
-              />
-              <label
-                htmlFor="voice-file-input-chatterbox"
-                className={`flex items-center justify-center gap-1.5 px-3 h-[32px] rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition-all cursor-pointer bg-white/10 hover:bg-white/20 text-white ${isUploadingVoice ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title="Upload audio file for custom voice"
-              >
-                {isUploadingVoice ? (
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                )}
-              </label>
             </div>
             {voiceDropdownOpen && (
               <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
@@ -1443,6 +1505,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     key={option}
                     onClick={() => {
                       setChatterboxVoice(option);
+                      setSelectedUploadedAudio(''); // Clear selected uploaded audio when choosing a language voice
                       setVoiceDropdownOpen(false);
                       setCustomAudioLanguage('');
                       setUploadedVoiceFile(null);
@@ -1458,101 +1521,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                   </button>
                 ))}
                 <div className="border-t border-white/10 my-1"></div>
-                <div className="px-3 py-2 space-y-3" onClick={(e) => e.stopPropagation()}>
-                  <div>
-                    <label className="block text-white/70 text-xs mb-2 font-medium">Upload Audio File</label>
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        
-                        // Validate file type
-                        const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
-                        const allowedExtensions = /\.(wav|mp3)$/i;
-                        if (!allowedTypes.includes(file.type) && !file.name.match(allowedExtensions)) {
-                          dispatch(addNotification({ type: 'error', message: 'Please upload a WAV or MP3 audio file' }));
-                          e.target.value = '';
-                          return;
-                        }
-                        
-                        // Validate file size (max 15MB)
-                        const maxSize = 15 * 1024 * 1024;
-                        if (file.size > maxSize) {
-                          dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
-                          e.target.value = '';
-                          return;
-                        }
-                        
-                        setIsUploadingVoice(true);
-                        setUploadedVoiceFile(file);
-                        
-                        try {
-                          // Convert file to data URI
-                          const reader = new FileReader();
-                          const dataUri = await new Promise<string>((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result as string);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                          });
-                          
-                          // Upload to backend to get URL
-                          const { getApiClient } = await import('@/lib/axiosInstance');
-                          const api = getApiClient();
-                          const uploadResponse = await api.post('/api/fal/upload-voice', {
-                            audioData: dataUri,
-                            fileName: voiceFileName || file.name.replace(/\.[^/.]+$/, ''),
-                          });
-                          
-                          if (uploadResponse.data?.data?.url) {
-                            const uploadedUrl = uploadResponse.data.data.url;
-                            setChatterboxVoice(uploadedUrl);
-                            setVoiceDropdownOpen(false);
-                            dispatch(addNotification({ type: 'success', message: 'Voice file uploaded successfully' }));
-                          } else {
-                            throw new Error('No URL returned from upload');
-                          }
-                        } catch (error: any) {
-                          console.error('Failed to upload voice file:', error);
-                          dispatch(addNotification({ type: 'error', message: error?.response?.data?.message || 'Failed to upload voice file' }));
-                          setUploadedVoiceFile(null);
-                        } finally {
-                          setIsUploadingVoice(false);
-                          e.target.value = '';
-                        }
-                      }}
-                      className="hidden"
-                      id="voice-file-input"
-                      disabled={isUploadingVoice}
-                    />
-                    <label
-                      htmlFor="voice-file-input"
-                      className={`flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 ring-1 ring-white/20 hover:ring-white/30 cursor-pointer text-center py-2.5 rounded-lg text-sm font-medium text-white transition-all ${isUploadingVoice ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isUploadingVoice ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>Uploading...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                          </svg>
-                          <span>{uploadedVoiceFile ? `Uploaded: ${uploadedVoiceFile.name}` : 'Choose Audio File'}</span>
-                        </>
-                      )}
-                    </label>
-                    {uploadedVoiceFile && (
-                      <p className="text-xs text-white/60 mt-1 truncate">{uploadedVoiceFile.name}</p>
-                    )}
-                  </div>
+                <div className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                   <div>
                     <label className="block text-white/70 text-xs mb-2 font-medium">Or enter custom audio URL:</label>
                     <input
@@ -1564,6 +1533,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                         if (!value.startsWith('http://') && !value.startsWith('https://')) {
                           setCustomAudioLanguage('');
                           setUploadedVoiceFile(null);
+                        } else if (value.startsWith('http://') || value.startsWith('https://')) {
+                          // Set default to english when a custom URL is entered
+                          if (!customAudioLanguage) {
+                            setCustomAudioLanguage('english');
+                          }
                         }
                       }}
                       placeholder="https://example.com/voice.mp3"
@@ -1575,16 +1549,78 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             )}
           </div>
           
-          {/* Show Custom Audio Language when using custom voice URL */}
-          {isCustomVoiceUrl && (
+          {/* Voice Library Dropdown */}
+          <div className="flex-1 relative dropdown-container">
+            <label className="block text-white/70 text-sm mb-0">Voice Library</label>
+            <p className="text-xs text-white/50 mb-1">
+              Select a previously uploaded audio file from your library to use as a voice reference. 
+            </p>
+            <button
+              onClick={() => {
+                setUploadedAudioDropdownOpen(!uploadedAudioDropdownOpen);
+                setVoiceDropdownOpen(false);
+                setCustomAudioLanguageDropdownOpen(false);
+              }}
+              className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
+            >
+              <span className={selectedUploadedAudio ? 'text-white' : 'text-white/60'}>
+                {selectedUploadedAudio 
+                  ? userAudioFiles.find(f => ensureZataUrl(f) === selectedUploadedAudio)?.fileName || 'Selected audio'
+                  : 'Select uploaded audio...'}
+              </span>
+              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${uploadedAudioDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {uploadedAudioDropdownOpen && (
+              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                {isLoadingAudioFiles ? (
+                  <div className="px-3 py-2 text-sm text-white/60">Loading...</div>
+                ) : userAudioFiles.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-white/60">No audio files in library. Upload audio files to build your voice library.</div>
+                ) : (
+                  userAudioFiles.map((audioFile) => {
+                    const zataUrl = ensureZataUrl(audioFile);
+                    return (
+                      <button
+                        key={audioFile.id}
+                        onClick={() => {
+                          setSelectedUploadedAudio(zataUrl);
+                          setChatterboxVoice(zataUrl);
+                          setUploadedAudioDropdownOpen(false);
+                          setCustomAudioLanguage('english');
+                          // Clear uploadedVoiceFile to indicate this is NOT a new upload
+                          setUploadedVoiceFile(null);
+                          setVoiceFileName('');
+                        }}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+                          selectedUploadedAudio === zataUrl ? "bg-white text-black" : "text-white/90"
+                        }`}
+                      >
+                        <span className="truncate flex-1" title={audioFile.fileName}>{audioFile.fileName}</span>
+                        {selectedUploadedAudio === zataUrl && (
+                          <div className="w-2 h-2 bg-black rounded-full flex-shrink-0 ml-2"></div>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Show Custom Audio Language immediately after Voice Library selection or custom voice URL */}
+          {(selectedUploadedAudio || isCustomVoiceUrl) && (
             <div className="flex-1 relative">
-              <label className="block text-white/70 text-sm mb-1">
-                Custom Audio Language <span className="text-red-400">*</span>
+              <label className="block text-white/70 text-sm mb-0">
+                Your Voice Language <span className="text-red-400">*</span>
               </label>
+              <p className="text-xs text-white/50 mb-1">
+                Select the language of your uploaded audio file. 
+              </p>
               <button
                 onClick={() => {
                   setCustomAudioLanguageDropdownOpen(!customAudioLanguageDropdownOpen);
                   setVoiceDropdownOpen(false);
+                  setUploadedAudioDropdownOpen(false);
                 }}
                 className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
               >
@@ -1617,27 +1653,195 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             </div>
           )}
           
-          {/* Show Voice File Name input when using custom voice URL */}
-          {isCustomVoiceUrl && (
-            <div className="flex-1">
-              <label className="block text-white/70 text-sm mb-1">Voice File Name (Optional)</label>
+          {/* Upload Audio File Section */}
+          <div className="flex flex-col gap-">
+            <label className="block text-white/70 text-sm mb-0">Upload Audio File</label>
+            <div className="space-y-2">
               <input
                 type="text"
-                value={voiceFileName}
-                onChange={(e) => setVoiceFileName(e.target.value)}
-                placeholder="e.g., my-custom-voice"
-                className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg text-sm"
+                value={audioFileNameInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setAudioFileNameInput(value);
+                  setFileNameError('');
+                  // Check if name already exists (case-insensitive, with or without extension)
+                  const trimmedValue = value.trim();
+                  if (trimmedValue) {
+                    const normalizedValue = trimmedValue.toLowerCase();
+                    const hasConflict = userAudioFiles.some(f => {
+                      const normalizedFileName = f.fileName.toLowerCase();
+                      // Check if the value matches the file name (with or without extension)
+                      return normalizedFileName === normalizedValue || 
+                             normalizedFileName === `${normalizedValue}.wav` ||
+                             normalizedFileName === `${normalizedValue}.mp3` ||
+                             normalizedValue === normalizedFileName.replace(/\.(wav|mp3)$/i, '');
+                    });
+                    if (hasConflict) {
+                      setFileNameError('Name is already taken. Please try a different name.');
+                    }
+                  }
+                }}
+                placeholder="Enter audio file name..."
+                className={`w-full bg-black/50 ring-1 ${fileNameError ? 'ring-red-500' : 'ring-white/10'} focus:ring-white/20 outline-none text-white placeholder-white/40 p-2 rounded text-xs`}
+                disabled={isUploadingVoice || !!selectedUploadedAudio}
               />
-              <p className="text-xs text-white/50 mt-1">Name for the uploaded voice file in storage</p>
+              {fileNameError && (
+                <p className="text-xs text-red-400">{fileNameError}</p>
+              )}
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  // Validate file name - require name before upload
+                  if (!audioFileNameInput.trim()) {
+                    dispatch(addNotification({ type: 'error', message: 'Please enter a name for the audio file before uploading' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  // Validate file type
+                  const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
+                  const allowedExtensions = /\.(wav|mp3)$/i;
+                  if (!allowedTypes.includes(file.type) && !file.name.match(allowedExtensions)) {
+                    dispatch(addNotification({ type: 'error', message: 'Please upload a WAV or MP3 audio file' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  // Extract file extension from the uploaded file
+                  const fileExtension = file.name.match(/\.([^.]+)$/)?.[1]?.toLowerCase() || '';
+                  if (!fileExtension || !['wav', 'mp3'].includes(fileExtension)) {
+                    dispatch(addNotification({ type: 'error', message: 'File must have .wav or .mp3 extension' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  // Get the base name from user input and remove any existing extension
+                  let baseName = audioFileNameInput.trim();
+                  if (!baseName) {
+                    dispatch(addNotification({ type: 'error', message: 'Please enter a name for the audio file' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  // Remove any existing extension from the base name to avoid double extensions
+                  baseName = baseName.replace(/\.(wav|mp3)$/i, '');
+                  
+                  // Construct full file name with extension (always add the extension from the actual file)
+                  const fullFileName = `${baseName}.${fileExtension}`;
+                  
+                  // Check for duplicate name (with extension)
+                  if (userAudioFiles.some(f => f.fileName.toLowerCase() === fullFileName.toLowerCase())) {
+                    dispatch(addNotification({ type: 'error', message: `Name "${fullFileName}" is already taken. Please try a different name.` }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  // Validate file size (max 15MB)
+                  const maxSize = 15 * 1024 * 1024;
+                  if (file.size > maxSize) {
+                    dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
+                    e.target.value = '';
+                    return;
+                  }
+                  
+                  setIsUploadingVoice(true);
+                  setUploadedVoiceFile(file);
+                  
+                  try {
+                    // Convert file to data URI
+                    const reader = new FileReader();
+                    const dataUri = await new Promise<string>((resolve, reject) => {
+                      reader.onload = () => resolve(reader.result as string);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(file);
+                    });
+                    
+                    // Upload to backend to get URL (send full file name with extension)
+                    const { getApiClient } = await import('@/lib/axiosInstance');
+                    const api = getApiClient();
+                    const uploadResponse = await api.post('/api/fal/upload-voice', {
+                      audioData: dataUri,
+                      fileName: fullFileName,
+                    });
+                    
+                    if (uploadResponse.data?.data?.url) {
+                      const uploadedUrl = uploadResponse.data.data.url;
+                      setChatterboxVoice(uploadedUrl);
+                      setSelectedUploadedAudio(uploadedUrl);
+                      setCustomAudioLanguage('english');
+                      setVoiceFileName(fullFileName);
+                      setAudioFileNameInput('');
+                      setFileNameError('');
+                      // Refresh the user audio files list
+                      try {
+                        const response = await api.get('/api/fal/audio-files');
+                        if (response.data?.data?.audioFiles) {
+                          const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
+                            ...audioFile,
+                            url: ensureZataUrl(audioFile),
+                          }));
+                          setUserAudioFiles(audioFilesWithZataUrls);
+                        }
+                      } catch (err) {
+                        console.error('Failed to refresh audio files list:', err);
+                      }
+                      dispatch(addNotification({ type: 'success', message: 'Voice file uploaded successfully' }));
+                    } else {
+                      throw new Error('No URL returned from upload');
+                    }
+                  } catch (error: any) {
+                    console.error('Failed to upload voice file:', error);
+                    const errorMessage = error?.response?.data?.message || 'Failed to upload voice file';
+                    dispatch(addNotification({ type: 'error', message: errorMessage }));
+                    if (errorMessage.includes('already taken')) {
+                      setFileNameError(errorMessage);
+                    }
+                    setUploadedVoiceFile(null);
+                  } finally {
+                    setIsUploadingVoice(false);
+                    e.target.value = '';
+                  }
+                }}
+                className="hidden"
+                id="upload-audio-file-input"
+                disabled={isUploadingVoice || !!selectedUploadedAudio}
+              />
+              <label
+                htmlFor="upload-audio-file-input"
+                className={`flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 ring-1 ring-white/20 hover:ring-white/30 text-center py-2.5 rounded-lg text-sm font-medium text-white transition-all ${isUploadingVoice || !!selectedUploadedAudio ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
+              >
+                {isUploadingVoice ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>Choose Audio File</span>
+                  </>
+                )}
+              </label>
             </div>
-          )}
+          </div>
         </div>
         <div className="space-y-2">
           <RangeControl label="Exaggeration" value={exaggeration} min={0.25} max={2.0} step={0.01} onChange={setExaggeration} />
           <RangeControl label="Temperature" value={temperature} min={0.05} max={5.0} step={0.01} onChange={setTemperature} />
           <RangeControl label="CFG Scale" value={cfgScale} min={0.0} max={1.0} step={0.01} onChange={setCfgScale} />
         </div>
-      <div className="flex flex-col md:flex-row gap-3">
+      {/* <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1">
           <label className="block text-white/70 text-sm mb-1">Seed</label>
           <div className="flex items-center gap-2">
@@ -1667,7 +1871,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
           />
         </div>
-      </div>
+      </div> */}
     </div>
     );
   };
@@ -1766,14 +1970,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   };
 
   const DialogueSettings = () => {
-    const voiceOptions = [
-      'Aria', 'Charlotte', 'Rachel', 'Domi', 'Elli', 'Josh', 'Arnold', 'Adam', 
-      'Antoni', 'Thomas', 'Charlie', 'Emily', 'Bella', 'Gigi', 'Freya', 'Grace',
-      'James', 'Daniel', 'Liam', 'Sarah', 'Nicole', 'Dorothy', 'Michael', 'Ethan'
-    ];
+    const voiceOptions = ELEVENLABS_STANDARD_VOICES;
     
     const addDialogueInput = () => {
-      setDialogueInputs([...dialogueInputs, { text: '', voice: 'Aria' }]);
+      setDialogueInputs([...dialogueInputs, { text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }]);
     };
     
     const removeDialogueInput = (index: number) => {
@@ -2056,13 +2256,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 setLyrics(e.target.value);
                 adjustTextareaHeight(e.target);
               }}
-              className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 p-4 rounded-lg resize-none overflow-hidden transition-all ${
+              className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 placeholder-t p-4 rounded-lg resize-none overflow-hidden transition-all ${
                 lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
               }`}
-              rows={6}
+              rows={1}
               style={{
-                minHeight: '150px',
-                maxHeight: '300px' // Increased from 96px to 300px
+                minHeight: '100px',
+                maxHeight: '200px' // Increased from 96px to 300px
               }}
             />
             {lyricsLen > 0 && !isLyricsValid(lyrics) && (
