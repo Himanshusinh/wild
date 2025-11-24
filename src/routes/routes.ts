@@ -16,10 +16,10 @@ export const APP_ROUTES = {
 
 // Feature Routes
 export const FEATURE_ROUTES = {
-  IMAGE_GENERATION: '/view/imagegeneration',
-  VIDEO_GENERATION: '/view/video-generation',
-  SKETCH_TO_IMAGE: '/view/sketch-to-image',
-  REAL_TIME_GENERATION: '/view/real-time-generation',
+  IMAGE_GENERATION: '/text-to-image',
+  VIDEO_GENERATION: '/text-to-video',
+  SKETCH_TO_IMAGE: '/text-to-image', // Legacy path now points to the live text-to-image experience
+  REAL_TIME_GENERATION: '/text-to-video', // Reuse the closest available live route
 } as const;
 
 // Image Generation Features (Text to Image, Image to Image, Logo, Sticker)
@@ -53,15 +53,15 @@ export const BRANDINGKIT = {
 
 // Navigation Routes
 export const NAV_ROUTES = {
-  TEMPLATES: '/view/templates',
-  ART_STATION: '/view/artstation',
+  TEMPLATES: '/view/workflows',
+  ART_STATION: '/view/ArtStation',
   PRICING: '/view/pricing',
-  BLOG: '/view/Blog',
-  CONTACT: '/view/contactus',
-  SUPPORT: '/view/support',
-  ABOUT: '/about',
-  BOOKMARK:'/view/Bookmark',
-  LANDING:'/view/Main',
+  BLOG: '/view/Landingpage',
+  CONTACT: '/view/Landingpage?section=contact',
+  SUPPORT: '/view/Landingpage?section=support',
+  ABOUT: '/view/Landingpage?section=about',
+  BOOKMARK:'/bookmarks',
+  LANDING:'/view/Landingpage',
   LIVE_CHAT: '/view/Generation/wildmindskit/LiveChat',
   ACCOUNT_MANAGEMENT: '/view/account-management',
   WORKFLOWS: '/view/workflows',

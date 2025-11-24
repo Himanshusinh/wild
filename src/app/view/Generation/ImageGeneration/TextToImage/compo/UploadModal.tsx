@@ -12,10 +12,57 @@ type UploadModalProps = {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loading?: boolean;
+  onTabChange?: (tab: 'library' | 'computer' | 'uploads') => void; // Callback when tab changes
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading, onTabChange }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
+  const onTabChangePrevTabRef = React.useRef<typeof tab | null>(null);
+  const onTabChangeCallbackRef = React.useRef(onTabChange);
+  const isProcessingTabChangeRef = React.useRef(false);
+  
+  // Store the latest callback in a ref to avoid dependency issues
+  React.useEffect(() => {
+    onTabChangeCallbackRef.current = onTabChange;
+  }, [onTabChange]);
+  
+  // Call onTabChange when tab changes, but only once per tab change and only when modal is open
+  React.useEffect(() => {
+    if (!isOpen) {
+      // Reset tracking when modal closes
+      onTabChangePrevTabRef.current = null;
+      isProcessingTabChangeRef.current = false;
+      return;
+    }
+    
+    // Prevent processing if already processing a tab change
+    if (isProcessingTabChangeRef.current) {
+      return;
+    }
+    
+    // Only call onTabChange if:
+    // 1. Tab actually changed (not initial render)
+    // 2. Modal is open
+    // 3. We're not already processing a tab change
+    if (onTabChangePrevTabRef.current !== null && onTabChangePrevTabRef.current !== tab) {
+      const callback = onTabChangeCallbackRef.current;
+      if (callback) {
+        isProcessingTabChangeRef.current = true;
+        // Use requestAnimationFrame to break the update cycle and prevent infinite loops
+        requestAnimationFrame(() => {
+          try {
+            callback(tab);
+          } finally {
+            // Reset the processing flag after a delay to allow state updates to complete
+            setTimeout(() => {
+              isProcessingTabChangeRef.current = false;
+            }, 100);
+          }
+        });
+      }
+    }
+    onTabChangePrevTabRef.current = tab;
+  }, [tab, isOpen]); // Removed onTabChange from dependencies to prevent re-runs
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
@@ -37,7 +84,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
         if (parsed && typeof parsed === 'object') {
           scrollPositionsRef.current = parsed;
         }
-      }
+      }   
     } catch (e) {
       // ignore
     }
@@ -89,11 +136,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
       }
     };
   }, []);
+  
+  // Simple scroll preservation: save position before loadMore, restore after
+  const scrollPositionBeforeLoadRef = React.useRef<number | null>(null);
+  const isLoadingMoreRef = React.useRef(false);
+  
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
+      scrollPositionBeforeLoadRef.current = null;
+      isLoadingMoreRef.current = false;
     }
   }, [isOpen]);
 
@@ -188,13 +242,48 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   ref={listRef}
                   onScroll={(e) => {
                     const el = e.currentTarget as HTMLDivElement;
-                    // Save current scroll for this tab so we can restore it later
+                    // Save current scroll for this tab
                     try {
                       scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
                     } catch {}
-                    if (!onLoadMore || loading) return;
-                    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-                    if (nearBottom && hasMore && !loading) onLoadMore();
+                    
+                    if (!onLoadMore || loading || isLoadingMoreRef.current || !hasMore) return;
+                    
+                    // Check if user scrolled near bottom (200px threshold)
+                    const scrollBottom = el.scrollTop + el.clientHeight;
+                    const scrollHeight = el.scrollHeight;
+                    const nearBottom = scrollBottom >= scrollHeight - 200;
+                    
+                    if (nearBottom) {
+                      // Save current scroll position and scroll height before loading
+                      const scrollTopBefore = el.scrollTop;
+                      const scrollHeightBefore = el.scrollHeight;
+                      isLoadingMoreRef.current = true;
+                      
+                      // Call onLoadMore to fetch more items
+                      Promise.resolve(onLoadMore()).then(() => {
+                        // After new items are loaded, maintain scroll position
+                        // Calculate how much new content was added
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => {
+                            if (el) {
+                              const scrollHeightAfter = el.scrollHeight;
+                              const heightDiff = scrollHeightAfter - scrollHeightBefore;
+                              
+                              // Maintain scroll position relative to bottom
+                              // This prevents jumping when new items are added
+                              if (heightDiff > 0) {
+                                // New content added - keep same scroll position
+                                el.scrollTop = scrollTopBefore;
+                              }
+                            }
+                            isLoadingMoreRef.current = false;
+                          });
+                        });
+                      }).catch(() => {
+                        isLoadingMoreRef.current = false;
+                      });
+                    }
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
