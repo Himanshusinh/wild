@@ -22,9 +22,9 @@ const INSTRUMENTS = [
 
 const MODEL_OPTIONS = [
   {
-    label: 'Music 1.5 • MiniMax',
-    value: 'music-1.5',
-    description: 'Text-to-music (up to 90s)'
+    label: 'MiniMax Music 2',
+    value: 'minimax-music-2',
+    description: 'fal-ai/minimax/music-2'
   },
   {
     label: 'ElevenLabs TTS v3',
@@ -113,7 +113,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   isGenerating = false,
   resultUrl,
   errorMessage,
-  defaultModel = 'music-1.5',
+  defaultModel = 'minimax-music-2',
   isSFXMode = false,
   isTtsMode = false,
   isDialogueMode = false,
@@ -121,13 +121,15 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 }) => {
   // State for music generation
   const [lyrics, setLyrics] = useState('');
+  const [prompt, setPrompt] = useState(''); // Prompt for MiniMax Music 2
+  const [lyricsPrompt, setLyricsPrompt] = useState(''); // Lyrics prompt for MiniMax Music 2
   const [selectedStyle, setSelectedStyle] = useState('Pop');
   const [selectedInstruments, setSelectedInstruments] = useState<string[]>(['Piano']);
   const [model, setModel] = useState(defaultModel);
   const [audio, setAudio] = useState({
-    sample_rate: 44100 as 16000 | 24000 | 32000 | 44100,
+    sample_rate: 44100 as 8000 | 16000 | 22050 | 24000 | 32000 | 44100,
     bitrate: 256000 as 32000 | 64000 | 128000 | 256000,
-    format: 'mp3' as 'mp3' | 'wav' | 'pcm'
+    format: 'mp3' as 'mp3' | 'pcm' | 'flac'
   });
   const [outputFormat, setOutputFormat] = useState<'hex' | 'url'>('hex');
   // ElevenLabs TTS-specific state (new API schema)
@@ -266,6 +268,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   // Validation
   const lyricsLen = lyrics.trim().length;
+  const promptLen = prompt.trim().length;
+  const lyricsPromptLen = lyricsPrompt.trim().length;
 
   const isLyricsValid = (s: string) => {
     const n = s.trim().length;
@@ -275,8 +279,20 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     return n >= 10 && n <= maxLength;
   };
 
+  const isPromptValid = (s: string) => {
+    const n = s.trim().length;
+    return n >= 10 && n <= 300; // 10-300 characters for prompt
+  };
+
+  const isLyricsPromptValid = (s: string) => {
+    const n = s.trim().length;
+    return n >= 10 && n <= 3000; // 10-3000 characters for lyrics_prompt
+  };
+
   const canGenerate = isDialogueModel 
     ? dialogueInputs.some(input => input.text.trim().length > 0) && !generating
+    : model === 'minimax-music-2'
+    ? isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && !generating
     : isLyricsValid(lyrics) && !generating;
 
   const clearVoiceLibrarySelection = useCallback(() => {
@@ -572,6 +588,9 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     if (resultUrl) {
       // Clear lyrics
       setLyrics('');
+      // Clear prompt and lyricsPrompt for MiniMax Music 2
+      setPrompt('');
+      setLyricsPrompt('');
       
       // Reset to default style and instruments
       setSelectedStyle('Pop');
@@ -759,12 +778,17 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       payload.temperature = Number(elevenlabsTemperature.toFixed(2));
       payload.cfg_scale = Number(elevenlabsCfgScale.toFixed(2));
     } else {
-      // Pure music generation
-      payload.prompt = `${trimmedText}\n\n${formattedPrompt}`;
-      payload.audio_setting = { ...audio };
-      payload.style = selectedStyle;
-      payload.instruments = selectedInstruments;
-      if (outputFormat && outputFormat !== 'hex') payload.output_format = outputFormat;
+      // MiniMax Music 2 generation
+      // prompt: description of music (10-300 chars)
+      // lyrics_prompt: lyrics with structure tags (10-3000 chars)
+      payload.model = 'minimax-music-2';
+      payload.prompt = prompt.trim(); // Description: style, mood, scenario
+      payload.lyrics_prompt = lyricsPrompt.trim(); // Lyrics with optional structure tags
+      payload.audio_setting = {
+        sample_rate: String(audio.sample_rate || 44100),
+        bitrate: String(audio.bitrate || 256000),
+        format: audio.format || 'mp3',
+      };
     }
 
     if (onGenerate) {
@@ -838,8 +862,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         opt.value === 'chatterbox-multilingual' || 
         opt.value === 'maya-tts'
       );
+    } else {
+      // Music generation: Only show MiniMax Music 2
+      filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'minimax-music-2');
     }
-    // Otherwise, show all models (for music generation)
     
     const activeOption = filteredOptions.find((opt) => opt.value === model) || filteredOptions[0];
     
@@ -852,7 +878,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     
     if (isVoiceCloning) {
       const chatterboxOption = MODEL_OPTIONS.find(opt => opt.value === 'chatterbox-multilingual');
-      return (
+    return (
         <div className="relative">
           <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black flex items-center gap-2 cursor-default select-none">
             <Music4 className="w-4 h-4 text-black" />
@@ -1031,12 +1057,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-4 h-4" />
-        {audio.sample_rate}
+        Sample Rate
         <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${srOpen ? 'rotate-180' : ''}`} />
       </button>
       {srOpen && (
         <div className="absolute top-full left-0 mt-2 w-32 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
-          {[44100, 32000, 24000, 16000].map((sr) => (
+          {[44100, 32000, 24000, 22050, 16000, 8000].map((sr) => (
             <button
               key={sr}
               onClick={() => { setAudio({ ...audio, sample_rate: sr as any }); setSrOpen(false); }}
@@ -1077,7 +1103,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-4 h-4" />
-        {audio.bitrate}
+        Bitrate
         <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${brOpen ? 'rotate-180' : ''}`} />
       </button>
       {brOpen && (
@@ -1123,12 +1149,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <FileText className="w-4 h-4" />
-        {audio.format.toUpperCase()}
+        Format
         <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${formatOpen ? 'rotate-180' : ''}`} />
       </button>
       {formatOpen && (
         <div className="absolute top-full left-0 mt-2 w-24 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
-          {['mp3', 'wav', 'pcm'].map((format) => (
+          {(model === 'minimax-music-2' ? ['mp3', 'pcm', 'flac'] : ['mp3', 'wav', 'pcm']).map((format) => (
             <button
               key={format}
               onClick={() => { setAudio({ ...audio, format: format as any }); setFormatOpen(false); }}
@@ -1169,7 +1195,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <FileText className="w-4 h-4" />
-        {outputFormat.toUpperCase()}
+        Output Format
         <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${outputFormatOpen ? 'rotate-180' : ''}`} />
       </button>
       {outputFormatOpen && (
@@ -2262,7 +2288,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <MusicModelsDropdown />
-          {!isTtsModel && !isDialogueModel && !isSfxModel && (
+          {!isTtsModel && !isDialogueModel && !isSfxModel && model !== 'minimax-music-2' && (
             <>
           <StyleDropdown />
           <InstrumentsDropdown />
@@ -2270,45 +2296,131 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           )}
         </div>
 
-        {/* Lyrics Input - Expanded size - Hidden for Dialogue Model */}
+        {/* Input Section - Different for MiniMax Music 2 vs other models */}
         {!isDialogueModel && (
-          <div className="w-full">
-            <textarea
-              placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
-              value={lyrics}
-              onChange={(e) => {
-                setLyrics(e.target.value);
-                adjustTextareaHeight(e.target);
-              }}
-              className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 placeholder-t p-4 rounded-lg resize-none overflow-hidden transition-all ${
-                lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
-              }`}
-              rows={1}
-              style={{
-                minHeight: '100px',
-                maxHeight: '200px' // Increased from 96px to 300px
-              }}
-            />
-            {lyricsLen > 0 && !isLyricsValid(lyrics) && (
-              <p className="text-red-400 text-xs mt-1">
-                {isChatterboxModel 
-                  ? 'Text must be between 10-300 characters'
-                  : 'Lyrics must be between 10-600 characters'}
-              </p>
+          <>
+            {model === 'minimax-music-2' ? (
+              <>
+                {/* Prompt Input for MiniMax Music 2 */}
+                <div className="w-full">
+                  <label className="block text-white/90 text-sm font-medium mb-2 flex items-center gap-1">
+                    Prompt*
+                    <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </label>
+                  <textarea
+                    placeholder="Indie folk, melancholic, introspective, longing, solitary walk, coffee shop"
+                    value={prompt}
+                    onChange={(e) => {
+                      setPrompt(e.target.value);
+                      adjustTextareaHeight(e.target);
+                    }}
+                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
+                      promptLen > 0 && !isPromptValid(prompt) ? 'ring-red-500/50' : ''
+                    }`}
+                    rows={1}
+                    style={{
+                      minHeight: '100px',
+                      maxHeight: '200px'
+                    }}
+                  />
+                  {promptLen > 0 && !isPromptValid(prompt) && (
+                    <p className="text-red-400 text-xs mt-1">
+                      Prompt must be between 10-300 characters
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <p className="text-white/70 text-xs pl-1">
+                      A description of the music, specifying style, mood, and scenario.
+                    </p>
+                    <span className="text-xs text-white/60">({promptLen}/300)</span>
+                  </div>
+                </div>
+
+                {/* Lyrics Prompt Input for MiniMax Music 2 */}
+                <div className="w-full">
+                  <label className="block text-white/90 text-sm font-medium mb-2 flex items-center gap-1">
+                    Lyrics Prompt*
+                    <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </label>
+                  <textarea
+                    placeholder="[verse]Streetlights flicker, the night breeze sighs
+Shadows stretch as I walk alone
+An old coat wraps my silent sorrow
+Wandering, longing, where should I go
+[chorus]Pushing the wooden door, the aroma spreads
+In a familiar corner, a stranger gazes"
+                    value={lyricsPrompt}
+                    onChange={(e) => {
+                      setLyricsPrompt(e.target.value);
+                      adjustTextareaHeight(e.target);
+                    }}
+                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
+                      lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) ? 'ring-red-500/50' : ''
+                    }`}
+                    rows={1}
+                    style={{
+                      minHeight: '150px',
+                      maxHeight: '300px'
+                    }}
+                  />
+                  {lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) && (
+                    <p className="text-red-400 text-xs mt-1">
+                      Lyrics prompt must be between 10-3000 characters
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <p className="text-white/70 text-xs pl-1">
+                      Lyrics of the song. Use \n to separate lines. You may add structure tags like [Intro], [Verse], [Chorus], [Bridge], [Outro] to enhance the arrangement.
+                    </p>
+                    <span className="text-xs text-white/60">({lyricsPromptLen}/3000)</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Standard Lyrics Input for other models */
+              <div className="w-full">
+                <textarea
+                  placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
+                  value={lyrics}
+                  onChange={(e) => {
+                    setLyrics(e.target.value);
+                    adjustTextareaHeight(e.target);
+                  }}
+                  className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 placeholder-t p-4 rounded-lg resize-none overflow-hidden transition-all ${
+                    lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
+                  }`}
+                  rows={1}
+                  style={{
+                    minHeight: '100px',
+                    maxHeight: '200px'
+                  }}
+                />
+                {lyricsLen > 0 && !isLyricsValid(lyrics) && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {isChatterboxModel 
+                      ? 'Text must be between 10-300 characters'
+                      : 'Lyrics must be between 10-600 characters'}
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-2 mt-2">
+                  <p className="text-white/70 text-xs pl-1">
+                    {isTtsModel
+                      ? (isMayaModel
+                          ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious.'
+                          : (isChatterboxModel 
+                              ? 'Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.'
+                              : 'The text to be converted to speech (maximum 300 characters). '))
+                      : 'Use intro, verse, chorus, bridge, outro tags to structure your song.....'}
+                  </p>
+                  <span className="text-xs text-white/60">({lyricsLen}/{isTtsModel || isChatterboxModel || isMayaModel ? 300 : 600})</span>
+                </div>
+              </div>
             )}
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-white/70 text-xs pl-1">
-                {isTtsModel
-                  ? (isMayaModel
-                      ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious.'
-                      : (isChatterboxModel 
-                          ? 'Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.'
-                          : 'The text to be converted to speech (maximum 300 characters). '))
-                  : 'Use intro, verse, chorus, bridge, outro tags to structure your song.....'}
-              </p>
-              <span className="text-xs text-white/60">({lyricsLen}/{isTtsModel || isChatterboxModel || isMayaModel ? 300 : 600})</span>
-            </div>
-          </div>
+          </>
         )}
 
         {!isTtsModel && !isDialogueModel ? (
@@ -2316,7 +2428,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <SampleRateDropdown />
             <BitrateDropdown />
             <FormatDropdown />
-            <OutputFormatDropdown />
+            {model !== 'minimax-music-2' && <OutputFormatDropdown />}
           </div>
         ) : isDialogueModel ? (
           <DialogueSettings />
