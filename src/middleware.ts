@@ -5,8 +5,12 @@ import type { NextRequest } from 'next/server';
 export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
   const headerHost = req.headers.get('host') || url.host;
+  const forwardedHost = req.headers.get('x-forwarded-host') || headerHost;
   const forwardedProto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
-  const isLocalHost = headerHost?.startsWith('localhost') || headerHost?.startsWith('127.0.0.1') || headerHost?.endsWith('.local');
+  const isLocalHost =
+    forwardedHost?.startsWith('localhost') ||
+    forwardedHost?.startsWith('127.0.0.1') ||
+    forwardedHost?.endsWith('.local');
   const { pathname } = url;
   const trimmedPath = pathname.replace(/\/+$/, '') || '/';
   const normalizedPath = trimmedPath.toLowerCase();
@@ -46,8 +50,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, { status: 308 });
   }
 
-  if (!isLocalHost && headerHost?.startsWith('www.')) {
-    url.host = headerHost.replace(/^www\./, '');
+  if (!isLocalHost && forwardedHost?.startsWith('www.')) {
+    url.host = forwardedHost.replace(/^www\./, '');
     return NextResponse.redirect(url, { status: 308 });
   }
 
