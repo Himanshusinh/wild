@@ -140,6 +140,7 @@ const Header = () => {
               muted
               playsInline
               preload="auto"
+              fetchPriority="high"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onLoadStart={() => {
                 // Reset start time when video starts loading
@@ -181,7 +182,7 @@ const Header = () => {
               <video
                 key={`preload-${nextIndex}`}
                 src={nextSrc}
-                preload="auto"
+                preload="metadata"
                 muted
                 playsInline
                 aria-hidden="true"

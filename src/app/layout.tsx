@@ -58,8 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
         <link rel="preconnect" href="https://idr01.zata.ai" />
         <link rel="dns-prefetch" href="https://idr01.zata.ai" />
-        {/* Google Tag Manager */}
-        <Script id="google-tag-manager" strategy="afterInteractive">
+        {/* Google Tag Manager - Deferred to reduce blocking */}
+        <Script id="google-tag-manager" strategy="lazyOnload">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -68,13 +68,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })(window,document,'script','dataLayer','GTM-W8R7DSW7');
           `}
         </Script>
-        {/* Google tag (gtag.js) */}
+        {/* Google tag (gtag.js) - Deferred to reduce blocking */}
         <Script
           id="google-analytics-src"
           src="https://www.googletagmanager.com/gtag/js?id=G-S8H5QSFV5Z"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
