@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addNotification } from '@/store/slices/uiSlice';
 import { Music4, ChevronDown, ChevronUp, Volume2, FileText, Palette, Guitar } from "lucide-react";
@@ -105,6 +105,7 @@ interface MusicInputBoxProps {
   isSFXMode?: boolean;
   isTtsMode?: boolean;
   isDialogueMode?: boolean;
+  isVoiceCloning?: boolean;
 }
 
 const MusicInputBox: React.FC<MusicInputBoxProps> = ({
@@ -115,7 +116,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   defaultModel = 'music-1.5',
   isSFXMode = false,
   isTtsMode = false,
-  isDialogueMode = false
+  isDialogueMode = false,
+  isVoiceCloning = false
 }) => {
   // State for music generation
   const [lyrics, setLyrics] = useState('');
@@ -214,6 +216,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const brTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const formatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const outputFormatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioFileNameInputRef = useRef<HTMLInputElement | null>(null);
 
   // States to trigger closing of other dropdowns
   const [closeStyleDropdown, setCloseStyleDropdown] = useState(false);
@@ -276,46 +279,69 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     ? dialogueInputs.some(input => input.text.trim().length > 0) && !generating
     : isLyricsValid(lyrics) && !generating;
 
+  const clearVoiceLibrarySelection = useCallback(() => {
+    if (!selectedUploadedAudio) return;
+    setSelectedUploadedAudio('');
+    setChatterboxVoice('english');
+    setCustomAudioLanguage('english');
+    setUploadedVoiceFile(null);
+    setVoiceFileName('');
+    requestAnimationFrame(() => {
+      audioFileNameInputRef.current?.focus();
+    });
+  }, [selectedUploadedAudio]);
+
   // Ensure model is set correctly based on mode on mount
   useEffect(() => {
     if (isSFXMode && model !== 'elevenlabs-sfx') {
       setModel('elevenlabs-sfx');
     } else if (isDialogueMode && model !== 'elevenlabs-dialogue') {
       setModel('elevenlabs-dialogue');
+    } else if (isVoiceCloning && model !== 'chatterbox-multilingual') {
+      setModel('chatterbox-multilingual');
     } else if (isTtsMode && !['elevenlabs-tts', 'chatterbox-multilingual', 'maya-tts'].includes(model)) {
       setModel('elevenlabs-tts');
     }
   }, []); // Only run on mount
 
-  // Fetch user's uploaded audio files when Chatterbox model is selected
-  useEffect(() => {
-    if (isChatterboxModel) {
-      const fetchUserAudioFiles = async () => {
-        setIsLoadingAudioFiles(true);
-        try {
-          const { getApiClient } = await import('@/lib/axiosInstance');
-          const api = getApiClient();
-          const response = await api.get('/api/fal/audio-files');
-          if (response.data?.data?.audioFiles) {
-            // Ensure all audio files have proper Zata URLs
-            const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
-              ...audioFile,
-              url: ensureZataUrl(audioFile),
-            }));
-            setUserAudioFiles(audioFilesWithZataUrls);
-          }
-        } catch (error) {
-          console.error('Failed to fetch user audio files:', error);
-        } finally {
-          setIsLoadingAudioFiles(false);
-        }
-      };
-      fetchUserAudioFiles();
-    } else {
-      // Clear audio files when switching away from Chatterbox
-      setUserAudioFiles([]);
+  const fetchUserAudioFiles = useCallback(async () => {
+    if (!isChatterboxModel) return;
+    setIsLoadingAudioFiles(true);
+    try {
+      const { getApiClient } = await import('@/lib/axiosInstance');
+      const api = getApiClient();
+      const response = await api.get('/api/fal/audio-files');
+      if (response.data?.data?.audioFiles) {
+        const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
+          ...audioFile,
+          url: ensureZataUrl(audioFile),
+        }));
+        setUserAudioFiles(audioFilesWithZataUrls);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user audio files:', error);
+    } finally {
+      setIsLoadingAudioFiles(false);
     }
   }, [isChatterboxModel]);
+
+  useEffect(() => {
+    if (isChatterboxModel) {
+      fetchUserAudioFiles();
+    } else {
+      setUserAudioFiles([]);
+    }
+  }, [isChatterboxModel, fetchUserAudioFiles]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (isChatterboxModel) {
+        fetchUserAudioFiles();
+      }
+    };
+    window.addEventListener('wm-audio-library-updated', handler);
+    return () => window.removeEventListener('wm-audio-library-updated', handler);
+  }, [isChatterboxModel, fetchUserAudioFiles]);
 
   // Auto-close timers for all dropdowns (20 seconds)
   useEffect(() => {
@@ -554,28 +580,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       // Reset model to default
       setModel(defaultModel);
       
-      // Fetch user's uploaded audio files when Chatterbox model is selected
       if (isChatterboxModel) {
-        const fetchUserAudioFiles = async () => {
-          setIsLoadingAudioFiles(true);
-          try {
-            const { getApiClient } = await import('@/lib/axiosInstance');
-            const api = getApiClient();
-            const response = await api.get('/api/fal/audio-files');
-            if (response.data?.data?.audioFiles) {
-              // Ensure all audio files have proper Zata URLs
-              const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
-                ...audioFile,
-                url: ensureZataUrl(audioFile),
-              }));
-              setUserAudioFiles(audioFilesWithZataUrls);
-            }
-          } catch (error) {
-            console.error('Failed to fetch user audio files:', error);
-          } finally {
-            setIsLoadingAudioFiles(false);
-          }
-        };
         fetchUserAudioFiles();
       }
       
@@ -626,7 +631,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setSfxOutputFormat('mp3_44100_128');
       setSfxLoop(false);
     }
-  }, [resultUrl, defaultModel, isDialogueMode]);
+  }, [resultUrl, defaultModel, isDialogueMode, isChatterboxModel, fetchUserAudioFiles]);
 
   const handleGenerate = () => {
     if (!canGenerate) return;
@@ -823,8 +828,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     } else if (isDialogueMode) {
       // Dialogue mode: Only show dialogue model
       filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'elevenlabs-dialogue');
+    } else if (isVoiceCloning) {
+      // Voice cloning: only Chatterbox
+      filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'chatterbox-multilingual');
     } else if (isTtsMode) {
-      // TTS mode: Only show TTS models (remove music, dialogue, sfx)
+      // TTS mode: Only show TTS-capable models
       filteredOptions = MODEL_OPTIONS.filter(opt => 
         opt.value === 'elevenlabs-tts' || 
         opt.value === 'chatterbox-multilingual' || 
@@ -840,7 +848,20 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       if (filteredOptions.length > 0 && !filteredOptions.find(opt => opt.value === model)) {
         setModel(filteredOptions[0].value);
       }
-    }, [isSFXMode, isDialogueMode, isTtsMode, filteredOptions.length]);
+    }, [isSFXMode, isDialogueMode, isVoiceCloning, isTtsMode, filteredOptions.length]);
+    
+    if (isVoiceCloning) {
+      const chatterboxOption = MODEL_OPTIONS.find(opt => opt.value === 'chatterbox-multilingual');
+      return (
+        <div className="relative">
+          <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black flex items-center gap-2 cursor-default select-none">
+            <Music4 className="w-4 h-4 text-black" />
+            {chatterboxOption?.label || 'Chatterbox Multilingual'}
+          </div>
+          <p className="text-xs text-white/50 mt-1">Voice cloning always uses Chatterbox Multilingual.</p>
+        </div>
+      );
+    }
     
     return (
       <div className="relative dropdown-container ">
@@ -1660,6 +1681,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               <input
                 type="text"
                 value={audioFileNameInput}
+                ref={audioFileNameInputRef}
+                onFocus={clearVoiceLibrarySelection}
                 onChange={(e) => {
                   const value = e.target.value;
                   setAudioFileNameInput(value);
@@ -1683,7 +1706,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 }}
                 placeholder="Enter audio file name..."
                 className={`w-full bg-black/50 ring-1 ${fileNameError ? 'ring-red-500' : 'ring-white/10'} focus:ring-white/20 outline-none text-white placeholder-white/40 p-2 rounded text-xs`}
-                disabled={isUploadingVoice || !!selectedUploadedAudio}
+                disabled={isUploadingVoice}
+                autoComplete="off"
               />
               {fileNameError && (
                 <p className="text-xs text-red-400">{fileNameError}</p>
@@ -2308,23 +2332,23 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
         {/* Generate Button - At the bottom */}
         <div className="w-full flex justify-end pt-0">
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate}
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
             className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2F6BFF] text-white px-6 py-1 rounded-lg text-lg font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center gap-3 relative z-[60]"
-          >
-            {generating ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
-                Composing...
-              </>
-            ) : (
-              <>
-                {/* <Music4 className="w-6 h-6" /> */}
-                Generate
-              </>
-            )}
-          </button>
+            >
+              {generating ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
+                  Composing...
+                </>
+              ) : (
+                <>
+                  {/* <Music4 className="w-6 h-6" /> */}
+                  Generate
+                </>
+              )}
+            </button>
         </div>
       </div>
 
