@@ -189,12 +189,19 @@ const SidePannelFeatures = ({
 
   const isVideoEditActive = pathname === '/edit-video' || pathname?.startsWith('/edit-video') || pathname?.includes('/EditVideo') || pathname?.includes('edit-video') || pathname?.includes('/video-edit');
 
+  const labelClasses =
+    'text-white hidden md:inline-block whitespace-nowrap md:w-[150px] transition-all duration-300 ease-out ' +
+    'md:opacity-0 md:-translate-x-3 md:group-hover:opacity-100 md:group-hover:translate-x-0';
+  const taglineClasses =
+    'text-white hidden md:inline-block whitespace-nowrap md:w-[180px] transition-all duration-300 ease-out ' +
+    'md:opacity-0 md:-translate-x-3 md:group-hover:opacity-100 md:group-hover:translate-x-0';
+
   return (
     <div
       ref={sidebarRef}
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl   group transition-all text-white duration-200  backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40  shadow-2xl'
+      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-all text-white duration-200 md:w-[68px] w-[50px] hover:w-60 z-40 shadow-2xl'
       style={{
         // borderTopLeftRadius: '16px',
         // borderBottomLeftRadius: '16px',
@@ -218,14 +225,13 @@ const SidePannelFeatures = ({
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
             }
           }}
-          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
+          className="md:w-[48px] md:h-[48px] w-[36px] h-[36px] flex-none cursor-pointer transition-transform duration-200">
           <Image
-            src="/icons/wildmind_icon_darkbg.svg"
-            // src={imageRoutes.core.logo}
-            alt="Wild Mind Logo"
-            width={32}
-            height={32}
-            className="w-full h-full"
+            src="/core/logosquare%20(2).png"
+            alt="WildMind Icon"
+            width={80}
+            height={80}
+            className="h-auto w-auto"
           />
         </div>
         <span
@@ -237,8 +243,8 @@ const SidePannelFeatures = ({
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
             }
           }}
-          className='text-white md:w-[34px] md:h-[34px] w-[25px] h-[25px] text-3xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
-          <Image src="/icons/wildmind_text_whitebg (2).svg" alt="Wild Mind Logo" width={32} height={32} className="w-auto h-full" />
+          className={`${taglineClasses} mt-1 cursor-pointer`}>
+          <Image src="/core/logo%20with%20tagline%20(2).png" alt="WildMind Logo" width={400} height={200} className="h-auto w-auto transition-opacity duration-300" />
         </span>
       </div>
 
@@ -269,7 +275,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
           <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
+          <span className={labelClasses}>Home</span>
         </div>
       </div>
 
@@ -285,7 +291,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
+          <span className={labelClasses}>Image Generation</span>
         </div>
       </div>
 
@@ -301,7 +307,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Edit</span>
+          <span className={labelClasses}>Image Edit</span>
         </div>
       </div>
 
@@ -317,7 +323,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Generation</span>
+          <span className={labelClasses}>Video Generation</span>
         </div>
       </div>
 
@@ -333,7 +339,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Edit</span>
+          <span className={labelClasses}>Video Edit</span>
         </div>
       </div>
 
@@ -349,7 +355,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Audio Generation</span>
+          <span className={labelClasses}>Audio Generation</span>
         </div>
       </div>
 
@@ -368,7 +374,7 @@ const SidePannelFeatures = ({
           className="flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item"
         >
           <Image src={imageRoutes.icons.canvas} alt="Canvas Studio" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Canvas Studio</span>
+          <span className={labelClasses}>Canvas Studio</span>
         </div>
       </div>
 
@@ -384,7 +390,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
+          <span className={labelClasses}>Live Canvas</span>
         </div>
       </div>
 
@@ -436,7 +442,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
+          <span className={labelClasses}>Branding Kit</span>
         </div>
 
         {showBrandingDropdown && (
@@ -512,7 +518,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
+          <span className={labelClasses}>Art Station</span>
         </div>
       </div>
 
@@ -535,7 +541,7 @@ const SidePannelFeatures = ({
             }`}
         >
           <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Pricing</span>
+          <span className={labelClasses}>Pricing</span>
         </div>
       </div>
 
@@ -568,7 +574,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
         >
           <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
+          <span className={labelClasses}>History</span>
         </div>
       </div>
 
