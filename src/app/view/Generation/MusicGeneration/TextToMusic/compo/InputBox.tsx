@@ -271,7 +271,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         status: 'completed' as const,
         audios: finalAudios,
         images: finalAudios.map(a => ({ ...a, type: 'audio' })),
-        lyrics: payload.lyrics || payload.text || payload.prompt
+        lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt
       };
 
       console.log('🎵 Final audio data for history:', updateData);
@@ -296,9 +296,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             id: backendHistoryId,
             prompt: normalizedText,
             model: payload.model,
-            lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt,
             generationType: 'text-to-music' as const,
-            ...updateData,
+            ...updateData, // updateData already contains lyrics
             timestamp: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             imageCount: 1
