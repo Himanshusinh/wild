@@ -44,24 +44,34 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://wildmindai.com",
   },
+  other: {
+    // Preload hero video for LCP - will be added via useEffect in HomePage
+    // Note: Dynamic preload links are added in HomePage component
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable}`}>
       <head>
-        {/* Preconnect to required origins for faster loading - CRITICAL for performance */}
-        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
-        <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="preconnect" href="https://www.google-analytics.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
-        {/* Media domains - Most important for LCP */}
+        {/* Preconnect to required origins - Limit to 4 most critical for performance */}
+        {/* Most important: Firebase Storage (LCP images/videos) */}
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+        {/* Zata CDN for optimized images */}
         <link rel="preconnect" href="https://idr01.zata.ai" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://idr01.zata.ai" />
+        {/* Google APIs for auth - DNS prefetch only (not preconnect to stay under 4) */}
+        <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+        {/* Google Tag Manager - DNS prefetch only (deferred loading) */}
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        {/* Preload hero video for LCP - Static link in head for better discovery */}
+        <link 
+          rel="preload" 
+          as="video" 
+          href="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FKLING_Ultra_Real_Text_to_Video_Model%20(1).mp4?alt=media&token=e1312e5a-cdf5-4df2-8f4f-1c0bc5195382"
+          fetchPriority="high"
+        />
         {/* Google Tag Manager - Deferred to reduce blocking */}
         <Script id="google-tag-manager" strategy="lazyOnload">
           {`

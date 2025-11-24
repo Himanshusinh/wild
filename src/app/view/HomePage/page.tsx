@@ -297,34 +297,18 @@ const HomePage: React.FC = () => {
             }
             
             const data = await res.json()
-            console.log(`[HomePage] Feed API response (page ${page}):`, {
-              hasData: !!data,
-              responseStatus: data?.responseStatus,
-              hasDataField: !!data?.data,
-              itemsCount: data?.data?.items?.length || 0,
-              meta: data?.data?.meta,
-            })
+            // Removed verbose logging for production performance
             
             // Handle API response format: { responseStatus: 'success', data: { items: [], meta: {} } }
             const payload = data?.data || data
             const items: any[] = payload?.items || []
             nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
-            console.log(`[HomePage] Processed page ${page}:`, {
-              itemsReceived: items.length,
-              itemsWithMedia: items.filter(it => {
-                const firstImage = (it.images && it.images[0])
-                const firstVideo = (it.videos && it.videos[0])
-                const firstAudio = (it.audios && it.audios[0])
-                const media = firstVideo || firstImage || firstAudio
-                return media?.url
-              }).length,
-              nextCursor: nextCursor ? 'yes' : 'no',
-            })
+            // Removed verbose logging for production performance
 
             // If no items in this page, break to avoid infinite loop
             if (items.length === 0) {
-              console.log(`[HomePage] No items in page ${page}, breaking`)
+              // Removed verbose logging for production performance
               break
             }
 
@@ -346,7 +330,7 @@ const HomePage: React.FC = () => {
 
             page += 1
             if (!nextCursor) {
-              console.log(`[HomePage] No nextCursor after page ${page}, breaking`)
+              // Removed verbose logging for production performance
               break
             }
           } catch (pageError: any) {
@@ -438,6 +422,8 @@ const HomePage: React.FC = () => {
                         className="object-cover rounded-r-2xl"
                         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
                         priority
+                        quality={85}
+                        loading="eager"
                       />
                     </div>
                   </div>

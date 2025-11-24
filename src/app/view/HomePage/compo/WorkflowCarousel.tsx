@@ -113,6 +113,9 @@ export default function WorkflowCarousel({
                       priority={index === 0}
                       loading={index === 0 ? "eager" : "lazy"}
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 600px, 700px"
+                      quality={85}
+                      // Note: Firebase Storage images should be optimized server-side
+                      // (compressed, resized to max 1400px width, converted to WebP/AVIF)
                     />
                   </div>
                   
