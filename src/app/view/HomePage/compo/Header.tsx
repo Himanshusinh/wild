@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getImageUrl } from '../routes'
 
@@ -13,8 +13,8 @@ const Header = () => {
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTransitioningRef = useRef(false);
 
-  // Video data with different content for each slide
-  const videoData = [
+  // Memoize video data to prevent recreation on every render
+  const videoData = useMemo(() => [
     {
       videoSrc: getImageUrl('header', 'heroVideo'),
       title: "Introducing Kling",
@@ -33,39 +33,43 @@ const Header = () => {
       description: "Discover Google's latest breakthrough in AI video generation - Veo3 delivers professional-grade videos with incredible detail and motion.",
       buttonText: "Explore"
     }
-  ];
+  ], []); // Empty deps - video data is static
 
-  // Preload all videos immediately for better performance
+  // Preload all videos immediately for better performance (optimized)
   useEffect(() => {
     const preloadAllVideos = () => {
-      videoData.forEach((videoData, index) => {
-        if (!preloadedVideos.has(index)) {
-          console.log(`Preloading video ${index}`);
+      videoData.forEach((videoItem, index) => {
+        if (!preloadedVideos.has(index) && videoItem.videoSrc) {
           const video = document.createElement('video');
-          video.src = videoData.videoSrc;
+          video.src = videoItem.videoSrc;
           video.preload = 'auto';
           video.muted = true;
           video.load();
           
-          video.addEventListener('canplaythrough', () => {
-            console.log(`Preloaded video ${index}`);
-            setPreloadedVideos(prev => new Set([...prev, index]));
-          });
+          const handleCanPlayThrough = () => {
+            setPreloadedVideos(prev => {
+              const next = new Set(prev);
+              next.add(index);
+              return next;
+            });
+            video.removeEventListener('canplaythrough', handleCanPlayThrough);
+          };
+          
+          video.addEventListener('canplaythrough', handleCanPlayThrough);
         }
       });
     };
 
     preloadAllVideos();
-  }, [videoData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-  // Safe transition function to prevent race conditions
-  const safeTransition = (fromIndex: number, toIndex: number, source: string) => {
+  // Safe transition function to prevent race conditions (memoized)
+  const safeTransition = useCallback((fromIndex: number, toIndex: number, source: string) => {
     if (isTransitioningRef.current) {
-      console.log(`Transition blocked from ${source}: already transitioning`);
       return;
     }
     
-    console.log(`${source}: transitioning from ${fromIndex} to ${toIndex}`);
     isTransitioningRef.current = true;
     setIsTransitioning(true);
     
@@ -80,7 +84,7 @@ const Header = () => {
       isTransitioningRef.current = false;
       transitionTimeoutRef.current = null;
     }, 1000);
-  };
+  }, []); // Stable reference
 
   // Auto-slide functionality with smooth transition (fallback for longer videos)
   useEffect(() => {
@@ -100,17 +104,41 @@ const Header = () => {
     };
   }, [videoData.length, currentVideoIndex]);
 
-  const handleTryNowClick = () => {
+  const handleTryNowClick = useCallback(() => {
     router.push('/text-to-image');
-  };
+  }, [router]);
 
-  const handleDotClick = (index: number) => {
+  const handleDotClick = useCallback((index: number) => {
     if (index !== currentVideoIndex && !isTransitioningRef.current) {
       safeTransition(currentVideoIndex, index, 'Dot Click');
     }
-  };
+  }, [currentVideoIndex, safeTransition]);
 
-  const currentVideo = videoData[currentVideoIndex];
+  // Memoize current video to prevent unnecessary recalculations
+  const currentVideo = useMemo(() => videoData[currentVideoIndex], [videoData, currentVideoIndex]);
+
+  // Memoize video event handlers to prevent recreation
+  const handleVideoLoadStart = useCallback(() => {
+    setVideoStartTime(Date.now());
+  }, []);
+
+  const handleVideoCanPlay = useCallback(() => {
+    if (videoRef.current && videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const handleVideoPlay = useCallback(() => {
+    setIsVideoLoading(false);
+  }, []);
+
+  const handleVideoEnded = useCallback(() => {
+    const timePlayed = Date.now() - videoStartTime;
+    if (timePlayed >= 3000 && !isTransitioningRef.current) {
+      const nextIndex = (currentVideoIndex + 1) % videoData.length;
+      safeTransition(currentVideoIndex, nextIndex, 'Video End');
+    }
+  }, [videoStartTime, currentVideoIndex, videoData.length, safeTransition]);
 
   // Preload first video for LCP optimization (only once on mount)
   useEffect(() => {
@@ -128,7 +156,8 @@ const Header = () => {
         document.head.appendChild(link);
       }
     }
-  }, []); // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - currentVideoIndex and currentVideo are intentionally excluded
 
   return (
     <div className="w-full relative">
@@ -145,32 +174,10 @@ const Header = () => {
               playsInline
               preload="auto"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              onLoadStart={() => {
-                // Reset start time when video starts loading
-                setVideoStartTime(Date.now());
-                console.log(`Video ${currentVideoIndex} started loading`);
-              }}
-              onCanPlay={() => {
-                console.log(`Video ${currentVideoIndex} can play`);
-                // Force play to ensure immediate start
-                if (videoRef.current && videoRef.current.paused) {
-                  videoRef.current.play().catch(console.error);
-                }
-              }}
-              onPlay={() => {
-                console.log(`Video ${currentVideoIndex} started playing`);
-              }}
-              onEnded={() => {
-                // Only auto-advance if video has been playing for at least 3 seconds
-                const timePlayed = Date.now() - videoStartTime;
-                console.log(`Video ${currentVideoIndex} ended. Time played: ${timePlayed}ms`);
-                if (timePlayed >= 3000 && !isTransitioningRef.current) {
-                  const nextIndex = (currentVideoIndex + 1) % videoData.length;
-                  safeTransition(currentVideoIndex, nextIndex, 'Video End');
-                } else {
-                  console.log(`Video too short or already transitioning, waiting for timer`);
-                }
-              }}
+              onLoadStart={handleVideoLoadStart}
+              onCanPlay={handleVideoCanPlay}
+              onPlay={handleVideoPlay}
+              onEnded={handleVideoEnded}
               className={`rounded-3xl transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
                 isTransitioning ? '-translate-x-full' : 'translate-x-0'
               }`}
@@ -178,7 +185,7 @@ const Header = () => {
           )}
 
           {/* Hidden preloader for the next video to ensure instant start */}
-          {(() => {
+          {useMemo(() => {
             const nextIndex = (currentVideoIndex + 1) % videoData.length;
             const nextSrc = videoData[nextIndex]?.videoSrc;
             return nextSrc ? (
@@ -192,7 +199,7 @@ const Header = () => {
                 className="absolute w-0 h-0 opacity-0 pointer-events-none"
               />
             ) : null;
-          })()}
+          }, [currentVideoIndex, videoData])}
 
           {/* Gradient overlay from bottom to top */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent pointer-events-none" />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 // Nav and SidePannelFeatures are provided by the persistent root layout
@@ -70,42 +70,44 @@ const HomePage: React.FC = () => {
     router.push(`/${type}`);
   };
 
-  console.log('🔍 HomePage - Rendered with state:', { currentView, currentGenerationType });
+  // Removed console.log for production performance (handled by Next.js compiler)
 
   // Preload hero video and add resource hints for LCP optimization
   useEffect(() => {
     // Preload hero video
     const heroVideoUrl = getImageUrl('header', 'heroVideo');
     if (heroVideoUrl) {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'video';
-      link.href = heroVideoUrl;
-      // Add fetchPriority for LCP optimization
-      if ('fetchPriority' in link) {
-        (link as any).fetchPriority = 'high';
-      }
-      if (!document.head.querySelector(`link[href="${heroVideoUrl}"]`)) {
+      const existingLink = document.head.querySelector(`link[rel="preload"][as="video"][href="${heroVideoUrl}"]`);
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'video';
+        link.href = heroVideoUrl;
+        // Add fetchPriority for LCP optimization
+        if ('fetchPriority' in link) {
+          (link as any).fetchPriority = 'high';
+        }
         document.head.appendChild(link);
       }
     }
 
-    // Add preconnect hints for media domains
+    // Add preconnect hints for media domains (memoized to avoid re-creation)
     const mediaDomains = [
       'https://firebasestorage.googleapis.com',
       'https://idr01.zata.ai',
       API_BASE ? new URL(API_BASE).origin : null
-    ].filter(Boolean);
+    ].filter(Boolean) as string[];
 
     mediaDomains.forEach(domain => {
-      if (domain && !document.head.querySelector(`link[rel="preconnect"][href="${domain}"]`)) {
+      const existing = document.head.querySelector(`link[rel="preconnect"][href="${domain}"]`);
+      if (!existing) {
         const preconnect = document.createElement('link');
         preconnect.rel = 'preconnect';
         preconnect.href = domain;
         document.head.appendChild(preconnect);
       }
     });
-  }, []);
+  }, []); // Empty deps - only run once on mount
 
   // Check for first-time user and show welcome modal
   useEffect(() => {
@@ -231,25 +233,42 @@ const HomePage: React.FC = () => {
   const [artItems, setArtItems] = useState<Creation[]>([])
 
   const didInitArtRef = React.useRef(false)
+  
+  // Memoize dimensions array to prevent recreation
+  const dims = useMemo(() => [
+    { w: 900, h: 1400 },
+    { w: 1200, h: 1150 },
+    { w: 1000, h: 1000 },
+    { w: 1200, h: 1810 },
+    { w: 1600, h: 1400 },
+    { w: 1100, h: 1800 },
+    { w: 1500, h: 1000 },
+    { w: 1400, h: 1200 },
+    { w: 1200, h: 1200 },
+  ], []);
+
+  // Memoize base URL processing
+  const baseUrl = useMemo(() => API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE, []);
+
+  // Optimized category mapping function
+  const getCategory = useCallback((generationType: string, firstAudio: any) => {
+    if (firstAudio) return 'Music';
+    const t = generationType.toLowerCase();
+    if (t.includes('music') || t.includes('audio')) return 'Music';
+    if (t === 'text-to-image') return 'Images';
+    if (t === 'text-to-video') return 'Videos';
+    if (t === 'logo' || t === 'logo-generation') return 'Logos';
+    if (t === 'sticker-generation' || t === 'sticker') return 'Stickers';
+    if (t === 'product-generation' || t === 'product') return 'Products';
+    return 'All';
+  }, []);
+
   useEffect(() => {
     if (didInitArtRef.current) return; // Prevent React StrictMode double-invoke in dev
     didInitArtRef.current = true;
     const fetchHomeArt = async () => {
       try {
-        const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
         let nextCursor: string | undefined = undefined
-        const dims = [
-          { w: 900, h: 1400 },
-          { w: 1200, h: 1150 },
-          { w: 1000, h: 1000 },
-          { w: 1200, h: 1810 },
-          { w: 1600, h: 1400 },
-          { w: 1100, h: 1800 },
-          { w: 1500, h: 1000 },
-          { w: 1400, h: 1200 },
-          { w: 1200, h: 1200 },
-        ]
-
         const out: Creation[] = []
         let page = 0
         const maxPages = 3
@@ -261,7 +280,14 @@ const HomePage: React.FC = () => {
             url.searchParams.set('mode', 'image')
             if (nextCursor) url.searchParams.set('cursor', nextCursor)
             
-            const res = await fetch(url.toString(), { credentials: 'include' })
+            const res = await fetch(url.toString(), { 
+              credentials: 'include',
+              // Add cache headers for better performance
+              cache: 'default',
+              headers: {
+                'Accept': 'application/json',
+              }
+            })
             
             if (!res.ok) {
               const errorText = await res.text().catch(() => 'Unknown error')
@@ -312,29 +338,9 @@ const HomePage: React.FC = () => {
               // Try multiple URL fields (same as ArtStation)
               const src = media?.url || media?.firebaseUrl || media?.originalUrl || ''
               if (!src) {
-                console.warn(`[HomePage] Item ${it.id} has no media URL:`, {
-                  hasImages: !!it.images,
-                  imagesLength: Array.isArray(it.images) ? it.images.length : 0,
-                  hasVideos: !!it.videos,
-                  videosLength: Array.isArray(it.videos) ? it.videos.length : 0,
-                  hasAudios: !!it.audios,
-                  audiosLength: Array.isArray(it.audios) ? it.audios.length : 0,
-                  mediaKeys: media ? Object.keys(media) : [],
-                })
-                return
+                return // Skip items without media URL
               }
-              const tRaw = (it.generationType || '')
-              const t = tRaw.toLowerCase()
-              const cat = (() => {
-                if (firstAudio) return 'Music'
-                if (t.includes('music') || t.includes('audio')) return 'Music'
-                if (t === 'text-to-image') return 'Images'
-                if (t === 'text-to-video') return 'Videos'
-                if (t === 'logo' || t === 'logo-generation') return 'Logos'
-                if (t === 'sticker-generation' || t === 'sticker') return 'Stickers'
-                if (t === 'product-generation' || t === 'product') return 'Products'
-                return 'All'
-              })() as any
+              const cat = getCategory(it.generationType || '', firstAudio)
               const dim = dims[(out.length + idx) % dims.length]
               const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
               out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
@@ -357,7 +363,6 @@ const HomePage: React.FC = () => {
           }
         }
 
-        console.log(`[HomePage] Final result:`, { totalItems: out.length })
         setArtItems(out)
       } catch (e: any) {
         console.error('[HomePage] Fatal error fetching art:', e?.message || e)
@@ -366,7 +371,7 @@ const HomePage: React.FC = () => {
       }
     }
     fetchHomeArt()
-  }, [])
+  }, [baseUrl, dims, getCategory])
 
   return (
     <div className="min-h-screen bg-[#07070B]">

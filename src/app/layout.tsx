@@ -24,8 +24,12 @@ const geistMono = Geist_Mono({
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-  style: ["normal", "italic"],
+  // Only load weights actually used: 400 (normal), 500 (medium), 600 (semibold), 700 (bold)
+  weight: ["400", "500", "600", "700"],
+  style: ["normal"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
 });
 
 const artega = localFont({
