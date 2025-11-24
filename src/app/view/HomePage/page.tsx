@@ -65,47 +65,11 @@ const HomePage: React.FC = () => {
         break;
     }
   };
+
   const onGenerationTypeChange = (type: GenerationType) => {
     setCurrentGenerationType(type);
     router.push(`/${type}`);
   };
-
-  // Removed console.log for production performance (handled by Next.js compiler)
-
-  // Preload hero video and add resource hints for LCP optimization
-  useEffect(() => {
-    // Preload hero video with fetchpriority=high for LCP
-    const heroVideoUrl = getImageUrl('header', 'heroVideo');
-    if (heroVideoUrl) {
-      const existingLink = document.head.querySelector(`link[rel="preload"][as="video"][href="${heroVideoUrl}"]`);
-      if (!existingLink) {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'video';
-        link.href = heroVideoUrl;
-        // Add fetchPriority for LCP optimization - CRITICAL for 27.3s LCP issue
-        (link as any).fetchPriority = 'high';
-        document.head.appendChild(link);
-      }
-    }
-
-    // Add preconnect hints for media domains (memoized to avoid re-creation)
-    const mediaDomains = [
-      'https://firebasestorage.googleapis.com',
-      'https://idr01.zata.ai',
-      API_BASE ? new URL(API_BASE).origin : null
-    ].filter(Boolean) as string[];
-
-    mediaDomains.forEach(domain => {
-      const existing = document.head.querySelector(`link[rel="preconnect"][href="${domain}"]`);
-      if (!existing) {
-        const preconnect = document.createElement('link');
-        preconnect.rel = 'preconnect';
-        preconnect.href = domain;
-        document.head.appendChild(preconnect);
-      }
-    });
-  }, []); // Empty deps - only run once on mount
 
   // Check for first-time user and show welcome modal
   useEffect(() => {

@@ -39,10 +39,52 @@ const artega = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "WildMind",
-  description: "Your One-Stop AI-Powered Solution for Visual and Branding Needs",
+  title: {
+    default: "WildMind AI | AI-Powered Creative Studio",
+    template: "%s | WildMind AI"
+  },
+  description: "WildMind AI is your all-in-one creative studio powered by advanced AI. Generate images, videos, music, and designs instantly. Transform your creative workflow today.",
+  keywords: ["AI art generator", "text to video AI", "AI music generator", "creative studio", "WildMind AI", "generative AI", "design tools"],
+  authors: [{ name: "WildMind AI Team" }],
+  creator: "WildMind AI",
+  publisher: "WildMind AI",
+  metadataBase: new URL("https://wildmindai.com"),
   alternates: {
-    canonical: "https://wildmindai.com",
+    canonical: "/",
+  },
+  openGraph: {
+    title: "WildMind AI | AI-Powered Creative Studio",
+    description: "Generate images, videos, music, and designs instantly with WildMind AI. Your all-in-one creative studio.",
+    url: "https://wildmindai.com",
+    siteName: "WildMind AI",
+    images: [
+      {
+        url: "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2FAsset%203wildmind%20logo%20text.svg?alt=media&token=16944401-2132-474c-9411-68e8afe550e6",
+        width: 1200,
+        height: 630,
+        alt: "WildMind AI Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WildMind AI | AI-Powered Creative Studio",
+    description: "Generate images, videos, music, and designs instantly with WildMind AI.",
+    creator: "@WildMindAI", // Replace with actual handle if known, or remove
+    images: ["https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2FAsset%203wildmind%20logo%20text.svg?alt=media&token=16944401-2132-474c-9411-68e8afe550e6"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
   other: {
     // Preload hero video for LCP - will be added via useEffect in HomePage

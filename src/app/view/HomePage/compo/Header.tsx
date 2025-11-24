@@ -140,22 +140,8 @@ const Header = () => {
     }
   }, [videoStartTime, currentVideoIndex, videoData.length, safeTransition]);
 
-  // Preload first video for LCP optimization with fetchpriority=high (only once on mount)
-  useEffect(() => {
-    if (currentVideoIndex === 0 && currentVideo.videoSrc) {
-      const existingLink = document.head.querySelector(`link[rel="preload"][as="video"][href="${currentVideo.videoSrc}"]`);
-      if (!existingLink) {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'video';
-        link.href = currentVideo.videoSrc;
-        // Add fetchPriority for LCP optimization - CRITICAL for 27.3s LCP issue
-        (link as any).fetchPriority = 'high';
-        document.head.appendChild(link);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount - currentVideoIndex and currentVideo are intentionally excluded
+  // Preload logic moved to layout.tsx
+
 
   return (
     <div className="w-full relative">
