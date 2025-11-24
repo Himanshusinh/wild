@@ -38,6 +38,8 @@
 body {
   background-color: #000000;
   color: #ffffff;
+  font-family: var(--font-hubot-sans, "Hubot Sans"), sans-serif;
+  font-weight: 400;
 }
 
 /* Hide scrollbars utility */
