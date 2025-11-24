@@ -81,6 +81,10 @@ const HomePage: React.FC = () => {
       link.rel = 'preload';
       link.as = 'video';
       link.href = heroVideoUrl;
+      // Add fetchPriority for LCP optimization
+      if ('fetchPriority' in link) {
+        (link as any).fetchPriority = 'high';
+      }
       if (!document.head.querySelector(`link[href="${heroVideoUrl}"]`)) {
         document.head.appendChild(link);
       }

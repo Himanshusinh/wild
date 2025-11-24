@@ -121,6 +121,10 @@ const Header = () => {
         link.rel = 'preload';
         link.as = 'video';
         link.href = currentVideo.videoSrc;
+        // Add fetchPriority for LCP optimization
+        if ('fetchPriority' in link) {
+          (link as any).fetchPriority = 'high';
+        }
         document.head.appendChild(link);
       }
     }
@@ -140,7 +144,6 @@ const Header = () => {
               muted
               playsInline
               preload="auto"
-              fetchPriority="high"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onLoadStart={() => {
                 // Reset start time when video starts loading
