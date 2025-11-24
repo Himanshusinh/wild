@@ -37,7 +37,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'S2V-01': 1420,               // S2V-01
 
   // Music Generation Models
-  'music-1.5': 90,              // Music 1.5 (Up to 90s)
+  'minimax-music-2': 60,        // MiniMax Music 2 ($0.03 = 60 credits)
   'elevenlabs-tts': 98,         // ElevenLabs TTS v3
   'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS
   'maya-tts': 98,                // Maya TTS

@@ -585,10 +585,10 @@ export const MODEL_MAPPING: ModelMapping[] = [
 
   // MUSIC GENERATION MODELS
   {
-    frontendValue: 'music-1.5',
-    creditModelName: 'Music 1.5 (Up to 90s)',
+    frontendValue: 'minimax-music-2',
+    creditModelName: 'MiniMax Music 2',
     generationType: 'music',
-    provider: 'minimax'
+    provider: 'fal'
   },
   {
     frontendValue: 'elevenlabs-tts',

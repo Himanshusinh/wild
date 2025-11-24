@@ -42,7 +42,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     handleGenerationSuccess,
     handleGenerationFailure,
     clearCreditsError,
-  } = useGenerationCredits('music', 'music-1.5', {
+  } = useGenerationCredits('music', 'minimax-music-2', {
     duration: 90, // Default duration for music
   });
 
@@ -154,7 +154,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       const isPublic = await getIsPublic();
       console.log('🎵 Calling music API with payload via thunk:', { ...payload, isPublic });
       const requestPayload = { ...payload, isPublic, prompt: payload.prompt || normalizedText };
-      const result = isTtsModel
+      // Use FAL API for MiniMax Music 2, otherwise use existing endpoints
+      const result = isTtsModel || requestPayload.model === 'minimax-music-2'
         ? await dispatch(falElevenTts(requestPayload)).unwrap()
         : await dispatch(minimaxMusic(requestPayload)).unwrap();
       console.log('🎵 Music generation thunk result:', result);
