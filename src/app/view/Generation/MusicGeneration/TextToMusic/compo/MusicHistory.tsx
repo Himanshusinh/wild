@@ -33,8 +33,11 @@ const getColorTheme = (entry: any, index: number = 0): string => {
 };
 import CustomAudioPlayer from './CustomAudioPlayer';
 
+const normalizeType = (type?: string) =>
+  type ? String(type).replace(/[_-]/g, '-').toLowerCase() : '';
+
 interface MusicHistoryProps {
-  generationType?: string;
+  generationType?: string | string[];
   allowedTypes?: string[];
   onAudioSelect?: (data: { entry: any; audio: any }) => void;
   selectedAudio?: { entry: any; audio: any } | null;
@@ -53,11 +56,18 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
   const [page, setPage] = React.useState(1);
 
   // Get history entries filtered by type
+  const normalizedAllowedTypes = allowedTypes.map(normalizeType);
+  const generationTypeList = Array.isArray(generationType) ? generationType : [generationType];
+  const truthyGenerationTypes = generationTypeList.filter((type): type is string => Boolean(type));
+  const normalizedGenerationTypes = truthyGenerationTypes.map(normalizeType);
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history.entries || [];
     
     // Debug: Log all entries when filtering for text-to-speech
-    if (generationType === 'text-to-speech' || allowedTypes.includes('text-to-speech')) {
+    const isTtsFilter = normalizedGenerationTypes.some(t => t === 'text-to-speech' || t === 'tts') ||
+      normalizedAllowedTypes.some(t => t === 'text-to-speech' || t === 'tts');
+
+    if (isTtsFilter) {
       console.log('[MusicHistory] All entries before filtering:', {
         total: allEntries.length,
         entries: allEntries.map((e: any) => ({
@@ -74,13 +84,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
     const filtered = allEntries.filter((entry: any) => {
       if (!entry) return false;
       
-      // For text-to-speech, show entries with generationType match OR model match
-      const isTextToSpeechFilter = generationType === 'text-to-speech' || 
-                                   allowedTypes.includes('text-to-speech') ||
-                                   allowedTypes.includes('text_to_speech') ||
-                                   allowedTypes.includes('tts');
-      
-      if (isTextToSpeechFilter) {
+      if (isTtsFilter) {
         // Normalize generationType for comparison
         const genType = String(entry.generationType || '').toLowerCase().replace(/[_-]/g, '-');
         const isTextToSpeechType = genType === 'text-to-speech' || genType === 'tts';
@@ -201,14 +205,19 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
         return false;
       }
       
-      // For other types, use the allowedTypes check
-      if (allowedTypes.includes(entry.generationType)) return true;
+      if (normalizedAllowedTypes.length > 0) {
+        const entryType = normalizeType(entry.generationType);
+        if (normalizedAllowedTypes.includes(entryType)) {
+          return true;
+        }
+        return false;
+      }
       
-      return false;
+      return true;
     });
     
     // Log filtered results for debugging
-    if (generationType === 'text-to-speech' || allowedTypes.includes('text-to-speech')) {
+    if (isTtsFilter) {
       console.log('[MusicHistory] Filtered entries result:', {
         totalBefore: allEntries.length,
         totalAfter: filtered.length,
@@ -260,10 +269,14 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
       const nextPage = page + 1;
       setPage(nextPage);
       try {
-        const isTts = generationType === 'text-to-speech' || allowedTypes.includes('text-to-speech') || allowedTypes.includes('text_to_speech') || allowedTypes.includes('tts');
+        const isTts = normalizedGenerationTypes.some(t => t === 'text-to-speech' || t === 'tts') ||
+          normalizedAllowedTypes.some(t => t === 'text-to-speech' || t === 'tts');
+        const generationTypeFilter = generationTypeList.filter((type): type is string => Boolean(type));
         const genFilter: any = isTts
           ? { generationType: ['text-to-speech', 'text_to_speech', 'tts'] }
-          : { generationType };
+          : generationTypeFilter.length > 1
+            ? { generationType: generationTypeFilter }
+            : { generationType: generationTypeFilter[0] || generationType };
         await (dispatch as any)(loadMoreHistory({
           filters: genFilter,
           paginationParams: { limit: 10 }
