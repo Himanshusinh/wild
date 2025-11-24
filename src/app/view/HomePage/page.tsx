@@ -5,15 +5,35 @@ import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
-import Second from './compo/Second'
-import WorkflowCarousel, { WorkflowCard } from './compo/WorkflowCarousel'
-import CommunityCreations, { Creation } from './compo/CommunityCreations'
-import FooterNew from '../core/FooterNew'
-import Recentcreation from './compo/Recentcreation'
-import { WobbleCard } from '../Landingpage/components/wobble-card'
 import Image from 'next/image'
 import { getImageUrl, API_BASE } from './routes'
-import WelcomeModal from './compo/WelcomeModal'
+// Lazy load non-critical components for better performance
+import dynamic from 'next/dynamic'
+
+const Second = dynamic(() => import('./compo/Second'), {
+  loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+})
+const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
+  loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
+})
+const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
+  ssr: false
+})
+const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
+})
+const CommunityCreations = dynamic(() => import('./compo/CommunityCreations').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+})
+const WobbleCard = dynamic(() => import('../Landingpage/components/wobble-card').then(mod => ({ default: mod.WobbleCard })), {
+  loading: () => <div className="h-[500px] animate-pulse bg-white/5 rounded-lg" />
+})
+const FooterNew = dynamic(() => import('../core/FooterNew'), {
+  loading: () => <div className="h-32 animate-pulse bg-white/5 rounded-lg" />
+})
+
+import type { WorkflowCard } from './compo/WorkflowCarousel'
+import type { Creation } from './compo/CommunityCreations'
 
 import { ViewType, GenerationType } from '@/types/generation';
 
@@ -51,6 +71,37 @@ const HomePage: React.FC = () => {
   };
 
   console.log('🔍 HomePage - Rendered with state:', { currentView, currentGenerationType });
+
+  // Preload hero video and add resource hints for LCP optimization
+  useEffect(() => {
+    // Preload hero video
+    const heroVideoUrl = getImageUrl('header', 'heroVideo');
+    if (heroVideoUrl) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'video';
+      link.href = heroVideoUrl;
+      if (!document.head.querySelector(`link[href="${heroVideoUrl}"]`)) {
+        document.head.appendChild(link);
+      }
+    }
+
+    // Add preconnect hints for media domains
+    const mediaDomains = [
+      'https://firebasestorage.googleapis.com',
+      'https://idr01.zata.ai',
+      API_BASE ? new URL(API_BASE).origin : null
+    ].filter(Boolean);
+
+    mediaDomains.forEach(domain => {
+      if (domain && !document.head.querySelector(`link[rel="preconnect"][href="${domain}"]`)) {
+        const preconnect = document.createElement('link');
+        preconnect.rel = 'preconnect';
+        preconnect.href = domain;
+        document.head.appendChild(preconnect);
+      }
+    });
+  }, []);
 
   // Check for first-time user and show welcome modal
   useEffect(() => {

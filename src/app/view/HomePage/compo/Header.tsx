@@ -112,11 +112,25 @@ const Header = () => {
 
   const currentVideo = videoData[currentVideoIndex];
 
+  // Preload first video for LCP optimization (only once on mount)
+  useEffect(() => {
+    if (currentVideoIndex === 0 && currentVideo.videoSrc) {
+      const existingLink = document.head.querySelector(`link[rel="preload"][as="video"][href="${currentVideo.videoSrc}"]`);
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'video';
+        link.href = currentVideo.videoSrc;
+        document.head.appendChild(link);
+      }
+    }
+  }, []); // Only run once on mount
+
   return (
     <div className="w-full relative">
       {/* Video wrapper with right padding */}
       <div className="pr-6 md:pr-12 mt-4 ml-12">
-        <div className="relative overflow-hidden rounded-3xl">
+        <div className="relative overflow-hidden rounded-3xl" style={{ aspectRatio: '16/9', minHeight: '60vh' }}>
           {currentVideo.videoSrc && (
             <video
               ref={videoRef}
@@ -126,6 +140,7 @@ const Header = () => {
               muted
               playsInline
               preload="auto"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onLoadStart={() => {
                 // Reset start time when video starts loading
                 setVideoStartTime(Date.now());
@@ -152,7 +167,7 @@ const Header = () => {
                   console.log(`Video too short or already transitioning, waiting for timer`);
                 }
               }}
-              className={`w-full h-[60vh] object-cover rounded-3xl transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
+              className={`rounded-3xl transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
                 isTransitioning ? '-translate-x-full' : 'translate-x-0'
               }`}
             />
@@ -181,15 +196,15 @@ const Header = () => {
       </div>
 
       {/* Text Overlay - Centered above the video */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 mt-64">
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 mt-64" style={{ minHeight: '200px' }}>
         <h1 className={`text-3xl md:text-4xl font-medium mb-2 mt-6 transition-opacity duration-1000 ease-in-out ${
           isTransitioning ? 'opacity-0' : 'opacity-100'
-        }`}>
+        }`} style={{ minHeight: '48px' }}>
           {currentVideo.title}
         </h1>
         <p className={`text-lg md:text-xl mb-4 transition-opacity duration-1000 ease-in-out delay-150 ${
           isTransitioning ? 'opacity-0' : 'opacity-90'
-        }`}>
+        }`} style={{ minHeight: '56px' }}>
           {currentVideo.description}
         </p>
         <button 

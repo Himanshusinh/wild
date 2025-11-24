@@ -30,6 +30,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize bundle splitting
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'react-hot-toast', '@tabler/icons-react', 'motion'],
+  },
+  // Compress output
+  compress: true,
+  // Optimize production builds
+  swcMinify: true,
   async headers() {
     // Ensure correct content-type for XML sitemaps on Vercel/Next
     return [
