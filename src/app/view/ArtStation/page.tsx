@@ -272,8 +272,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       // Sort by aesthetic score first (highest first), then by createdAt as tiebreaker
       url.searchParams.set('sortBy', 'aestheticScore')
       url.searchParams.set('sortOrder', 'desc')
-      // Filter to only show items with aesthetic score >= 9.5
-      url.searchParams.set('minScore', '9.5')
+      // Don't filter by minScore - show all generations, just prioritize high-scoring ones
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
       if (q.mode) url.searchParams.set('mode', q.mode)
@@ -603,14 +602,51 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
-    return m.url || m.originalUrl || (m.firebaseUrl as string | undefined)
+    // Try multiple URL properties in order of preference
+    return m.url || m.originalUrl || m.webpUrl || m.avifUrl || (m.firebaseUrl as string | undefined) || m.thumbnailUrl
+  }
+
+  // Resolve image URL with fallback chain: thumbnailUrl → optimized (avif/webp) → original
+  const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
+    if (!m) return { url: '', fallbacks: [] }
+    
+    const thumbnailUrl = m.thumbnailUrl
+    const avifUrl = m.avifUrl
+    const webpUrl = m.webpUrl
+    const originalUrl = m.originalUrl || m.url
+    
+    // Priority: thumbnailUrl → avifUrl → webpUrl → originalUrl
+    if (thumbnailUrl) {
+      return {
+        url: thumbnailUrl,
+        fallbacks: [avifUrl, webpUrl, originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    if (avifUrl) {
+      return {
+        url: avifUrl,
+        fallbacks: [webpUrl, originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    if (webpUrl) {
+      return {
+        url: webpUrl,
+        fallbacks: [originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    return {
+      url: originalUrl || '',
+      fallbacks: []
+    }
   }
 
 
 
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
-    const seenMedia = new Set<string>()
     const seenItem = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
@@ -619,6 +655,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     }
 
     for (const it of filteredItems) {
+      // Only skip if we've already processed this exact item ID
       if (seenItem.has(it.id)) {
         if (process.env.NODE_ENV !== 'production') {
           console.log('[ArtStation] Skipping duplicate item:', it.id)
@@ -631,28 +668,42 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       const kind: 'image' | 'video' | 'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
       const candidateUrl = resolveMediaUrl(candidate)
 
+      // Only skip if there's truly no media at all - try multiple fallbacks
       if (!candidateUrl) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[ArtStation] Item has no media URL:', {
-            id: it.id,
-            hasVideos: !!it.videos?.length,
-            hasImages: !!it.images?.length,
-            hasAudios: !!(it as any).audios?.length,
-            candidate
-          })
+        // Try to find any media URL from the item
+        const fallbackUrl = 
+          (it.videos && it.videos.length > 0 && (it.videos[0].url || it.videos[0].originalUrl)) ||
+          (it.images && it.images.length > 0 && (it.images[0].url || it.images[0].originalUrl)) ||
+          (it.audios && it.audios.length > 0 && (it.audios[0].url || it.audios[0].originalUrl))
+        
+        if (!fallbackUrl) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[ArtStation] Item has no media URL:', {
+              id: it.id,
+              hasVideos: !!it.videos?.length,
+              hasImages: !!it.images?.length,
+              hasAudios: !!(it as any).audios?.length,
+              candidate
+            })
+          }
+          continue
         }
+        // Use fallback URL if candidate URL resolution failed
+        const fallbackCandidate = candidate || (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
+        seenItem.add(it.id)
+        out.push({ 
+          item: it, 
+          media: { 
+            ...fallbackCandidate, 
+            url: fallbackUrl,
+            blurDataUrl: (fallbackCandidate as any)?.blurDataUrl,
+          }, 
+          kind 
+        })
         continue
       }
 
-      const key = (candidate && candidate.storagePath) || candidateUrl
-      if (seenMedia.has(key)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[ArtStation] Skipping duplicate media:', key)
-        }
-        continue
-      }
-
-      seenMedia.add(key)
+      // Add item to seen set and include in output
       seenItem.add(it.id)
       out.push({ 
         item: it, 
@@ -666,7 +717,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[ArtStation] Final cards count:', out.length)
+      console.log('[ArtStation] Final cards count:', out.length, 'from', filteredItems.length, 'filtered items')
     }
     return out
   }, [filteredItems])
