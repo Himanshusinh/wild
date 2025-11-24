@@ -19,6 +19,9 @@ export default function ChromeMount() {
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup');
+  const isHistoryRoute = pathnameLower.startsWith('/history');
+  const isBookmarksRoute = pathnameLower.startsWith('/bookmarks');
+  const isAccountRoute = pathnameLower.startsWith('/view/account-management');
   
   // Generation routes (all the generation type routes)
   const generationRoutes = [
@@ -51,6 +54,9 @@ export default function ChromeMount() {
   // Pricing and workflows routes
   const isPricingRoute = pathnameLower.startsWith('/view/pricing');
   const isWorkflowsRoute = pathnameLower.startsWith('/view/workflows');
+  const isArtStationRoute = pathnameLower.startsWith('/view/artstation');
+  const isEditImageRoute = pathnameLower.startsWith('/view/editimage');
+  const isEditVideoRoute = pathnameLower.startsWith('/view/editvideo');
   
   // Show sidebar/navbar on:
   // 1. Home page (by route OR currentView === 'home')
@@ -62,11 +68,17 @@ export default function ChromeMount() {
                      currentView === 'home' ||
                      isGenerationRoute || 
                      currentView === 'generation' || 
+                     isHistoryRoute ||
                      currentView === 'history' ||
                      isPricingRoute ||
                      currentView === 'pricing' ||
                      isWorkflowsRoute ||
-                     currentView === 'workflows';
+                     currentView === 'workflows' ||
+                     isBookmarksRoute ||
+                     isAccountRoute ||
+                     isArtStationRoute ||
+                     isEditImageRoute ||
+                     isEditVideoRoute;
   
   // Hide on:
   // 1. Landing page
@@ -78,6 +90,24 @@ export default function ChromeMount() {
 
   // If explicitly should hide, return null
   if (shouldHide) return null;
+
+  const knownPrefixes = ['/view/generation', '/view/home'];
+  const matchesKnownPrefix = knownPrefixes.some(prefix => pathnameLower.startsWith(prefix));
+
+  const isKnownRoute = isRoot ||
+    isHomeRoute ||
+    isGenerationRoute ||
+    isHistoryRoute ||
+    isPricingRoute ||
+    isWorkflowsRoute ||
+    isBookmarksRoute ||
+    isAccountRoute ||
+    isArtStationRoute ||
+    isEditImageRoute ||
+    isEditVideoRoute ||
+    matchesKnownPrefix;
+
+  if (!isKnownRoute) return null;
   
   // If should show, render chrome
   if (shouldShow) {
