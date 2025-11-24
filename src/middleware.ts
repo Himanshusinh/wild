@@ -4,6 +4,9 @@ import type { NextRequest } from 'next/server';
 // Protect routes by requiring the backend session cookie (app_session) and add security headers
 export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
+  const headerHost = req.headers.get('host') || url.host;
+  const forwardedProto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  const isLocalHost = headerHost?.startsWith('localhost') || headerHost?.startsWith('127.0.0.1') || headerHost?.endsWith('.local');
   const { pathname } = url;
   const trimmedPath = pathname.replace(/\/+$/, '') || '/';
   const normalizedPath = trimmedPath.toLowerCase();
@@ -38,14 +41,13 @@ export function middleware(req: NextRequest) {
     '/&': '/view/Landingpage',
   };
 
-  if (url.protocol === 'http:') {
+  if (!isLocalHost && forwardedProto === 'http') {
     url.protocol = 'https:';
     return NextResponse.redirect(url, { status: 308 });
   }
 
-  const host = req.headers.get('host') || url.host;
-  if (host?.startsWith('www.')) {
-    url.host = host.replace(/^www\./, '');
+  if (!isLocalHost && headerHost?.startsWith('www.')) {
+    url.host = headerHost.replace(/^www\./, '');
     return NextResponse.redirect(url, { status: 308 });
   }
 
