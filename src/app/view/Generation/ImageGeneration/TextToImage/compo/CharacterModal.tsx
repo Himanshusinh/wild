@@ -133,9 +133,27 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     const rawUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl;
     const blurDataUrl = generatedCharacterImage?.blurDataUrl;
 
-    // Choose the best available preview source. This is what SmartImage will fall back to
-    // if thumbnail/avif are not provided.
-    const frontImageUrl = thumbnailUrl || avifUrl || firebaseUrl || rawUrl || '/styles/Logo.gif';
+    // For generation purposes, prefer original JPG/PNG URL over AVIF thumbnails
+    // AVIF thumbnails should only be used for display, not for generation
+    // Priority: rawUrl (original) > firebaseUrl > thumbnailUrl > avifUrl (fallback for display only)
+    let frontImageUrl = rawUrl || firebaseUrl || thumbnailUrl || avifUrl || '/styles/Logo.gif';
+    
+    // If the URL contains _thumb.avif, try to convert it back to the original JPG/PNG format
+    // This handles cases where the backend stored AVIF thumbnails instead of originals
+    if (frontImageUrl && frontImageUrl.includes('_thumb.avif')) {
+      // Try to get the original URL by removing _thumb.avif and trying common extensions
+      const baseUrl = frontImageUrl.replace('_thumb.avif', '');
+      // Prefer the original URL if available, otherwise try to construct it
+      if (rawUrl && !rawUrl.includes('_thumb.avif')) {
+        frontImageUrl = rawUrl;
+      } else if (firebaseUrl && !firebaseUrl.includes('_thumb.avif')) {
+        frontImageUrl = firebaseUrl;
+      } else {
+        // Try common extensions (jpg, png, jpeg)
+        // Note: We can't know the exact extension, so we'll use the first available non-AVIF URL
+        frontImageUrl = baseUrl + '.jpg'; // Default to jpg, backend should handle if it's actually png
+      }
+    }
     
     // Debug: log the URLs being used
     if (process.env.NODE_ENV === 'development') {
@@ -149,6 +167,12 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
       thumbnailUrl,
       avifUrl,
       blurDataUrl,
+      // Store original URL fields for use in generation (avoid AVIF thumbnails)
+      url: rawUrl && !rawUrl.includes('_thumb.avif') && !rawUrl.endsWith('.avif') ? rawUrl : undefined,
+      originalUrl: rawUrl && !rawUrl.includes('_thumb.avif') && !rawUrl.endsWith('.avif') ? rawUrl : undefined,
+      firebaseUrl: firebaseUrl && !firebaseUrl.includes('_thumb.avif') && !firebaseUrl.endsWith('.avif') ? firebaseUrl : undefined,
+      // Also store the full entry structure for better URL resolution
+      images: entry.images,
       createdAt: entry.createdAt?.toDate?.()?.toISOString() || entry.createdAt || entry.timestamp || new Date().toISOString(),
     };
   });

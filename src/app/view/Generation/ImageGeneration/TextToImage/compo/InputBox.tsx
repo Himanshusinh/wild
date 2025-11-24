@@ -784,6 +784,7 @@ const InputBox = () => {
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
+  const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -1023,6 +1024,91 @@ const InputBox = () => {
     }, 0);
   }, [prompt, selectedCharacters, updateContentEditable]);
 
+  // Helper function to convert AVIF thumbnail URLs back to original JPG/PNG format
+  const convertAvifToOriginal = (url: string): string => {
+    if (!url) return url;
+    
+    // If it's already a non-AVIF URL, return as-is
+    if (!url.includes('_thumb.avif') && !url.endsWith('.avif')) {
+      return url;
+    }
+    
+    // Replace _thumb.avif with .jpg (default, backend should handle if it's actually png)
+    // Also handle cases where the URL ends with .avif
+    let converted = url.replace('_thumb.avif', '.jpg');
+    if (converted.endsWith('.avif')) {
+      converted = converted.replace(/\.avif$/, '.jpg');
+    }
+    
+    return converted;
+  };
+
+  // Helper function to get the best available image URL from a character object
+  const getCharacterImageUrl = (char: any): string | null => {
+    if (!char) return null;
+    
+    // If character has an entry structure with images array (from history), use that
+    if (char.images && Array.isArray(char.images) && char.images.length > 0) {
+      const image = char.images[0];
+      // Priority: originalUrl > url (if not AVIF) > firebaseUrl > storagePath-based URL
+      if (image.originalUrl && !image.originalUrl.includes('_thumb.avif') && !image.originalUrl.endsWith('.avif')) {
+        return image.originalUrl;
+      }
+      if (image.url && !image.url.includes('_thumb.avif') && !image.url.endsWith('.avif')) {
+        return image.url;
+      }
+      if (image.firebaseUrl && !image.firebaseUrl.includes('_thumb.avif') && !image.firebaseUrl.endsWith('.avif')) {
+        return image.firebaseUrl;
+      }
+      // If we have storagePath, try to construct original URL
+      if (image.storagePath && !image.storagePath.includes('_thumb.avif')) {
+        // Remove _thumb.avif or .avif extension and try common extensions
+        let basePath = image.storagePath.replace(/_thumb\.avif$/, '').replace(/\.avif$/, '');
+        // Try to get original extension from storagePath or default to .jpg
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        // Check if storagePath already has an extension
+        if (!basePath.match(/\.(jpg|jpeg|png|webp)$/i)) {
+          basePath += '.jpg'; // Default to jpg
+        }
+        return `${zataBase}${basePath}`;
+      }
+    }
+    
+    // Priority order: original URL > firebase URL > frontImageUrl (converted if AVIF)
+    // Check if character has original URL fields (from the entry structure)
+    const originalUrl = char.url || char.originalUrl;
+    if (originalUrl && !originalUrl.includes('_thumb.avif') && !originalUrl.endsWith('.avif')) {
+      return originalUrl;
+    }
+    
+    const firebaseUrl = char.firebaseUrl;
+    if (firebaseUrl && !firebaseUrl.includes('_thumb.avif') && !firebaseUrl.endsWith('.avif')) {
+      return firebaseUrl;
+    }
+    
+    // If frontImageUrl is AVIF, try to convert it to original format
+    if (char.frontImageUrl) {
+      const frontUrl = String(char.frontImageUrl);
+      // If it's already a non-AVIF URL, use it directly
+      if (!frontUrl.includes('_thumb.avif') && !frontUrl.endsWith('.avif')) {
+        return frontUrl;
+      }
+      // Try to convert AVIF to original format
+      // Remove _thumb.avif or .avif and replace with .jpg
+      let converted = frontUrl.replace(/_thumb\.avif$/, '').replace(/\.avif$/, '');
+      // If it doesn't have an extension now, add .jpg
+      if (!converted.match(/\.(jpg|jpeg|png|webp)$/i)) {
+        converted += '.jpg';
+      } else {
+        // If it has an extension, ensure it's not .avif
+        converted = converted.replace(/\.avif$/i, '.jpg');
+      }
+      return converted;
+    }
+    
+    return null;
+  };
+
   // Helper function to combine uploadedImages with selectedCharacters images
   // Maps @references in prompt to character images in the correct order
   const getCombinedUploadedImages = (): string[] => {
@@ -1039,9 +1125,9 @@ const InputBox = () => {
         if (seenNames.has(name.toLowerCase())) continue; // skip duplicate mentions
         seenNames.add(name.toLowerCase());
         const char = (selectedCharacters || []).find((c: any) => String(c.name).toLowerCase() === name.toLowerCase());
-        if (char && char.frontImageUrl) {
-          const url = String(char.frontImageUrl);
-          if (!added.has(url)) {
+        if (char) {
+          const url = getCharacterImageUrl(char);
+          if (url && !added.has(url)) {
             result.push(url);
             added.add(url);
           }
@@ -1053,10 +1139,10 @@ const InputBox = () => {
 
     // 2) Append any selected character images that weren't mentioned (preserve selection order)
     (selectedCharacters || []).forEach((c: any) => {
-      const url = c?.frontImageUrl;
+      const url = getCharacterImageUrl(c);
       if (url && !added.has(url)) {
-        result.push(String(url));
-        added.add(String(url));
+        result.push(url);
+        added.add(url);
       }
     });
 
@@ -1165,6 +1251,8 @@ const InputBox = () => {
   } = useGenerationCredits('image', selectedModel, {
     frameSize,
     count: imageCount,
+    style,
+    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : undefined
   });
 
   // Function to clear input after successful generation
@@ -2459,6 +2547,102 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Phoenix 1.0');
           return;
         }
+      } else if (selectedModel === 'google/nano-banana-pro') {
+        // Google Nano Banana Pro via replicate generate endpoint
+        try {
+          // Map our frameSize to allowed aspect ratios for Nano Banana Pro
+          const allowedAspect = new Set([
+            'match_input_image', '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+          
+          // Use the selected resolution from state
+          const resolution = nanoBananaProResolution;
+          
+          // Nano Banana Pro supports up to 14 images in image_input array
+          const uploadedImages = getCombinedUploadedImages();
+          const imageInput = uploadedImages.length > 0 
+            ? uploadedImages.slice(0, 14).map((img: string) => toAbsoluteFromProxy(img))
+            : [];
+          
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, uploadedImages, selectedCharacters);
+          
+          // Nano Banana Pro doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          
+          const generationPromises = Array.from({ length: totalToGenerate }, async () => {
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'google/nano-banana-pro',
+              aspect_ratio: aspect,
+              resolution: resolution,
+              output_format: 'jpg', // Default to jpg, can be 'jpg' or 'png'
+              safety_filter_level: 'block_only_high', // Default safety filter
+            };
+            
+            // Add image_input if user provided images
+            if (imageInput.length > 0) {
+              payload.image_input = imageInput;
+            }
+            
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+          
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+          
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+          
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+          
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+          
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+          
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Nano Banana Pro');
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
@@ -3485,6 +3669,35 @@ const InputBox = () => {
               <LucidOriginOptions />
               <PhoenixOptions />
               <FileTypeDropdown />
+              {selectedModel === 'google/nano-banana-pro' && (
+                <div className="flex items-center gap-2 relative">
+                  <div className="relative dropdown-container">
+                    <button
+                      onClick={() => dispatch(toggleDropdown('nanoBananaProResolution'))}
+                      className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                    >
+                      {nanoBananaProResolution}
+                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'nanoBananaProResolution' && (
+                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                        {['1K','2K','4K'].map((opt) => (
+                          <button
+                            key={opt}
+                            onClick={(e) => { e.stopPropagation(); setNanoBananaProResolution(opt as '1K' | '2K' | '4K'); dispatch(toggleDropdown('')); }}
+                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${nanoBananaProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span>{opt}</span>
+                            {nanoBananaProResolution === opt && (
+                              <span className="w-2 h-2 bg-black rounded-full"></span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {selectedModel === 'seedream-v4' && (
                 <div className="flex items-center gap-2 relative">
                   <div className="relative dropdown-container">

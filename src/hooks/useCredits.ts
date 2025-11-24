@@ -72,9 +72,10 @@ export const useCredits = () => {
     model: string,
     count: number = 1,
     frameSize?: string,
-    style?: string
+    style?: string,
+    resolution?: string
   ) => {
-    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style);
+    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution);
     
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
@@ -231,7 +232,7 @@ export const useGenerationCredits = (
           break;
         
         case 'image':
-          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style);
+          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution);
           requiredCredits = imageResult.requiredCredits;
           validation = imageResult.validation;
           break;
