@@ -50,17 +50,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable}`}>
       <head>
-        {/* Preconnect to required origins for faster loading */}
-        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+        {/* Preconnect to required origins for faster loading - CRITICAL for performance */}
+        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="preconnect" href="https://www.google-analytics.com" />
+        <link rel="preconnect" href="https://www.google-analytics.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
-        {/* Media domains */}
-        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        {/* Media domains - Most important for LCP */}
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
-        <link rel="preconnect" href="https://idr01.zata.ai" />
+        <link rel="preconnect" href="https://idr01.zata.ai" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://idr01.zata.ai" />
         {/* Google Tag Manager - Deferred to reduce blocking */}
         <Script id="google-tag-manager" strategy="lazyOnload">

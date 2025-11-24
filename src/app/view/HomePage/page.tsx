@@ -74,7 +74,7 @@ const HomePage: React.FC = () => {
 
   // Preload hero video and add resource hints for LCP optimization
   useEffect(() => {
-    // Preload hero video
+    // Preload hero video with fetchpriority=high for LCP
     const heroVideoUrl = getImageUrl('header', 'heroVideo');
     if (heroVideoUrl) {
       const existingLink = document.head.querySelector(`link[rel="preload"][as="video"][href="${heroVideoUrl}"]`);
@@ -83,10 +83,8 @@ const HomePage: React.FC = () => {
         link.rel = 'preload';
         link.as = 'video';
         link.href = heroVideoUrl;
-        // Add fetchPriority for LCP optimization
-        if ('fetchPriority' in link) {
-          (link as any).fetchPriority = 'high';
-        }
+        // Add fetchPriority for LCP optimization - CRITICAL for 27.3s LCP issue
+        (link as any).fetchPriority = 'high';
         document.head.appendChild(link);
       }
     }

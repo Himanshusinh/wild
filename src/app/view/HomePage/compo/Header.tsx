@@ -140,7 +140,7 @@ const Header = () => {
     }
   }, [videoStartTime, currentVideoIndex, videoData.length, safeTransition]);
 
-  // Preload first video for LCP optimization (only once on mount)
+  // Preload first video for LCP optimization with fetchpriority=high (only once on mount)
   useEffect(() => {
     if (currentVideoIndex === 0 && currentVideo.videoSrc) {
       const existingLink = document.head.querySelector(`link[rel="preload"][as="video"][href="${currentVideo.videoSrc}"]`);
@@ -149,10 +149,8 @@ const Header = () => {
         link.rel = 'preload';
         link.as = 'video';
         link.href = currentVideo.videoSrc;
-        // Add fetchPriority for LCP optimization
-        if ('fetchPriority' in link) {
-          (link as any).fetchPriority = 'high';
-        }
+        // Add fetchPriority for LCP optimization - CRITICAL for 27.3s LCP issue
+        (link as any).fetchPriority = 'high';
         document.head.appendChild(link);
       }
     }

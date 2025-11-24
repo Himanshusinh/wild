@@ -110,7 +110,9 @@ export default function WorkflowCarousel({
                       alt={item.title}
                       fill
                       className="object-cover"
-                      priority
+                      priority={index === 0}
+                      loading={index === 0 ? "eager" : "lazy"}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 600px, 700px"
                     />
                   </div>
                   
