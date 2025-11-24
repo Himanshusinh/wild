@@ -130,14 +130,22 @@ export function middleware(req: NextRequest) {
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
 
+  // Only block indexing for internal/admin paths, not public pages
   const shouldNoIndex =
     blockPrefixes.some((prefix) => pathnameLower.startsWith(prefix)) ||
     pathnameLower.startsWith('/_next') ||
     pathnameLower.startsWith('/api') ||
+    pathnameLower.startsWith('/view/Generation') ||
+    pathnameLower.startsWith('/view/EditImage') ||
+    pathnameLower.startsWith('/view/EditVideo') ||
     pathnameLower.endsWith('.woff2');
 
   if (shouldNoIndex) {
     res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  } else {
+    // Allow indexing for public pages (HomePage, ArtStation, etc.)
+    // Remove any existing noindex header to ensure pages are crawlable
+    res.headers.delete('X-Robots-Tag');
   }
 
   // Enforce auth for protected routes in all environments

@@ -1,6 +1,13 @@
-# *
+# Allow all crawlers to index the site
 User-agent: *
-Disallow: /
+Allow: /
+
+# Disallow only internal/admin paths
+Disallow: /api/
+Disallow: /_next/
+Disallow: /view/Generation/
+Disallow: /view/EditImage/
+Disallow: /view/EditVideo/
 
 # Host
 Host: https://www.wildmindai.com

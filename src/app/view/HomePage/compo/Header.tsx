@@ -171,6 +171,8 @@ const Header = () => {
               muted
               playsInline
               preload="auto"
+              // LCP optimization: fetchPriority=high for first video (LCP element)
+              {...(currentVideoIndex === 0 ? { fetchPriority: 'high' as any } : {})}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onLoadStart={handleVideoLoadStart}
               onCanPlay={handleVideoCanPlay}

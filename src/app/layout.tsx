@@ -58,14 +58,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Most important: Firebase Storage (LCP images/videos) */}
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
-        {/* Zata CDN for optimized images */}
-        <link rel="preconnect" href="https://idr01.zata.ai" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://idr01.zata.ai" />
+        {/* API Gateway - Critical for data fetching (110ms LCP savings) */}
+        <link rel="preconnect" href="https://api-gateway-services-wildmind.onrender.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api-gateway-services-wildmind.onrender.com" />
         {/* Google APIs for auth - DNS prefetch only (not preconnect to stay under 4) */}
         <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
         {/* Google Tag Manager - DNS prefetch only (deferred loading) */}
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        {/* Preload hero video for LCP - Static link in head for better discovery */}
+        {/* Preload hero video for LCP - Static link in head for immediate discovery with fetchpriority=high */}
         <link 
           rel="preload" 
           as="video" 
