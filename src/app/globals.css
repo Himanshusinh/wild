@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Hubot+Sans:ital,wght@0,200..900;1,200..900&display=swap');
 @import "tailwindcss";
 
 /* Global responsive breakpoints */
@@ -39,7 +38,7 @@
 body {
   background-color: #000000;
   color: #ffffff;
-  font-family: "Hubot Sans", sans-serif;
+  font-family: var(--font-hubot-sans, "Hubot Sans"), sans-serif;
   font-weight: 400;
 }
 
