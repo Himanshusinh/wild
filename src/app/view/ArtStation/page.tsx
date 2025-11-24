@@ -600,39 +600,72 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     return sanitized;
   }, [items, activeCategory, searchQuery]);
 
+  const normalizeMediaUrl = (url?: string): string | undefined => {
+    if (!url) return undefined
+    const trimmed = url.trim()
+    if (!trimmed) return undefined
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    if (trimmed.startsWith('/api/')) return trimmed
+    const proxied = toResourceProxy(trimmed)
+    if (proxied) return proxied
+    return toDirectUrl(trimmed)
+  }
+
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
     // Try multiple URL properties in order of preference
-    return m.url || m.originalUrl || m.webpUrl || m.avifUrl || (m.firebaseUrl as string | undefined) || m.thumbnailUrl
+    const candidates = [
+      m.url,
+      m.originalUrl,
+      m.webpUrl,
+      m.avifUrl,
+      (m.firebaseUrl as string | undefined),
+      m.thumbnailUrl,
+      m.thumbUrl,
+      m.storagePath,
+    ]
+    for (const candidate of candidates) {
+      const normalized = normalizeMediaUrl(candidate)
+      if (normalized) return normalized
+    }
+    return undefined
   }
 
-  // Resolve image URL with fallback chain: thumbnailUrl → optimized (avif/webp) → original
+  // Resolve image URL with fallback chain: thumbnailUrl → optimized (avif/webp) → url (Zata) → originalUrl
   const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
     
-    const thumbnailUrl = m.thumbnailUrl
-    const avifUrl = m.avifUrl
-    const webpUrl = m.webpUrl
-    const originalUrl = m.originalUrl || m.url
+    const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl) || normalizeMediaUrl(m.thumbUrl)
+    const avifUrl = normalizeMediaUrl(m.avifUrl)
+    const webpUrl = normalizeMediaUrl(m.webpUrl)
+    const zataUrl = normalizeMediaUrl(m.url) // Zata URL (e.g., https://idr01.zata.ai/devstoragev1/...)
+    const originalUrl = normalizeMediaUrl(m.originalUrl) // Original source URL (e.g., Azure blob)
     
-    // Priority: thumbnailUrl → avifUrl → webpUrl → originalUrl
+    // Priority: thumbnailUrl → avifUrl → webpUrl → url (Zata) → originalUrl
     if (thumbnailUrl) {
       return {
         url: thumbnailUrl,
-        fallbacks: [avifUrl, webpUrl, originalUrl].filter(Boolean) as string[]
+        fallbacks: [avifUrl, webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
       }
     }
     
     if (avifUrl) {
       return {
         url: avifUrl,
-        fallbacks: [webpUrl, originalUrl].filter(Boolean) as string[]
+        fallbacks: [webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
       }
     }
     
     if (webpUrl) {
       return {
         url: webpUrl,
+        fallbacks: [zataUrl, originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    if (zataUrl) {
+      return {
+        url: zataUrl,
         fallbacks: [originalUrl].filter(Boolean) as string[]
       }
     }
@@ -641,6 +674,81 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       url: originalUrl || '',
       fallbacks: []
     }
+  }
+
+  // Component to handle image fallback chain: thumbnail → optimized → original
+  const ImageWithFallback = ({ 
+    media, 
+    alt, 
+    fill, 
+    sizes, 
+    blurDataURL, 
+    className, 
+    priority, 
+    fetchPriority, 
+    onLoadingComplete 
+  }: {
+    media: any;
+    alt: string;
+    fill: boolean;
+    sizes: string;
+    blurDataURL?: string;
+    className: string;
+    priority: boolean;
+    fetchPriority: 'high' | 'low' | 'auto';
+    onLoadingComplete: (img: any) => void;
+  }) => {
+    const { url: primaryUrl, fallbacks } = resolveImageUrl(media);
+    const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
+    const allUrls = [primaryUrl, ...fallbacks].filter(Boolean);
+    const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
+
+    const markCompleteFallback = () => {
+      try {
+        onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
+      } catch {}
+    }
+
+    const handleError = () => {
+      if (currentUrlIndex < allUrls.length - 1) {
+        // Try next fallback URL
+        setCurrentUrlIndex(prev => prev + 1);
+      } else {
+        markCompleteFallback()
+      }
+    };
+
+    useEffect(() => {
+      if (!currentUrl) {
+        markCompleteFallback()
+      }
+    }, [currentUrl])
+
+    if (!currentUrl) {
+      return (
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
+          No preview
+        </div>
+      )
+    }
+
+    // Use key to force re-render when URL changes
+    return (
+      <Image
+        key={`${currentUrl}-${currentUrlIndex}`}
+        src={currentUrl}
+        alt={alt}
+        fill={fill}
+        sizes={sizes}
+        placeholder="blur"
+        blurDataURL={blurDataURL}
+        className={className}
+        priority={priority}
+        fetchPriority={fetchPriority}
+        onError={handleError}
+        onLoadingComplete={onLoadingComplete}
+      />
+    );
   }
 
 
@@ -1042,12 +1150,11 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
                             />
                           </>
                         ) : (
-                          <Image
-                            src={media.url}
+                          <ImageWithFallback
+                            media={media}
                             alt={item.prompt || ''}
-                            fill
+                            fill={true}
                             sizes={sizes}
-                            placeholder="blur"
                             blurDataURL={media.blurDataUrl || blur}
                             className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             priority={isPriority}

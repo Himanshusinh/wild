@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Hubot_Sans } from "next/font/google";
+import { Geist, Geist_Mono, Poppins } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
@@ -20,10 +21,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const hubotSans = Hubot_Sans({
-  variable: "--font-hubot-sans",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  style: ["normal", "italic"],
+});
+
+const artega = localFont({
+  src: "../../public/fonts/Artega.otf",
+  variable: "--font-artega",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -36,7 +44,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable}`}>
       <head>
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">
@@ -64,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${hubotSans.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} antialiased`}
       >
         {/* Google Tag Manager (noscript) */}
         <noscript>
