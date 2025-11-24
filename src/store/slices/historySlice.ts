@@ -95,7 +95,7 @@ const initialState: HistoryState = {
 export const loadHistory = createAsyncThunk(
   'history/loadHistory',
   async (
-    { filters, paginationParams, requestOrigin, expectedType, debugTag }: { filters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page' | 'character-modal'; expectedType?: string; debugTag?: string } = {},
+    { filters, paginationParams, requestOrigin, expectedType, debugTag, forceRefresh }: { filters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page' | 'character-modal'; expectedType?: string; debugTag?: string; forceRefresh?: boolean } = {},
     { rejectWithValue, getState, signal }
   ) => {
     try {
@@ -146,8 +146,36 @@ export const loadHistory = createAsyncThunk(
       }
   // Always request createdAt sorting explicitly
   params.sortBy = 'createdAt';
+  
+  console.log('[HistorySlice] ========== loadHistory API CALL ==========');
+  console.log('[HistorySlice] Request params:', {
+    filters,
+    paginationParams,
+    requestOrigin,
+    expectedType,
+    debugTag,
+    finalParams: params,
+  });
+  console.log('[HistorySlice] Making API call to /api/generations...');
+  
   const res = await client.get('/api/generations', { params, signal });
-      let result = res.data?.data || { items: [], nextCursor: undefined };
+  
+  console.log('[HistorySlice] API response received:', {
+    status: res.status,
+    hasData: !!res.data,
+    hasDataData: !!res.data?.data,
+    itemsCount: res.data?.data?.items?.length || 0,
+    hasMore: res.data?.data?.hasMore,
+    nextCursor: res.data?.data?.nextCursor ? 'yes' : 'no',
+  });
+  
+  let result = res.data?.data || { items: [], nextCursor: undefined };
+  
+  console.log('[HistorySlice] Processed result:', {
+    itemsCount: Array.isArray(result.items) ? result.items.length : 0,
+    hasMore: result.hasMore,
+    nextCursor: result.nextCursor ? 'yes' : 'no',
+  });
 
       // Fallback: if filtered request returned zero items and we used a generationType filter,
       // avoid sending invalid synonyms. Only try removing the generationType filter once to broaden.
@@ -207,6 +235,12 @@ export const loadHistory = createAsyncThunk(
   {
     condition: (args = {} as any, { getState }) => {
       try {
+        // If forceRefresh is true, always allow the API call (bypass all checks)
+        if ((args as any)?.forceRefresh === true) {
+          console.log('[HistorySlice] forceRefresh=true - bypassing condition check, allowing API call');
+          return true;
+        }
+        
         const state: any = getState();
         const uiType: string = (state && state.ui && state.ui.currentGenerationType) || 'text-to-image';
         const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
@@ -253,9 +287,20 @@ export const loadMoreHistory = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     try {
-      try { console.log('[INF_SCROLL] thunk:loadMoreHistory:invoke', { filters, limit: paginationParams?.limit }); } catch {}
+      console.log('[HistorySlice] ========== loadMoreHistory CALLED ==========');
+      console.log('[HistorySlice] Request params:', {
+        filters,
+        paginationParams,
+      });
+      
       const state = getState() as { history: HistoryState };
       const currentEntries = state.history.entries;
+      
+      console.log('[HistorySlice] Current state before loadMore:', {
+        currentEntriesCount: currentEntries.length,
+        hasMore: state.history.hasMore,
+        loading: state.history.loading,
+      });
       
       // Debug removed to reduce noise
       
@@ -355,12 +400,28 @@ export const loadMoreHistory = createAsyncThunk(
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-  try { console.log('[INF_SCROLL] thunk:loadMoreHistory:api', { params }); } catch {}
+  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
   // Always request createdAt sorting explicitly
   params.sortBy = 'createdAt';
+  
   const res = await client.get('/api/generations', { params });
-  try { console.log('[INF_SCROLL] thunk:loadMoreHistory:api:done', { status: res?.status, count: (res?.data?.data?.items || []).length, nextCursor: res?.data?.data?.nextCursor }); } catch {}
-      const result = res.data?.data || { items: [], nextCursor: undefined };
+  
+  console.log('[HistorySlice] loadMoreHistory API response:', {
+    status: res.status,
+    hasData: !!res.data,
+    hasDataData: !!res.data?.data,
+    itemsCount: res.data?.data?.items?.length || 0,
+    hasMore: res.data?.data?.hasMore,
+    nextCursor: res.data?.data?.nextCursor ? 'yes' : 'no',
+  });
+  
+  const result = res.data?.data || { items: [], nextCursor: undefined };
+  
+  console.log('[HistorySlice] Processed loadMoreHistory result:', {
+    itemsCount: Array.isArray(result.items) ? result.items.length : 0,
+    hasMore: result.hasMore,
+    nextCursor: result.nextCursor ? 'yes' : 'no',
+  });
 
       // Normalize dates so UI always has a valid timestamp (ISO)
       const items = (result.items || [])
@@ -524,10 +585,33 @@ const historySlice = createSlice({
         
         // Always sync slice filters with the filters used for this load
         const usedFilters = (action.meta && action.meta.arg && action.meta.arg.filters) || {};
+        const forceRefresh = (action.meta && action.meta.arg && action.meta.arg.forceRefresh) || false;
         state.filters = usedFilters;
 
+        console.log('[HistorySlice] ========== loadHistory.fulfilled ==========');
+        console.log('[HistorySlice] Payload received:', {
+          entriesCount: action.payload?.entries?.length || 0,
+          hasMore: action.payload?.hasMore,
+          nextCursor: action.payload?.nextCursor ? 'yes' : 'no',
+          usedFilters,
+          forceRefresh,
+          previousEntriesCount: state.entries.length,
+        });
+        console.log('[HistorySlice] Sample entries (first 3):', action.payload?.entries?.slice(0, 3).map((e: any) => ({
+          id: e.id,
+          generationType: e.generationType,
+          status: e.status,
+          imagesCount: Array.isArray(e.images) ? e.images.length : 0,
+        })));
+
+        // If forceRefresh, replace entries completely (don't merge with existing)
         // Apply a safe, synonym-aware filter when a generationType is requested
-        state.entries = action.payload.entries;
+        if (forceRefresh) {
+          console.log('[HistorySlice] forceRefresh=true - REPLACING all entries with fresh data');
+          state.entries = action.payload.entries;
+        } else {
+          state.entries = action.payload.entries;
+        }
         const usedTypeAny = (usedFilters as any)?.generationType as any;
         if (usedTypeAny) {
           const normalize = (t?: string): string => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
@@ -588,7 +672,13 @@ const historySlice = createSlice({
             state.hasMore = Boolean(action.payload.hasMore);
           }
         state.error = null;
-        // removed noisy console
+        
+        console.log('[HistorySlice] State updated after fulfilled (after filtering):', {
+          entriesCount: state.entries.length,
+          hasMore: state.hasMore,
+          lastLoadedCount: state.lastLoadedCount,
+          filters: state.filters,
+        });
       })
       .addCase(loadHistory.rejected, (state, action) => {
         state.loading = false;
@@ -612,6 +702,14 @@ const historySlice = createSlice({
         // removed noisy console
       })
       .addCase(loadMoreHistory.fulfilled, (state, action) => {
+        console.log('[HistorySlice] ========== loadMoreHistory.fulfilled ==========');
+        console.log('[HistorySlice] Payload received:', {
+          entriesCount: action.payload?.entries?.length || 0,
+          hasMore: action.payload?.hasMore,
+          nextCursor: action.payload?.nextCursor ? 'yes' : 'no',
+          currentStateEntriesCount: state.entries.length,
+        });
+        
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
@@ -620,6 +718,11 @@ const historySlice = createSlice({
         let newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
           !state.entries.some((existingEntry: HistoryEntry) => existingEntry.id === newEntry.id)
         );
+        
+        console.log('[HistorySlice] After deduplication:', {
+          newEntriesCount: newEntries.length,
+          duplicatesFiltered: action.payload.entries.length - newEntries.length,
+        });
 
         // Enforce requested generationType for pagination as well
         const usedTypeAny = ((action.meta as any)?.arg?.filters?.generationType || state.filters?.generationType) as any;
@@ -672,7 +775,12 @@ const historySlice = createSlice({
         const serverHasMore = Boolean(action.payload.hasMore);
         state.lastLoadedCount = newEntries.length;
         state.hasMore = serverHasMore;
-        // removed noisy console
+        
+        console.log('[HistorySlice] State updated after loadMoreHistory.fulfilled:', {
+          totalEntriesCount: state.entries.length,
+          hasMore: state.hasMore,
+          lastLoadedCount: state.lastLoadedCount,
+        });
       })
       .addCase(loadMoreHistory.rejected, (state, action) => {
         state.loading = false;

@@ -4,6 +4,39 @@ import type { NextRequest } from 'next/server';
 // Protect routes by requiring the backend session cookie (app_session) and add security headers
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const trimmedPath = pathname.replace(/\/+$/, '') || '/';
+  const normalizedPath = trimmedPath.toLowerCase();
+
+  const legacyRedirects: Record<string, string> = {
+    '/view/video-generation': '/text-to-video',
+    '/view/imagegeneration': '/text-to-image',
+    '/view/templates': '/view/workflows',
+    '/view/contactus': '/view/Landingpage?section=contact',
+    '/view/blogger': '/view/Landingpage',
+    '/view/x': 'https://x.com/WildMind_AI',
+    '/view/youtube': 'https://www.youtube.com/@Wild-Mind-2025',
+    '/view/$': '/view/Landingpage',
+    '/view/&': '/view/Landingpage',
+    '/view/blog': '/view/Landingpage',
+    '/templates': '/view/workflows',
+    '/contactus': '/view/Landingpage?section=contact',
+    '/blogger': '/view/Landingpage',
+    '/blog': '/view/Landingpage',
+    '/$': '/view/Landingpage',
+    '/&': '/view/Landingpage',
+  };
+
+  const redirectTarget = legacyRedirects[normalizedPath];
+  if (redirectTarget) {
+    if (redirectTarget.startsWith('http')) {
+      return NextResponse.redirect(redirectTarget, { status: 308 });
+    }
+    const url = req.nextUrl.clone();
+    const [targetPath, targetQuery] = redirectTarget.split('?');
+    url.pathname = targetPath;
+    url.search = targetQuery ? `?${targetQuery}` : req.nextUrl.search;
+    return NextResponse.redirect(url, { status: 308 });
+  }
 
   // Base response with security headers
   const res = NextResponse.next();
@@ -68,26 +101,6 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/public/')
   );
 
-  // Explicitly make some legacy/unrendered routes return the 404 page
-  // (these routes are known to exist in sitemap/history but do not have
-  // a proper UI implementation and should not be discoverable).
-  const blocked404 = [
-    '/view/video-generation',
-    '/view/imagegeneration',
-    '/view/Blogger',
-    '/view/home', // we'll treat any /view/home/* as blocked
-    '/$'
-  ];
-  // If request matches a blocked path, rewrite to the app's `/404` route
-  // so Next.js renders its default 404 handling (do not return custom HTML).
-  if (
-    blocked404.some((p) => {
-      if (p === '/view/home') return pathname.startsWith('/view/home');
-      return pathname === p;
-    })
-  ) {
-    return NextResponse.rewrite(new URL('/404', req.url));
-  }
   // If root path and unauthenticated, force redirect to landing with toast
   if (pathname === '/') {
     const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');

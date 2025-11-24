@@ -161,9 +161,23 @@ export const getImageGenerationCreditCost = (
     return 0;
   }
 
+  // First try to get cost from creditDistributionData using creditModelName
   console.log(`Looking for image model: ${mapping.creditModelName}`);
-  const baseCost = getCreditCostForModel(mapping.creditModelName);
-  console.log(`Found base cost: ${baseCost} for model: ${mapping.creditModelName}`);
+  let baseCost = getCreditCostForModel(mapping.creditModelName);
+  
+  // If not found in creditDistributionData, try direct lookup in MODEL_CREDITS_MAPPING using frontend value
+  if (baseCost === 0) {
+    const directCost = MODEL_CREDITS_MAPPING[frontendModel];
+    if (directCost !== undefined && directCost > 0) {
+      baseCost = directCost;
+      console.log(`Found cost via direct mapping: ${baseCost} for model: ${frontendModel}`);
+    } else {
+      console.log(`Found cost: ${baseCost} for model: ${mapping.creditModelName}`);
+    }
+  } else {
+    console.log(`Found base cost: ${baseCost} for model: ${mapping.creditModelName}`);
+  }
+  
   return baseCost * Math.max(1, Math.min(count, 4)); // Max 4 images
 };
 
