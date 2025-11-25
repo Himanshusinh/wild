@@ -785,8 +785,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       payload.prompt = prompt.trim(); // Description: style, mood, scenario
       payload.lyrics_prompt = lyricsPrompt.trim(); // Lyrics with optional structure tags
       payload.audio_setting = {
-        sample_rate: String(audio.sample_rate || 44100),
-        bitrate: String(audio.bitrate || 256000),
+        sample_rate: Number(audio.sample_rate || 44100),
+        bitrate: Number(audio.bitrate || 256000),
         format: audio.format || 'mp3',
       };
     }
@@ -2304,19 +2304,19 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 {/* Prompt Input for MiniMax Music 2 */}
                 <div className="w-full">
                   <label className="block text-white/90 text-sm font-medium mb-2 flex items-center gap-1">
-                    Prompt*
-                    <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    Prompt
+                    {/* <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    </svg> */}
                   </label>
-                  <textarea
-                    placeholder="Indie folk, melancholic, introspective, longing, solitary walk, coffee shop"
+            <textarea
+                    placeholder=" "
                     value={prompt}
                     onChange={(e) => {
                       setPrompt(e.target.value);
                       adjustTextareaHeight(e.target);
                     }}
-                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
+                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-sm outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
                       promptLen > 0 && !isPromptValid(prompt) ? 'ring-red-500/50' : ''
                     }`}
                     rows={1}
@@ -2341,10 +2341,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 {/* Lyrics Prompt Input for MiniMax Music 2 */}
                 <div className="w-full">
                   <label className="block text-white/90 text-sm font-medium mb-2 flex items-center gap-1">
-                    Lyrics Prompt*
-                    <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    Lyrics Prompt
+                    {/* <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    </svg> */}
                   </label>
                   <textarea
                     placeholder="[verse]Streetlights flicker, the night breeze sighs
@@ -2358,7 +2358,7 @@ In a familiar corner, a stranger gazes"
                       setLyricsPrompt(e.target.value);
                       adjustTextareaHeight(e.target);
                     }}
-                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
+                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-sm outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
                       lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) ? 'ring-red-500/50' : ''
                     }`}
                     rows={1}
@@ -2385,29 +2385,29 @@ In a familiar corner, a stranger gazes"
               <div className="w-full">
                 <textarea
                   placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
-                  value={lyrics}
-                  onChange={(e) => {
-                    setLyrics(e.target.value);
-                    adjustTextareaHeight(e.target);
-                  }}
+              value={lyrics}
+              onChange={(e) => {
+                setLyrics(e.target.value);
+                adjustTextareaHeight(e.target);
+              }}
                   className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 placeholder-t p-4 rounded-lg resize-none overflow-hidden transition-all ${
-                    lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
-                  }`}
-                  rows={1}
-                  style={{
+                lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
+              }`}
+              rows={1}
+              style={{
                     minHeight: '100px',
                     maxHeight: '200px'
-                  }}
-                />
-                {lyricsLen > 0 && !isLyricsValid(lyrics) && (
-                  <p className="text-red-400 text-xs mt-1">
+              }}
+            />
+            {lyricsLen > 0 && !isLyricsValid(lyrics) && (
+              <p className="text-red-400 text-xs mt-1">
                     {isChatterboxModel 
                       ? 'Text must be between 10-300 characters'
                       : 'Lyrics must be between 10-600 characters'}
-                  </p>
-                )}
-                <div className="flex items-center justify-between gap-2 mt-2">
-                  <p className="text-white/70 text-xs pl-1">
+              </p>
+            )}
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <p className="text-white/70 text-xs pl-1">
                     {isTtsModel
                       ? (isMayaModel
                           ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious.'
@@ -2417,8 +2417,8 @@ In a familiar corner, a stranger gazes"
                       : 'Use intro, verse, chorus, bridge, outro tags to structure your song.....'}
                   </p>
                   <span className="text-xs text-white/60">({lyricsLen}/{isTtsModel || isChatterboxModel || isMayaModel ? 300 : 600})</span>
-                </div>
-              </div>
+            </div>
+          </div>
             )}
           </>
         )}
