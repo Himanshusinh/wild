@@ -241,6 +241,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     };
 
   const fetchFeed = async (reset = false) => {
+    let url: URL | null = null
     try {
       // prevent overlapping fetches (including reset)
       if (inFlightRef.current) {
@@ -264,7 +265,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       const categoryAtStart = activeCategory
       const searchAtStart = searchQuery
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-      const url = new URL(`${baseUrl}/api/feed`)
+      url = new URL(`${baseUrl}/api/feed`)
       
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
@@ -303,21 +304,66 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         console.error('[ArtStation] ERROR: Search query present but not in URL!', { searchQuery, fullUrl: fullUrlString })
       }
 
+      if (!url) {
+        throw new Error('URL not initialized')
+      }
+      
       const doFetch = async () => {
-        const res = await fetch(url.toString(), { credentials: 'include' })
-        return res
+        try {
+          const res = await fetch(url!.toString(), { credentials: 'include' })
+          return res
+        } catch (fetchError: any) {
+          // Handle network errors (CORS, connection refused, etc.)
+          console.error('[ArtStation] Network error during fetch:', {
+            message: fetchError?.message,
+            name: fetchError?.name,
+            stack: fetchError?.stack,
+            url: url?.toString() || 'unknown'
+          })
+          throw new Error(`Network error: ${fetchError?.message || 'Failed to fetch'}`)
+        }
       }
       const p = doFetch()
       inFlightRef.current = p.then(() => undefined, () => undefined)
       const res = await p
 
       if (!res.ok) {
-        const errorText = await res.text()
-        console.error('[ArtStation] Fetch failed:', { status: res.status, statusText: res.statusText, errorText })
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+        let errorText = ''
+        try {
+          errorText = await res.text()
+        } catch (textError: any) {
+          // If we can't read the response body, use status info
+          errorText = `Unable to read error response: ${String(textError?.message || textError || 'Unknown error')}`
+        }
+        const status = res?.status ?? 'unknown'
+        const statusText = res?.statusText ?? 'unknown'
+        const errorDetails = {
+          status: String(status),
+          statusText: String(statusText),
+          errorText: errorText || '(empty response)',
+          url: url?.toString() || 'unknown',
+          headers: Object.fromEntries(res.headers?.entries() || [])
+        }
+        console.error('[ArtStation] Fetch failed:', JSON.stringify(errorDetails, null, 2))
+        throw new Error(`HTTP ${status}: ${statusText}${errorText ? ` - ${errorText}` : ''}`)
       }
 
-      const data = await res.json()
+      let data
+      try {
+        const text = await res.text()
+        if (!text) {
+          throw new Error('Empty response body')
+        }
+        data = JSON.parse(text)
+      } catch (parseError: any) {
+        console.error('[ArtStation] Failed to parse response as JSON:', {
+          error: String(parseError?.message || parseError),
+          status: res?.status,
+          statusText: res?.statusText,
+          url: url?.toString() || 'unknown'
+        })
+        throw new Error(`Failed to parse response: ${parseError?.message || 'Invalid JSON'}`)
+      }
       console.log('[ArtStation] Raw response:', data)
 
       // Ignore stale responses if a newer request started after this one
@@ -389,7 +435,16 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       if (/abort|cancell?ed|signal/i.test(msg)) {
         console.log('[ArtStation] Ignored canceled fetch')
       } else {
-        console.error('[ArtStation] Feed fetch error:', e)
+        const errorInfo = {
+          message: e?.message || 'Unknown error',
+          name: e?.name || 'Error',
+          stack: e?.stack || 'No stack trace',
+          url: url?.toString() || 'unknown (url not initialized)',
+          category: activeCategory,
+          searchQuery: searchQuery,
+          baseUrl: API_BASE
+        }
+        console.error('[ArtStation] Feed fetch error:', JSON.stringify(errorInfo, null, 2), e)
         setError(e?.message || 'Failed to load feed')
         // Prevent infinite retry storms by marking no more items on error for this cycle
         setHasMore(false)

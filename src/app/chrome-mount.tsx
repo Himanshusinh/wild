@@ -22,6 +22,7 @@ export default function ChromeMount() {
   const isHistoryRoute = pathnameLower.startsWith('/history');
   const isBookmarksRoute = pathnameLower.startsWith('/bookmarks');
   const isAccountRoute = pathnameLower.startsWith('/view/account-management');
+  const isLegalRoute = pathnameLower.startsWith('/view/legal');
   
   // Generation routes (all the generation type routes)
   const generationRoutes = [
@@ -83,12 +84,10 @@ export default function ChromeMount() {
   // Hide on:
   // 1. Landing page
   // 2. Signup page
-  // 3. Blog pages
-  // 4. Legal pages
-  // 5. Root path when view is landing
+  // 3. Legal pages
+  // 4. Root path when view is landing
   const shouldHide = isLandingRoute || 
                      isSignupRoute || 
-                     isBlogRoute ||
                      isLegalRoute ||
                      (isRoot && currentView === 'landing');
 
