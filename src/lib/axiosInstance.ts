@@ -50,8 +50,13 @@ const resolvedBaseUrl = (() => {
   return raw.length > 0 ? raw : 'https://api-gateway-services-wildmind.onrender.com'
 })()
 
+const resolveBaseForEnvironment = () => {
+  if (typeof window === 'undefined') return resolvedBaseUrl
+  return '/api/backend'
+}
+
 const axiosInstance = axios.create({
-  baseURL: resolvedBaseUrl,
+  baseURL: resolveBaseForEnvironment(),
   withCredentials: true,
   timeout: 300000, // 5 minutes timeout for long-running requests like video generation
   headers: {
@@ -135,7 +140,7 @@ axiosInstance.interceptors.request.use(async (config) => {
     try {
       const rawUrl = typeof config.url === 'string' ? config.url : ''
       if (rawUrl.startsWith('/api/auth/')) {
-        config.baseURL = resolvedBaseUrl
+        config.baseURL = resolveBaseForEnvironment()
         if (isApiDebugEnabled()) console.log('[API][auth-route]', { url: rawUrl, baseURL: config.baseURL })
       }
     } catch {}
@@ -479,13 +484,12 @@ axiosInstance.interceptors.response.use(
         // Only as fallback: create session if we haven't done so recently
         if (canCreateSession()) {
           try {
-            // Use the same resolved backend base URL as the axios instance
             const backendBase = resolvedBaseUrl
-            await axios.post(
-              `${backendBase}/api/auth/session`,
-              { idToken: freshIdToken },
-              { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
-            )
+            const sessionUrl =
+              typeof window === 'undefined'
+                ? `${backendBase}/api/auth/session`
+                : '/api/backend/api/auth/session'
+            await axios.post(sessionUrl, { idToken: freshIdToken }, { withCredentials: true, headers: { 'Content-Type': 'application/json' } })
             markSessionCreated()
             if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
             return axiosInstance(original)

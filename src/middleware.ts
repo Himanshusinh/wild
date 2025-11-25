@@ -36,11 +36,9 @@ export function middleware(req: NextRequest) {
     '/view/youtube': 'https://www.youtube.com/@Wild-Mind-2025',
     '/view/$': '/view/Landingpage',
     '/view/&': '/view/Landingpage',
-    '/view/blog': '/view/Landingpage',
     '/templates': '/view/workflows',
     '/contactus': '/view/Landingpage?section=contact',
     '/blogger': '/view/Landingpage',
-    '/blog': '/view/Landingpage',
     '/$': '/view/Landingpage',
     '/&': '/view/Landingpage',
   };
@@ -165,6 +163,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
+    pathnameLower.startsWith('/view/blog') ||
     // Allow static assets and Next.js internals
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||

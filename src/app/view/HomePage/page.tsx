@@ -36,6 +36,7 @@ import type { WorkflowCard } from './compo/WorkflowCarousel'
 import type { Creation } from './compo/CommunityCreations'
 
 import { ViewType, GenerationType } from '@/types/generation';
+import { buildFeedRequestUrl } from '@/lib/feedClient';
 
 const HomePage: React.FC = () => {
   const router = useRouter();
@@ -236,16 +237,17 @@ const HomePage: React.FC = () => {
         const maxPages = 3
         while (page < maxPages && out.length < 48) {
           try {
-            const url = new URL(`${baseUrl}/api/feed`)
-            url.searchParams.set('limit', '24')
+            const searchParams = new URLSearchParams()
+            searchParams.set('limit', '24')
             // Home page: prefer images for aesthetic layout
-            url.searchParams.set('mode', 'image')
-            if (nextCursor) url.searchParams.set('cursor', nextCursor)
+            searchParams.set('mode', 'image')
+            if (nextCursor) searchParams.set('cursor', nextCursor)
+            const feedUrl = buildFeedRequestUrl(baseUrl, searchParams)
             
-            const res = await fetch(url.toString(), { 
+            const res = await fetch(feedUrl, { 
               credentials: 'include',
               // Add cache headers for better performance
-              cache: 'default',
+              cache: 'no-store',
               headers: {
                 'Accept': 'application/json',
               }

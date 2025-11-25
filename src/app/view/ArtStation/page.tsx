@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { OptimizedImage } from '@/components/media/OptimizedImage'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
+import { buildFeedRequestUrl } from '@/lib/feedClient'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
@@ -241,7 +242,8 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     };
 
   const fetchFeed = async (reset = false) => {
-    let url: URL | null = null
+    let debugUrl: URL | null = null
+    let requestUrl = ''
     try {
       // prevent overlapping fetches (including reset)
       if (inFlightRef.current) {
@@ -265,37 +267,38 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       const categoryAtStart = activeCategory
       const searchAtStart = searchQuery
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-      url = new URL(`${baseUrl}/api/feed`)
+      debugUrl = new URL(`${baseUrl}/api/feed`)
       
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
-      url.searchParams.set('limit', '50') // Increased limit for better pagination
-      // Sort by aesthetic score first (highest first), then by createdAt as tiebreaker
-      url.searchParams.set('sortBy', 'aestheticScore')
-      url.searchParams.set('sortOrder', 'desc')
+      debugUrl.searchParams.set('limit', '50') // Increased limit for better pagination
+      // Sort by creation date (newest first) - API supports: createdAt, updatedAt, or prompt
+      debugUrl.searchParams.set('sortBy', 'createdAt')
+      debugUrl.searchParams.set('sortOrder', 'desc')
       // Don't filter by minScore - show all generations, just prioritize high-scoring ones
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
-      if (q.mode) url.searchParams.set('mode', q.mode)
-      if (q.generationType) url.searchParams.set('generationType', q.generationType)
+      if (q.mode) debugUrl.searchParams.set('mode', q.mode)
+      if (q.generationType) debugUrl.searchParams.set('generationType', q.generationType)
       // Add search query parameter - ALWAYS include it if there's a search query
       if (hasSearch) {
-        url.searchParams.set('search', searchQuery.trim())
+        debugUrl.searchParams.set('search', searchQuery.trim())
       }
       // Use cursor for pagination (works for both search and normal browsing)
       if (!reset && cursor) {
-        url.searchParams.set('cursor', cursor)
+        debugUrl.searchParams.set('cursor', cursor)
       }
 
       // Log the full URL to verify search parameter is included
-      const fullUrlString = url.toString()
+      requestUrl = buildFeedRequestUrl(baseUrl, new URLSearchParams(debugUrl.searchParams))
+      const fullUrlString = debugUrl.toString()
       console.log('[ArtStation] Fetching feed:', { 
         reset, 
         cursor, 
         searchQuery, 
         hasSearch: hasSearch,
-        hasSearchParam: url.searchParams.has('search'),
-        searchParamValue: url.searchParams.get('search'),
+        hasSearchParam: debugUrl.searchParams.has('search'),
+        searchParamValue: debugUrl.searchParams.get('search'),
         fullUrl: fullUrlString 
       })
       
@@ -304,13 +307,13 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         console.error('[ArtStation] ERROR: Search query present but not in URL!', { searchQuery, fullUrl: fullUrlString })
       }
 
-      if (!url) {
+      if (!requestUrl) {
         throw new Error('URL not initialized')
       }
       
       const doFetch = async () => {
         try {
-          const res = await fetch(url!.toString(), { credentials: 'include' })
+          const res = await fetch(requestUrl, { credentials: 'include', cache: 'no-store' })
           return res
         } catch (fetchError: any) {
           // Handle network errors (CORS, connection refused, etc.)
@@ -318,7 +321,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
             message: fetchError?.message,
             name: fetchError?.name,
             stack: fetchError?.stack,
-            url: url?.toString() || 'unknown'
+            url: debugUrl?.toString() || requestUrl || 'unknown'
           })
           throw new Error(`Network error: ${fetchError?.message || 'Failed to fetch'}`)
         }
@@ -341,7 +344,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           status: String(status),
           statusText: String(statusText),
           errorText: errorText || '(empty response)',
-          url: url?.toString() || 'unknown',
+          url: debugUrl?.toString() || requestUrl || 'unknown',
           headers: Object.fromEntries(res.headers?.entries() || [])
         }
         console.error('[ArtStation] Fetch failed:', JSON.stringify(errorDetails, null, 2))
@@ -360,7 +363,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           error: String(parseError?.message || parseError),
           status: res?.status,
           statusText: res?.statusText,
-          url: url?.toString() || 'unknown'
+          url: debugUrl?.toString() || requestUrl || 'unknown'
         })
         throw new Error(`Failed to parse response: ${parseError?.message || 'Invalid JSON'}`)
       }
@@ -439,7 +442,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           message: e?.message || 'Unknown error',
           name: e?.name || 'Error',
           stack: e?.stack || 'No stack trace',
-          url: url?.toString() || 'unknown (url not initialized)',
+          url: debugUrl?.toString() || requestUrl || 'unknown (url not initialized)',
           category: activeCategory,
           searchQuery: searchQuery,
           baseUrl: API_BASE

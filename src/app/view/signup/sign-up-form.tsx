@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import axios from "axios"
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
 import { useUsernameAvailability } from "./useUsernameAvailability"
@@ -473,11 +472,11 @@ export default function SignInForm() {
       const requestData = {
         email: email.trim()
       }
-      console.log("📤 Resending OTP to:", "http://localhost:5000/api/auth/email/start")
+      console.log("📤 Resending OTP to:", "/api/auth/email/start via axiosInstance proxy")
       console.log("📤 Resend request data:", requestData)
 
       // Call backend API to resend OTP
-      const response = await axios.post("http://localhost:5000/api/auth/email/start", requestData, {
+      const response = await axiosInstance.post("/api/auth/email/start", requestData, {
         withCredentials: true // Include cookies
       })
 

@@ -110,10 +110,10 @@
 
 .legal-nav-subtitle {
   font-size: 1.125rem;
-  line-height: 0.5;
+  line-height: 1.6;
   color: #cbd5f5;
-  max-width: 700px;
-  margin: 0 auto 4.5rem;
+  max-width: 800px;
+  margin: 0.75rem auto 3rem;
   font-weight: 400;
   text-align: center;
   padding: 0;
@@ -165,7 +165,8 @@
 .legal-header {
   position: -webkit-sticky;
   position: sticky;
-  top: calc(16px + 4rem + 16px + 1.125rem + 2.5rem + 108px + 16px);
+  /* Top value equals the height of the navigation: logo(3.5rem=56px) + margin(16px) + title(3rem=48px) + margin(16px) + subtitle(1.125rem=18px) + margin(3rem=48px) + grid(3rem=48px) + nav padding(32px) = ~290px */
+  top: calc(3.5rem + 16px + 3rem + 16px + 1.125rem + 3rem + 3rem + 32px);
   z-index: 9;
   background: #000000;
   padding-top: 20px;
@@ -322,7 +323,8 @@
 
   .legal-nav-subtitle {
     font-size: 1rem;
-    margin-bottom: 1.5rem;
+    line-height: 1.5;
+    margin: 0.5rem auto 2rem;
     max-width: 100%;
   }
 
@@ -338,7 +340,8 @@
   }
 
   .legal-header {
-    top: calc(12px + 24px + 12px + 1rem + 1.5rem + 88px + 12px);
+    /* Mobile nav height: logo(2rem=32px) + margin(12px) + title(24px) + margin(12px) + subtitle(1rem=16px) + margin(2rem=32px) + grid(88px) + nav padding(24px) = ~240px */
+    top: calc(2rem + 12px + 24px + 12px + 1rem + 2rem + 88px + 24px);
     padding-top: 16px;
     padding-bottom: 16px;
   }

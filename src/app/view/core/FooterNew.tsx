@@ -78,7 +78,7 @@ const FooterNew: React.FC = () => {
                     />
                   </div>
                   <p className="text-gray-400 text-sm leading-relaxed max-w-xs md:max-w-sm">
-                    WildMind uses advanced AI to turn imagination into high-quality, creative visuals.
+                    Imagination to Creation
                   </p>
                   
                   {/* Social Media Icons */}
@@ -102,34 +102,39 @@ const FooterNew: React.FC = () => {
                   Solutions
                   </h3>
                   <ul className="space-y-3">
-                    <li>
+                    {/* <li>
                       <Link href={NAV_ROUTES.WORKFLOWS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Wild Magic (Coming Soon)
                       </Link>
-                    </li>
+                    </li> */}
                     <li>
                       <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Image Generation
+                      Image Generation
                       </Link>
                     </li>
                     <li>
                       <Link href={FEATURE_ROUTES.VIDEO_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Video Generation
+                      Video Generation
                       </Link>
                     </li>
                     <li>
                       <Link href={MUSICGENERATION.TEXT_TO_MUSIC} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Audio Generation
-                      </Link>                      </li>
-                      <li>
-
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Filming tools
-                      </Link>                      </li>
-                      <li>
-
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI 3D Generation
+                      Audio Generation
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/edit-image?feature=upscale" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Upscale
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/edit-image?feature=vectorize" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Vectorize
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/edit-image?feature=reimagine" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Enhance
                       </Link>
                     </li>
                   </ul>
@@ -155,31 +160,9 @@ const FooterNew: React.FC = () => {
                       FAQs
                       </Link>
                     </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Documentation
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href={LEGAL_ROUTES.TERMS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Terms for Use
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href={LEGAL_ROUTES.PRIVACY} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Privacy Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href={LEGAL_ROUTES.COOKIES} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Cookie Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Cookie Settings
-                      </Link>
-                    </li>
+                    
+                    
+                    
                   </ul>
                 </div>
 
@@ -194,36 +177,29 @@ const FooterNew: React.FC = () => {
                         Blog
                       </Link>
                     </li>
-                    <li>
-                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        Careers
-                      </Link>
-                    </li>
+                   
                     <li>
                       <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Support
                       </Link>
                     </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        About us
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Newsletter
-                      </Link>
-                    </li>
+                
                     <li>
                       <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Affiliate Program
                       </Link>
                     </li>
+
                     <li>
+                      <Link href={LEGAL_ROUTES.TERMS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Legal Documents
+                      </Link>
+                    </li>
+                    {/* <li>
                       <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Wild Mind Creator Program
                       </Link>
-                    </li>
+                    </li> */}
                   </ul>
                 </div>
 
@@ -271,7 +247,7 @@ const FooterNew: React.FC = () => {
             {/* Bottom Section */}
             <div className="py-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
               <div className="text-gray-400 text-sm mb:text-xs text-center">
-                Copyright © 2025 WildMind Pvt Ltd. All rights reserved.
+                Copyright © 2025 WildMind AI Pvt Ltd. All rights reserved.
               </div>
               
               {/* Legal Links */}
