@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getImageUrl } from '@/routes/imageroute'
-import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION } from '@/routes/routes'
+import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION, LEGAL_ROUTES } from '@/routes/routes'
 // import {
 //   IconBrandYoutube,
 //   IconBrandInstagram,
@@ -14,11 +14,11 @@ import Squares from './Squares'
 
 const FooterNew: React.FC = () => {
   const legalLinks = [
-    { name: "Terms of use", href: "" },
-    { name: "Privacy Policy", href: "" },
-    { name: "Cookies", href: "" },
-    { name: "Legal Notice", href: "" },
-    { name: "DMCA", href: "" },
+    { name: "Terms of use", href: LEGAL_ROUTES.TERMS },
+    { name: "Privacy Policy", href: LEGAL_ROUTES.PRIVACY },
+    { name: "Cookies", href: LEGAL_ROUTES.COOKIES },
+    { name: "Legal Notice", href: LEGAL_ROUTES.LEGAL_NOTICE },
+    { name: "DMCA", href: LEGAL_ROUTES.DMCA },
   ];
 
   // const socialLinks = [
@@ -161,17 +161,17 @@ const FooterNew: React.FC = () => {
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={LEGAL_ROUTES.TERMS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Terms for Use
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={LEGAL_ROUTES.PRIVACY} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Privacy Policy
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={LEGAL_ROUTES.COOKIES} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Cookie Policy
                       </Link>
                     </li>

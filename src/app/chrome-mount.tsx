@@ -19,6 +19,8 @@ export default function ChromeMount() {
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup');
+  const isBlogRoute = pathnameLower.startsWith('/view/blog') || pathnameLower.startsWith('/blog');
+  const isLegalRoute = pathnameLower.startsWith('/legal');
   
   // Generation routes (all the generation type routes)
   const generationRoutes = [
@@ -71,9 +73,13 @@ export default function ChromeMount() {
   // Hide on:
   // 1. Landing page
   // 2. Signup page
-  // 3. Root path when view is landing
+  // 3. Blog pages
+  // 4. Legal pages
+  // 5. Root path when view is landing
   const shouldHide = isLandingRoute || 
                      isSignupRoute || 
+                     isBlogRoute ||
+                     isLegalRoute ||
                      (isRoot && currentView === 'landing');
 
   // If explicitly should hide, return null

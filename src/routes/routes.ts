@@ -69,11 +69,15 @@ export const NAV_ROUTES = {
 
 // Legal Routes
 export const LEGAL_ROUTES = {
-  TERMS: '/terms',
-  PRIVACY: '/privacy',
-  COOKIES: '/cookies',
+  TERMS: '/legal/terms',
+  PRIVACY: '/legal/privacy',
+  COOKIES: '/legal/cookie',
   LEGAL_NOTICE: '/legal',
-  DMCA: '/dmca',
+  DMCA: '/legal/dmca',
+  AUP: '/legal/aup',
+  API_TERMS: '/legal/api-terms',
+  RELATIONSHIP: '/legal/relationship',
+  THIRD_PARTY: '/legal/thirdparty',
 } as const;
 
 // Footer Navigation Links
