@@ -234,6 +234,7 @@ const SidePannelFeatures = ({
             width={48}
             height={48}
             className="h-full w-full object-contain"
+            unoptimized
           />
         </div>
         <span
@@ -246,7 +247,7 @@ const SidePannelFeatures = ({
             }
           }}
           className={`${taglineClasses} mt-1 cursor-pointer shrink-0`}>
-          <Image src="/core/logo%20with%20tagline%20(2).png" alt="WildMind Logo" width={400} height={200} className="h-10 w-auto" />
+          <Image src="/core/logowithtagline.png" alt="WildMind Logo" width={400} height={200} className="h-10 w-auto" unoptimized />
         </span>
       </div>
 
