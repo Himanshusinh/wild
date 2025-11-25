@@ -18,6 +18,7 @@ interface UseHistoryLoaderOptions {
   debounceMs?: number;
   // If true, always force an initial request even if entries cached (rare, for hard refresh pages)
   forceInitial?: boolean;
+  skipBackendGenerationFilter?: boolean;
 }
 
 // Simple in-memory per-type locks so multiple components mounting simultaneously don't double fetch
@@ -30,6 +31,7 @@ export const useHistoryLoader = ({
   initialLimit = 50,
   debounceMs = 600,
   forceInitial = false,
+  skipBackendGenerationFilter = false,
 }: UseHistoryLoaderOptions) => {
   const dispatch = useAppDispatch();
   const entries = useAppSelector((s: any) => s.history?.entries || []);
@@ -75,9 +77,18 @@ export const useHistoryLoader = ({
       shouldSkip: !forceInitial && hasTypeEntries && filtersMatch,
     });
     
+    // Define genFilter early so it can be used in early return paths
+    const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+    const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
+    if (skipBackendGenerationFilter) {
+      delete backendFilters.generationType;
+    }
+    
     if (!forceInitial && hasTypeEntries && filtersMatch) {
       console.log('[useHistoryLoader] ⚠️ Already loaded, skipping initial load');
-      return; // already loaded
+      // Still set filters to ensure UI state is correct, but skip API call
+      dispatch(setFilters(genFilter as any));
+      return; // already loaded - cached data will show immediately
     }
     
     if (inFlightTypeLocks[generationType]) {
@@ -88,23 +99,26 @@ export const useHistoryLoader = ({
     console.log('[useHistoryLoader] ✅ Proceeding with initial load - setting lock and dispatching...');
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
-    const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
     
     console.log('[useHistoryLoader] Dispatching setFilters and loadHistory with:', {
       filters: genFilter,
+      backendFilters,
       paginationParams: { limit: initialLimit },
       requestOrigin: 'page',
       expectedType: generationType,
       debugTag: `hook:init:${generationType}:${Date.now()}`,
+      skipBackendGenerationFilter,
     });
     
     dispatch(setFilters(genFilter as any));
     const dispatchPromise = (dispatch as any)(loadHistory({
       filters: genFilter,
+      backendFilters,
       paginationParams: { limit: initialLimit },
       requestOrigin: 'page',
       expectedType: generationType,
       debugTag: `hook:init:${generationType}:${Date.now()}`,
+      skipBackendGenerationFilter,
     }));
     
     console.log('[useHistoryLoader] Initial load dispatch promise created');
@@ -133,18 +147,22 @@ export const useHistoryLoader = ({
       inFlightTypeLocks[generationType] = true;
       lastLoadTimestamps[generationType] = Date.now();
       const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+      const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
+      if (skipBackendGenerationFilter) delete backendFilters.generationType;
       (dispatch as any)(loadHistory({
         filters: genFilter,
+        backendFilters,
         paginationParams: { limit },
         requestOrigin: 'page',
         expectedType: generationType,
         debugTag: `hook:refresh:${generationType}:${Date.now()}`,
+        skipBackendGenerationFilter,
       })).finally(() => {
         inFlightTypeLocks[generationType] = false;
         pendingRefreshRef.current = false;
       });
     }, debounceMs);
-  }, [generationType, generationTypes, debounceMs, dispatch, loading, initialLimit]);
+  }, [generationType, generationTypes, debounceMs, dispatch, loading, initialLimit, skipBackendGenerationFilter]);
 
   // Immediate (non-debounced) refresh - FORCE API CALL (bypass cache/locks for EditImage)
   const refreshImmediate = useCallback((limit: number = initialLimit, forceRefresh: boolean = true) => {
@@ -173,12 +191,15 @@ export const useHistoryLoader = ({
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
     const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+    const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
+    if (skipBackendGenerationFilter) delete backendFilters.generationType;
     
     // Update filters first to ensure fresh state
     dispatch(setFilters(genFilter as any));
     
     console.log('[useHistoryLoader] Dispatching loadHistory with FORCE REFRESH:', {
       filters: genFilter,
+      backendFilters,
       paginationParams: { limit },
       requestOrigin: 'page',
       expectedType: generationType,
@@ -188,11 +209,13 @@ export const useHistoryLoader = ({
     
     const dispatchPromise = (dispatch as any)(loadHistory({
       filters: genFilter,
+      backendFilters,
       paginationParams: { limit },
       requestOrigin: 'page',
       expectedType: generationType,
       debugTag: `hook:refreshImmediate:${generationType}:${Date.now()}`,
       forceRefresh: forceRefresh, // Pass forceRefresh to thunk
+      skipBackendGenerationFilter,
     }));
     
     console.log('[useHistoryLoader] Dispatch promise created, waiting for completion...');
@@ -204,7 +227,7 @@ export const useHistoryLoader = ({
       console.error('[useHistoryLoader] ❌ loadHistory dispatch error:', err);
       inFlightTypeLocks[generationType] = false;
     });
-  }, [generationType, generationTypes, dispatch, loading, initialLimit]);
+  }, [generationType, generationTypes, dispatch, loading, initialLimit, skipBackendGenerationFilter]);
 
   return {
     refresh,

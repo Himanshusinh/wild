@@ -42,9 +42,9 @@ body {
   font-weight: 400;
 }
 
-/* Apply Artega to all headings */
+/* Apply Satoshi to all headings - body text remains Poppins */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-artega, "Artega"), sans-serif;
+  font-family: var(--font-satoshi, "Satoshi"), sans-serif;
 }
 
 /* Ensure sidebar uses Poppins font */
