@@ -41,7 +41,56 @@ type PublicItem = {
   audios?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
 };
 
-type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
+type Category = 'All' | 'Images' | 'Videos' | 'Logos' | 'Products';
+
+const normalizeGenerationType = (type?: string) =>
+  type ? type.replace(/[_\s]/g, '-').toLowerCase() : '';
+
+const allowedEditTypes = new Set(['image-upscale', 'image_upscale', 'upscale']);
+const disallowedExactTypes = new Set([
+  'text-to-music',
+  'music',
+  'music-generation',
+  'audio',
+  'audio-generation',
+  'sticker-generation',
+  'sticker',
+  'text-to-sticker',
+  'text-to-speech',
+  'text_to_speech',
+  'sound-effects',
+  'sound-effect',
+  'sound_effect',
+  'live-audio',
+  'video-remove-bg',
+  'video_remove_bg',
+  'image-edit',
+  'image_edit',
+  'edit-image',
+  'edit_image',
+]);
+const disallowedFeatureTokens = [
+  'remove-bg',
+  'removebg',
+  'background-remover',
+  'resize',
+  'replace',
+  'fill',
+  'erase',
+  'expand',
+  'reimagine',
+  'vectorize',
+  'image-to-svg',
+];
+
+const shouldHideGenerationType = (type?: string) => {
+  const normalized = normalizeGenerationType(type);
+  if (!normalized) return false;
+  if (allowedEditTypes.has(normalized)) return false;
+  if (disallowedExactTypes.has(normalized)) return true;
+  if (normalized.startsWith('image-edit') || normalized.startsWith('edit-image')) return true;
+  return disallowedFeatureTokens.some((token) => normalized.includes(token));
+};
 
 export default function ArtStationPage() {
   const formatDate = (input?: string) => {
@@ -174,19 +223,15 @@ export default function ArtStationPage() {
 
 
   // Map UI categories to backend query params
-  const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'music' | 'all'; generationType?: string } => {
+const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'all'; generationType?: string } => {
     switch (category) {
       case 'Videos':
         // use mode=video; backend maps to multiple generationTypes
         return { mode: 'video' };
       case 'Images':
         return { mode: 'image' };
-      case 'Music':
-        return { mode: 'music' };
       case 'Logos':
         return { generationType: 'logo' };
-      case 'Stickers':
-        return { generationType: 'sticker-generation' };
       case 'Products':
         return { generationType: 'product-generation' };
       case 'All':
@@ -224,8 +269,10 @@ export default function ArtStationPage() {
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
       url.searchParams.set('limit', '50') // Increased limit for better pagination
-      url.searchParams.set('sortBy', 'createdAt')
+      // Sort by aesthetic score first (highest first), then by createdAt as tiebreaker
+      url.searchParams.set('sortBy', 'aestheticScore')
       url.searchParams.set('sortOrder', 'desc')
+      // Don't filter by minScore - show all generations, just prioritize high-scoring ones
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
       if (q.mode) url.searchParams.set('mode', q.mode)
@@ -535,15 +582,11 @@ export default function ArtStationPage() {
         const type = item.generationType?.toLowerCase();
         switch (activeCategory) {
           case 'Images':
-            return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'sticker-generation', 'product-generation', 'ad-generation']);
+            return (Array.isArray(item.images) && item.images.length > 0) || typeIn(type, ['text-to-image', 'logo', 'product-generation', 'ad-generation']);
           case 'Videos':
             return (Array.isArray(item.videos) && item.videos.length > 0) || typeIn(type, ['text-to-video', 'image-to-video', 'video-to-video']);
-          case 'Music':
-            return (Array.isArray((item as any).audios) && (item as any).audios.length > 0) || type === 'text-to-music';
           case 'Logos':
             return type === 'logo';
-          case 'Stickers':
-            return type === 'sticker-generation';
           case 'Products':
             return type === 'product-generation';
           default:
@@ -552,48 +595,166 @@ export default function ArtStationPage() {
       });
     }
 
-    // Search is now handled server-side, so no client-side filtering needed
-    // But we keep this for backward compatibility if backend doesn't filter
-    // (Backend should handle search, so this is just a safety net)
+    const sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
     
-    return categoryFiltered;
+    return sanitized;
   }, [items, activeCategory, searchQuery]);
+
+  const normalizeMediaUrl = (url?: string): string | undefined => {
+    if (!url) return undefined
+    const trimmed = url.trim()
+    if (!trimmed) return undefined
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    if (trimmed.startsWith('/api/')) return trimmed
+    const proxied = toResourceProxy(trimmed)
+    if (proxied) return proxied
+    return toDirectUrl(trimmed)
+  }
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
-    return m.url || m.originalUrl || (m.firebaseUrl as string | undefined)
+    // Try multiple URL properties in order of preference
+    const candidates = [
+      m.url,
+      m.originalUrl,
+      m.webpUrl,
+      m.avifUrl,
+      (m.firebaseUrl as string | undefined),
+      m.thumbnailUrl,
+      m.thumbUrl,
+      m.storagePath,
+    ]
+    for (const candidate of candidates) {
+      const normalized = normalizeMediaUrl(candidate)
+      if (normalized) return normalized
+    }
+    return undefined
   }
 
-  // Resolve thumbnail URL with fallbacks: thumbnailUrl > avifUrl > constructed _thumb.avif > original url
-  const resolveThumbnailUrl = (m: any): string | undefined => {
-    if (!m) return undefined
+  // Resolve image URL with fallback chain: thumbnailUrl → optimized (avif/webp) → url (Zata) → originalUrl
+  const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
+    if (!m) return { url: '', fallbacks: [] }
     
-    // 1. Prefer thumbnailUrl if available
-    if (m.thumbnailUrl) return m.thumbnailUrl
+    const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl) || normalizeMediaUrl(m.thumbUrl)
+    const avifUrl = normalizeMediaUrl(m.avifUrl)
+    const webpUrl = normalizeMediaUrl(m.webpUrl)
+    const zataUrl = normalizeMediaUrl(m.url) // Zata URL (e.g., https://idr01.zata.ai/devstoragev1/...)
+    const originalUrl = normalizeMediaUrl(m.originalUrl) // Original source URL (e.g., Azure blob)
     
-    // 2. Fallback to avifUrl (optimized AVIF)
-    if (m.avifUrl) return m.avifUrl
-    
-    // 3. Fallback: Construct thumbnail URL from Zata URL by appending _thumb.avif
-    const imageUrl = m.url || m.originalUrl
-    if (imageUrl && imageUrl.includes('zata.ai')) {
-      try {
-        // Remove file extension and append _thumb.avif
-        const urlWithoutExt = imageUrl.replace(/\.(jpg|jpeg|png|webp|avif)$/i, '')
-        return `${urlWithoutExt}_thumb.avif`
-      } catch (e) {
-        // If URL parsing fails, continue to next fallback
+    // Priority: thumbnailUrl → avifUrl → webpUrl → url (Zata) → originalUrl
+    if (thumbnailUrl) {
+      return {
+        url: thumbnailUrl,
+        fallbacks: [avifUrl, webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
       }
     }
     
-    // 4. Last fallback: original URL
-    return imageUrl
+    if (avifUrl) {
+      return {
+        url: avifUrl,
+        fallbacks: [webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    if (webpUrl) {
+      return {
+        url: webpUrl,
+        fallbacks: [zataUrl, originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    if (zataUrl) {
+      return {
+        url: zataUrl,
+        fallbacks: [originalUrl].filter(Boolean) as string[]
+      }
+    }
+    
+    return {
+      url: originalUrl || '',
+      fallbacks: []
+    }
   }
+
+  // Component to handle image fallback chain: thumbnail → optimized → original
+  const ImageWithFallback = ({ 
+    media, 
+    alt, 
+    fill, 
+    sizes, 
+    blurDataURL, 
+    className, 
+    priority, 
+    fetchPriority, 
+    onLoadingComplete 
+  }: {
+    media: any;
+    alt: string;
+    fill: boolean;
+    sizes: string;
+    blurDataURL?: string;
+    className: string;
+    priority: boolean;
+    fetchPriority: 'high' | 'low' | 'auto';
+    onLoadingComplete: (img: any) => void;
+  }) => {
+    const { url: primaryUrl, fallbacks } = resolveImageUrl(media);
+    const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
+    const allUrls = [primaryUrl, ...fallbacks].filter(Boolean);
+    const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
+
+    const markCompleteFallback = () => {
+      try {
+        onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
+      } catch {}
+    }
+
+    const handleError = () => {
+      if (currentUrlIndex < allUrls.length - 1) {
+        // Try next fallback URL
+        setCurrentUrlIndex(prev => prev + 1);
+      } else {
+        markCompleteFallback()
+      }
+    };
+
+    useEffect(() => {
+      if (!currentUrl) {
+        markCompleteFallback()
+      }
+    }, [currentUrl])
+
+    if (!currentUrl) {
+      return (
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
+          No preview
+        </div>
+      )
+    }
+
+    // Use key to force re-render when URL changes
+    return (
+      <Image
+        key={`${currentUrl}-${currentUrlIndex}`}
+        src={currentUrl}
+        alt={alt}
+        fill={fill}
+        sizes={sizes}
+        placeholder="blur"
+        blurDataURL={blurDataURL}
+        className={className}
+        priority={priority}
+        fetchPriority={fetchPriority}
+        onError={handleError}
+        onLoadingComplete={onLoadingComplete}
+      />
+    );
+  }
+
 
 
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
-    const seenMedia = new Set<string>()
     const seenItem = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
@@ -602,6 +763,7 @@ export default function ArtStationPage() {
     }
 
     for (const it of filteredItems) {
+      // Only skip if we've already processed this exact item ID
       if (seenItem.has(it.id)) {
         if (process.env.NODE_ENV !== 'production') {
           console.log('[ArtStation] Skipping duplicate item:', it.id)
@@ -614,39 +776,48 @@ export default function ArtStationPage() {
       const kind: 'image' | 'video' | 'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
       const candidateUrl = resolveMediaUrl(candidate)
 
+      // Only skip if there's truly no media at all - try multiple fallbacks
       if (!candidateUrl) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[ArtStation] Item has no media URL:', {
-            id: it.id,
-            hasVideos: !!it.videos?.length,
-            hasImages: !!it.images?.length,
-            hasAudios: !!(it as any).audios?.length,
-            candidate
-          })
+        // Try to find any media URL from the item
+        const fallbackUrl = 
+          (it.videos && it.videos.length > 0 && (it.videos[0].url || it.videos[0].originalUrl)) ||
+          (it.images && it.images.length > 0 && (it.images[0].url || it.images[0].originalUrl)) ||
+          (it.audios && it.audios.length > 0 && (it.audios[0].url || it.audios[0].originalUrl))
+        
+        if (!fallbackUrl) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[ArtStation] Item has no media URL:', {
+              id: it.id,
+              hasVideos: !!it.videos?.length,
+              hasImages: !!it.images?.length,
+              hasAudios: !!(it as any).audios?.length,
+              candidate
+            })
+          }
+          continue
         }
+        // Use fallback URL if candidate URL resolution failed
+        const fallbackCandidate = candidate || (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
+        seenItem.add(it.id)
+        out.push({ 
+          item: it, 
+          media: { 
+            ...fallbackCandidate, 
+            url: fallbackUrl,
+            blurDataUrl: (fallbackCandidate as any)?.blurDataUrl,
+          }, 
+          kind 
+        })
         continue
       }
 
-      const key = (candidate && candidate.storagePath) || candidateUrl
-      if (seenMedia.has(key)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[ArtStation] Skipping duplicate media:', key)
-        }
-        continue
-      }
-
-      // Resolve thumbnail URL - ONLY use thumbnailUrl (no fallbacks)
-      const thumbnailUrl = kind === 'image' && candidate ? resolveThumbnailUrl(candidate) : undefined
-      
-      seenMedia.add(key)
+      // Add item to seen set and include in output
       seenItem.add(it.id)
       out.push({ 
         item: it, 
         media: { 
           ...candidate, 
           url: candidateUrl,
-          // ONLY use thumbnailUrl - no fallback to avifUrl or url
-          thumbnailUrl: (candidate as any)?.thumbnailUrl || thumbnailUrl,
           blurDataUrl: (candidate as any)?.blurDataUrl,
         }, 
         kind 
@@ -654,7 +825,7 @@ export default function ArtStationPage() {
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[ArtStation] Final cards count:', out.length)
+      console.log('[ArtStation] Final cards count:', out.length, 'from', filteredItems.length, 'filtered items')
     }
     return out
   }, [filteredItems])
@@ -815,7 +986,7 @@ export default function ArtStationPage() {
             {/* Category Filter Bar */}
             <div className="mb-4">
               <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-                {(['All', 'Images', 'Videos', 'Music', 'Logos', 'Stickers', 'Products'] as Category[]).map((category) => (
+                {(['All', 'Images', 'Videos', 'Logos', 'Products'] as Category[]).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
@@ -866,10 +1037,10 @@ export default function ArtStationPage() {
 
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
-          {/* Stable CSS grid + measured row spans for a masonry effect without reordering */}
+          {/* Masonry grid with preserved order */}
           <div
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
-            style={{ gridAutoRows: '6px' }}
+            style={{ gridAutoRows: '2px' }}
           >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
@@ -886,7 +1057,7 @@ export default function ArtStationPage() {
               return (
                 <div
                   key={cardId}
-                  className={`mb-0 cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
@@ -898,7 +1069,7 @@ export default function ArtStationPage() {
                   ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
                   style={{
                     transitionDelay: `${(idx % 12) * 35}ms`,
-                    gridRowEnd: `span ${tileSpans[cardId] || 30}`
+                    gridRowEnd: `span ${tileSpans[cardId] || 30}`,
                   }}
                 >
                   <div className="masonry-item-inner relative w-full rounded-lg overflow-hidden bg-transparent group" style={{ contain: 'paint' }}>
@@ -916,23 +1087,51 @@ export default function ArtStationPage() {
                         return kind === 'video' ? (
                           (() => {
                             const proxied = toMediaProxy(media.url)
+                            const original = toDirectUrl(media.url) || media.url
+                            
                             return (
                               <video
                                 src={proxied}
-                                className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                                className="absolute inset-0 w-full h-full object-cover"
                                 muted
                                 playsInline
                                 preload="metadata"
-                                poster={media.thumbnailUrl || undefined}
-                                // play on hover
-                                onMouseEnter={async (e) => { try { await (e.currentTarget as HTMLVideoElement).play() } catch { } }}
-                                onMouseLeave={(e) => { const v = e.currentTarget as HTMLVideoElement; try { v.pause(); v.currentTime = 0 } catch { } }}
+                                data-fallback-src={original}
+                                onMouseEnter={async (e) => {
+                                  const v = e.currentTarget as HTMLVideoElement
+                                  if (v.paused) {
+                                    try { 
+                                      await v.play()
+                                    } catch (err) {
+                                      // If proxy fails, try fallback
+                                      const fallback = v.getAttribute('data-fallback-src')
+                                      if (fallback && v.src !== fallback) {
+                                        v.src = fallback
+                                        v.load()
+                                        try { await v.play() } catch { }
+                                      }
+                                    }
+                                  }
+                                }}
+                                onMouseLeave={(e) => { 
+                                  const v = e.currentTarget as HTMLVideoElement
+                                  try { v.pause(); v.currentTime = 0 } catch { }
+                                }}
                                 onLoadedMetadata={(e) => {
                                   const v = e.currentTarget as HTMLVideoElement
                                   try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch { }
                                   markTileLoaded(cardId)
                                 }}
-                                onError={() => { markTileLoaded(cardId) }}
+                                onError={(e) => {
+                                  const v = e.currentTarget as HTMLVideoElement
+                                  const fallback = v.getAttribute('data-fallback-src')
+                                  if (fallback && v.src !== fallback) {
+                                    v.src = fallback
+                                    v.load()
+                                  } else {
+                                    markTileLoaded(cardId)
+                                  }
+                                }}
                               />
                             )
                           })()
@@ -951,63 +1150,23 @@ export default function ArtStationPage() {
                             />
                           </>
                         ) : (
-                          <div className="relative w-full h-full">
-                            {/* Use ONLY thumbnailUrl with blurDataUrl as loading placeholder */}
-                            {(() => {
-                              // ONLY use thumbnailUrl (_thumb.avif) - no fallbacks
-                              const thumbUrl = resolveThumbnailUrl(media)
-                              const blurUrl = media.blurDataUrl
-                              
-                              // Show blur placeholder while loading
-                              if (!thumbUrl) {
-                                return (
-                                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                    <div className="text-gray-500 text-sm">No thumbnail</div>
-                                  </div>
-                                )
-                              }
-                              
-                              return (
-                                <div className="relative w-full h-full">
-                                  {/* Blur placeholder shown while loading */}
-                                  {!loadedTiles.has(cardId) && blurUrl && (
-                                    <div
-                                      className="absolute inset-0 w-full h-full"
-                                      style={{ 
-                                        backgroundImage: `url(${blurUrl})`, 
-                                        backgroundSize: 'cover', 
-                                        backgroundPosition: 'center',
-                                        filter: 'blur(20px)',
-                                        transform: 'scale(1.1)'
-                                      }}
-                                    />
-                                  )}
-                                  {/* Thumbnail image - fades in when loaded */}
-                                  <Image
-                                    src={thumbUrl}
-                                    alt={item.prompt || ''}
-                                    fill
-                                    sizes={sizes}
-                                    className={`object-cover transition-opacity duration-500 ease-in-out group-hover:scale-[1.01] absolute inset-0 w-full h-full ${
-                                      loadedTiles.has(cardId) ? 'opacity-100' : 'opacity-0'
-                                    }`}
-                                    priority={isPriority}
-                                    fetchPriority={isPriority ? 'high' : 'auto'}
-                                    onLoad={() => {
-                                      markTileLoaded(cardId)
-                                    }}
-                                    onLoadingComplete={(img) => {
-                                      try {
-                                        const el = img as unknown as HTMLImageElement
-                                        if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                                      } catch { }
-                                      markTileLoaded(cardId)
-                                    }}
-                                  />
-                                </div>
-                              )
-                            })()}
-                          </div>
+                          <ImageWithFallback
+                            media={media}
+                            alt={item.prompt || ''}
+                            fill={true}
+                            sizes={sizes}
+                            blurDataURL={media.blurDataUrl || blur}
+                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                            priority={isPriority}
+                            fetchPriority={isPriority ? 'high' : 'auto'}
+                            onLoadingComplete={(img) => {
+                              try {
+                                const el = img as unknown as HTMLImageElement
+                                if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                              } catch { }
+                              markTileLoaded(cardId)
+                            }}
+                          />
                         )
                       })()}
                       {kind === 'video' && (
@@ -1101,7 +1260,10 @@ export default function ArtStationPage() {
           {loading && items.length === 0 && (
             <div className="flex items-center justify-center py-28">
               <div className="flex flex-col items-center gap-4">
-                <Image src="/styles/Logo.gif" alt="Loading" width={112} height={112} className="w-28 h-28" />
+                {/* Using lightweight spinner instead of 604.6 KiB Logo.gif */}
+                <div className="w-28 h-28 flex items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
                 <div className="text-white text-lg">
                   Loading Art Station...
                 </div>

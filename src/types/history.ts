@@ -35,7 +35,7 @@ export interface HistoryEntry {
   prompt: string;
   userPrompt?: string; // Original user-entered prompt (e.g., "@buddy is dancing with @emily")
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'voicecloning' | 'voice-cloning';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -69,7 +69,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'voicecloning' | 'voice-cloning';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];

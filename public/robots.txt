@@ -3,7 +3,7 @@ User-agent: *
 Disallow: /
 
 # Host
-Host: https://wildmindai.com
+Host: https://www.wildmindai.com
 
 # Sitemaps
-Sitemap: https://wildmindai.com/sitemap.xml
+Sitemap: https://www.wildmindai.com/sitemap.xml

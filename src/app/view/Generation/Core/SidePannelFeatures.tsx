@@ -189,12 +189,21 @@ const SidePannelFeatures = ({
 
   const isVideoEditActive = pathname === '/edit-video' || pathname?.startsWith('/edit-video') || pathname?.includes('/EditVideo') || pathname?.includes('edit-video') || pathname?.includes('/video-edit');
 
+  const labelClasses =
+    'text-white hidden md:inline-block whitespace-nowrap transition-all duration-300 ease-out ' +
+    'md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] ' +
+    'md:group-hover:opacity-100 md:group-hover:translate-x-0';
+  const taglineClasses =
+    'text-white hidden md:inline-block whitespace-nowrap transition-all duration-300 ease-out ' +
+    'md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] ' +
+    'md:group-hover:opacity-100 md:group-hover:translate-x-0';
+
   return (
     <div
       ref={sidebarRef}
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl   group transition-all text-white duration-200  backdrop-blur-lg md:w-[68px] w-[50px] hover:w-60 z-40  shadow-2xl'
+      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-[width] text-white duration-300 md:w-[68px] w-[50px] hover:w-60 z-40 shadow-2xl'
       style={{
         // borderTopLeftRadius: '16px',
         // borderBottomLeftRadius: '16px',
@@ -203,7 +212,7 @@ const SidePannelFeatures = ({
       }}
     >
       {/* Logo at the top */}
-      <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0  -ml-1">
+      <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0 -ml-1">
         <div
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
@@ -218,14 +227,14 @@ const SidePannelFeatures = ({
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
             }
           }}
-          className="md:w-[34px] md:h-[34px] w-[25px] h-[25px] flex-none cursor-pointer">
+          className="md:w-[48px] md:h-[48px] w-[36px] h-[36px] flex-none cursor-pointer shrink-0">
           <Image
-            src="/icons/wildmind_icon_darkbg.svg"
-            // src={imageRoutes.core.logo}
-            alt="Wild Mind Logo"
-            width={32}
-            height={32}
-            className="w-full h-full"
+            src="/core/logosquare%20(2).png"
+            alt="WildMind Icon"
+            width={48}
+            height={48}
+            className="h-full w-full object-contain"
+            unoptimized
           />
         </div>
         <span
@@ -237,8 +246,8 @@ const SidePannelFeatures = ({
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
             }
           }}
-          className='text-white md:w-[34px] md:h-[34px] w-[25px] h-[25px] text-3xl mt-1 font-medium overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap cursor-pointer'>
-          <Image src="/icons/wildmind_text_whitebg (2).svg" alt="Wild Mind Logo" width={32} height={32} className="w-auto h-full" />
+          className={`${taglineClasses} mt-1 cursor-pointer shrink-0`}>
+          <Image src="/core/logowithtagline.png" alt="WildMind Logo" width={400} height={200} className="h-10 w-auto" unoptimized />
         </span>
       </div>
 
@@ -266,10 +275,10 @@ const SidePannelFeatures = ({
               })();
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
-          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
+          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="flex-none shrink-0 w-[30px] h-[30px]" />
+          <span className={labelClasses}>Home</span>
         </div>
       </div>
 
@@ -281,11 +290,11 @@ const SidePannelFeatures = ({
               handleImageGenerationClick();
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Generation</span>
+          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Image Generation</span>
         </div>
       </div>
 
@@ -297,11 +306,11 @@ const SidePannelFeatures = ({
               handleGenerationTypeChange('edit-image');
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Image Edit</span>
+          <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Image Edit</span>
         </div>
       </div>
 
@@ -313,11 +322,11 @@ const SidePannelFeatures = ({
               handleGenerationTypeChange('text-to-video');
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Generation</span>
+          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Video Generation</span>
         </div>
       </div>
 
@@ -329,11 +338,11 @@ const SidePannelFeatures = ({
               handleGenerationTypeChange('edit-video');
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Video Edit</span>
+          <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Video Edit</span>
         </div>
       </div>
 
@@ -345,11 +354,11 @@ const SidePannelFeatures = ({
               handleGenerationTypeChange('text-to-music');
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Audio Generation</span>
+          <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Audio Generation</span>
         </div>
       </div>
 
@@ -365,10 +374,10 @@ const SidePannelFeatures = ({
               : 'http://localhost:3001';
             window.open(canvasUrl, '_blank', 'noopener,noreferrer');
           }}
-          className="flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item"
+          className="flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item"
         >
-          <Image src={imageRoutes.icons.canvas} alt="Canvas Studio" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Canvas Studio</span>
+          <Image src={imageRoutes.icons.canvas} alt="Canvas Studio" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Canvas Studio</span>
         </div>
       </div>
 
@@ -380,11 +389,11 @@ const SidePannelFeatures = ({
               router.push(NAV_ROUTES.LIVE_CHAT);
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/live-chat')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Live Canvas</span>
+          <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Live Canvas</span>
         </div>
       </div>
 
@@ -432,11 +441,11 @@ const SidePannelFeatures = ({
             // Normal click - toggle dropdown
             toggleBrandingDropdown();
           }}
-          className={`flex items-center gap-4 p-2 z-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isBrandingActive ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 z-0 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isBrandingActive ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Branding Kit</span>
+          <Image src={imageRoutes.core.brandingKit} alt="Branding Kit" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Branding Kit</span>
         </div>
 
         {showBrandingDropdown && (
@@ -508,16 +517,16 @@ const SidePannelFeatures = ({
               router.push('/view/ArtStation');
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={28} height={28} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Art Station</span>
+          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Art Station</span>
         </div>
       </div>
 
       {/* <div>
-            <div className='flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
+            <div className='flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
                 <Image src="/icons/templateswhite.svg" alt="Templates" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Templates</span>
             </div>
@@ -531,11 +540,11 @@ const SidePannelFeatures = ({
               router.push(NAV_ROUTES.PRICING);
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Pricing</span>
+          <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>Pricing</span>
         </div>
       </div>
 
@@ -565,10 +574,10 @@ const SidePannelFeatures = ({
               router.push('/history');
             }
           }}
-          className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
         >
-          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} />
-          <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>History</span>
+          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="flex-none w-[30px] h-[30px]" />
+          <span className={labelClasses}>History</span>
         </div>
       </div>
 
@@ -610,11 +619,11 @@ const SidePannelFeatures = ({
                 router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
               }
             }}
-            className={`flex items-center gap-2 p-0 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
+            className={`flex items-center gap-2 p-0 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
             role='button'
             aria-label='Profile'
           >
-            <div className='w-[30px] h-[30px] rounded-full overflow-hidden bg-white/10 flex items-center justify-center'>
+            <div className='w-[30px] h-[30px] rounded-full overflow-hidden bg-white/10 flex items-center justify-center flex-none'>
               {userData?.photoURL && !avatarFailed ? (
                 <img
                   src={userData.photoURL}

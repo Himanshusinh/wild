@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
@@ -8,13 +8,6 @@ import { ViewType, GenerationType } from '@/types/generation';
 
 const TextToMusicPage = () => {
   const dispatch = useAppDispatch();
-  
-  // Set the generation type IMMEDIATELY before first render to prevent flashing wrong page
-  useMemo(() => {
-    dispatch(setCurrentView('generation'));
-    dispatch(setCurrentGenerationType('text-to-music'));
-  }, [dispatch]);
-  
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'generation');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-music');
 

@@ -38,6 +38,21 @@
 body {
   background-color: #000000;
   color: #ffffff;
+  font-family: var(--font-poppins, "Poppins"), sans-serif;
+  font-weight: 400;
+}
+
+/* Apply Artega to all headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-artega, "Artega"), sans-serif;
+}
+
+/* Ensure sidebar uses Poppins font */
+[data-sidebar="true"],
+[data-sidebar="true"] *,
+[data-sidebar="true"] span,
+[data-sidebar="true"] div {
+  font-family: var(--font-poppins, "Poppins"), sans-serif !important;
 }
 
 /* Hide scrollbars utility */

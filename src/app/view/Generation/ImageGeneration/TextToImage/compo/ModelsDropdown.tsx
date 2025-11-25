@@ -30,6 +30,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Runway Gen4 Image Turbo', value: 'gen4_image_turbo' },
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
     { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
+    { name: 'Google Nano Banana Pro', value: 'google/nano-banana-pro' },
     { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Ideogram v3', value: 'ideogram-ai/ideogram-v3' },
     { name: 'Ideogram v3 Quality', value: 'ideogram-ai/ideogram-v3-quality' },
@@ -67,6 +68,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'gen4_image' ||
       m.value === 'gen4_image_turbo' ||
       m.value === 'gemini-25-flash-image' ||
+      m.value === 'google/nano-banana-pro' ||
       m.value === 'seedream-v4'
     );
   }

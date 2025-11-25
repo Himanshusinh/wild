@@ -13,6 +13,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gen4_image_turbo': 44,       // Runway Gen 4 Image Turbo
   'minimax-image-01': 24,       // Minimax Image-01
   'gemini-25-flash-image': 98,  // Google nano banana (T2I)
+  'google/nano-banana-pro': 300, // Google nano banana pro (default 1K/2K - 300 credits, 4K - 500 credits)
   'seedream-v4': 80,
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
@@ -36,7 +37,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'S2V-01': 1420,               // S2V-01
 
   // Music Generation Models
-  'music-1.5': 90,              // Music 1.5 (Up to 90s)
+  'minimax-music-2': 60,        // MiniMax Music 2 ($0.03 = 60 credits)
   'elevenlabs-tts': 98,         // ElevenLabs TTS v3
   'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS
   'maya-tts': 98,                // Maya TTS

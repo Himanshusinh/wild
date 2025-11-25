@@ -102,7 +102,7 @@ export default function MusicGenerationPage() {
 
     // Root container: prevent horizontal scroll artifacts
     return (
-        <div className="h-screen pt-4 -mt-4 bg-[#07070B] overflow-hidden overflow-x-hidden">
+        <div className="h-screen pt-4 -mt-6 bg-[#07070B] overflow-hidden overflow-x-hidden">
             <style jsx global>{`
                 /* Hide main page scrollbar */
                 body {
@@ -151,7 +151,7 @@ export default function MusicGenerationPage() {
             `}</style>
             {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
             <div className="flex h-full">
-                <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 -mt-16 h-full overflow-hidden">
+                <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 -mt-14 h-full overflow-hidden">
                     {/* Sticky header + filters (pinned under navbar) */}
                     <div className="sticky top-0 z-20 bg-[#07070B] flex-shrink-0 -mb-4">
                         <div className="mb-2 md:mb-3 pt-10">
