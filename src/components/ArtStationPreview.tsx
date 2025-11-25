@@ -4,7 +4,7 @@ import Image from 'next/image'
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
-import { toDirectUrl } from '@/lib/thumb'
+import { toDirectUrl, toMediaProxy } from '@/lib/thumb'
 import { downloadFileWithNaming } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -68,6 +68,7 @@ export default function ArtStationPreview({
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
 
   useEffect(() => {
     setMediaDimensions(null)
@@ -76,6 +77,50 @@ export default function ArtStationPreview({
     setSelectedVideoIndex(0)
     setSelectedAudioIndex(0)
   }, [preview?.item?.id, preview?.kind])
+
+  useEffect(() => {
+    if (!preview || preview.kind !== 'image') return
+    const images = (preview.item.images || []) as any[]
+    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+    const measurementSource =
+      img?.storagePath ||
+      img?.originalUrl ||
+      img?.url ||
+      ''
+
+    if (!measurementSource) return
+
+    const proxiedMeasurementUrl =
+      toMediaProxy(measurementSource) ||
+      (String(measurementSource).startsWith('http')
+        ? measurementSource
+        : `${ZATA_PREFIX}${String(measurementSource).replace(/^\/+/, '')}`)
+
+    if (!proxiedMeasurementUrl) return
+    if (typeof window === 'undefined' || typeof window.Image === 'undefined') return
+
+    let cancelled = false
+    const imgEl = new window.Image()
+    imgEl.decoding = 'async'
+    imgEl.onload = () => {
+      if (cancelled) return
+      if (imgEl.naturalWidth && imgEl.naturalHeight) {
+        setMediaDimensions({ width: imgEl.naturalWidth, height: imgEl.naturalHeight })
+      }
+    }
+    imgEl.onerror = (err: Event | string | null) => {
+      if (!cancelled) {
+        console.warn('[ArtStationPreview] Failed to measure image dimensions from source:', measurementSource, err)
+      }
+    }
+    imgEl.src = proxiedMeasurementUrl
+
+    return () => {
+      cancelled = true
+      imgEl.onload = null
+      imgEl.onerror = null
+    }
+  }, [preview?.item?.id, preview?.kind, selectedImageIndex])
 
   const formatDate = (input?: string) => {
     if (!input) return ''

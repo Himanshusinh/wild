@@ -526,6 +526,51 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
   const selectedImage: any = selectedPair.image || preview?.image;
   const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+
+  // Measure the actual resolution from the highest-quality source (storagePath or original URL)
+  React.useEffect(() => {
+    const measurementSource =
+      (selectedImage as any)?.storagePath ||
+      (selectedImage as any)?.originalUrl ||
+      (selectedImage as any)?.url ||
+      '';
+
+    if (!measurementSource) return;
+
+    const proxiedMeasurementUrl =
+      toMediaProxy(measurementSource) ||
+      (measurementSource.startsWith('http') ? measurementSource : `${ZATA_PREFIX}${measurementSource.replace(/^\/+/, '')}`);
+
+    if (!proxiedMeasurementUrl) return;
+    if (typeof window === 'undefined' || typeof window.Image === 'undefined') return;
+
+    let cancelled = false;
+    const img = new window.Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      if (cancelled) return;
+      if (img.naturalWidth && img.naturalHeight) {
+        setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      }
+    };
+    img.onerror = (err: Event | string | null) => {
+      if (!cancelled) {
+        console.warn('[ImagePreviewModal] Failed to measure image dimensions from source:', measurementSource, err);
+      }
+    };
+    img.src = proxiedMeasurementUrl;
+
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [
+    (selectedImage as any)?.id,
+    (selectedImage as any)?.storagePath,
+    (selectedImage as any)?.originalUrl,
+    (selectedImage as any)?.url
+  ]);
   const storedResolution = React.useMemo(() => {
     const candidates = [
       selectedImage?.width && selectedImage?.height
@@ -553,12 +598,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return null;
   }, [selectedEntry, selectedImage]);
   const displayedResolution = React.useMemo(() => {
-    if (storedResolution && imageDimensions) {
-      const storedArea = storedResolution.width * storedResolution.height;
-      const measuredArea = imageDimensions.width * imageDimensions.height;
-      return storedArea >= measuredArea ? storedResolution : imageDimensions;
+    if (imageDimensions && imageDimensions.width > 0 && imageDimensions.height > 0) {
+      return imageDimensions;
     }
-    return storedResolution || imageDimensions || null;
+    return storedResolution || null;
   }, [storedResolution, imageDimensions]);
   const isUserUploadSelected = false;
 
