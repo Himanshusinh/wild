@@ -3,10 +3,12 @@
 import React, { useRef } from "react";
 import { useAppSelector } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { loadMoreHistory } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
 import { useAppDispatch } from '@/store/hooks';
-import { Music4 } from 'lucide-react';
+import { Music4, Trash2 } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+import axiosInstance from '@/lib/axiosInstance';
+import toast from 'react-hot-toast';
 
 // Helper function to get color theme based on entry
 const getColorTheme = (entry: any, index: number = 0): string => {
@@ -17,16 +19,16 @@ const getColorTheme = (entry: any, index: number = 0): string => {
   }, 0);
   
   const themes = [
-    'from-sky-400 via-blue-500/95 to-indigo-500',
-    'from-cyan-400 via-sky-500 to-blue-600',
-    'from-blue-400 via-indigo-500 to-purple-500',
-    'from-indigo-500 via-violet-500 to-fuchsia-500',
-    'from-blue-500 via-purple-500 to-sky-400',
-    'from-indigo-600 via-blue-500 to-cyan-500',
-    'from-purple-600 via-indigo-500 to-blue-500',
-    'from-blue-400 via-cyan-400 to-teal-400',
-    'from-sky-500 via-indigo-500 to-purple-600',
-    'from-cyan-500 via-blue-600 to-indigo-700',
+    'from-sky-500/60 via-blue-600/60 to-indigo-600/60',
+    'from-cyan-500/60 via-sky-600/60 to-blue-700/60',
+    'from-blue-500/60 via-indigo-600/60 to-purple-600/60',
+    'from-indigo-600/60 via-violet-600/60 to-fuchsia-600/60',
+    'from-blue-600/60 via-purple-600/60 to-sky-500/60',
+    'from-indigo-700/60 via-blue-600/60 to-cyan-600/60',
+    'from-purple-700/60 via-indigo-600/60 to-blue-600/60',
+    'from-blue-500/60 via-cyan-500/60 to-teal-500/60',
+    'from-sky-600/60 via-indigo-600/60 to-purple-700/60',
+    'from-cyan-600/60 via-blue-700/60 to-indigo-800/60',
   ];
   
   return themes[Math.abs(hash) % themes.length];
@@ -42,6 +44,7 @@ interface MusicHistoryProps {
   onAudioSelect?: (data: { entry: any; audio: any }) => void;
   selectedAudio?: { entry: any; audio: any } | null;
   localPreview?: any;
+  suppressEmptyState?: boolean;
 }
 
 const MusicHistory: React.FC<MusicHistoryProps> = ({
@@ -50,10 +53,31 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
   onAudioSelect,
   selectedAudio,
   localPreview
+  , suppressEmptyState = false
 }) => {
   const dispatch = useAppDispatch();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [page, setPage] = React.useState(1);
+  const initialFetchDoneRef = React.useRef(false);
+
+  // Delete handler - same logic as ImagePreviewModal
+  const handleDeleteAudio = async (e: React.MouseEvent, entry: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      // Clear/reset document title when audio is deleted
+      if (typeof document !== 'undefined') {
+        document.title = 'WildMind';
+      }
+      toast.success('Audio deleted');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Failed to delete generation');
+    }
+  };
 
   // Get history entries filtered by type
   const normalizedAllowedTypes = allowedTypes.map(normalizeType);
@@ -234,11 +258,56 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
       });
     }
     
-    return filtered;
+    // Final deduplication pass to ensure no duplicates by ID
+    const uniqueFiltered = filtered.filter((entry: any, index: number, self: any[]) => 
+      index === self.findIndex(e => e.id === entry.id)
+    );
+    
+    if (uniqueFiltered.length < filtered.length) {
+      console.log('[MusicHistory] Removed duplicates after filtering:', {
+        before: filtered.length,
+        after: uniqueFiltered.length,
+        removed: filtered.length - uniqueFiltered.length
+      });
+    }
+    
+    return uniqueFiltered;
   });
 
   const storeHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
   const storeLoading = useAppSelector((s: any) => s.history?.loading || false);
+
+  // Guarded initial fetch on mount and when generationType/allowedTypes change
+  React.useEffect(() => {
+    try {
+      const isTts = normalizedGenerationTypes.some(t => t === 'text-to-speech' || t === 'tts') ||
+        normalizedAllowedTypes.some(t => t === 'text-to-speech' || t === 'tts');
+      const generationTypeFilter = generationTypeList.filter((type): type is string => Boolean(type));
+      const genFilter: any = isTts
+        ? { generationType: ['text-to-speech', 'text_to_speech', 'tts'] }
+        : generationTypeFilter.length > 1
+          ? { generationType: generationTypeFilter }
+          : { generationType: generationTypeFilter[0] || generationType };
+
+      // Reset local page state when filters change
+      setPage(1);
+
+      // Avoid duplicate initial fetches for the same mount unless store is empty or filters changed
+      const shouldFetch = !initialFetchDoneRef.current || historyEntries.length === 0;
+      if (shouldFetch) {
+        initialFetchDoneRef.current = true;
+        (dispatch as any)(setFilters(genFilter));
+        (dispatch as any)(loadHistory({
+          filters: genFilter,
+          paginationParams: { limit: 50 },
+          requestOrigin: 'page',
+          expectedType: Array.isArray(genFilter.generationType) ? genFilter.generationType[0] : genFilter.generationType,
+          debugTag: `music-history:init:${Date.now()}`,
+        }));
+      }
+    } catch { /* swallow */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [normalizedGenerationTypes.join(','), normalizedAllowedTypes.join(',')]);
 
   // Group entries by date
   const groupedByDate = historyEntries.reduce((groups: { [key: string]: any[] }, entry: any) => {
@@ -304,7 +373,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
         )}
 
         {/* No History State */}
-        {!storeLoading && historyEntries.length === 0 && (
+        {!storeLoading && historyEntries.length === 0 && !suppressEmptyState && (
           <div className="flex items-center justify-center py-12">
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
@@ -384,25 +453,19 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
                   {/* Prepend local preview to today's row */}
                   {date === todayKey && localPreview && <MusicTileFromPreview preview={localPreview} />}
                   {groupedByDate[date].map((entry: any) => {
-                    // Extract media items - prioritize audios, then images, then single audio object
-                    // This matches the logic from History.tsx
+                    // Build media list but render only ONE tile per entry to avoid duplicates.
                     const mediaItems = [
                       ...((entry.audios || []) as any[]),
-                      ...((entry.images || []) as any[]),
-                      ...(entry.audio ? [entry.audio] : [])
-                    ].filter(Boolean); // Remove any null/undefined items
-                    
-                    // If no media items found, but entry is generating or failed, still show it
-                    if (mediaItems.length === 0) {
-                      // For generating or failed entries, create a placeholder media item so they render
+                      ...(entry.audio ? [entry.audio] : []),
+                      ...((entry.images || []) as any[])
+                    ].filter(Boolean);
+
+                    // Choose a single primary media item (prefer audio arrays, then single audio, then images)
+                    let audio: any = mediaItems[0];
+
+                    if (!audio) {
                       if (entry.status === 'generating' || entry.status === 'failed') {
-                        mediaItems.push({ 
-                          id: entry.id || 'placeholder', 
-                          url: '', 
-                          originalUrl: '', 
-                          type: 'audio',
-                          error: entry.error 
-                        });
+                        audio = { id: entry.id || 'placeholder', url: '', originalUrl: '', type: 'audio', error: entry.error };
                       } else {
                         console.warn('[MusicHistory] Entry has no media items:', {
                           id: entry.id,
@@ -415,17 +478,14 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
                         return null;
                       }
                     }
-                    
-                    return mediaItems.map((audio: any, audioIndex: number) => {
-                      // Get audio URL from various possible fields (matching History.tsx pattern)
-                      const audioUrl = audio.url || audio.firebaseUrl || audio.originalUrl;
-                      const colorTheme = getColorTheme(entry, audioIndex);
-                      
-                      return (
+
+                    const colorTheme = getColorTheme(entry, 0);
+
+                    return (
                       <div
-                        key={`${entry.id}-${audio.id || audioIndex}`}
+                        key={entry.id}
                         onClick={() => onAudioSelect?.({ entry, audio })}
-                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
+                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02] opacity-60`}
                       >
                         <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
@@ -463,18 +523,27 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
                         ) : (
                           <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-                            <div className="absolute inset-x-6 inset-y-6 rounded-[28px] border border-white/30 shadow-inner shadow-black/40" />
                             <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
                             <div className="relative z-10 w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
                               <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
                               <Music4 className="w-10 h-10 text-white drop-shadow-md relative z-10" />
                             </div>
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
+                            {/* Delete button on hover */}
+                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                              <button
+                                aria-label="Delete audio"
+                                className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                onClick={(e) => handleDeleteAudio(e, entry)}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                      );
-                    }).filter(Boolean); // Filter out null entries
+                    );
                   })}
                 </div>
               </div>
@@ -507,7 +576,7 @@ const MusicTileFromPreview = ({ preview }: { preview: any }) => {
   const colorTheme = getColorTheme(preview, 0);
   
   return (
-    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] transition-all duration-500 cursor-pointer group hover:-translate-y-1 hover:scale-[1.02]`}>
+    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] transition-all duration-500 cursor-pointer group hover:-translate-y-1 hover:scale-[1.02] opacity-60`}>
       <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
@@ -536,7 +605,6 @@ const MusicTileFromPreview = ({ preview }: { preview: any }) => {
       ) : (
         <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-          <div className="absolute inset-x-6 inset-y-6 rounded-[28px] border border-white/30 shadow-inner shadow-black/40" />
           <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
           <div className="relative z-10 w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
             <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
