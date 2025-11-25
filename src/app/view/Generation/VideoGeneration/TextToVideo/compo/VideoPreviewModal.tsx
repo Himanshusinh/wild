@@ -473,9 +473,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto custom-scrollbar mt-6">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] mt-6 flex flex-col overflow-hidden ">
             {/* Action Buttons */}
-            <div className="mb-4 flex gap-2">
+            <div className="mb-4 flex gap-2 flex-shrink-0">
               <div className="relative group flex-1">
                 <button
                   onClick={() => downloadVideo(videoUrl)}
@@ -529,119 +529,122 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               </div>
             </div>
 
-            {/* Prompt */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
-                <span>Prompt</span>
-                <button 
-                  onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
-                    copiedButtonId === `preview-${preview.entry.id}` 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                >
-                  {copiedButtonId === `preview-${preview.entry.id}` ? (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 6L9 17l-5-5"/>
-                      </svg>
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </>
+            {/* Main content stack */}
+            <div className="flex-1 overflow-hidden ">
+              <div className="flex flex-col gap-4 h-full overflow-hidden">
+                {/* Prompt */}
+                <div className="flex-shrink-0 -mb-4">
+                  <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
+                    <span>Prompt</span>
+                    <button 
+                      onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
+                      className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
+                        copiedButtonId === `preview-${preview.entry.id}` 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-white/10 hover:bg-white/20'
+                      }`}
+                    >
+                      {copiedButtonId === `preview-${preview.entry.id}` ? (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                          </svg>
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${isLongPrompt ? (isPromptExpanded ? 'max-h-[40vh] overflow-y-auto custom-scrollbar pr-1 mb-2' : 'line-clamp-4') : ''}`}>
+                    {cleanPrompt}
+                  </div>
+                  {isLongPrompt && (
+                    <button
+                      onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                      className="mt-2 text-xs text-white/70 hover:text-white underline flex-shrink-0"
+                    >
+                      Read {isPromptExpanded ? 'less' : 'more'}
+                    </button>
                   )}
-                </button>
+                </div>
+
+              {/* Date */}
+              <div className="flex-shrink-0">
+                <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
+                <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(preview.entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
               </div>
-              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {cleanPrompt}
-              </div>
-              {isLongPrompt && (
-                <button
-                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-                  className="mt-2 text-xs text-white/70 hover:text-white underline"
-                >
-                  Read {isPromptExpanded ? 'less' : 'more'}
-                </button>
+
+              {/* Your Uploads (images/videos) */}
+              {(inputImages.length + inputVideos.length) > 0 && (
+                <div className="flex-shrink-0">
+                  <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {inputImages.map((img: any, idx: number) => {
+                      const src = toResourceProxy(img?.storagePath || img?.url || img?.firebaseUrl || img?.originalUrl || '');
+                      if (!src) return null;
+                      return (
+                        <div key={`up-img-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
+                          <Image src={src} alt={`Upload ${idx + 1}`} fill className="object-cover" />
+                        </div>
+                      );
+                    })}
+                    {inputVideos.map((vid: any, idx: number) => {
+                      const vsrc = toMediaProxy(vid?.storagePath || vid?.url || vid?.firebaseUrl || vid?.originalUrl || '');
+                      if (!vsrc) return null;
+                      return (
+                        <div key={`up-vid-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
+                          <video src={vsrc} className="w-full h-full object-cover" muted autoPlay loop playsInline />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
-            </div>
-            
-            {/* Date */}
-            <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-              <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(preview.entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
-            </div>
-            
-            {/* Details */}
-            <div className="mb-4">
-              <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Details</div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white/80 text-sm">{getModelDisplayName(preview.entry.model)}</span>
-                </div>
-                {displayedStyle && (
+
+              {/* Details */}
+              <div className="flex-shrink-0 ">
+                <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Details</div>
+                <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Style:</span>
-                    <span className="text-white/80 text-sm">{displayedStyle}</span>
+                    <span className="text-white/60 text-sm">Model:</span>
+                    <span className="text-white/80 text-sm">{getModelDisplayName(preview.entry.model)}</span>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Aspect ratio:</span>
-                  <span className="text-white/80 text-sm">{displayedAspect}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Duration:</span>
-                  <span className="text-white/80 text-sm">
-                    {videoDuration !== null ? formatDuration(videoDuration) : ((preview.entry as any).duration ? `${(preview.entry as any).duration}s` : '—')}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Format:</span>
-                  <span className="text-white/80 text-sm">Video</span>
-                </div>
-                {videoDimensions && (
+                  {displayedStyle && (
+                    <div className="flex justify-between">
+                      <span className="text-white/60 text-sm">Style:</span>
+                      <span className="text-white/80 text-sm">{displayedStyle}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Resolution:</span>
-                    <span className="text-white/80 text-sm">{videoDimensions.width} × {videoDimensions.height}</span>
+                    <span className="text-white/60 text-sm">Aspect ratio:</span>
+                    <span className="text-white/80 text-sm">{displayedAspect}</span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Duration:</span>
+                    <span className="text-white/80 text-sm">
+                      {videoDuration !== null ? formatDuration(videoDuration) : ((preview.entry as any).duration ? `${(preview.entry as any).duration}s` : '—')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60 text-sm">Format:</span>
+                    <span className="text-white/80 text-sm">Video</span>
+                  </div>
+                  {videoDimensions && (
+                    <div className="flex justify-between">
+                      <span className="text-white/60 text-sm">Resolution:</span>
+                      <span className="text-white/80 text-sm">{videoDimensions.width} × {videoDimensions.height}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* Your Uploads (images/videos) */}
-            {(inputImages.length + inputVideos.length) > 0 && (
-              <div className="mb-4">
-                                {/* <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads ({inputImages.length + inputVideos.length})</div> */}
-
-                <div className="text-white/60 text-xs uppercase tracking-wider mb-2">Your Uploads </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {inputImages.map((img: any, idx: number) => {
-                    const src = toResourceProxy(img?.storagePath || img?.url || img?.firebaseUrl || img?.originalUrl || '');
-                    if (!src) return null;
-                    return (
-                      <div key={`up-img-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
-                        <Image src={src} alt={`Upload ${idx + 1}`} fill className="object-cover" />
-                      </div>
-                    );
-                  })}
-                  {inputVideos.map((vid: any, idx: number) => {
-                    const vsrc = toMediaProxy(vid?.storagePath || vid?.url || vid?.firebaseUrl || vid?.originalUrl || '');
-                    if (!vsrc) return null;
-                    return (
-                      <div key={`up-vid-${idx}`} className="relative aspect-square rounded-md overflow-hidden border border-white/10">
-                        <video src={vsrc} className="w-full h-full object-cover" muted autoPlay loop playsInline />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* No explicit close button per request */}
           </div>

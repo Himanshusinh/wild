@@ -3,9 +3,11 @@
 import React, { useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { loadMoreHistory } from '@/store/slices/historySlice';
-import { Music4 } from 'lucide-react';
+import { loadMoreHistory, removeHistoryEntry } from '@/store/slices/historySlice';
+import { Music4, Trash2 } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
+import axiosInstance from '@/lib/axiosInstance';
+import toast from 'react-hot-toast';
 
 // Helper function to get color theme based on entry
 const getColorTheme = (entry: any, index: number = 0): string => {
@@ -16,16 +18,16 @@ const getColorTheme = (entry: any, index: number = 0): string => {
   }, 0);
   
   const themes = [
-    'from-sky-400 via-blue-500/95 to-indigo-500',
-    'from-cyan-400 via-sky-500 to-blue-600',
-    'from-blue-400 via-indigo-500 to-purple-500',
-    'from-indigo-500 via-violet-500 to-fuchsia-500',
-    'from-blue-500 via-purple-500 to-sky-400',
-    'from-indigo-600 via-blue-500 to-cyan-500',
-    'from-purple-600 via-indigo-500 to-blue-500',
-    'from-blue-400 via-cyan-400 to-teal-400',
-    'from-sky-500 via-indigo-500 to-purple-600',
-    'from-cyan-500 via-blue-600 to-indigo-700',
+    'from-sky-500/60 via-blue-600/60 to-indigo-600/60',
+    'from-cyan-500/60 via-sky-600/60 to-blue-700/60',
+    'from-blue-500/60 via-indigo-600/60 to-purple-600/60',
+    'from-indigo-600/60 via-violet-600/60 to-fuchsia-600/60',
+    'from-blue-600/60 via-purple-600/60 to-sky-500/60',
+    'from-indigo-700/60 via-blue-600/60 to-cyan-600/60',
+    'from-purple-700/60 via-indigo-600/60 to-blue-600/60',
+    'from-blue-500/60 via-cyan-500/60 to-teal-500/60',
+    'from-sky-600/60 via-indigo-600/60 to-purple-700/60',
+    'from-cyan-600/60 via-blue-700/60 to-indigo-800/60',
   ];
   
   return themes[Math.abs(hash) % themes.length];
@@ -43,6 +45,25 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
   const dispatch = useAppDispatch();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [page, setPage] = React.useState(1);
+
+  // Delete handler - same logic as ImagePreviewModal
+  const handleDeleteAudio = async (e: React.MouseEvent, entry: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      await axiosInstance.delete(`/api/generations/${entry.id}`);
+      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      // Clear/reset document title when audio is deleted
+      if (typeof document !== 'undefined') {
+        document.title = 'WildMind';
+      }
+      toast.success('Audio deleted');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Failed to delete generation');
+    }
+  };
 
   const historyEntries = useAppSelector((state: any) => {
     const all = state.history.entries || [];
@@ -145,13 +166,26 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
                       <div
                         key={`${entry.id}-${audio.id || i}`}
                         onClick={() => onAudioSelect?.({ entry, audio })}
-                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
+                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02] opacity-60`}
                       >
                         <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
                         </div>
                         <StaticAudioTile status={entry.status} entry={entry} index={i} />
+                        {/* Delete button on hover */}
+                        {entry.status !== 'generating' && entry.status !== 'failed' && (
+                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                            <button
+                              aria-label="Delete audio"
+                              className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                              onClick={(e) => handleDeleteAudio(e, entry)}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   });
@@ -206,7 +240,6 @@ const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }>
   ) : (
     <div className={`w-full h-full flex items-center justify-center relative overflow-hidden`}>
       <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-      <div className="absolute inset-x-6 inset-y-6 rounded-[28px] border border-white/30 shadow-inner shadow-black/40" />
       <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
       <div className="relative z-10 w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
         <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
@@ -221,7 +254,7 @@ const AudioTileGenerating = ({ preview }: { preview?: any }) => {
   const colorTheme = preview ? getColorTheme(preview, 0) : 'from-purple-900/30 via-purple-800/20 to-pink-900/30';
   
   return (
-    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_20px_35px_-20px_rgba(15,23,42,0.9)] transition-all duration-300 cursor-pointer group`}>
+    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_20px_35px_-20px_rgba(15,23,42,0.9)] transition-all duration-300 cursor-pointer group opacity-60`}>
       <StaticAudioTile status="generating" entry={preview} />
       <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
     </div>
