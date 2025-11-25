@@ -13,6 +13,58 @@ import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/util
 import { toResourceProxy, toMediaProxy, toZataPath } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
+const RESOLUTION_K_MAP: Record<string, number> = {
+  '1k': 1024,
+  '2k': 2048,
+  '4k': 4096,
+};
+
+const tryNumber = (val: any): number | null => {
+  const num = Number(val);
+  return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+const parseResolutionValue = (value: any): { width: number; height: number } | null => {
+  if (!value) return null;
+
+  if (Array.isArray(value) && value.length > 0) {
+    const width = tryNumber(value[0]);
+    const height = tryNumber(value[1] ?? value[0]);
+    if (width && height) return { width, height };
+  }
+
+  if (typeof value === 'object') {
+    const width = tryNumber(value.width ?? value.w ?? value[0]);
+    const height = tryNumber(value.height ?? value.h ?? value[1]);
+    if (width && height) return { width, height };
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (RESOLUTION_K_MAP[normalized]) {
+      const size = RESOLUTION_K_MAP[normalized];
+      return { width: size, height: size };
+    }
+    const match = normalized.match(/(\d{3,5})\s*(?:x|×|,|\s)\s*(\d{3,5})/i);
+    if (match) {
+      return {
+        width: parseInt(match[1], 10),
+        height: parseInt(match[2], 10),
+      };
+    }
+    const digits = normalized.match(/(\d{3,5})/g);
+    if (digits && digits.length >= 2) {
+      return { width: parseInt(digits[0], 10), height: parseInt(digits[1], 10) };
+    }
+    if (digits && digits.length === 1) {
+      const size = parseInt(digits[0], 10);
+      return { width: size, height: size };
+    }
+  }
+
+  return null;
+};
+
 // Helper function to extract proxy path (same as other components)
 const toProxyPath = (urlOrPath: string | undefined): string => {
   if (!urlOrPath) return '';
@@ -459,6 +511,40 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
   const selectedImage: any = selectedPair.image || preview?.image;
   const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+  const storedResolution = React.useMemo(() => {
+    const candidates = [
+      selectedImage?.width && selectedImage?.height
+        ? { width: selectedImage.width, height: selectedImage.height }
+        : null,
+      selectedImage?.resolution,
+      selectedImage?.metadata?.resolution,
+      selectedImage?.metadata?.size,
+      selectedImage?.metadata?.dimensions,
+      selectedEntry?.resolution,
+      (selectedEntry as any)?.imageResolution,
+      selectedEntry?.falRequest?.parameters?.resolution,
+      selectedEntry?.falRequest?.parameters?.size,
+      selectedEntry?.falRequest?.parameters?.image_size,
+      selectedEntry?.falRequest?.parameters?.imageSize,
+      selectedEntry?.falRequest?.parameters?.dimensions,
+      selectedEntry?.falRequest?.parameters?.image_dimensions,
+      selectedEntry?.falRequest?.parameters?.output_size,
+      selectedEntry?.falRequest?.parameters?.outputDimensions,
+    ];
+    for (const candidate of candidates) {
+      const parsed = parseResolutionValue(candidate);
+      if (parsed) return parsed;
+    }
+    return null;
+  }, [selectedEntry, selectedImage]);
+  const displayedResolution = React.useMemo(() => {
+    if (storedResolution && imageDimensions) {
+      const storedArea = storedResolution.width * storedResolution.height;
+      const measuredArea = imageDimensions.width * imageDimensions.height;
+      return storedArea >= measuredArea ? storedResolution : imageDimensions;
+    }
+    return storedResolution || imageDimensions || null;
+  }, [storedResolution, imageDimensions]);
   const isUserUploadSelected = false;
 
   const normalizeInputMediaUrl = React.useCallback((item: any): string => {
@@ -1133,10 +1219,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <span className="text-white/60 text-sm">Format:</span>
                   <span className="text-white/80 text-sm">Image</span>
                 </div>
-                {imageDimensions && (
+                {displayedResolution && (
                   <div className="flex justify-between">
                     <span className="text-white/60 text-sm">Resolution:</span>
-                    <span className="text-white/80 text-sm">{imageDimensions.width} × {imageDimensions.height}</span>
+                    <span className="text-white/80 text-sm">{displayedResolution.width} × {displayedResolution.height}</span>
                   </div>
                 )}
               </div>
@@ -1267,7 +1353,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   }}
                   className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 >
-                  Recreate 
+                  Regenerate 
                 </button>
                 </div>
 
