@@ -4,12 +4,13 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
-import { getMeCached, clearMeCache } from '../../../../lib/me'
+import { clearMeCache } from '../../../../lib/me'
 import { useCredits } from '../../../../hooks/useCredits'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import toast from 'react-hot-toast'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../../../lib/firebase'
+import { useAppSelector } from '@/store/hooks'
 
 interface UserData {
   uid: string
@@ -27,8 +28,7 @@ interface UserData {
 
 const Nav = () => {
   const [showDropdown, setShowDropdown] = useState(false)
-  const [userData, setUserData] = useState<UserData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const userData = useAppSelector((state: any) => state?.auth?.user || null) as UserData | null
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [isPublic, setIsPublic] = useState<boolean>(() => {
     try {
@@ -47,37 +47,22 @@ const Nav = () => {
   useOutsideClick(dropdownRef, () => setShowDropdown(false))
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = await getMeCached()
-        try { console.log('[PublicGen][me] plan:', user?.plan, 'canTogglePublicGenerations:', (user as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (user as any)?.forcePublicGenerations) } catch {}
-        setUserData(user || null)
-        try {
-          const stored = localStorage.getItem('isPublicGenerations')
-          const server = (user && (user as any).isPublic)
-          // Plan-based gating: only Plan C/D may toggle; otherwise force true
-          const planRaw = String((user as any)?.plan || '').toUpperCase()
-          const isPlanCOrD = (user as any)?.canTogglePublicGenerations === true || /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D'
-          let next = true
-          if (isPlanCOrD) {
-            next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : true)
-          } else {
-            // Force true and persist for consumers
-            try { localStorage.setItem('isPublicGenerations', 'true') } catch {}
-          }
-          setIsPublic(next)
-        } catch { }
-
-        // Refresh credits from Redux store
-        await refreshCredits()
-      } catch (e) {
-        // no-op
-      } finally {
-        setLoading(false)
+    if (!userData) return
+    try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch {}
+    try {
+      const stored = localStorage.getItem('isPublicGenerations')
+      const server = (userData && (userData as any).isPublic)
+      const planRaw = String((userData as any)?.plan || '').toUpperCase()
+      const isPlanCOrD = (userData as any)?.canTogglePublicGenerations === true || /(^|\b)PLAN\s*C\b/.test(planRaw) || /(^|\b)PLAN\s*D\b/.test(planRaw) || planRaw === 'C' || planRaw === 'D'
+      let next = true
+      if (isPlanCOrD) {
+        next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : true)
+      } else {
+        try { localStorage.setItem('isPublicGenerations', 'true') } catch {}
       }
-    }
-    fetchUserData()
-  }, [])
+      setIsPublic(next)
+    } catch { }
+  }, [userData])
 
   // Credits are now managed by Redux - no need for event listeners
 
@@ -141,7 +126,7 @@ const Nav = () => {
           {/* Profile trigger + dropdown (same behavior as homepage) */}
           <div className='relative' ref={dropdownRef}>
             <button onClick={() => setShowDropdown(v => !v)} className='flex items-center gap-2 border border-white/15 rounded-full  cursor-pointer'>
-              {(!loading && userData?.photoURL && !avatarFailed) ? (
+              {(userData?.photoURL && !avatarFailed) ? (
                 <img
                   src={userData.photoURL}
                   alt='profile'
@@ -160,15 +145,15 @@ const Nav = () => {
                   {/* Header */}
                   <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
                     <div className='w-12 h-12  rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>
-                      {(!loading && userData?.photoURL && !avatarFailed) ? (
+                      {(userData?.photoURL && !avatarFailed) ? (
                         <img src={userData.photoURL} alt='avatar' referrerPolicy='no-referrer' onError={() => setAvatarFailed(true)} className='w-full h-full object-cover' />
                       ) : (
-                        <span className='text-white font-semibold text-lg'>{loading ? '...' : ((userData?.username || userData?.email || 'U').charAt(0).toUpperCase())}</span>
+                        <span className='text-white font-semibold text-lg'>{(userData?.username || userData?.email || 'U').charAt(0).toUpperCase()}</span>
                       )}
                     </div>
                     <div className='flex-1'>
-                      <div className='text-white font-semibold text-lg'>{loading ? 'Loading...' : (userData?.username || 'User')}</div>
-                      <div className='text-gray-300 text-sm'>{loading ? 'Loading...' : (userData?.email || 'user@example.com')}</div>
+                      <div className='text-white font-semibold text-lg'>{userData?.username || 'User'}</div>
+                      <div className='text-gray-300 text-sm'>{userData?.email || 'user@example.com'}</div>
                       {/* {userData?.metadata?.accountStatus && (
                         <div className='text-green-400 text-xs mt-1'>{userData.metadata.accountStatus.toUpperCase()}</div>
                       )} */}

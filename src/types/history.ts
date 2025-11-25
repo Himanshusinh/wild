@@ -107,6 +107,7 @@ export interface HistoryFilters {
   ) | Array<
     'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
   >;
+  mode?: 'image' | 'video' | 'music' | 'all';
   dateRange?: {
     start: Date;
     end: Date;

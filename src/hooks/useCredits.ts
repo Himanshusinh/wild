@@ -26,6 +26,9 @@ import {
 } from '@/utils/creditValidation';
 import { useEffect } from 'react';
 
+let creditsBootstrapInFlight: Promise<any> | null = null;
+let creditsBootstrapCompleted = false;
+
 export const useCredits = () => {
   const dispatch = useDispatch<AppDispatch>();
   const credits = useSelector(selectCredits);
@@ -37,11 +40,19 @@ export const useCredits = () => {
 
   // Fetch credits on mount
   useEffect(() => {
-    console.log('useCredits: Fetching credits, current state:', { credits, creditBalance, loading });
-    if (!credits) {
-      console.log('useCredits: Dispatching fetchUserCredits');
-      dispatch(fetchUserCredits());
+    if (credits || creditsBootstrapCompleted) {
+      return;
     }
+    if (creditsBootstrapInFlight) {
+      return;
+    }
+    creditsBootstrapInFlight = dispatch(fetchUserCredits());
+    creditsBootstrapInFlight
+      .catch(() => {})
+      .finally(() => {
+        creditsBootstrapCompleted = true;
+        creditsBootstrapInFlight = null;
+      });
   }, [dispatch, credits]);
 
   const validateVideoCredits = async (

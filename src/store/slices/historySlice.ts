@@ -1,3 +1,47 @@
+const MODE_FILTER_MAP: Record<string, Set<string>> = {
+  image: new Set([
+    'text-to-image',
+    'image-to-image',
+    'image-upscale',
+    'image-edit',
+    'image-to-svg',
+    'image-vectorize',
+    'vectorize',
+    'image-generation',
+    'image',
+  ]),
+  video: new Set([
+    'text-to-video',
+    'image-to-video',
+    'video-to-video',
+    'video-generation',
+    'video-edit',
+    'video',
+  ]),
+  music: new Set([
+    'text-to-music',
+    'text-to-speech',
+    'tts',
+    'text-to-dialogue',
+    'dialogue',
+    'sound-effects',
+    'sfx',
+    'text-to-audio',
+    'audio-generation',
+    'music',
+    'audio',
+  ]),
+  branding: new Set([
+    'logo',
+    'logo-generation',
+    'sticker-generation',
+    'product-generation',
+    'ad-generation',
+    'mockup-generation',
+    'branding-kit',
+    'branding',
+  ]),
+};
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
@@ -95,7 +139,7 @@ const initialState: HistoryState = {
 export const loadHistory = createAsyncThunk(
   'history/loadHistory',
   async (
-    { filters, paginationParams, requestOrigin, expectedType, debugTag, forceRefresh }: { filters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page' | 'character-modal'; expectedType?: string; debugTag?: string; forceRefresh?: boolean } = {},
+    { filters, backendFilters, paginationParams, requestOrigin, expectedType, debugTag, forceRefresh, skipBackendGenerationFilter }: { filters?: HistoryFilters; backendFilters?: HistoryFilters; paginationParams?: PaginationParams; requestOrigin?: 'central' | 'page' | 'character-modal'; expectedType?: string; debugTag?: string; forceRefresh?: boolean; skipBackendGenerationFilter?: boolean } = {},
     { rejectWithValue, getState, signal }
   ) => {
     try {
@@ -113,9 +157,10 @@ export const loadHistory = createAsyncThunk(
         return rejectWithValue('__CONDITION_ABORT__');
       }
       const client = axiosInstance;
+      const filtersForBackend = backendFilters || filters;
       const params: any = {};
-      if (filters?.status) params.status = filters.status;
-      // Always send canonical generationType to backend (prevents unrelated items),
+      if (filtersForBackend?.status) params.status = filtersForBackend.status;
+      // Always send canonical generationType to backend unless instructed otherwise
       // while still performing client-side legacy inclusions for mis-labeled audio entries.
       const canonicalAudioType = (incoming: string | string[] | undefined): string | string[] | undefined => {
         if (!incoming) return incoming;
@@ -125,22 +170,22 @@ export const loadHistory = createAsyncThunk(
         if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
         return mapGenerationTypeForBackend(incoming as any);
       };
-      if (filters?.generationType) {
-        const mapped = canonicalAudioType(filters.generationType as any);
-        if (mapped) params.generationType = mapped;
+      if (filtersForBackend?.generationType) {
+        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
+        if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
       }
-      if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
-      if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
+      if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
+      if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
       // Add search parameter if present
-      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
-        params.search = (filters as any).search.trim();
+      if ((filtersForBackend as any)?.search && typeof (filtersForBackend as any).search === 'string' && (filtersForBackend as any).search.trim()) {
+        params.search = (filtersForBackend as any).search.trim();
       }
       if (paginationParams?.limit) params.limit = paginationParams.limit;
       if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
   // Use optimized backend pagination defaults (createdAt DESC) by omitting sortBy/sortOrder
       // Serialize date range if present (ISO strings)
-      if ((filters as any)?.dateRange && (filters as any).dateRange.start && (filters as any).dateRange.end) {
-        const dr = (filters as any).dateRange as any;
+      if ((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end) {
+        const dr = (filtersForBackend as any).dateRange as any;
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
@@ -283,7 +328,7 @@ export const loadHistory = createAsyncThunk(
 export const loadMoreHistory = createAsyncThunk(
   'history/loadMoreHistory',
   async (
-    { filters, paginationParams }: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
+    { filters, backendFilters, paginationParams }: { filters?: HistoryFilters; backendFilters?: HistoryFilters; paginationParams?: PaginationParams } = {},
     { getState, rejectWithValue }
   ) => {
     try {
@@ -339,11 +384,13 @@ export const loadMoreHistory = createAsyncThunk(
               }
             }
           }
-          // Mode filter (video groups t2v/i2v/v2v)
-          if ((filters as any)?.mode === 'video') {
+          const modeFilter = (filters as any)?.mode ? String((filters as any).mode).toLowerCase() : null;
+          if (modeFilter) {
             const e = normalizeGenerationType(entry.generationType);
-            const isVideo = e === 'text-to-video' || e === 'image-to-video' || e === 'video-to-video' || e === 'video_generation' || e === 'video';
-            if (!isVideo) return false;
+            const allowedTypes = MODE_FILTER_MAP[modeFilter];
+            if (allowedTypes && !allowedTypes.has(e)) {
+              return false;
+            }
           }
           // Model filter (if provided)
           if (filters?.model && entry.model !== filters.model) return false;
@@ -377,12 +424,13 @@ export const loadMoreHistory = createAsyncThunk(
         if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
         return mapGenerationTypeForBackend(incoming as any);
       };
-      if (filters?.generationType) {
-        const mapped = canonicalAudioType(filters.generationType as any);
+      const filtersForBackend = backendFilters || filters;
+      if (filtersForBackend?.generationType) {
+        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
         if (mapped) params.generationType = mapped;
       }
-      if ((filters as any)?.mode && typeof (filters as any).mode === 'string') (params as any).mode = (filters as any).mode;
-      if (filters?.model) params.model = mapModelSkuForBackend(filters.model);
+      if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
+      if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
       // Add search parameter if present
       if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
         params.search = (filters as any).search.trim();
@@ -395,8 +443,8 @@ export const loadMoreHistory = createAsyncThunk(
         } catch {}
       }
       // Do NOT set sortBy/sortOrder so backend uses optimized index (createdAt DESC)
-      if ((filters as any)?.dateRange && (filters as any).dateRange.start && (filters as any).dateRange.end) {
-        const dr = (filters as any).dateRange as any;
+      if ((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end) {
+        const dr = (filtersForBackend as any).dateRange as any;
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
@@ -465,7 +513,7 @@ export const loadMoreHistory = createAsyncThunk(
   },
   {
     condition: (
-      _args: { filters?: HistoryFilters; paginationParams?: PaginationParams } = {},
+      _args: { filters?: HistoryFilters; backendFilters?: HistoryFilters; paginationParams?: PaginationParams } = {},
       { getState }
     ) => {
       const state = getState() as { history: HistoryState };

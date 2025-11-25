@@ -49,11 +49,11 @@ const FooterNew: React.FC = () => {
   // ];
 
   return (
-    <footer className="relative z-[10] bg-black w-full">
+    <footer className="relative z-[10] bg-[#07070B] w-full py-12 md:py-16">
       <div className="max-w-[680px] md:max-w-6xl lg:max-w-7xl mx-3 md:mx-auto px-6 sm:px-10 md:px-4 lg:px-1">
-        <div className="relative z-0 pb-2 max-w-7xl mx-auto text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-t-3xl border border-b-0 border-white/20 overflow-hidden ">
+        <div className="relative z-0 max-w-7xl mx-auto text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-3xl border border-white/20 bg-[#07070B] overflow-hidden">
            {/* Background decorative grid */}
-           <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
              <Squares 
                speed={0.5}
                squareSize={40}
@@ -62,7 +62,7 @@ const FooterNew: React.FC = () => {
                hoverFillColor='#222222'
              />
            </div>
-           <div className="relative z-10">
+           <div className="relative z-10 pb-6">
             {/* Main Footer Content */}
             <div className="py-8 md:py-6 lg:py-8 border-b border-white/10">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8">
