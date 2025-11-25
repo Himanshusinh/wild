@@ -36,15 +36,15 @@
   position: relative;
 }
 .main-heading {
-  font-size: clamp(2.5rem, 8vw, 5rem);
-  font-weight: 700;
+  font-size: clamp(2.5rem, 5vw, 3rem);
+  font-weight: 600;
   color: #f8fafc;
   line-height: 1.1;
-  margin: 0 0 2.5rem 0;
+  margin: 0 0 1.5rem 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
 }
 .main-heading span { display: block; }
 .heading-line { opacity: 0; animation: slideUpFade 0.8s ease-out forwards; }
@@ -54,7 +54,7 @@
   font-size: 1.125rem;
   line-height: 1.8;
   color: #cbd5f5;
-  max-width: 700px;
+  max-width: 900px;
   margin: 0 auto 3.5rem;
   font-weight: 400;
   opacity: 0;
