@@ -18,6 +18,7 @@ interface UseHistoryLoaderOptions {
   debounceMs?: number;
   // If true, always force an initial request even if entries cached (rare, for hard refresh pages)
   forceInitial?: boolean;
+  mode?: string;
   skipBackendGenerationFilter?: boolean;
 }
 
@@ -31,6 +32,7 @@ export const useHistoryLoader = ({
   initialLimit = 50,
   debounceMs = 600,
   forceInitial = false,
+  mode,
   skipBackendGenerationFilter = false,
 }: UseHistoryLoaderOptions) => {
   const dispatch = useAppDispatch();
@@ -69,22 +71,26 @@ export const useHistoryLoader = ({
     const filtersMatch = Array.isArray(currentFilterVal)
       ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
       : norm(String(currentFilterVal || '')) === norm(generationType);
+    const modeMatches = mode ? norm(String(currentFilters?.mode || '')) === norm(mode) : true;
     
+    const shouldSkipInitial = !forceInitial && hasTypeEntries && filtersMatch && modeMatches;
     console.log('[useHistoryLoader] Initial load conditions:', {
       hasTypeEntries,
       filtersMatch,
       forceInitial,
-      shouldSkip: !forceInitial && hasTypeEntries && filtersMatch,
+      modeMatches,
+      shouldSkip: shouldSkipInitial,
     });
     
     // Define genFilter early so it can be used in early return paths
     const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+    if (mode) genFilter.mode = mode;
     const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
     if (skipBackendGenerationFilter) {
       delete backendFilters.generationType;
     }
     
-    if (!forceInitial && hasTypeEntries && filtersMatch) {
+    if (shouldSkipInitial) {
       console.log('[useHistoryLoader] ⚠️ Already loaded, skipping initial load');
       // Still set filters to ensure UI state is correct, but skip API call
       dispatch(setFilters(genFilter as any));
@@ -147,6 +153,7 @@ export const useHistoryLoader = ({
       inFlightTypeLocks[generationType] = true;
       lastLoadTimestamps[generationType] = Date.now();
       const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+      if (mode) genFilter.mode = mode;
       const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
       if (skipBackendGenerationFilter) delete backendFilters.generationType;
       (dispatch as any)(loadHistory({
@@ -162,7 +169,7 @@ export const useHistoryLoader = ({
         pendingRefreshRef.current = false;
       });
     }, debounceMs);
-  }, [generationType, generationTypes, debounceMs, dispatch, loading, initialLimit, skipBackendGenerationFilter]);
+  }, [generationType, generationTypes, debounceMs, dispatch, loading, initialLimit, mode, skipBackendGenerationFilter]);
 
   // Immediate (non-debounced) refresh - FORCE API CALL (bypass cache/locks for EditImage)
   const refreshImmediate = useCallback((limit: number = initialLimit, forceRefresh: boolean = true) => {
@@ -191,6 +198,7 @@ export const useHistoryLoader = ({
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
     const genFilter: any = { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+    if (mode) genFilter.mode = mode;
     const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
     if (skipBackendGenerationFilter) delete backendFilters.generationType;
     
@@ -227,7 +235,7 @@ export const useHistoryLoader = ({
       console.error('[useHistoryLoader] ❌ loadHistory dispatch error:', err);
       inFlightTypeLocks[generationType] = false;
     });
-  }, [generationType, generationTypes, dispatch, loading, initialLimit, skipBackendGenerationFilter]);
+  }, [generationType, generationTypes, dispatch, loading, initialLimit, mode, skipBackendGenerationFilter]);
 
   return {
     refresh,

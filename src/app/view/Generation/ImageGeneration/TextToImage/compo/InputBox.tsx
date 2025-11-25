@@ -239,8 +239,9 @@ const InputBox = () => {
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({
     generationType: 'text-to-image',
-    generationTypes: ['text-to-image', 'image-upscale', 'image-edit', 'image-to-svg', 'vectorize'],
+    generationTypes: ['text-to-image', 'image-to-image'],
     initialLimit: 60,
+    mode: 'image',
     skipBackendGenerationFilter: true,
   });
 
@@ -1280,8 +1281,8 @@ const InputBox = () => {
       setPage(nextPage);
       try {
         await (dispatch as any)(loadMoreHistory({
-          filters: { generationType: 'text-to-image' },
-          backendFilters: {},
+          filters: { generationType: ['text-to-image', 'image-to-image'], mode: 'image' } as any,
+          backendFilters: { mode: 'image' } as any,
           paginationParams: { limit: 10 }
         })).unwrap();
       } catch (e: any) {
@@ -3868,8 +3869,8 @@ const InputBox = () => {
             try {
               if (!hasMore || loading) return;
               await (dispatch as any)(loadMoreHistory({
-                filters: { generationType: 'text-to-image' },
-                backendFilters: {},
+                filters: { generationType: ['text-to-image', 'image-to-image'], mode: 'image' } as any,
+                backendFilters: { mode: 'image' } as any,
                 paginationParams: { limit: 10 }
               })).unwrap();
             } catch {}

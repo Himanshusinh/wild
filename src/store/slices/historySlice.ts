@@ -1,3 +1,47 @@
+const MODE_FILTER_MAP: Record<string, Set<string>> = {
+  image: new Set([
+    'text-to-image',
+    'image-to-image',
+    'image-upscale',
+    'image-edit',
+    'image-to-svg',
+    'image-vectorize',
+    'vectorize',
+    'image-generation',
+    'image',
+  ]),
+  video: new Set([
+    'text-to-video',
+    'image-to-video',
+    'video-to-video',
+    'video-generation',
+    'video-edit',
+    'video',
+  ]),
+  music: new Set([
+    'text-to-music',
+    'text-to-speech',
+    'tts',
+    'text-to-dialogue',
+    'dialogue',
+    'sound-effects',
+    'sfx',
+    'text-to-audio',
+    'audio-generation',
+    'music',
+    'audio',
+  ]),
+  branding: new Set([
+    'logo',
+    'logo-generation',
+    'sticker-generation',
+    'product-generation',
+    'ad-generation',
+    'mockup-generation',
+    'branding-kit',
+    'branding',
+  ]),
+};
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
@@ -340,11 +384,13 @@ export const loadMoreHistory = createAsyncThunk(
               }
             }
           }
-          // Mode filter (video groups t2v/i2v/v2v)
-          if ((filters as any)?.mode === 'video') {
+          const modeFilter = (filters as any)?.mode ? String((filters as any).mode).toLowerCase() : null;
+          if (modeFilter) {
             const e = normalizeGenerationType(entry.generationType);
-            const isVideo = e === 'text-to-video' || e === 'image-to-video' || e === 'video-to-video' || e === 'video_generation' || e === 'video';
-            if (!isVideo) return false;
+            const allowedTypes = MODE_FILTER_MAP[modeFilter];
+            if (allowedTypes && !allowedTypes.has(e)) {
+              return false;
+            }
           }
           // Model filter (if provided)
           if (filters?.model && entry.model !== filters.model) return false;
