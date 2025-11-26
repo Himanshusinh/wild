@@ -115,6 +115,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'flux-2-pro',
+    creditModelName: 'Flux 2 Pro 1K', // Default to 1K, will be resolved based on resolution
+    generationType: 'image',
+    provider: 'fal',
+    options: {
+      resolution: ['1K', '2K']
+    }
+  },
+  {
     frontendValue: 'seedream-v4',
     creditModelName: 'replicate/bytedance/seedream-4',
     generationType: 'image',
@@ -773,6 +782,24 @@ export const buildCreditModelName = (
       }
     }
     // If T2V/I2V without duration, return base name (shouldn't happen normally)
+  }
+  // Handle Google nano banana pro with resolution
+  else if (mapping.frontendValue === 'google/nano-banana-pro' && options?.resolution) {
+    const res = String(options.resolution).toUpperCase();
+    modelName = `Google nano banana pro ${res}`;
+  }
+  // Handle Flux 2 Pro with resolution
+  else if (mapping.frontendValue === 'flux-2-pro') {
+    // Special case: 9:16 portrait defaults to 1024x2048 (costs $0.05) unless 2K is explicitly selected
+    if (options?.frameSize === '9:16' && options?.resolution !== '2K') {
+      modelName = 'Flux 2 Pro 1024x2048';
+    } else if (options?.resolution) {
+      const res = String(options.resolution).toUpperCase();
+      modelName = `Flux 2 Pro ${res}`;
+    } else {
+      // Default to 1K if no resolution specified
+      modelName = 'Flux 2 Pro 1K';
+    }
   }
 
   return modelName;

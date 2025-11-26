@@ -21,6 +21,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'imagen-4-ultra': 140,
   'imagen-4': 100,
   'imagen-4-fast': 44,
+  'flux-2-pro': 80, // Default to 1K (60 credits), will be resolved based on resolution
   'leonardoai/lucid-origin': 173,
   'leonardoai/phoenix-1.0': 170,
   // Product Generation Models
@@ -410,6 +411,17 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       const key = `sora2-${modelType}-${durForPricing}s`;
       return MODEL_CREDITS_MAPPING[key] || null;
     }
+  }
+
+  // Handle Flux 2 Pro with resolution
+  if (modelValue === 'flux-2-pro') {
+    if (resolution === '2K') {
+      return 160; // Flux 2 Pro 2K: $0.07 = 140 credits
+    } else if (resolution === '1K') {
+      return 80; // Flux 2 Pro 1K: $0.03 = 60 credits
+    }
+    // Default to 1K if no resolution specified (will be overridden by buildCreditModelName for 9:16)
+    return 80;
   }
 
   // Default lookup

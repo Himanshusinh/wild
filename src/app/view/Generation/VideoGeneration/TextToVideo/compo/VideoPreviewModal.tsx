@@ -22,6 +22,37 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
+  const [currentEntry, setCurrentEntry] = React.useState<HistoryEntry | null>(preview.entry || null);
+  const entry = currentEntry || preview.entry;
+  const entryId = entry?.id || preview.entry.id;
+
+  React.useEffect(() => {
+    setCurrentEntry(preview.entry || null);
+  }, [preview.entry]);
+
+  React.useEffect(() => {
+    if (!preview.entry?.id) return;
+    let cancelled = false;
+    const fetchFullEntry = async () => {
+      try {
+        const res = await axiosInstance.get(`/api/generations/${preview.entry.id}`);
+        const detailedEntry = res?.data?.data?.item || res?.data?.item || res?.data?.data || res?.data;
+        if (!cancelled && detailedEntry) {
+          setCurrentEntry((prev) => ({
+            ...(prev || preview.entry),
+            ...detailedEntry,
+          }) as HistoryEntry);
+        }
+      } catch (error) {
+        console.warn('[VideoPreviewModal] Failed to fetch detailed entry:', error);
+      }
+    };
+    fetchFullEntry();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview.entry?.id]);
+
   // Fullscreen overlay state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
@@ -69,8 +100,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const handleDelete = async () => {
     try {
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${preview.entry.id}`);
-      try { dispatch(removeHistoryEntry(preview.entry.id)); } catch {}
+      if (!entryId) return;
+      await axiosInstance.delete(`/api/generations/${entryId}`);
+      try { dispatch(removeHistoryEntry(entryId)); } catch {}
       onClose();
     } catch (e) {
       console.error('Delete failed:', e);
@@ -85,33 +117,105 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
     
     try {
-      // Try to detect video format from the video element or URL
+      // Try to detect video format from storagePath, originalUrl, or by checking Content-Type
       let videoExtension = 'mp4'; // Default to mp4
       
-      // Check if we can get more info from the video element
-      const videoElement = document.querySelector('video');
-      if (videoElement && videoElement.src) {
-        // Try to detect from video element's source
-        if (videoElement.src.includes('webm')) videoExtension = 'webm';
-        else if (videoElement.src.includes('mov')) videoExtension = 'mov';
-        else if (videoElement.src.includes('avi')) videoExtension = 'avi';
-        else if (videoElement.src.includes('mp4')) videoExtension = 'mp4';
+      // Priority 1: Check video object's storagePath or originalUrl for extension
+      const videoObj = preview.video as any;
+      const storagePath = videoObj?.storagePath || '';
+      const originalUrl = videoObj?.originalUrl || videoObj?.url || '';
+      
+      // Extract extension from storagePath (e.g., "users/vivek/video/video-123.mp4")
+      if (storagePath) {
+        const pathMatch = storagePath.match(/\.([a-zA-Z0-9]+)$/);
+        if (pathMatch) {
+          const ext = pathMatch[1].toLowerCase();
+          if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) {
+            videoExtension = ext;
+            console.log('[VideoPreviewModal] Detected extension from storagePath:', videoExtension);
+          }
+        }
       }
       
-      // Check URL patterns
-      if (url.includes('webm')) videoExtension = 'webm';
-      else if (url.includes('mov')) videoExtension = 'mov';
-      else if (url.includes('avi')) videoExtension = 'avi';
-      else if (url.includes('mp4')) videoExtension = 'mp4';
+      // Priority 2: Extract extension from originalUrl if storagePath didn't work
+      if (videoExtension === 'mp4' && originalUrl) {
+        try {
+          const urlObj = new URL(originalUrl);
+          const pathMatch = urlObj.pathname.match(/\.([a-zA-Z0-9]+)$/);
+          if (pathMatch) {
+            const ext = pathMatch[1].toLowerCase();
+            if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) {
+              videoExtension = ext;
+              console.log('[VideoPreviewModal] Detected extension from originalUrl:', videoExtension);
+            }
+          }
+        } catch {
+          // If originalUrl is not a valid URL, try pattern matching
+          if (originalUrl.includes('.webm')) videoExtension = 'webm';
+          else if (originalUrl.includes('.mov')) videoExtension = 'mov';
+          else if (originalUrl.includes('.avi')) videoExtension = 'avi';
+          else if (originalUrl.includes('.mp4')) videoExtension = 'mp4';
+        }
+      }
       
-      console.log('[VideoPreviewModal] Detected video extension:', videoExtension);
+      // Priority 3: Check Content-Type header from the video URL
+      if (videoExtension === 'mp4') {
+        try {
+          const response = await fetch(url, { method: 'HEAD', credentials: 'include' });
+          const contentType = response.headers.get('content-type');
+          console.log('[VideoPreviewModal] Content-Type:', contentType);
+          
+          if (contentType) {
+            if (contentType.includes('video/mp4')) videoExtension = 'mp4';
+            else if (contentType.includes('video/webm')) videoExtension = 'webm';
+            else if (contentType.includes('video/quicktime')) videoExtension = 'mov';
+            else if (contentType.includes('video/x-msvideo')) videoExtension = 'avi';
+            else if (contentType.includes('video/x-matroska')) videoExtension = 'mkv';
+          }
+        } catch (e) {
+          console.warn('[VideoPreviewModal] Could not fetch Content-Type header:', e);
+        }
+      }
       
-      // Create a custom URL with the detected extension for better detection
-      const urlWithExtension = url.includes('.') ? url : `${url}.${videoExtension}`;
+      // Priority 4: Check video element's source as fallback
+      if (videoExtension === 'mp4') {
+        const videoElement = document.querySelector('video');
+        if (videoElement && videoElement.src) {
+          if (videoElement.src.includes('webm')) videoExtension = 'webm';
+          else if (videoElement.src.includes('mov')) videoExtension = 'mov';
+          else if (videoElement.src.includes('avi')) videoExtension = 'avi';
+          else if (videoElement.src.includes('mp4')) videoExtension = 'mp4';
+        }
+      }
+      
+      // Priority 5: Check URL patterns as last resort
+      if (videoExtension === 'mp4' && url) {
+        if (url.includes('webm')) videoExtension = 'webm';
+        else if (url.includes('mov')) videoExtension = 'mov';
+        else if (url.includes('avi')) videoExtension = 'avi';
+        else if (url.includes('mp4')) videoExtension = 'mp4';
+      }
+      
+      console.log('[VideoPreviewModal] Final detected video extension:', videoExtension);
+      
+      // Use the resource proxy URL for download (original file, not media proxy)
+      const videoPath = storagePath || originalUrl || url;
+      const downloadUrl = toResourceProxy(videoPath) || url;
       
       // Get username from user state or fallback to 'user'
       const username = user?.username || user?.displayName || null;
-      await downloadFileWithNaming(urlWithExtension, username, 'video');
+      
+      // Pass the extension explicitly to downloadFileWithNaming by appending it to URL
+      // This ensures downloadFileWithNaming uses the correct extension
+      let urlWithExtension = downloadUrl;
+      if (!downloadUrl.includes('.')) {
+        urlWithExtension = `${downloadUrl}.${videoExtension}`;
+      }
+      const absoluteUrl = urlWithExtension.startsWith('http')
+        ? urlWithExtension
+        : `${window.location.origin}${urlWithExtension}`;
+      
+      await downloadFileWithNaming(absoluteUrl, username, 'video');
     } catch (e) {
       console.error('Download failed:', e);
     }
@@ -147,7 +251,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       
       await navigator.share({
         title: 'Wild Mind AI Generated Video',
-        text: `Check out this AI-generated video!\n${getCleanPrompt((preview.entry as any).originalPrompt || preview.entry.prompt).substring(0, 100)}...`,
+        text: `Check out this AI-generated video!\n${getCleanPrompt(((entry as any)?.originalPrompt) || entry?.prompt || '').substring(0, 100)}...`,
         files: [file]
       });
       
@@ -174,27 +278,27 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       const next = !isPublicFlag;
       setIsPublicFlag(next);
       try {
-        if (preview.entry?.id) {
+        if (entryId) {
           const target = preview.video as any;
           const payload: any = target ? { video: { id: target?.id, url: target?.url || target?.firebaseUrl, storagePath: target?.storagePath, isPublic: next } } : { isPublic: next };
-          await axiosInstance.patch(`/api/generations/${preview.entry.id}`, payload);
+          await axiosInstance.patch(`/api/generations/${entryId}`, payload);
           try {
-            const videos = Array.isArray((preview.entry as any).videos) ? (preview.entry as any).videos.map((vd: any) => {
+            const videos = Array.isArray((entry as any)?.videos) ? (entry as any).videos.map((vd: any) => {
               if ((target?.id && vd.id === target.id) || (target?.url && vd.url === target.url) || (target?.storagePath && vd.storagePath === target.storagePath)) {
                 return { ...vd, isPublic: next };
               }
               return vd;
-            }) : (preview.entry as any).videos;
-            dispatch(updateHistoryEntry({ id: preview.entry.id, updates: { videos } as any }));
+            }) : (entry as any)?.videos;
+            dispatch(updateHistoryEntry({ id: entryId, updates: { videos } as any }));
           } catch {}
         }
       } catch {}
     } catch {}
   };
 
-  const extractedStyle = preview.entry.style || extractStyleFromPrompt((preview.entry as any).originalPrompt || preview.entry.prompt);
+  const extractedStyle = entry?.style || extractStyleFromPrompt((entry as any)?.originalPrompt || entry?.prompt || '');
   const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
-  const displayedAspect = preview.entry.frameSize || '16:9';
+  const displayedAspect = entry?.frameSize || '16:9';
 
   // Extract video URL and route through proxy for cross-origin safety
   let rawVideoUrl = '';
@@ -209,8 +313,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       rawVideoUrl = preview.video.originalUrl;
     }
   }
-  const inputVideos = ((preview.entry as any)?.inputVideos || []) as any[];
-  const inputImages = ((preview.entry as any)?.inputImages || []) as any[];
+  const inputVideos = ((entry as any)?.inputVideos || []) as any[];
+  const inputImages = ((entry as any)?.inputImages || []) as any[];
   
   // Check if URL is already a proxy URL (frontend or full URL)
   const isAlreadyProxyUrl = rawVideoUrl && (
@@ -242,12 +346,12 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   // Use originalPrompt if available (for Lipsync with hardcoded prefix), otherwise use prompt
   // Prioritize originalPrompt from entry, then check video object, then fallback to prompt
-  const displayPrompt = (preview.entry as any).originalPrompt || (preview.video as any)?.originalPrompt || preview.entry.prompt;
+  const displayPrompt = (entry as any)?.originalPrompt || (preview.video as any)?.originalPrompt || entry?.prompt || '';
   // Debug: Log which prompt is being used
-  if ((preview.entry as any).originalPrompt) {
-    console.log('[VideoPreviewModal] Using originalPrompt:', (preview.entry as any).originalPrompt);
+  if ((entry as any)?.originalPrompt) {
+    console.log('[VideoPreviewModal] Using originalPrompt:', (entry as any).originalPrompt);
   } else {
-    console.log('[VideoPreviewModal] originalPrompt not found, using prompt:', preview.entry.prompt);
+    console.log('[VideoPreviewModal] originalPrompt not found, using prompt:', entry?.prompt);
   }
   const cleanPrompt = getCleanPrompt(displayPrompt);
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
@@ -391,7 +495,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               videoUrl.startsWith('data:image/') ? (
                 <img 
                   src={videoUrl} 
-                  alt={preview.entry.prompt}
+                  alt={entry?.prompt || ''}
                   className="max-w-full max-h-full object-contain"
                 />
               ) : videoUrl.startsWith('/api/proxy/media/') || videoUrl.startsWith('blob:') || videoUrl.startsWith('http') ? (
@@ -453,7 +557,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 </div>
               </div>
             )}
-            {(((preview.entry as any)?.inputVideos || []) as any[]).some((v: any) => (v?.storagePath && v.storagePath === (preview.video as any)?.storagePath) || (v?.url && v.url === (preview.video as any)?.url)) && (
+            {(((entry as any)?.inputVideos || []) as any[]).some((v: any) => (v?.storagePath && v.storagePath === (preview.video as any)?.storagePath) || (v?.url && v.url === (preview.video as any)?.url)) && (
               <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
             )}
             
@@ -537,14 +641,14 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
                     <span>Prompt</span>
                     <button 
-                      onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
+                      onClick={() => copyPrompt(cleanPrompt, `preview-${entryId}`)}
                       className={`flex items-center gap-2 px-2 py-1.5 text-white text-xs rounded-lg transition-colors ${
-                        copiedButtonId === `preview-${preview.entry.id}` 
+                        copiedButtonId === `preview-${entryId}` 
                           ? 'bg-green-500/20 text-green-400' 
                           : 'bg-white/10 hover:bg-white/20'
                       }`}
                     >
-                      {copiedButtonId === `preview-${preview.entry.id}` ? (
+                      {copiedButtonId === `preview-${entryId}` ? (
                         <>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M20 6L9 17l-5-5"/>
@@ -577,7 +681,10 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               {/* Date */}
               <div className="flex-shrink-0">
                 <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Date</div>
-                <div className="text-white text-sm">{new Date(preview.entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {(() => { const d = new Date(preview.entry.timestamp); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}-${mm}-${yyyy}` })()}</div>
+                <div className="text-white text-sm">
+                  {entry?.timestamp ? new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}{' '}
+                  {entry?.timestamp ? (() => { const d = new Date(entry.timestamp); const dd = String(d.getDate()).padStart(2,'0'); const mm = String(d.getMonth()+1).padStart(2,'0'); const yyyy = d.getFullYear(); return `${dd}-${mm}-${yyyy}`; })() : ''}
+                </div>
               </div>
 
               {/* Your Uploads (images/videos) */}
@@ -613,7 +720,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-white/60 text-sm">Model:</span>
-                    <span className="text-white/80 text-sm">{getModelDisplayName(preview.entry.model)}</span>
+                    <span className="text-white/80 text-sm">{getModelDisplayName(entry?.model || '')}</span>
                   </div>
                   {displayedStyle && (
                     <div className="flex justify-between">
@@ -628,7 +735,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   <div className="flex justify-between">
                     <span className="text-white/60 text-sm">Duration:</span>
                     <span className="text-white/80 text-sm">
-                      {videoDuration !== null ? formatDuration(videoDuration) : ((preview.entry as any).duration ? `${(preview.entry as any).duration}s` : '—')}
+                      {videoDuration !== null ? formatDuration(videoDuration) : ((entry as any)?.duration ? `${(entry as any).duration}s` : '—')}
                     </span>
                   </div>
                   <div className="flex justify-between">

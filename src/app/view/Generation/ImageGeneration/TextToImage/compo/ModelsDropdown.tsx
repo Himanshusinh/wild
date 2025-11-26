@@ -39,6 +39,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Imagen 4 Ultra', value: 'imagen-4-ultra' },
     { name: 'Imagen 4', value: 'imagen-4' },
     { name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
+    { name: 'Flux 2 Pro', value: 'flux-2-pro' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -69,7 +70,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'gen4_image_turbo' ||
       m.value === 'gemini-25-flash-image' ||
       m.value === 'google/nano-banana-pro' ||
-      m.value === 'seedream-v4'
+      m.value === 'seedream-v4' ||
+      m.value === 'flux-2-pro'
     );
   }
 
