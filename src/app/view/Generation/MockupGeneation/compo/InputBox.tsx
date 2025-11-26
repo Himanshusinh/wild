@@ -439,21 +439,25 @@ const InputBox = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    // Check file size (2MB limit)
-                    const maxSize = 20 * 1024 * 1024; // 2MB in bytes
-                    if (file.size > maxSize) {
-                      dispatch(addNotification({
-                        type: "error",
-                        message: "Image too large. Maximum size is 2MB per image.",
-                      }));
-                      // Clear the input
-                      e.target.value = "";
-                      return;
+                    if (file.type.startsWith('image/')) {
+                      try {
+                        const { compressImageIfNeeded } = await import('@/utils/imageCompression');
+                        const processed = await compressImageIfNeeded(file);
+                        setLogoFile(processed as any);
+                      } catch (error) {
+                        console.error('Error processing image:', error);
+                        dispatch(addNotification({
+                          type: "error",
+                          message: "Failed to process image",
+                        }));
+                        e.target.value = "";
+                      }
+                    } else {
+                      setLogoFile(file);
                     }
-                    setLogoFile(file);
                   } else {
                     setLogoFile(null);
                   }

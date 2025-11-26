@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { ViewType, GenerationType } from '@/types/generation';
@@ -29,14 +30,16 @@ const EditImagePage = () => {
   };
 
   return (
-    <div className="relative">
-      <MainLayout
-        onViewChange={onViewChange}
-        onGenerationTypeChange={onGenerationTypeChange}
-        currentView="generation"
-        currentGenerationType="edit-image"
-      />
-    </div>
+    <ProtectedRoute>
+      <div className="relative">
+        <MainLayout
+          onViewChange={onViewChange}
+          onGenerationTypeChange={onGenerationTypeChange}
+          currentView="generation"
+          currentGenerationType="edit-image"
+        />
+      </div>
+    </ProtectedRoute>
   );
 };
 

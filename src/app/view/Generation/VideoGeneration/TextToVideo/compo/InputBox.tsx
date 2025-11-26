@@ -1953,7 +1953,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (!files) return;
 
     const file = files[0];
-    // Validate file type and size (≤14MB client-side; service hard limit is 16MB)
+    // Validate file type
     const allowedMimes = new Set([
       'video/mp4',
       'video/webm',
@@ -1963,14 +1963,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       'video/h264',
     ]);
 
-    const maxBytes = 14 * 1024 * 1024;
     if (!allowedMimes.has(file.type)) {
       toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
-      event.target.value = '';
-      return;
-    }
-    if (file.size > maxBytes) {
-      toast.error('Video too large. Please upload a video ≤ 14MB');
       event.target.value = '';
       return;
     }
@@ -1996,7 +1990,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (!files) return;
 
     const file = files[0];
-    // Validate file type and size (wav/mp3, ≤15MB, 3-30s)
+    // Validate file type
     const allowedMimes = new Set([
       'audio/wav',
       'audio/wave',
@@ -2007,14 +2001,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       'audio/x-mpeg-3',
     ]);
 
-    const maxBytes = 15 * 1024 * 1024; // 15MB max
     if (!allowedMimes.has(file.type) && !file.name.match(/\.(wav|mp3)$/i)) {
       toast.error('Unsupported audio type. Use WAV or MP3 format');
-      event.target.value = '';
-      return;
-    }
-    if (file.size > maxBytes) {
-      toast.error('Audio file too large. Please upload an audio file ≤ 15MB');
       event.target.value = '';
       return;
     }
@@ -2036,12 +2024,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Handle character image upload for WAN 2.2 Animate Replace
-  const handleCharacterImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCharacterImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
     const file = files[0];
-    // Validate file type and size
+    // Validate file type
     const allowedMimes = new Set([
       'image/jpeg',
       'image/jpg',
@@ -2049,28 +2037,24 @@ const InputBox = (props: InputBoxProps = {}) => {
       'image/webp',
     ]);
 
-    const maxBytes = 10 * 1024 * 1024; // 10MB max
     if (!allowedMimes.has(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
       toast.error('Unsupported image type. Use JPG, PNG, or WebP format');
       event.target.value = '';
       return;
     }
-    if (file.size > maxBytes) {
-      toast.error('Image file too large. Please upload an image ≤ 10MB');
-      event.target.value = '';
-      return;
-    }
 
     if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (result) {
-          setUploadedCharacterImage(result);
-          toast.success('Character image uploaded successfully');
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Import compression function dynamically
+        const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
+        const processed = await compressImageIfNeeded(file);
+        const asDataUrl = await blobToDataUrl(processed);
+        setUploadedCharacterImage(asDataUrl);
+        toast.success('Character image uploaded successfully');
+      } catch (error) {
+        console.error('Error processing character image:', error);
+        toast.error('Failed to process image');
+      }
     }
 
     // Reset input
@@ -2269,9 +2253,26 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
+    // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
+    // This ensures the loader shows instantly when the button is clicked
     setIsGenerating(true);
     setError("");
     clearCreditsError();
+
+    // Create local preview entry IMMEDIATELY to show loading GIF right away
+    // We'll update it later with the actual generation type and details
+    const tempVideoPreviewId = `video-loading-${Date.now()}`;
+    setLocalVideoPreview({
+      id: tempVideoPreviewId,
+      prompt,
+      model: selectedModel,
+      generationType: 'text-to-video' as any, // Will be updated later
+      images: [{ id: 'video-loading', url: '', originalUrl: '' }] as any,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      imageCount: 1,
+      status: 'generating'
+    } as any);
 
     // Validate and reserve credits before generation
     let transactionId: string;
@@ -2286,6 +2287,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       console.error('❌ Credit validation failed:', creditError);
       setError(creditError.message || 'Insufficient credits for generation');
       setIsGenerating(false);
+      setLocalVideoPreview(null); // Clear preview on error
       return;
     }
 
@@ -3052,8 +3054,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         generationType = "video-to-video";
       }
 
-      // Create local preview entry (history-style) to show generating tile in today's row
-      setLocalVideoPreview({
+      // Update local preview entry with correct generation type (already created above)
+      setLocalVideoPreview(prev => prev ? {
+        ...prev,
+        generationType: generationType as any,
+        prompt,
+        model: selectedModel
+      } as any : {
         id: `video-loading-${Date.now()}`,
         prompt,
         model: selectedModel,
@@ -5772,50 +5779,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={handleImageUploadFromModal}
-            historyEntries={modalHistoryEntries}
             remainingSlots={uploadModalType === 'image' ?
               // For WAN 2.2 Animate Replace character image, only 1 slot
               ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
               (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
               (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
             }
-            onLoadMore={async () => {
-              // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
-              // This ensures video history remains intact
-              const currentCursor = libraryImageNextCursorRef.current;
-              console.log('[VideoPage] onLoadMore called:', { 
-                libraryImageLoading: libraryImageLoadingRef.current, 
-                libraryImageHasMore, 
-                isUploadModalOpen, 
-                entriesCount: libraryImageEntries.length,
-                nextCursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'null',
-                cursorType: typeof currentCursor
-              });
-              // Only check loading state using ref - fetchLibraryImages will handle hasMore check internally
-              // IMPORTANT: Also check that we have a cursor for pagination (unless it's the first load)
-              if (!libraryImageLoadingRef.current && isUploadModalOpen && libraryImageHasMore) {
-                // For pagination, we must have a cursor (initial load doesn't need one)
-                if (libraryImageEntries.length > 0 && !currentCursor) {
-                  console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available! Setting hasMore to false.');
-                  setLibraryImageHasMore(false);
-                  return;
-                }
-                console.log('[VideoPage] ✅ Fetching more library images...', {
-                  hasCursor: !!currentCursor,
-                  cursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'none'
-                });
-                await fetchLibraryImages(false);
-              } else {
-                console.log('[VideoPage] onLoadMore blocked:', { 
-                  loading: libraryImageLoadingRef.current, 
-                  isUploadModalOpen, 
-                  hasMore: libraryImageHasMore,
-                  hasCursor: !!currentCursor
-                });
-              }
-            }}
-            hasMore={isUploadModalOpen ? libraryImageHasMore : false}
-            loading={isUploadModalOpen ? libraryImageLoading : false}
+            mode="image"
           />
         );
       })()}
@@ -5826,11 +5796,8 @@ const InputBox = (props: InputBoxProps = {}) => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
-          historyEntries={historyEntries}
           remainingSlots={1} // Only 1 video for video-to-video
-          onLoadMore={loadMoreHistory}
-          hasMore={hasMore}
-          loading={loading}
+          mode="video"
         />
       )}
     </React.Fragment>

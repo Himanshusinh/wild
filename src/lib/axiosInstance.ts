@@ -2,12 +2,37 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { showFalErrorToast } from './falToast'
 
+const TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 5 // 5 minutes buffer
+
+// BUG FIX #14: Decode JWT to check expiration
+function decodeJwtExpiration(token: string): number | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.exp ? payload.exp * 1000 : null // Convert to milliseconds
+  } catch {
+    return null
+  }
+}
+
 // Try to extract an ID token from localStorage in a tolerant way
+// BUG FIX #14: Check token expiration to prevent using stale tokens
 const getStoredIdToken = (): string | null => {
   try {
     // First try direct token
     const directToken = localStorage.getItem('authToken')
     if (directToken && directToken.startsWith('eyJ')) {
+      // BUG FIX #14: Check if token is expired
+      const exp = decodeJwtExpiration(directToken)
+      if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
+        return directToken
+      } else if (exp) {
+        // Token expired, remove it
+        localStorage.removeItem('authToken')
+        return null
+      }
+      // If we can't decode expiration, return token (let backend verify)
       return directToken
     }
 
@@ -17,6 +42,15 @@ const getStoredIdToken = (): string | null => {
       const userObj = JSON.parse(userString)
       const token = userObj?.idToken || userObj?.token || null
       if (token && token.startsWith('eyJ')) {
+        // BUG FIX #14: Check if token is expired
+        const exp = decodeJwtExpiration(token)
+        if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
+          return token
+        } else if (exp) {
+          // Token expired, clear user data
+          localStorage.removeItem('user')
+          return null
+        }
         return token
       }
     }
@@ -27,11 +61,25 @@ const getStoredIdToken = (): string | null => {
         const authToken = JSON.parse(directToken)
         const token = authToken?.accessToken || authToken?.idToken || authToken?.token || null
         if (token && token.startsWith('eyJ')) {
+          const exp = decodeJwtExpiration(token)
+          if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
+            return token
+          } else if (exp) {
+            localStorage.removeItem('authToken')
+            return null
+          }
           return token
         }
       } catch (e) {
         // If it's not JSON, it might be a direct token
         if (directToken.startsWith('eyJ')) {
+          const exp = decodeJwtExpiration(directToken)
+          if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
+            return directToken
+          } else if (exp) {
+            localStorage.removeItem('authToken')
+            return null
+          }
           return directToken
         }
       }
@@ -42,6 +90,22 @@ const getStoredIdToken = (): string | null => {
     console.log('[getStoredIdToken] Error extracting token:', err)
     return null
   }
+}
+
+const refreshIdToken = async (): Promise<string | null> => {
+  try {
+    if (!auth?.currentUser) return null
+    const freshToken = await auth.currentUser.getIdToken(true)
+    if (freshToken) {
+      try {
+        localStorage.setItem('authToken', freshToken)
+      } catch {}
+      return freshToken
+    }
+  } catch (error) {
+    console.warn('[axiosInstance] Failed to refresh ID token:', error)
+  }
+  return null
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
@@ -88,19 +152,29 @@ axiosInstance.interceptors.request.use(async (config) => {
           await new Promise((r) => setTimeout(r, 100))
         }
       } catch {}
-      const token = getStoredIdToken()
+      let token = getStoredIdToken()
+      if (!token) {
+        token = await refreshIdToken()
+      }
       if (token) {
         const headers: any = config.headers || {}
         headers['Authorization'] = `Bearer ${token}`
         config.headers = headers
       }
       // Be explicit about no-cache for generations endpoints to avoid stale browser cache
+      // BUG FIX #24: Add cache-busting headers for mobile browsers
       try {
-        if (url.startsWith('/api/generations')) {
+        if (url.startsWith('/api/generations') || url.startsWith('/api/auth/me')) {
           const headers: any = config.headers || {}
-          headers['Cache-Control'] = 'no-cache'
+          headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
           headers['Pragma'] = 'no-cache'
           headers['Expires'] = '0'
+          // BUG FIX #24: Add timestamp to prevent mobile browser cache
+          if (url.includes('?')) {
+            config.url = `${url}&_t=${Date.now()}`
+          } else {
+            config.url = `${url}?_t=${Date.now()}`
+          }
           config.headers = headers
         }
       } catch {}
@@ -108,6 +182,7 @@ axiosInstance.interceptors.request.use(async (config) => {
     }
 
     // Stable device id persisted in localStorage
+    // BUG FIX #8: Device ID should be cleared on logout, but persist per browser session
     let deviceId = localStorage.getItem('device_id')
     if (!deviceId) {
       const random = (globalThis.crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random()}`
@@ -405,13 +480,81 @@ const markSessionCreated = () => {
   try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch {}
 }
 
+// Session refresh state
+let isRefreshingSession = false
+let lastSessionRefreshAt = 0
+const SESSION_REFRESH_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes cooldown between refresh attempts
+
+/**
+ * Automatically refresh session if needed (when expires within 3 days)
+ */
+async function refreshSessionIfNeeded(): Promise<boolean> {
+  // Prevent concurrent refresh attempts
+  if (isRefreshingSession) {
+    return false
+  }
+
+  // Cooldown check - don't refresh too frequently
+  const now = Date.now()
+  if (now - lastSessionRefreshAt < SESSION_REFRESH_COOLDOWN_MS) {
+    return false
+  }
+
+  // Check if user is authenticated
+  if (!auth?.currentUser) {
+    return false
+  }
+
+  try {
+    isRefreshingSession = true
+    lastSessionRefreshAt = now
+
+    // Get fresh ID token from Firebase
+    const idToken = await auth.currentUser.getIdToken(true)
+    
+    if (!idToken) {
+      return false
+    }
+
+    // Call refresh endpoint
+    const backendBase = resolvedBaseUrl
+    await axios.post(
+      `${backendBase}/api/auth/session/refresh`,
+      { idToken },
+      { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
+    )
+
+    if (isApiDebugEnabled()) {
+      console.log('[API][session-refresh] Session refreshed successfully')
+    }
+
+    return true
+  } catch (error: any) {
+    if (isApiDebugEnabled()) {
+      console.warn('[API][session-refresh] Failed to refresh session:', error?.message)
+    }
+    return false
+  } finally {
+    isRefreshingSession = false
+  }
+}
+
 axiosInstance.interceptors.response.use(
-  (response) => {
+  async (response) => {
     try {
       if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status })
       const urlStr = String(response?.config?.url || '')
       if (urlStr.includes('/api/auth/logout')) {
         console.log('[API][logout][response]', { status: response?.status, url: response?.config?.url })
+      }
+
+      // Check if session refresh is needed (from backend header)
+      const refreshNeeded = response.headers['x-session-refresh-needed'] === 'true'
+      if (refreshNeeded && typeof window !== 'undefined') {
+        // Refresh session in background (don't block response)
+        refreshSessionIfNeeded().catch(() => {
+          // Silently fail - non-critical
+        })
       }
     } catch {}
     return response
@@ -433,6 +576,7 @@ axiosInstance.interceptors.response.use(
     const original = error?.config || {}
     const status = error?.response?.status
 
+    // Handle non-401 errors normally
     if (status !== 401) {
       try {
         if (isApiDebugEnabled()) console.warn('[API][error]', {
@@ -443,6 +587,10 @@ axiosInstance.interceptors.response.use(
       } catch {}
       return Promise.reject(error)
     }
+
+    // Handle 401 Unauthorized - session expired or invalid
+    // Only clear auth and redirect if this is a persistent 401 (after retry fails)
+    // Don't clear on first 401 - let the retry logic handle token refresh first
 
     // Avoid infinite loops
     if (original.__isRetry) {
@@ -498,7 +646,52 @@ axiosInstance.interceptors.response.use(
         throw retryErr
       }
     } catch (e) {
-      try { if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) } catch {}
+      try { 
+        if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) 
+      } catch {}
+      
+      // If refresh failed, this is a persistent 401 - clear auth and redirect IMMEDIATELY
+      // This prevents any page rendering when session is invalid
+      if (typeof window !== 'undefined') {
+        try {
+          const currentPath = window.location.pathname;
+          const isAuthPage = currentPath.includes('/sign') || 
+                            currentPath.includes('/Landingpage') || 
+                            currentPath.includes('/ArtStation') ||
+                            currentPath.includes('/pricing') ||
+                            currentPath.includes('/workflows');
+          
+          if (!isAuthPage) {
+            // Immediately clear all auth data
+            const { clearAuthData, clearSessionCookies, clearReduxAuthState } = await import('./authUtils');
+            clearAuthData();
+            clearSessionCookies();
+            clearReduxAuthState();
+            
+            // Force immediate redirect - use replace to prevent back button
+            const redirectPath = '/view/signup?next=' + encodeURIComponent(currentPath);
+            // Use replace instead of location.replace to ensure it happens synchronously
+            window.location.href = redirectPath;
+            // Fallback to replace if href doesn't work
+            setTimeout(() => {
+              if (window.location.pathname !== '/view/signup') {
+                window.location.replace(redirectPath);
+              }
+            }, 100);
+          }
+        } catch (cleanupError) {
+          console.warn('[API] Failed to cleanup auth on persistent 401:', cleanupError);
+          // Even if cleanup fails, try to redirect
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+            const isAuthPage = currentPath.includes('/sign') || currentPath.includes('/Landingpage');
+            if (!isAuthPage) {
+              window.location.replace('/view/signup?next=' + encodeURIComponent(currentPath));
+            }
+          }
+        }
+      }
+      
       return Promise.reject(error)
     } finally {
       isRefreshing = false

@@ -66,11 +66,25 @@ export const createSessionFromIdToken = createAsyncThunk(
   }
 );
 
-export const logout = createAsyncThunk('auth/logout', async (_, { rejectWithValue }) => {
+export const logout = createAsyncThunk('auth/logout', async (_, { rejectWithValue, dispatch }) => {
   try {
-    await axiosInstance.post('/api/auth/logout');
+    // Clear Redux state immediately for instant UI feedback
+    dispatch(setUser(null));
+    
+    // Call backend logout endpoint
+    try {
+      await axiosInstance.post('/api/auth/logout', {}, {
+        withCredentials: true,
+      });
+    } catch (e: any) {
+      // Log but don't fail - client-side cleanup is more important
+      console.warn('[authSlice] Backend logout call failed:', e?.message);
+    }
+    
     return true;
   } catch (e: any) {
+    // Even on error, clear local state
+    dispatch(setUser(null));
     const msg = e?.response?.data?.message || e?.message || 'Logout failed';
     return rejectWithValue(msg);
   }
@@ -117,8 +131,22 @@ const authSlice = createSlice({
       .addCase(createSessionFromIdToken.fulfilled, (state, action) => {
         state.user = action.payload;
       })
+      .addCase(logout.pending, (state) => {
+        // Clear user immediately on logout start
+        state.user = null;
+        state.loading = false;
+        state.error = null;
+      })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(logout.rejected, (state, action) => {
+        // Even on error, clear user state
+        state.user = null;
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
