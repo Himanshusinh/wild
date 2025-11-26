@@ -18,6 +18,50 @@ export default function SignUp() {
   const [isLoadingImage, setIsLoadingImage] = useState(true)
   const [fadeOut, setFadeOut] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const streamingTimeouts = useRef<ReturnType<typeof setTimeout>[]>([])
+  const isMountedRef = useRef(true)
+  const imagesRef = useRef<ImageData[]>([])
+  const hasCacheRef = useRef(false)
+
+  const CACHE_KEY = 'signup_highscore_images'
+  const STREAM_DELAY_MS = 120
+  
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+  
+  const clearStreamingTimeouts = () => {
+    streamingTimeouts.current.forEach(timeoutId => clearTimeout(timeoutId))
+    streamingTimeouts.current = []
+  }
+
+  const persistCache = (list: ImageData[]) => {
+    try {
+      const trimmed = list.slice(0, 30)
+      localStorage.setItem(CACHE_KEY, JSON.stringify(trimmed))
+    } catch {}
+  }
+
+  useEffect(() => {
+    imagesRef.current = images
+  }, [images])
+
+  // Hydrate from cache for instant paint
+  useEffect(() => {
+    try {
+      const cachedRaw = localStorage.getItem(CACHE_KEY)
+      if (cachedRaw) {
+        const parsed = JSON.parse(cachedRaw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          hasCacheRef.current = true
+          setImages(parsed)
+          setIsLoadingImage(false)
+        }
+      }
+    } catch {}
+  }, [])
   
   // Proxy function to avoid 429 errors from Google
   const getProxiedImageUrl = (url: string | undefined): string | undefined => {
@@ -30,56 +74,104 @@ export default function SignUp() {
     return url
   }
 
-  // Fetch multiple random high-scored images on mount
+  // Fetch multiple random high-scored images on mount and stream them progressively
   useEffect(() => {
-    const fetchRandomImages = async () => {
+    let aborted = false
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
+    const controller = new AbortController()
+    
+    const streamImagesSequentially = (items: ImageData[], reset = false) => {
+      if (!items?.length) {
+        if (reset) {
+          setIsLoadingImage(false)
+        }
+        return
+      }
+      
+      if (reset) {
+        clearStreamingTimeouts()
+        setImages([])
+        setCurrentIndex(0)
+      }
+      
+      items.forEach((img, idx) => {
+        const delay = idx === 0 ? 0 : idx * STREAM_DELAY_MS
+        const timeoutId = setTimeout(() => {
+          if (!isMountedRef.current || aborted) return
+          
+          setImages(prev => {
+            const exists = prev.some(existing => {
+              if (img.generationId && existing.generationId) {
+                return existing.generationId === img.generationId
+              }
+              return existing.imageUrl === img.imageUrl
+            })
+            if (exists) return prev
+            
+            const next = prev.length === 0 ? [img] : [...prev, img].slice(-40)
+            
+            if (idx === items.length - 1) {
+              persistCache(next)
+            }
+            
+            return next
+          })
+          
+          if (idx === 0) {
+            setIsLoadingImage(false)
+          }
+        }, delay)
+        streamingTimeouts.current.push(timeoutId)
+      })
+    }
+    
+    const fetchBatch = async (count: number, reset = false) => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
-        const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored?count=20`
-        
+        const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored?count=${count}`
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
+          signal: controller.signal,
         })
-
+        
+        if (!isMountedRef.current || aborted) return
+        
         if (response.ok) {
           const data = await response.json()
           if (data?.responseStatus === 'success' && Array.isArray(data?.data) && data.data.length > 0) {
-            // Start slideshow as soon as first image arrives
-            if (data.data.length > 0) {
-              setImages([data.data[0]]) // Set first image immediately
-              setIsLoadingImage(false) // Stop loading state
-              // Then add remaining images
-              if (data.data.length > 1) {
-                setTimeout(() => {
-                  setImages(data.data)
-                }, 100)
-              }
-            } else {
-              setImages([])
-              setIsLoadingImage(false)
-            }
-          } else {
-            // API returned success but no images - use default
-            setImages([])
-            setIsLoadingImage(false)
+            streamImagesSequentially(data.data, reset)
+            return
           }
-        } else {
-          // API call failed - use default
+        }
+        
+        if (reset && !hasCacheRef.current) {
           setImages([])
           setIsLoadingImage(false)
         }
       } catch (error) {
+        if (controller.signal.aborted) return
         console.error('❌ Failed to fetch random images:', error)
-        // API call failed - use default
-        setImages([])
-        setIsLoadingImage(false)
+        if (reset && !hasCacheRef.current) {
+          setImages([])
+          setIsLoadingImage(false)
+        }
       }
     }
-
-    fetchRandomImages()
+    
+    const init = async () => {
+      await fetchBatch(1, !hasCacheRef.current) // Quick fetch for instant first paint if no cache
+      fetchBatch(24, false) // Background fetch for the rest
+    }
+    
+    init()
+    
+    return () => {
+      aborted = true
+      controller.abort()
+      clearStreamingTimeouts()
+    }
   }, [])
 
   // Slideshow effect - change image every 7 seconds with smooth fade transition

@@ -137,6 +137,24 @@ export default function SignInForm() {
     </div>
   )
 
+  const refreshFirebaseIdToken = async (): Promise<string | null> => {
+    try {
+      if (!auth?.currentUser) return null
+      const fresh = await auth.currentUser.getIdToken(true)
+      if (fresh) {
+        try {
+          localStorage.setItem('authToken', fresh)
+        } catch (err) {
+          console.warn('[Auth] Failed to persist refreshed ID token:', err)
+        }
+      }
+      return fresh || null
+    } catch (error) {
+      console.warn('[Auth] Firebase ID token refresh failed:', error)
+      return null
+    }
+  }
+
   const switchToGoogleSignIn = () => {
     setShowLoginForm(false) // Ensure we're in sign-up mode for Google
     setError("")
@@ -225,6 +243,8 @@ export default function SignInForm() {
         
         console.log("🏠 Redirecting to:", finalRedirectUrl)
         console.log("🔗 Return URL was:", returnUrl)
+
+        await refreshFirebaseIdToken()
         
         // BUG FIX #18: Prevent browser back button after login
         // Replace current history entry to prevent back navigation
@@ -437,8 +457,17 @@ export default function SignInForm() {
             console.log("   ID token starts with:", actualIdToken.substring(0, 20))
 
             // Create session with the REAL ID token
-            console.log("🔄 Creating session with backend using ID token...")
+            console.log("🔄 [SESSION] Creating session with backend using ID token...")
+            console.log("🔄 [SESSION] ID token details:", {
+              length: actualIdToken.length,
+              prefix: actualIdToken.substring(0, 30),
+              suffix: actualIdToken.substring(actualIdToken.length - 20),
+              timestamp: new Date().toISOString()
+            });
             const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+            console.log("🔄 [SESSION] Backend base URL:", backendBaseForSession);
+            console.log("🔄 [SESSION] Full session URL:", `${backendBaseForSession}/api/auth/session`);
+            
             // Create session directly with backend
             const sessionResponse = await fetch(`${backendBaseForSession}/api/auth/session`, {
               method: 'POST',
@@ -447,9 +476,21 @@ export default function SignInForm() {
               body: JSON.stringify({ idToken: actualIdToken })
             })
 
+            console.log("🔄 [SESSION] Session response:", {
+              status: sessionResponse.status,
+              statusText: sessionResponse.statusText,
+              ok: sessionResponse.ok,
+              headers: Object.fromEntries(sessionResponse.headers.entries())
+            });
+
             if (sessionResponse.status === 200) {
-              console.log("✅ Session created with ID token!")
-              console.log("🍪 Cookies after session creation:", document.cookie)
+              const sessionData = await sessionResponse.json().catch(() => ({}));
+              console.log("✅ [SESSION] Session created with ID token!", {
+                responseData: sessionData,
+                cookies: document.cookie
+              });
+              console.log("🍪 [SESSION] Cookies after session creation:", document.cookie)
+              await refreshFirebaseIdToken()
 
               // Test /api/me immediately to verify it works
               try {
@@ -471,7 +512,13 @@ export default function SignInForm() {
               setOtpSent(false)
               setError("")
             } else {
-              console.error("❌ Session creation failed:", sessionResponse.status)
+              const errorData = await sessionResponse.json().catch(() => ({}));
+              console.error("❌ [SESSION] Session creation failed:", {
+                status: sessionResponse.status,
+                statusText: sessionResponse.statusText,
+                errorData: errorData,
+                responseText: await sessionResponse.text().catch(() => '')
+              });
             }
           } catch (conversionError: any) {
             console.error("❌ Token conversion error:", conversionError)
@@ -637,7 +684,15 @@ export default function SignInForm() {
           const finalIdToken = await userCredential.user.getIdToken()
 
           // Create session
+          console.log("🔄 [SESSION] Creating session for existing Google user...");
+          console.log("🔄 [SESSION] ID token details:", {
+            length: finalIdToken.length,
+            prefix: finalIdToken.substring(0, 30),
+            suffix: finalIdToken.substring(finalIdToken.length - 20),
+            timestamp: new Date().toISOString()
+          });
           const backendBaseForSession = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '')
+          console.log("🔄 [SESSION] Using Next.js API route:", '/api/auth/session');
           // Use Next.js API route for session creation to avoid cross-domain cookie issues
           const resp = await fetch('/api/auth/session', {
             method: 'POST',
@@ -645,6 +700,30 @@ export default function SignInForm() {
             credentials: 'include',
             body: JSON.stringify({ idToken: finalIdToken })
           })
+          
+          console.log("🔄 [SESSION] Session response:", {
+            status: resp.status,
+            statusText: resp.statusText,
+            ok: resp.ok,
+            headers: Object.fromEntries(resp.headers.entries())
+          });
+          
+          if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            console.error("❌ [SESSION] Session creation failed for existing Google user:", {
+              status: resp.status,
+              statusText: resp.statusText,
+              errorData: errorData,
+              responseText: await resp.text().catch(() => '')
+            });
+          } else {
+            const sessionData = await resp.json().catch(() => ({}));
+            console.log("✅ [SESSION] Session created successfully for existing Google user!", {
+              responseData: sessionData,
+              cookies: document.cookie
+            });
+            await refreshFirebaseIdToken();
+          }
           // BUG FIX #2: Clear all auth data before setting new to prevent cross-account confusion
           try {
             const { clearAuthData } = await import('@/lib/authUtils');
@@ -754,10 +833,37 @@ export default function SignInForm() {
           const userCredential = await signInWithCustomToken(auth, sessionTokenResolved)
           const finalIdToken = await userCredential.user.getIdToken()
 
-          const sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
-            { idToken: finalIdToken },
-            { withCredentials: true }
-          )
+          console.log("🔄 [SESSION] Creating session after Google username set...");
+          console.log("🔄 [SESSION] ID token details:", {
+            length: finalIdToken.length,
+            prefix: finalIdToken.substring(0, 30),
+            suffix: finalIdToken.substring(finalIdToken.length - 20),
+            timestamp: new Date().toISOString()
+          });
+          
+          let sessionResponse;
+          try {
+            sessionResponse = await (axiosInstance || getApiClient()).post('/api/auth/session',
+              { idToken: finalIdToken },
+              { withCredentials: true }
+            );
+            console.log("✅ [SESSION] Session created successfully after Google username set!", {
+              status: sessionResponse.status,
+              statusText: sessionResponse.statusText,
+              data: sessionResponse.data,
+              cookies: document.cookie
+            });
+            await refreshFirebaseIdToken();
+          } catch (sessionError: any) {
+            console.error("❌ [SESSION] Session creation failed after Google username set:", {
+              message: sessionError?.message,
+              response: sessionError?.response?.data,
+              status: sessionError?.response?.status,
+              statusText: sessionError?.response?.statusText,
+              error: sessionError
+            });
+            throw sessionError;
+          }
 
           // Clear temporary data
           sessionStorage.removeItem("tempGoogleUser")
@@ -832,7 +938,13 @@ export default function SignInForm() {
                 console.log("🔑 ID token length:", actualIdToken.length)
 
                 // Create session with the REAL ID token
-                console.log("🔄 Creating session with backend using ID token...")
+                console.log("🔄 [SESSION] Creating session with backend using ID token after username creation...")
+                console.log("🔄 [SESSION] ID token details:", {
+                  length: actualIdToken.length,
+                  prefix: actualIdToken.substring(0, 30),
+                  suffix: actualIdToken.substring(actualIdToken.length - 20),
+                  timestamp: new Date().toISOString()
+                });
             // Use Next.js API route for session creation to avoid cross-domain cookie issues
             const sessionResponse = await fetch('/api/auth/session', {
               method: 'POST',
@@ -840,10 +952,22 @@ export default function SignInForm() {
               credentials: 'include',
               body: JSON.stringify({ idToken: actualIdToken })
             })
+            
+            console.log("🔄 [SESSION] Session response:", {
+              status: sessionResponse.status,
+              statusText: sessionResponse.statusText,
+              ok: sessionResponse.ok,
+              headers: Object.fromEntries(sessionResponse.headers.entries())
+            });
 
                 if (sessionResponse.status === 200) {
-                  console.log("✅ Session created with ID token after username creation!")
-                  console.log("🍪 Cookies after session creation:", document.cookie)
+                  const sessionData = await sessionResponse.json().catch(() => ({}));
+                  console.log("✅ [SESSION] Session created with ID token after username creation!", {
+                    responseData: sessionData,
+                    cookies: document.cookie
+                  });
+                  console.log("🍪 [SESSION] Cookies after session creation:", document.cookie)
+                  await refreshFirebaseIdToken();
 
                   // Test /api/me immediately to verify it works
                   try {
@@ -867,7 +991,13 @@ export default function SignInForm() {
                   localStorage.setItem("user", JSON.stringify(userData))
                   localStorage.setItem("authToken", actualIdToken || "")
                 } else {
-                  console.error("❌ Session creation failed:", sessionResponse.status)
+                  const errorData = await sessionResponse.json().catch(() => ({}));
+                  console.error("❌ [SESSION] Session creation failed after username creation:", {
+                    status: sessionResponse.status,
+                    statusText: sessionResponse.statusText,
+                    errorData: errorData,
+                    responseText: await sessionResponse.text().catch(() => '')
+                  });
                 }
               } catch (conversionError: any) {
                 console.error("❌ Token conversion error:", conversionError)

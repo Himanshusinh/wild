@@ -2,6 +2,8 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { showFalErrorToast } from './falToast'
 
+const TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 5 // 5 minutes buffer
+
 // BUG FIX #14: Decode JWT to check expiration
 function decodeJwtExpiration(token: string): number | null {
   try {
@@ -23,7 +25,7 @@ const getStoredIdToken = (): string | null => {
     if (directToken && directToken.startsWith('eyJ')) {
       // BUG FIX #14: Check if token is expired
       const exp = decodeJwtExpiration(directToken)
-      if (exp && exp > Date.now()) {
+      if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
         return directToken
       } else if (exp) {
         // Token expired, remove it
@@ -42,7 +44,7 @@ const getStoredIdToken = (): string | null => {
       if (token && token.startsWith('eyJ')) {
         // BUG FIX #14: Check if token is expired
         const exp = decodeJwtExpiration(token)
-        if (exp && exp > Date.now()) {
+        if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
           return token
         } else if (exp) {
           // Token expired, clear user data
@@ -60,7 +62,7 @@ const getStoredIdToken = (): string | null => {
         const token = authToken?.accessToken || authToken?.idToken || authToken?.token || null
         if (token && token.startsWith('eyJ')) {
           const exp = decodeJwtExpiration(token)
-          if (exp && exp > Date.now()) {
+          if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
             return token
           } else if (exp) {
             localStorage.removeItem('authToken')
@@ -72,7 +74,7 @@ const getStoredIdToken = (): string | null => {
         // If it's not JSON, it might be a direct token
         if (directToken.startsWith('eyJ')) {
           const exp = decodeJwtExpiration(directToken)
-          if (exp && exp > Date.now()) {
+          if (exp && exp - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) {
             return directToken
           } else if (exp) {
             localStorage.removeItem('authToken')
@@ -88,6 +90,22 @@ const getStoredIdToken = (): string | null => {
     console.log('[getStoredIdToken] Error extracting token:', err)
     return null
   }
+}
+
+const refreshIdToken = async (): Promise<string | null> => {
+  try {
+    if (!auth?.currentUser) return null
+    const freshToken = await auth.currentUser.getIdToken(true)
+    if (freshToken) {
+      try {
+        localStorage.setItem('authToken', freshToken)
+      } catch {}
+      return freshToken
+    }
+  } catch (error) {
+    console.warn('[axiosInstance] Failed to refresh ID token:', error)
+  }
+  return null
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
@@ -134,7 +152,10 @@ axiosInstance.interceptors.request.use(async (config) => {
           await new Promise((r) => setTimeout(r, 100))
         }
       } catch {}
-      const token = getStoredIdToken()
+      let token = getStoredIdToken()
+      if (!token) {
+        token = await refreshIdToken()
+      }
       if (token) {
         const headers: any = config.headers || {}
         headers['Authorization'] = `Bearer ${token}`
@@ -629,25 +650,45 @@ axiosInstance.interceptors.response.use(
         if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) 
       } catch {}
       
-      // If refresh failed, this is a persistent 401 - clear auth and redirect
-      // Only do this in browser context and if not already on auth pages
+      // If refresh failed, this is a persistent 401 - clear auth and redirect IMMEDIATELY
+      // This prevents any page rendering when session is invalid
       if (typeof window !== 'undefined') {
         try {
           const currentPath = window.location.pathname;
-          const isAuthPage = currentPath.includes('/sign') || currentPath.includes('/Landingpage');
+          const isAuthPage = currentPath.includes('/sign') || 
+                            currentPath.includes('/Landingpage') || 
+                            currentPath.includes('/ArtStation') ||
+                            currentPath.includes('/pricing') ||
+                            currentPath.includes('/workflows');
           
           if (!isAuthPage) {
+            // Immediately clear all auth data
             const { clearAuthData, clearSessionCookies, clearReduxAuthState } = await import('./authUtils');
             clearAuthData();
             clearSessionCookies();
             clearReduxAuthState();
             
-            // Redirect to signup/login
+            // Force immediate redirect - use replace to prevent back button
             const redirectPath = '/view/signup?next=' + encodeURIComponent(currentPath);
-            window.location.replace(redirectPath);
+            // Use replace instead of location.replace to ensure it happens synchronously
+            window.location.href = redirectPath;
+            // Fallback to replace if href doesn't work
+            setTimeout(() => {
+              if (window.location.pathname !== '/view/signup') {
+                window.location.replace(redirectPath);
+              }
+            }, 100);
           }
         } catch (cleanupError) {
           console.warn('[API] Failed to cleanup auth on persistent 401:', cleanupError);
+          // Even if cleanup fails, try to redirect
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+            const isAuthPage = currentPath.includes('/sign') || currentPath.includes('/Landingpage');
+            if (!isAuthPage) {
+              window.location.replace('/view/signup?next=' + encodeURIComponent(currentPath));
+            }
+          }
         }
       }
       

@@ -129,7 +129,7 @@ export function clearReduxAuthState(): void {
 
 /**
  * Performs complete logout: clears all auth data, cookies, Firebase session, and Redux state
- * @param redirectTo - Optional redirect path after logout (default: '/view/Landingpage?toast=LOGOUT_SUCCESS')
+ * @param redirectTo - Optional redirect path after logout (default: '/view/Landingpage')
  */
 export async function performLogout(redirectTo?: string): Promise<void> {
   try {
@@ -170,15 +170,21 @@ export async function performLogout(redirectTo?: string): Promise<void> {
         console.warn('[authUtils] Failed to prevent back navigation:', e);
       }
       
-      // 5. Redirect to landing page
-      const redirectPath = redirectTo || '/view/Landingpage?toast=LOGOUT_SUCCESS';
+      // 5. Redirect to landing page with deferred toast
+      try {
+        localStorage.setItem('toastMessage', 'LOGOUT_SUCCESS');
+      } catch {}
+      const redirectPath = redirectTo || '/view/Landingpage';
       window.location.replace(redirectPath);
     }
   } catch (e) {
     console.error('[authUtils] Logout error:', e);
     // Even on error, try to redirect
     if (typeof window !== 'undefined') {
-      window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED');
+      try {
+        localStorage.setItem('toastMessage', 'LOGOUT_FAILED');
+      } catch {}
+      window.location.replace('/view/Landingpage');
     }
   }
 }

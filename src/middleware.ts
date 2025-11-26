@@ -173,17 +173,22 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/public/')
   );
 
-  // If root path and unauthenticated, force redirect to landing with toast
+  // Root path handling: redirect authenticated users to HomePage, unauthenticated to Landingpage
   if (pathname === '/') {
     const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
     const hasHint = Boolean(req.cookies.get('auth_hint'));
     if (!hasSession && !hasHint) {
+      // No session - redirect to landing page
       const url = req.nextUrl.clone();
       url.pathname = '/view/Landingpage';
       url.searchParams.set('toast', 'UNAUTHORIZED');
       return NextResponse.redirect(url);
+    } else {
+      // Has session - redirect authenticated users to HomePage
+      const url = req.nextUrl.clone();
+      url.pathname = '/view/HomePage';
+      return NextResponse.redirect(url);
     }
-    return res;
   }
   if (isPublic) return res;
 

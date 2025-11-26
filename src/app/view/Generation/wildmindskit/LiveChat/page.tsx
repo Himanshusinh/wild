@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect, Suspense } from 'react';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
 import LiveChatInputBox from './compo/InputBox';
 // import { useAppSelector } from '@/store/hooks';
@@ -237,7 +238,9 @@ const LiveChatGrid: React.FC = () => {
 export default function Page() {
   return (
     <Suspense fallback={<div className="text-white/70 p-6">Loading…</div>}>
-      <LiveChatPage />
+      <ProtectedRoute>
+        <LiveChatPage />
+      </ProtectedRoute>
     </Suspense>
   );
 }

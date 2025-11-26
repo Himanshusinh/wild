@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
@@ -32,12 +33,14 @@ const LogoGenerationPage = () => {
   };
 
   return (
-    <MainLayout
-      onViewChange={onViewChange}
-      onGenerationTypeChange={onGenerationTypeChange}
-      currentView={currentView}
-      currentGenerationType={currentGenerationType}
-    />
+    <ProtectedRoute>
+      <MainLayout
+        onViewChange={onViewChange}
+        onGenerationTypeChange={onGenerationTypeChange}
+        currentView={currentView}
+        currentGenerationType={currentGenerationType}
+      />
+    </ProtectedRoute>
   );
 };
 
