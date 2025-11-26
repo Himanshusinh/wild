@@ -80,9 +80,17 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
   const isSeedream = selectedModel === 'seedream-v4';
   const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image';
+  const isFlux2Pro = selectedModel === 'flux-2-pro';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
 
   const frameSizes = (() => {
+    if (isFlux2Pro) {
+      // Flux 2 Pro: supported aspect ratios from schema
+      // Supported: square_hd, square, portrait_4_3, portrait_16_9, landscape_4_3, landscape_16_9
+      // Map to our aspect ratios: 1:1 (square/square_hd), 3:4 (portrait_4_3), 9:16 (portrait_16_9), 4:3 (landscape_4_3), 16:9 (landscape_16_9)
+      const allowed = new Set(['1:1', '4:3', '3:4', '16:9', '9:16']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isGoogleNanoBanana) {
       // Google Nano Banana: only these aspect ratios are supported according to official schema
       // Supported: 21:9, 1:1, 4:3, 3:2, 2:3, 5:4, 4:5, 3:4, 16:9, 9:16
