@@ -166,7 +166,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   React.useEffect(() => {
     if (isOpen && tab === 'library' && libraryItems.length === 0 && !libraryLoading) {
       setLibraryLoading(true);
-      fetchLibrary({ limit: 5, mode }).then((response) => {
+      fetchLibrary({ limit: 50, mode }).then((response) => {
         if (response.responseStatus === 'success' && response.data) {
           setLibraryItems(response.data.items || []);
           setLibraryNextCursor(response.data.nextCursor);
@@ -183,7 +183,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   React.useEffect(() => {
     if (isOpen && tab === 'uploads' && uploadItems.length === 0 && !uploadLoading) {
       setUploadLoading(true);
-      fetchUploads({ limit: 5, mode }).then((response) => {
+      fetchUploads({ limit: 50, mode }).then((response) => {
         if (response.responseStatus === 'success' && response.data) {
           setUploadItems(response.data.items || []);
           setUploadNextCursor(response.data.nextCursor);
@@ -253,7 +253,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
     if (tab === 'library' && libraryNextCursor) {
       setLibraryLoading(true);
       try {
-        const response = await fetchLibrary({ limit: 5, nextCursor: libraryNextCursor, mode });
+        const response = await fetchLibrary({ limit: 50, nextCursor: libraryNextCursor, mode });
         if (response.responseStatus === 'success' && response.data) {
           setLibraryItems(prev => [...prev, ...(response.data.items || [])]);
           setLibraryNextCursor(response.data.nextCursor);
@@ -268,7 +268,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
     } else if (tab === 'uploads' && uploadNextCursor) {
       setUploadLoading(true);
       try {
-        const response = await fetchUploads({ limit: 5, nextCursor: uploadNextCursor, mode });
+        const response = await fetchUploads({ limit: 50, nextCursor: uploadNextCursor, mode });
         if (response.responseStatus === 'success' && response.data) {
           setUploadItems(prev => [...prev, ...(response.data.items || [])]);
           setUploadNextCursor(response.data.nextCursor);

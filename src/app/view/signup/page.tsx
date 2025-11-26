@@ -20,11 +20,6 @@ export default function SignUp() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const streamingTimeouts = useRef<ReturnType<typeof setTimeout>[]>([])
   const isMountedRef = useRef(true)
-  const imagesRef = useRef<ImageData[]>([])
-  const hasCacheRef = useRef(false)
-
-  const CACHE_KEY = 'signup_highscore_images'
-  const STREAM_DELAY_MS = 120
   
   useEffect(() => {
     return () => {
@@ -36,32 +31,6 @@ export default function SignUp() {
     streamingTimeouts.current.forEach(timeoutId => clearTimeout(timeoutId))
     streamingTimeouts.current = []
   }
-
-  const persistCache = (list: ImageData[]) => {
-    try {
-      const trimmed = list.slice(0, 30)
-      localStorage.setItem(CACHE_KEY, JSON.stringify(trimmed))
-    } catch {}
-  }
-
-  useEffect(() => {
-    imagesRef.current = images
-  }, [images])
-
-  // Hydrate from cache for instant paint
-  useEffect(() => {
-    try {
-      const cachedRaw = localStorage.getItem(CACHE_KEY)
-      if (cachedRaw) {
-        const parsed = JSON.parse(cachedRaw)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          hasCacheRef.current = true
-          setImages(parsed)
-          setIsLoadingImage(false)
-        }
-      }
-    } catch {}
-  }, [])
   
   // Proxy function to avoid 429 errors from Google
   const getProxiedImageUrl = (url: string | undefined): string | undefined => {
@@ -78,7 +47,6 @@ export default function SignUp() {
   useEffect(() => {
     let aborted = false
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
-    const controller = new AbortController()
     
     const streamImagesSequentially = (items: ImageData[], reset = false) => {
       if (!items?.length) {
@@ -95,7 +63,6 @@ export default function SignUp() {
       }
       
       items.forEach((img, idx) => {
-        const delay = idx === 0 ? 0 : idx * STREAM_DELAY_MS
         const timeoutId = setTimeout(() => {
           if (!isMountedRef.current || aborted) return
           
@@ -107,20 +74,16 @@ export default function SignUp() {
               return existing.imageUrl === img.imageUrl
             })
             if (exists) return prev
-            
-            const next = prev.length === 0 ? [img] : [...prev, img].slice(-40)
-            
-            if (idx === items.length - 1) {
-              persistCache(next)
+            if (prev.length === 0) {
+              return [img]
             }
-            
-            return next
+            return [...prev, img]
           })
           
           if (idx === 0) {
             setIsLoadingImage(false)
           }
-        }, delay)
+        }, idx * 200)
         streamingTimeouts.current.push(timeoutId)
       })
     }
@@ -133,7 +96,6 @@ export default function SignUp() {
           headers: {
             'Content-Type': 'application/json',
           },
-          signal: controller.signal,
         })
         
         if (!isMountedRef.current || aborted) return
@@ -146,14 +108,13 @@ export default function SignUp() {
           }
         }
         
-        if (reset && !hasCacheRef.current) {
+        if (reset) {
           setImages([])
           setIsLoadingImage(false)
         }
       } catch (error) {
-        if (controller.signal.aborted) return
         console.error('❌ Failed to fetch random images:', error)
-        if (reset && !hasCacheRef.current) {
+        if (reset) {
           setImages([])
           setIsLoadingImage(false)
         }
@@ -161,7 +122,7 @@ export default function SignUp() {
     }
     
     const init = async () => {
-      await fetchBatch(1, !hasCacheRef.current) // Quick fetch for instant first paint if no cache
+      await fetchBatch(1, true) // Quick fetch for instant first paint
       fetchBatch(24, false) // Background fetch for the rest
     }
     
@@ -169,7 +130,6 @@ export default function SignUp() {
     
     return () => {
       aborted = true
-      controller.abort()
       clearStreamingTimeouts()
     }
   }, [])

@@ -168,7 +168,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   React.useEffect(() => {
     if (isOpen && tab === 'library' && libraryItems.length === 0 && !libraryLoading) {
       setLibraryLoading(true);
-      fetchLibrary({ limit: 5, mode }).then((response) => {
+      fetchLibrary({ limit: 50, mode }).then((response) => {
         if (response.responseStatus === 'success' && response.data) {
           // Filter to only videos
           const videos = (response.data.items || []).filter(item => item.type === 'video');
@@ -227,7 +227,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     setLibraryLoading(true);
     
     try {
-      const response = await fetchLibrary({ limit: 5, nextCursor: libraryNextCursor, mode });
+      const response = await fetchLibrary({ limit: 50, nextCursor: libraryNextCursor, mode });
       if (response.responseStatus === 'success' && response.data) {
         // Filter to only videos
         const videos = (response.data.items || []).filter(item => item.type === 'video');
