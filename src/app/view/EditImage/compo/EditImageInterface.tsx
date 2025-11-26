@@ -15,7 +15,7 @@ import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { toast } from 'react-hot-toast';
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine';
+type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
 const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
@@ -30,6 +30,7 @@ const EditImageInterface: React.FC = () => {
     'erase': null,
     'expand': null,
     'reimagine': null,
+    'live-chat': null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
@@ -41,6 +42,7 @@ const EditImageInterface: React.FC = () => {
     'erase': null,
     'expand': null,
     'reimagine': null,
+    'live-chat': null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
     'upscale': false,
@@ -51,6 +53,7 @@ const EditImageInterface: React.FC = () => {
     'erase': false,
     'expand': false,
     'reimagine': false,
+    'live-chat': false,
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
@@ -182,6 +185,8 @@ const EditImageInterface: React.FC = () => {
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | 'replaceModel' | 'expandAspect' | 'topazModel' | ''>('');
+  // Live Chat dropdown keys
+  const [liveActiveDropdown, setLiveActiveDropdown] = useState<'liveModel' | 'liveFrame' | 'liveResolution' | ''>('');
   // Vectorize controls
   const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
   const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
@@ -197,6 +202,137 @@ const EditImageInterface: React.FC = () => {
   const [vPathPrecision, setVPathPrecision] = useState<number>(3);
   const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
+  // Live Chat feature state
+  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4'>('gemini-25-flash-image');
+  const [liveFrameSize, setLiveFrameSize] = useState<'1:1' | '3:4' | '4:3' | '16:9' | '9:16'>('1:1');
+  const [liveResolution, setLiveResolution] = useState<'1K' | '2K' | '4K'>('1K');
+  const [livePrompt, setLivePrompt] = useState<string>('');
+  const [liveChatMessages, setLiveChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; status?: 'generating' | 'done' }>>([]);
+  const [liveHistory, setLiveHistory] = useState<string[]>([]);
+  const [activeLiveIndex, setActiveLiveIndex] = useState<number>(-1);
+  const [liveOriginalInput, setLiveOriginalInput] = useState<string | null>(null);
+  const chatListRef = useRef<HTMLDivElement | null>(null);
+  const lastMsgRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = chatListRef.current;
+    if (!el) return;
+    try {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } catch (e) {
+      // older browsers fallback
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [liveChatMessages]);
+
+  // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
+
+  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' }> = [
+    { label: 'Google Nano Banana', value: 'gemini-25-flash-image' },
+    { label: 'Google Nano Banana Pro', value: 'google/nano-banana-pro' },
+    { label: 'Seedream v4 4k', value: 'seedream-v4' },
+  ];
+
+  const liveFrameSizes = [
+    { name: 'Square', value: '1:1' },
+    { name: 'Portrait', value: '3:4' },
+    { name: 'Landscape', value: '4:3' },
+    { name: 'Wide', value: '16:9' },
+    { name: 'Vertical', value: '9:16' },
+  ];
+
+  const parseOutputUrl = (res: any): string => (
+    res?.data?.images?.[0]?.url ||
+    res?.data?.data?.images?.[0]?.url ||
+    res?.data?.data?.url ||
+    res?.data?.url ||
+    ''
+  );
+
+  const handleLiveGenerate = async () => {
+    try {
+      const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex] : null);
+      if (!img) {
+        setErrorMsg('Please upload or select an image for Live Chat');
+        return;
+      }
+      if (!livePrompt.trim()) return;
+
+      setProcessing((p) => ({ ...p, ['live-chat']: true }));
+      setErrorMsg('');
+      setLiveChatMessages((prev) => [
+        ...prev,
+        { role: 'user', text: livePrompt },
+        { role: 'assistant', text: 'Generating...', status: 'generating' },
+      ]);
+
+      let out = '';
+      if (liveModel === 'seedream-v4') {
+        const payload: any = {
+          prompt: livePrompt,
+          model: 'bytedance/seedream-4',
+          size: liveResolution,
+          aspect_ratio: liveFrameSize,
+          image_input: [img],
+          sequential_image_generation: 'disabled',
+          max_images: 1,
+          isPublic: true,
+        };
+        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        out = parseOutputUrl(res);
+      } else {
+        const payload: any = {
+          prompt: livePrompt,
+          model: liveModel,
+          n: 1,
+          uploadedImages: [img],
+          output_format: 'jpeg',
+          frameSize: liveFrameSize,
+          size: liveResolution,
+          generationType: 'live-chat',
+        };
+        const res = await axiosInstance.post('/api/fal/generate', payload);
+        out = parseOutputUrl(res);
+      }
+
+      if (out) {
+        setOutputs((prev) => ({ ...prev, ['live-chat']: out }));
+        setLiveHistory((prev) => [...prev, out]);
+        setActiveLiveIndex((prev) => prev + 1 >= 0 ? prev + 1 : 0);
+        // Preserve the original input used for this generation so it can be shown
+        // in the right-side thumbnail column below generated images.
+        if (!liveOriginalInput && inputs['live-chat']) {
+          setLiveOriginalInput(inputs['live-chat'] as string);
+        }
+        // Continue using the latest generated image as the working input
+        setInputs((prev) => ({ ...prev, ['live-chat']: out }));
+      }
+
+      setLiveChatMessages((prev) => {
+        const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
+          if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { role: 'assistant', text: 'Image generated', status: 'done' };
+          return copy;
+        }
+        return prev;
+      });
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.message || err?.message || 'Generation failed');
+      setLiveChatMessages((prev) => {
+        const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
+          if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { role: 'assistant', text: 'Generation failed', status: 'done' };
+          return copy;
+        }
+        return prev;
+      });
+    } finally {
+      setProcessing((p) => ({ ...p, ['live-chat']: false }));
+      setLivePrompt('');
+    }
+  };
   const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
   const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
   const selectedStyle = useAppSelector((state: any) => state.generation?.style || 'none');
@@ -329,6 +465,7 @@ const EditImageInterface: React.FC = () => {
             'erase': directUrl,
             'expand': directUrl,
             'reimagine': directUrl,
+            'live-chat': directUrl,
           });
         } else if (imageParam && imageParam.trim() !== '') {
           setInputs({
@@ -340,6 +477,7 @@ const EditImageInterface: React.FC = () => {
             'erase': imageParam,
             'expand': imageParam,
             'reimagine': imageParam,
+            'live-chat': imageParam,
           });
         }
       } else if (imageParam && imageParam.trim() !== '') {
@@ -353,6 +491,7 @@ const EditImageInterface: React.FC = () => {
           'erase': imageParam,
           'expand': imageParam,
           'reimagine': imageParam,
+          'live-chat': imageParam,
         });
       }
     } catch { }
@@ -718,6 +857,42 @@ const EditImageInterface: React.FC = () => {
     return () => window.removeEventListener('keydown', handleSpaceScrollBlock as any);
   }, []);
 
+  // Hide page scrollbar when there is no vertical overflow to avoid an
+  // empty scrollbar gutter showing on desktop. Restore on resize/unmount.
+  useEffect(() => {
+    const updateBodyOverflow = () => {
+      try {
+        const doc = document.documentElement;
+        // tolerate small overflows (<= 10px) caused by rounding/margins
+        const shouldHide = doc.scrollHeight <= window.innerHeight + 10;
+        const value = shouldHide ? 'hidden' : 'auto';
+        document.documentElement.style.overflowY = value;
+        document.body.style.overflowY = value;
+      } catch (e) {
+        // ignore in non-browser environments
+      }
+    };
+
+    updateBodyOverflow();
+    window.addEventListener('resize', updateBodyOverflow);
+
+    // Observe layout changes that might affect document height (optional)
+    let ro: ResizeObserver | null = null;
+    try {
+      ro = new ResizeObserver(updateBodyOverflow);
+      ro.observe(document.documentElement);
+    } catch (e) {
+      ro = null;
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateBodyOverflow);
+      try { if (ro) ro.disconnect(); } catch (e) {}
+      // restore defaults on unmount
+      try { document.documentElement.style.overflowY = ''; document.body.style.overflowY = ''; } catch (e) {}
+    };
+  }, []);
+
   // Allow page scroll so actions are reachable on small screens
   // (removed the global overflow lock)
 
@@ -769,6 +944,7 @@ const EditImageInterface: React.FC = () => {
     { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
     { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
     { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
+    { id: 'live-chat', label: 'Live Chat', description: 'Chat-driven edits & regenerations' },
   ] as const;
 
   // Feature preview assets and display labels
@@ -781,6 +957,7 @@ const EditImageInterface: React.FC = () => {
     'resize': '/editimage/resize_banner.jpg',
     'vectorize': '/editimage/vector_banner.jpg',
     'reimagine': '/editimage/replace_banner.jpg',
+    'live-chat': '/editimage/resize_banner.jpg',
   };
   const featureDisplayName: Record<EditFeature, string> = {
     'upscale': 'Upscale',
@@ -791,6 +968,7 @@ const EditImageInterface: React.FC = () => {
     'resize': 'Resize',
     'vectorize': 'Vectorize',
     'reimagine': 'Reimagine',
+    'live-chat': 'Live Chat',
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -809,6 +987,7 @@ const EditImageInterface: React.FC = () => {
           'erase': img,
           'expand': img,
           'reimagine': img,
+          'live-chat': img,
         });
       };
       reader.readAsDataURL(file);
@@ -2546,8 +2725,8 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null });
+    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null });
+    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
@@ -2776,6 +2955,7 @@ const EditImageInterface: React.FC = () => {
               'erase': first,
               'expand': first,
               'reimagine': first,
+              'live-chat': first,
             });
             // Clear all outputs when a new image is selected so the output area re-renders
             setOutputs({
@@ -2787,6 +2967,7 @@ const EditImageInterface: React.FC = () => {
               'erase': null,
               'expand': null,
               'reimagine': null,
+              'live-chat': null,
             });
             // Also reset zoom and pan state
             setScale(1);
@@ -2837,6 +3018,7 @@ const EditImageInterface: React.FC = () => {
                       {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="w-6 h-6" />)}
                       {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="w-7 h-7" />)}
                       {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="w-6 h-6" />)}
+                      {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="w-6 h-6" />)}
                     </div>
                     
                   </div>
@@ -2849,16 +3031,18 @@ const EditImageInterface: React.FC = () => {
             </div>
           </div>
 
-          {/* Feature Preview (GIF banner) */}
-          <div className="px-3 md:px-4 mb-2 pt-4 z-10">
-            <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
-              <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
-                {featureDisplayName[selectedFeature]}
+          {/* Feature Preview (GIF banner) - hidden for Live Chat */}
+          {selectedFeature !== 'live-chat' && (
+            <div className="px-3 md:px-4 mb-2 pt-4 z-10">
+              <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
+                <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
+                  {featureDisplayName[selectedFeature]}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Input Image section removed: unified canvas lives on the right */}
 
@@ -3091,7 +3275,131 @@ const EditImageInterface: React.FC = () => {
  
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
           <div className="flex-1 min-h-0 p-3 overflow-hidden md:p-4">
-            {selectedFeature !== 'vectorize' && (
+                    {selectedFeature === 'live-chat' && (
+                      <>
+                        <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Live Chat Controls</h3>
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            {/* Model dropdown */}
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
+                              <div className="relative edit-dropdown">
+                                <button
+                                  onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveModel' ? '' : 'liveModel')}
+                                  className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                                >
+                                  <span className="truncate">{liveAllowedModels.find(m => m.value === liveModel)?.label || 'Select model'}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveModel' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {liveActiveDropdown === 'liveModel' && (
+                                  <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                    {liveAllowedModels.map(opt => (
+                                      <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown('liveFrame'); }} className={`w-full px-3 py-2 text-left text-[13px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
+                                        <span className="truncate">{opt.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {/* Frame size */}
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Frame Size</label>
+                              <div className="relative edit-dropdown">
+                                <button
+                                  onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveFrame' ? '' : 'liveFrame')}
+                                  className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                                >
+                                  <span className="truncate">{liveFrameSizes.find(s => s.value === liveFrameSize)?.name || liveFrameSize}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveFrame' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {liveActiveDropdown === 'liveFrame' && (
+                                  <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                    {liveFrameSizes.map(opt => (
+                                      <button key={opt.value} onClick={() => { setLiveFrameSize(opt.value as any); setLiveActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${liveFrameSize === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
+                                        <span className="truncate">{opt.name}</span>
+                                        <span className="ml-2 text-white/50 text-[11px]">{opt.value}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Resolution shown for Pro & Seedream */}
+                          {(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4') && (
+                            <div>
+                              <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Resolution</label>
+                              <div className="relative edit-dropdown">
+                                <button
+                                  onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveResolution' ? '' : 'liveResolution')}
+                                  className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                                >
+                                  <span className="truncate">{liveResolution}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveResolution' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {liveActiveDropdown === 'liveResolution' && (
+                                  <div className={`absolute top-full z-30 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2`}>
+                                    {(['1K','2K','4K'] as const).map(r => (
+                                      <button key={r} onClick={() => { setLiveResolution(r); setLiveActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${liveResolution === r ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{r}</button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Chat UI */}
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Chat to Edit</label>
+                            <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 h-88 flex flex-col">
+                              <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 pr-1 pb-1 very-thin-scrollbar">
+                                {liveChatMessages.length === 0 && (
+                                  <div className="text-[12px] text-white/50">Start by uploading an image on the right, then tell me what to change.</div>
+                                )}
+                                {liveChatMessages.map((m, i) => (
+                                  <div
+                                    key={i}
+                                    ref={(el) => { if (i === liveChatMessages.length - 1) lastMsgRef.current = el; }}
+                                    className={`flex items-start gap-2 transition-transform duration-150 ${m.role === 'user' ? 'justify-end' : ''}`}
+                                  >
+                                    <div className={`px-2 py-1 rounded-lg text-xs ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/90'}`}>
+                                      {m.text}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="mt-2">
+                                <div className="relative">
+                                  <input
+                                    value={livePrompt}
+                                    onChange={(e)=>setLivePrompt(e.target.value)}
+                                    placeholder="Tell me your edit request"
+                                    className="w-full h-[36px] px-3 pr-10 bg-transparent border border-white/10 rounded-full text-white text-sm placeholder-white/50"
+                                    onKeyDown={(e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleLiveGenerate(); } }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleLiveGenerate}
+                                    disabled={processing['live-chat'] || !livePrompt.trim()}
+                                    aria-label="Generate"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                      <circle cx="12" cy="12" r="9" />
+                                      <path d="M10 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {selectedFeature !== 'vectorize' && selectedFeature !== 'live-chat' && (
               <>
             <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
 
@@ -3649,24 +3957,26 @@ const EditImageInterface: React.FC = () => {
                 </>
               )}
 
-            {/* Bottom action buttons under parameters */}
-            <div className="mt-3 pt-2 border-t border-white/10">
-              <div className="flex gap-2 2xl:gap-3">
-                <button
-                  onClick={handleReset}
-                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={handleRun}
-                  disabled={!inputs[selectedFeature] || processing[selectedFeature]}
-                  className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
-                >
-                  {processing[selectedFeature] ? 'Processing...' : 'Generate'}
-                </button>
+            {/* Bottom action buttons under parameters (hidden for Live Chat) */}
+            {selectedFeature !== 'live-chat' && (
+              <div className="mt-3 pt-2 border-t border-white/10">
+                <div className="flex gap-2 2xl:gap-3">
+                  <button
+                    onClick={handleReset}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={handleRun}
+                    disabled={!inputs[selectedFeature] || processing[selectedFeature]}
+                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
+                  >
+                    {processing[selectedFeature] ? 'Processing...' : 'Generate'}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
  
             {/* Footer removed; buttons are rendered at the end of Parameters above */}
@@ -3679,8 +3989,8 @@ const EditImageInterface: React.FC = () => {
 
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="p-4 flex items-start justify-center pt-3  ">
-            <div
-              className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] md:h-auto md:max-h-[50rem]   w-full max-w-6xl md:max-w-[100rem]"
+              <div
+              className={`bg-white/5 rounded-xl border border-white/10 relative overflow-hidden w-full max-w-6xl md:max-w-[100rem] ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
               onDragOver={(e) => { try { e.preventDefault(); } catch {} }}
               onDrop={(e) => {
                 try {
@@ -3700,6 +4010,7 @@ const EditImageInterface: React.FC = () => {
                      'erase': img,
                      'expand': img,
                      'reimagine': img,
+                     'live-chat': img,
                    });
                    // Clear all outputs when a new image is dropped so the output area re-renders
                    setOutputs({
@@ -3711,6 +4022,7 @@ const EditImageInterface: React.FC = () => {
                      'erase': null,
                      'expand': null,
                      'reimagine': null,
+                     'live-chat': null,
                    });
                    // Also reset zoom and pan state
                    setScale(1);
@@ -3823,7 +4135,7 @@ const EditImageInterface: React.FC = () => {
                 <div className="w-full h-full relative">
                   {(inputs[selectedFeature]) ? (
                     // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
-                    <div className="w-full h-full relative min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem] ">
+                        <div className={`w-full h-full relative ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
                       {inputs[selectedFeature] && selectedFeature !== 'resize' && (
                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
                         <div className="flex bg-black/80 rounded-lg p-1">
@@ -3903,7 +4215,7 @@ const EditImageInterface: React.FC = () => {
                        // Zoom mode (all features)
                         <div
                           ref={imageContainerRef}
-                          className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
+                          className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
                           onMouseDown={handleMouseDown}
                           onMouseMove={handleMouseMove}
                           onMouseUp={handleMouseUp}
@@ -3986,7 +4298,7 @@ const EditImageInterface: React.FC = () => {
                     // Regular image viewer with zoom controls
                     <div
                       ref={imageContainerRef}
-                      className="w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"
+                      className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
@@ -4066,7 +4378,7 @@ const EditImageInterface: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]">
+                <div className={`w-full h-full flex items-center justify-center ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
                   {inputs[selectedFeature] ? (
                     <div className="absolute inset-0">
                       <Image
@@ -4621,6 +4933,7 @@ const EditImageInterface: React.FC = () => {
                     )}
                 </div>
               )}
+              {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
               {/* Fill mask overlay moved to input area */}
               {processing[selectedFeature] && (
                 <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -4628,7 +4941,81 @@ const EditImageInterface: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Live Chat: Right-side thumbnail column (generated images then input) */}
+            {selectedFeature === 'live-chat' && (
+              <div className="px-4 mt-0">
+                <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 h-[24rem] md:h-[35rem] lg:h-[45rem] very-thin-scrollbar overflow-y-auto">
+                  <div className="flex flex-col items-end gap-3 pr-1">
+                    {/* Generated images (latest first) */}
+                    {(liveHistory || []).slice().reverse().map((url, revIdx) => {
+                      // revIdx 0 is latest; compute original index
+                      const origIdx = liveHistory.length - 1 - revIdx;
+                      const isActive = outputs['live-chat'] === url && activeLiveIndex === origIdx;
+                      return (
+                        <button
+                          key={`gen-${origIdx}-${url}`}
+                          onClick={() => {
+                            setActiveLiveIndex(origIdx);
+                            setOutputs((prev) => ({ ...prev, ['live-chat']: url }));
+                            setInputs((prev) => ({ ...prev, ['live-chat']: url }));
+                          }}
+                          className={`bg-white/5 rounded-xl border p-2 w-36 h-36 overflow-hidden ${isActive ? 'border-white' : 'border-white/20 hover:border-white/40'}`}
+                          title={`Generation ${origIdx + 1}`}
+                        >
+                          <img src={url} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                      );
+                    })}
+
+                    {/* Input image thumbnail shown below generated images if present and not duplicate */}
+                    {(liveOriginalInput || inputs['live-chat']) && (
+                      (() => {
+                        const inputUrl = (liveOriginalInput || inputs['live-chat']) as string;
+                        const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1] === inputUrl;
+                        if (alreadyShown) return null;
+                        const isActiveInput = outputs['live-chat'] === inputUrl && activeLiveIndex === -1;
+                        return (
+                          <button
+                            key={`input-thumb`}
+                            onClick={() => {
+                              setActiveLiveIndex(-1);
+                              setOutputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+                              setInputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+                            }}
+                            className={`bg-white/5 rounded-xl border p-2 w-36 h-36 overflow-hidden ${isActiveInput ? 'border-white' : 'border-white/20 hover:border-white/40'}`}
+                            title={`Input image`}
+                          >
+                            <img src={inputUrl} alt={`Input`} className="w-full h-full object-cover" />
+                          </button>
+                        );
+                      })()
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
+          <style jsx global>{`
+            .very-thin-scrollbar {
+              scrollbar-width: thin;
+              scrollbar-color: rgba(255,255,255,0.12) transparent;
+            }
+            .very-thin-scrollbar::-webkit-scrollbar {
+              width: 4px;
+              height: 4px;
+            }
+            .very-thin-scrollbar::-webkit-scrollbar-thumb {
+              background: rgba(255,255,255,0.12);
+              border-radius: 999px;
+              border: 1px solid rgba(255,255,255,0.02);
+            }
+            .very-thin-scrollbar::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            /* Note: global scrollbar hiding removed so browser shows scrollbar only when content overflows */
+          `}</style>
         </div>
       </div>
     </div>
