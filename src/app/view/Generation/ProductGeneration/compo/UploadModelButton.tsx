@@ -46,31 +46,36 @@ const UploadModelButton: React.FC<UploadModelButtonProps> = ({ onImageUpload, is
     setIsOpen(false);
   };
 
-  const handleFileUpload = (file: File) => {
-    // Check file size (2MB limit)
-    const maxSize = 20 * 1024 * 1024; // 2MB in bytes
-    if (file.size > maxSize) {
-      alert("Image too large. Maximum size is 2MB per image.");
-      // Clear the input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      return;
-    }
-    
+  const handleFileUpload = async (file: File) => {
     setUploadedName(file.name);
     setSelectedId(null);
     
-    // Convert file to base64
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (result) {
-        onImageUpload(result);
+    if (file.type.startsWith('image/')) {
+      try {
+        const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
+        const processed = await compressImageIfNeeded(file);
+        const asDataUrl = await blobToDataUrl(processed);
+        onImageUpload(asDataUrl);
+        setIsOpen(false);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        alert('Failed to process image');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
-    };
-    reader.readAsDataURL(file);
-    setIsOpen(false);
+    } else {
+      // Convert file to base64 for non-image files
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          onImageUpload(result);
+        }
+      };
+      reader.readAsDataURL(file);
+      setIsOpen(false);
+    }
   };
 
   const clearModel = () => {

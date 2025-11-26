@@ -1790,14 +1790,6 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     return;
                   }
                   
-                  // Validate file size (max 15MB)
-                  const maxSize = 15 * 1024 * 1024;
-                  if (file.size > maxSize) {
-                    dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
-                    e.target.value = '';
-                    return;
-                  }
-                  
                   setIsUploadingVoice(true);
                   setUploadedVoiceFile(file);
                   

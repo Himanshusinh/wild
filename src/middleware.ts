@@ -188,22 +188,29 @@ export function middleware(req: NextRequest) {
   if (isPublic) return res;
 
   // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
-  // Be tolerant for OAuth redirects: allow if Firebase id token present in Authorization header
+  // Check for session cookie or signature cookie
   const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
-  // Do not consider Authorization header for page protection; only cookie/hint
   // Also respect a short-lived client hint cookie set right before redirect from auth
   const hasHint = Boolean(req.cookies.get('auth_hint'));
   
+  // If no session or hint, redirect to signup with return path
   if (!hasSession && !hasHint) {
     const url = req.nextUrl.clone();
-    url.pathname = '/view/signup'; // Redirect to signup instead of landing page
-    url.searchParams.set('next', pathname);
+    url.pathname = '/view/signup';
+    // Preserve the original path for redirect after login
+    if (pathname !== '/view/signup' && pathname !== '/view/signin') {
+      url.searchParams.set('next', pathname);
+    }
     const redirect = NextResponse.redirect(url);
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
+    redirect.headers.set('X-Original-Path', pathname);
     return redirect;
   }
   
+  // Session exists - allow access
   res.headers.set('X-Auth-Decision', 'allow');
+  res.headers.set('X-Has-Session', hasSession ? 'true' : 'false');
+  res.headers.set('X-Has-Hint', hasHint ? 'true' : 'false');
   return res;
 }
 

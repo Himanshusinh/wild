@@ -79,6 +79,31 @@ export default function SignInForm() {
 
   // Username live availability (always declared to keep hook order stable)
   const availability = useUsernameAvailability(process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : '')
+  
+  // BUG FIX #19: Sync auth state across multiple tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' || e.key === 'authToken') {
+        // Auth state changed in another tab
+        if (e.newValue) {
+          // Another tab logged in - reload to sync state (only if not on signup page)
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/sign')) {
+            window.location.reload()
+          }
+        } else {
+          // Another tab logged out - clear local state
+          setError("")
+          setSuccess("")
+          setProcessing(false)
+          setAuthLoading(false)
+        }
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+  
   useEffect(() => {
     availability.setUsername(username)
   }, [username])
@@ -129,6 +154,13 @@ export default function SignInForm() {
   // Handle login form submission
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    
+    // BUG FIX #5: Prevent race condition - block if already processing
+    if (processing || authLoading) {
+      console.log("⚠️ Login already in progress, ignoring duplicate request")
+      return
+    }
+    
     console.log("🔐 Starting login process...")
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", password ? "***" : "empty")
@@ -193,7 +225,13 @@ export default function SignInForm() {
         
         console.log("🏠 Redirecting to:", finalRedirectUrl)
         console.log("🔗 Return URL was:", returnUrl)
-        window.location.href = finalRedirectUrl
+        
+        // BUG FIX #18: Prevent browser back button after login
+        // Replace current history entry to prevent back navigation
+        window.history.replaceState(null, '', finalRedirectUrl)
+        
+        // Use replace instead of href to prevent back button
+        window.location.replace(finalRedirectUrl)
 
       } else {
         console.error("❌ Login failed:", response.data?.message)
@@ -202,6 +240,21 @@ export default function SignInForm() {
 
     } catch (error: any) {
       console.error("❌ Login error:", error)
+
+      // BUG FIX #17: Handle network interruption gracefully
+      if (!navigator.onLine) {
+        setError("Network connection lost. Please check your internet connection and try again.")
+        setProcessing(false)
+        setAuthLoading(false)
+        return
+      }
+      
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        setError("Network error. Please check your connection and try again.")
+        setProcessing(false)
+        setAuthLoading(false)
+        return
+      }
 
       // Prefer detailed validation errors when present
       const validationList = error?.response?.data?.data
@@ -519,6 +572,12 @@ export default function SignInForm() {
       e.stopPropagation()
     }
 
+    // BUG FIX #5: Prevent race condition - block if already processing
+    if (processing || authLoading) {
+      console.log("⚠️ Login already in progress, ignoring duplicate request")
+      return
+    }
+
     console.log("🔵 Starting Google sign-in...")
     console.log("📋 Current form state - showLoginForm:", showLoginForm)
 
@@ -586,6 +645,20 @@ export default function SignInForm() {
             credentials: 'include',
             body: JSON.stringify({ idToken: finalIdToken })
           })
+          // BUG FIX #2: Clear all auth data before setting new to prevent cross-account confusion
+          try {
+            const { clearAuthData } = await import('@/lib/authUtils');
+            clearAuthData();
+          } catch (e) {
+            console.warn('Failed to clear auth data:', e);
+            // Fallback: manually clear critical items
+            try {
+              localStorage.removeItem('user');
+              localStorage.removeItem('authToken');
+              sessionStorage.removeItem('me_cache');
+            } catch {}
+          }
+
           try { if (resp?.ok) { localStorage.setItem('authToken', finalIdToken) } } catch {}
 
           console.log("✅ Session created, redirecting...")
@@ -602,8 +675,11 @@ export default function SignInForm() {
           console.log("🏠 Google login redirecting to:", finalRedirectUrl)
           console.log("🔗 Return URL was:", returnUrl)
 
+          // BUG FIX #18: Prevent browser back button after login
+          window.history.replaceState(null, '', finalRedirectUrl)
+          
           setTimeout(() => {
-            window.location.href = finalRedirectUrl
+            window.location.replace(finalRedirectUrl)
           }, 2000)
         }
       }
@@ -899,7 +975,9 @@ export default function SignInForm() {
         setTimeout(() => {
           setIsRedirecting(true)
           setShowRedeemCodeForm(false)
-          window.location.href = APP_ROUTES.HOME
+          // BUG FIX #18: Prevent browser back button
+          window.history.replaceState(null, '', APP_ROUTES.HOME)
+          window.location.replace(APP_ROUTES.HOME)
         }, 2000)
       } else {
         setError(response.data?.message || "Failed to apply redeem code")

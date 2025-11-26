@@ -91,33 +91,26 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
   }, [isMobileMenuOpen])
 
   const handleLogout = async () => {
-    try { await signOut(auth) } catch {}
     try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
-      try {
-        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`
-        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`
-        document.cookie = `app_session=; ${expired}; SameSite=Lax`
-        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`
-      } catch {}
-    } catch {}
-    localStorage.removeItem('otpUser')
-    localStorage.removeItem('username')
-    localStorage.removeItem('slug')
-    setUserEmail('')
-    setUsername('')
-    setIsLoggedIn(false)
-    setUserSlug('')
-    setIsUserDropdownOpen(false)
-    if (typeof window !== 'undefined') {
-      try {
-        history.pushState(null, document.title, location.href)
-        window.addEventListener('popstate', () => {
-          history.pushState(null, document.title, location.href)
-        })
-      } catch {}
-      window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
+      // Clear local state first
+      localStorage.removeItem('otpUser')
+      localStorage.removeItem('username')
+      localStorage.removeItem('slug')
+      setUserEmail('')
+      setUsername('')
+      setIsLoggedIn(false)
+      setUserSlug('')
+      setIsUserDropdownOpen(false)
+      
+      // Use centralized logout utility for consistent behavior
+      const { performLogout } = await import('@/lib/authUtils');
+      await performLogout();
+    } catch (error) {
+      console.error('[NAV_LAND] Logout error:', error);
+      // Fallback: force redirect even on error
+      if (typeof window !== 'undefined') {
+        window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED');
+      }
     }
   }
 

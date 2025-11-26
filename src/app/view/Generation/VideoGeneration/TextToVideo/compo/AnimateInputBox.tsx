@@ -2508,51 +2508,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               setIsUploadModalOpen(false);
             }}
             onAdd={handleCharacterImageUploadFromModal}
-            historyEntries={modalHistoryEntries}
             remainingSlots={1}
-            onLoadMore={async () => {
-              // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
-              // This ensures video history remains intact
-              const currentCursor = libraryImageNextCursorRef.current;
-              console.log('[AnimateInputBox] onLoadMore called:', { 
-                libraryImageLoading: libraryImageLoadingRef.current, 
-                libraryImageHasMore, 
-                isUploadModalOpen, 
-                uploadModalType,
-                entriesCount: libraryImageEntries.length,
-                nextCursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'null',
-                cursorType: typeof currentCursor
-              });
-              // Only check loading state using ref - fetchLibraryImages will handle hasMore check internally
-              // IMPORTANT: Also check that we have a cursor for pagination (unless it's the first load)
-              if (!libraryImageLoadingRef.current && isUploadModalOpen && uploadModalType === 'image' && libraryImageHasMore) {
-                // For pagination, we must have a cursor (initial load doesn't need one)
-                if (libraryImageEntries.length > 0 && !currentCursor) {
-                  console.warn('[AnimateInputBox] ⚠️ Pagination requested but no cursor available! Setting hasMore to false.');
-                  setLibraryImageHasMore(false);
-                  return;
-                }
-                try {
-                  console.log('[AnimateInputBox] ✅ Fetching more library images...', {
-                    hasCursor: !!currentCursor,
-                    cursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'none'
-                  });
-                  await fetchLibraryImages(false);
-                } catch (error) {
-                  console.error('[AnimateInputBox] Error in onLoadMore:', error);
-                }
-              } else {
-                console.log('[AnimateInputBox] onLoadMore blocked:', { 
-                  loading: libraryImageLoadingRef.current, 
-                  isUploadModalOpen, 
-                  uploadModalType,
-                  hasMore: libraryImageHasMore,
-                  hasCursor: !!currentCursor
-                });
-              }
-            }}
-            hasMore={isUploadModalOpen && uploadModalType === 'image' ? libraryImageHasMore : false}
-            loading={isUploadModalOpen && uploadModalType === 'image' ? libraryImageLoading : false}
+            mode="image"
           />
         );
       })()}
@@ -2602,29 +2559,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 ? handleCharacterVideoUploadFromModal
                 : handleVideoUploadFromModal
             }
-            historyEntries={modalHistoryEntries}
             remainingSlots={1}
-            onLoadMore={async () => {
-              // Always use fetchLibraryVideos for pagination - it uses local state and doesn't affect Redux
-              // This ensures video history remains intact
-              console.log('[AnimateInputBox] onLoadMore called for videos:', { 
-                libraryVideoLoading, 
-                libraryVideoHasMore, 
-                isUploadModalOpen, 
-                uploadModalType,
-                entriesCount: libraryVideoEntries.length,
-                nextCursor: libraryVideoNextCursorRef.current ? 'present' : 'null'
-              });
-              // Only check loading state - fetchLibraryVideos will handle hasMore check internally
-              if (!libraryVideoLoading && isUploadModalOpen && uploadModalType === 'video') {
-                console.log('[AnimateInputBox] Fetching more library videos...');
-                await fetchLibraryVideos(false);
-              } else {
-                console.log('[AnimateInputBox] onLoadMore blocked for videos:', { libraryVideoLoading, isUploadModalOpen, uploadModalType });
-              }
-            }}
-            hasMore={isUploadModalOpen && uploadModalType === 'video' ? libraryVideoHasMore : false}
-            loading={isUploadModalOpen && uploadModalType === 'video' ? libraryVideoLoading : false}
+            mode="video"
           />
         );
       })()}
