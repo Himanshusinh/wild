@@ -173,13 +173,7 @@ export default function SignUp() {
       {/* Right Side - Image - Hidden on mobile and tablet, only show on desktop (lg and above) */}
       <div className="hidden  lg:flex flex-1 min-h-screen relative bg-transparent w-[50%] z-10">
         <div className="absolute  inset-0 overflow-hidden m-2 rounded-lg ">
-          {isLoadingImage ? (
-            <div className="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-black flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-gray-400 text-sm">Loading featured creation...</p>
-              </div>
-            </div>
-          ) : image ? (
+          {image ? (
             <div className="relative w-full h-full">
               <Image
                 src={imageSrc}
@@ -196,11 +190,11 @@ export default function SignUp() {
               />
             </div>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-              <div className="text-center text-white">
+            <div className="w-full h-full flex items-center justify-center">
+              {/* <div className="text-center text-white">
                 <h2 className="text-2xl font-bold mb-2">Welcome to WildMind AI</h2>
                 <p className="text-lg opacity-80">Create amazing content with AI</p>
-              </div>
+              </div> */}
             </div>
           )}
           

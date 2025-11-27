@@ -64,7 +64,9 @@ export default function SignInForm() {
   const [processing, setProcessing] = useState(false)
   const [username, setUsername] = useState("")
   const [showUsernameForm, setShowUsernameForm] = useState(false)
-  const [termsAccepted, setTermsAccepted] = useState(false)
+  // Live validation states
+  const [passwordError, setPasswordError] = useState("")
+  const [emailError, setEmailError] = useState("")
   const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -86,6 +88,45 @@ export default function SignInForm() {
 
   // Check for capital letters in username
   const hasCapitalLetters = /[A-Z]/.test(username)
+
+  // Email validation function
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
+
+  // Live validation: Check passwords match and email is valid
+  useEffect(() => {
+    // Validate passwords match - only show error if both fields have values
+    if (confirmPassword.length > 0 && password.length > 0) {
+      if (password !== confirmPassword) {
+        setPasswordError("Passwords don't match")
+      } else {
+        setPasswordError("")
+      }
+    } else {
+      setPasswordError("")
+    }
+
+    // Validate email - only show error if email field has value
+    if (email.length > 0) {
+      if (!isValidEmail(email)) {
+        setEmailError("Invalid email address")
+      } else {
+        setEmailError("")
+      }
+    } else {
+      setEmailError("")
+    }
+  }, [password, confirmPassword, email])
+
+  // Check if form is valid (passwords match, email valid, password length >= 6)
+  const isFormValid = 
+    password.length >= 6 &&
+    password === confirmPassword &&
+    isValidEmail(email) &&
+    email.length > 0 &&
+    confirmPassword.length > 0
 
   // Test cookie setting function
   const testCookieSetting = () => {
@@ -265,15 +306,7 @@ export default function SignInForm() {
     console.log("🚀 Starting OTP send process...")
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", !!password)
-    console.log("✅ Terms accepted:", termsAccepted)
 
-    if (!termsAccepted) {
-      console.log("❌ Terms not accepted")
-      const errorMsg = "Please accept the terms & policy to continue"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
-      return
-    }
     if (password !== confirmPassword) {
       console.log("❌ Password mismatch")
       const errorMsg = "Password doesn't match"
@@ -869,7 +902,8 @@ export default function SignInForm() {
             setUsername("")
             setShowUsernameForm(false)
             setOtpSent(false)
-            setTermsAccepted(false)
+            setPasswordError("")
+            setEmailError("")
             setError("")
 
             // Show redeem code form
@@ -1019,15 +1053,22 @@ export default function SignInForm() {
             <div className="text-center space-y-4 mb-8">
               {/* Logo - Just above Welcome text */}
               <div className="flex justify-center mb-2">
-                <Image
-                  src="/core/logosquare.png"
-                  alt="WildMind Logo"
-                  width={48}
-                  height={48}
-                  className="w-12 h-12 object-contain"
-                  unoptimized
-                  priority
-                />
+                <div className="w-12 h-12 flex items-center justify-center">
+                  <img
+                    src="/core/logosquare.png"
+                    alt="WildMind Logo"
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Silently handle error - don't log to console
+                      const target = e.target as HTMLImageElement;
+                      if (target) {
+                        target.style.display = 'none';
+                      }
+                    }}
+                  />
+                </div>
               </div>
               <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
               <p className="text-gray-400 text-base">Log in or sign up.</p>
@@ -1040,15 +1081,21 @@ export default function SignInForm() {
               <div className="text-center space-y-4 mb-8">
                 {/* Logo - Just above Username text */}
                 <div className="flex justify-center mb-2">
-                  <Image
-                    src="/core/logosquare.png"
-                    alt="WildMind Logo"
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 object-contain"
-                    unoptimized
-                    priority
-                  />
+                  <div className="w-12 h-12 flex items-center justify-center">
+                    <img
+                      src="/core/logosquare.png"
+                      alt="WildMind Logo"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">Verification Successful!</h1>
                 <p className="text-gray-400 text-base">Last step, Make a Unique Username</p>
@@ -1346,19 +1393,6 @@ export default function SignInForm() {
                 </button>
               </div>
 
-              {/* Remember Me Checkbox (Dark) */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-700 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="remember" className="ml-2 text-sm text-gray-400">
-                  Remember for 30 days
-                </label>
-              </div>
 
               {/* Continue with Email Button (Krea Style - Dark) */}
               <button
@@ -1511,21 +1545,28 @@ export default function SignInForm() {
               {/* Email Form (Krea Style - Dark) */}
               <form onSubmit={handleSendOtp} className="space-y-4">
                 {/* Email Input with Icon */}
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
+                <div>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value.trim())}
+                      autoComplete="email"
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-800 border ${
+                        emailError ? 'border-red-500' : 'border-gray-700'
+                      } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
+                      required
+                    />
                   </div>
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value.trim())}
-                    autoComplete="email"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                    required
-                  />
+                  {emailError && (
+                    <p className="mt-1.5 text-xs text-red-400">{emailError}</p>
+                  )}
                 </div>
 
                 {/* Password Fields with Icons and Eye Toggle */}
@@ -1563,57 +1604,55 @@ export default function SignInForm() {
                     </button>
                   </div>
                   
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
+                  <div>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Confirm Password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        className={`w-full pl-10 pr-12 py-3 bg-gray-800 border ${
+                          passwordError ? 'border-red-500' : 'border-gray-700'
+                        } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
+                      >
+                        {showPassword ? (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                    >
-                      {showPassword ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
+                    {passwordError && (
+                      <p className="mt-1.5 text-xs text-red-400">{passwordError}</p>
+                    )}
                   </div>
                 </div>
 
-                {/* Terms Checkbox (Dark) */}
-                {/* <div className="flex items-start space-x-2">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-blue-600 bg-gray-800 border-gray-700 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="terms" className="text-xs text-gray-400 leading-relaxed">
-                    By signing up, you agree to our{" "}
-                    <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
-                    <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
-                  </label>
-                </div> */}
+                {/* Terms Text (Dark) - Checkbox removed, text only */}
+                <div className="text-xs text-center text-gray-400 leading-relaxed">
+                  By signing up, you agree to our{" "}
+                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
+                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
+                </div>
 
-                {/* Error Message (Dark) */}
+                {/* Error Message (Dark) - Only show server/API errors */}
                 {error && (
                   <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
                     <p className="text-red-300 text-sm leading-relaxed">{error}</p>
@@ -1623,9 +1662,9 @@ export default function SignInForm() {
                 {/* Continue with Email Button (Krea Style - Dark) */}
                 <button
                   type="submit"
-                  disabled={processing || !termsAccepted}
+                  disabled={processing || !isFormValid}
                   className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                    processing || !termsAccepted
+                    processing || !isFormValid
                       ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
@@ -1658,7 +1697,7 @@ export default function SignInForm() {
       </div>
 
       {/* Footer - Terms & Privacy (Krea Style - Dark) - Only show when not on OTP screen, username screen, or login screen */}
-      {!otpSent && !showUsernameForm && !showLoginForm && (
+      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
         <div className="absolute bottom-6 left-0 right-0 text-center px-6">
           <p className="text-xs text-gray-500">
             By signing up, you agree to our{" "}
@@ -1666,7 +1705,7 @@ export default function SignInForm() {
             <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
           </p>
         </div>
-      )}
+      )} */}
 
       {/* Debug: Test Cookie Button - Always visible for debugging */}
       {/* <div className="text-center mb-4">
