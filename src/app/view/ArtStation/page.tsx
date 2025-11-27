@@ -1,7 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
-import Image from 'next/image'
 import { OptimizedImage } from '@/components/media/OptimizedImage'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
@@ -733,21 +732,23 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       )
     }
 
-    // Use key to force re-render when URL changes
+    // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
     return (
-      <Image
+      <img
         key={`${currentUrl}-${currentUrlIndex}`}
         src={currentUrl}
         alt={alt}
-        fill={fill}
-        sizes={sizes}
-        placeholder="blur"
-        blurDataURL={blurDataURL}
-        className={className}
-        priority={priority}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
         fetchPriority={fetchPriority}
+        className={className}
+        style={fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : {}}
         onError={handleError}
-        onLoadingComplete={onLoadingComplete}
+        onLoad={(e) => {
+          try {
+            onLoadingComplete?.(e.currentTarget as HTMLImageElement);
+          } catch {}
+        }}
       />
     );
   }
@@ -1139,15 +1140,13 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
                         ) : kind === 'audio' ? (
                           <>
                             {/* Use a simple music logo image to avoid prompt alt text showing */}
-                            <Image
+                            <img
                               src="/icons/musicgenerationwhite.svg"
                               alt=""
-                              fill
-                              sizes={sizes}
-                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                              priority={isPriority}
+                              loading={isPriority ? 'eager' : 'lazy'}
                               fetchPriority={isPriority ? 'high' : 'auto'}
-                              onLoadingComplete={() => { markTileLoaded(cardId) }}
+                              className="absolute inset-0 w-full h-full object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                              onLoad={() => { markTileLoaded(cardId) }}
                             />
                           </>
                         ) : (

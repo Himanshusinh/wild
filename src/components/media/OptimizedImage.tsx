@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 
 export interface OptimizedImageProps {
   /**
@@ -169,7 +168,7 @@ export function OptimizedImage({
     }
   };
 
-  // Use Next.js Image component for optimization
+  // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
   if (width && height) {
     return (
       <div
@@ -185,19 +184,16 @@ export function OptimizedImage({
             : undefined
         }
       >
-        <Image
+        <img
           src={imageUrl}
           alt={alt}
           width={width}
           height={height}
-          quality={getQuality()}
-          priority={priority}
-          loading={priority ? undefined : loading}
-          // Use an empty placeholder — we show blur via wrapper background
-          placeholder="empty"
+          loading={priority ? 'eager' : loading}
+          decoding="async"
           className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           style={{ objectFit }}
-          onLoadingComplete={() => setLoaded(true)}
+          onLoad={() => setLoaded(true)}
           onError={() => {
             console.warn('[OptimizedImage] Failed to load:', imageUrl);
             setError(true);
