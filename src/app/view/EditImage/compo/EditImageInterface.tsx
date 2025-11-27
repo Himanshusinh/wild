@@ -2728,41 +2728,13 @@ const EditImageInterface: React.FC = () => {
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
       <UploadModal
-        key={`upload-modal-${historyEntries.length}-${isUploadOpen}`}
+        key={`upload-modal-${isUploadOpen}`}
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        historyEntries={historyEntries as any}
         remainingSlots={1}
-        hasMore={historyHasMore}
-        loading={historyLoading}
         onTabChange={useCallback((tab: 'library' | 'computer' | 'uploads') => {
-          // Always make fresh API call when switching to library or uploads tab
-          if (tab === 'library' || tab === 'uploads') {
-            if (lastTabChangeRef.current === tab) return; // Prevent duplicate calls
-            
-            lastTabChangeRef.current = tab;
-            // Make fresh API call
-            refreshHistoryImmediate(30, true);
-            
-            // Reset after delay to allow future tab changes
-            setTimeout(() => {
-              lastTabChangeRef.current = null;
-            }, 500);
-          }
-        }, [refreshHistoryImmediate])}
-        onLoadMore={async () => {
-          try {
-            if (!historyHasMore || historyLoading) return;
-            
-            // Always make fresh API call - no cache
-            await (dispatch as any)(loadMoreHistory({
-              filters: { generationType: 'text-to-image' },
-              paginationParams: { limit: 20 }
-            })).unwrap();
-          } catch (err: any) {
-            console.error('[EditImage] Error loading more history:', err);
-          }
-        }}
+          // Tab change handled internally by UploadModal
+        }, [])}
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {

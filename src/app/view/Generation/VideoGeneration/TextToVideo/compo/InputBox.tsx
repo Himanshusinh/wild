@@ -5772,50 +5772,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={handleImageUploadFromModal}
-            historyEntries={modalHistoryEntries}
             remainingSlots={uploadModalType === 'image' ?
               // For WAN 2.2 Animate Replace character image, only 1 slot
               ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
               (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
               (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
             }
-            onLoadMore={async () => {
-              // Always use fetchLibraryImages for pagination - it uses local state and doesn't affect Redux
-              // This ensures video history remains intact
-              const currentCursor = libraryImageNextCursorRef.current;
-              console.log('[VideoPage] onLoadMore called:', { 
-                libraryImageLoading: libraryImageLoadingRef.current, 
-                libraryImageHasMore, 
-                isUploadModalOpen, 
-                entriesCount: libraryImageEntries.length,
-                nextCursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'null',
-                cursorType: typeof currentCursor
-              });
-              // Only check loading state using ref - fetchLibraryImages will handle hasMore check internally
-              // IMPORTANT: Also check that we have a cursor for pagination (unless it's the first load)
-              if (!libraryImageLoadingRef.current && isUploadModalOpen && libraryImageHasMore) {
-                // For pagination, we must have a cursor (initial load doesn't need one)
-                if (libraryImageEntries.length > 0 && !currentCursor) {
-                  console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available! Setting hasMore to false.');
-                  setLibraryImageHasMore(false);
-                  return;
-                }
-                console.log('[VideoPage] ✅ Fetching more library images...', {
-                  hasCursor: !!currentCursor,
-                  cursor: currentCursor ? `${String(currentCursor).substring(0, 20)}...` : 'none'
-                });
-                await fetchLibraryImages(false);
-              } else {
-                console.log('[VideoPage] onLoadMore blocked:', { 
-                  loading: libraryImageLoadingRef.current, 
-                  isUploadModalOpen, 
-                  hasMore: libraryImageHasMore,
-                  hasCursor: !!currentCursor
-                });
-              }
-            }}
-            hasMore={isUploadModalOpen ? libraryImageHasMore : false}
-            loading={isUploadModalOpen ? libraryImageLoading : false}
           />
         );
       })()}
