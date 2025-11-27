@@ -92,6 +92,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(cleanUrl, { status: 308 });
   }
 
+  // Skip middleware for static files in /public (images, fonts, etc.)
+  // This prevents Next.js from treating static files as routes
+  if (
+    pathname.startsWith('/core/') ||
+    pathname.startsWith('/styles/') ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i)
+  ) {
+    return NextResponse.next();
+  }
+
   // Base response with security headers
   const res = NextResponse.next();
   // Force correct MIME types for SEO files

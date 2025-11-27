@@ -97,10 +97,11 @@ const HomePage: React.FC = () => {
     try {
       const msg = localStorage.getItem('toastMessage');
       if (msg === 'LOGIN_SUCCESS') {
+        // Clear the flag immediately to prevent duplicate toasts
+        localStorage.removeItem('toastMessage');
         const t = setTimeout(() => {
-          try { toast.success('Logged in successfully') } catch {}
-          try { localStorage.removeItem('toastMessage') } catch {}
-        }, 2000);
+          try { toast.success('Welcome back! You\'re logged in successfully.', { duration: 3000 }) } catch {}
+        }, 500);
         return () => clearTimeout(t);
       }
     } catch {}

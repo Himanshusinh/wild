@@ -461,9 +461,9 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
       const dx = e.deltaX || 0;
       const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (sameDateGallery.length > 1) {
-        if (delta > 20) {
+      if (delta > 20) {
           goNext(e);
-        } else if (delta < -20) {
+      } else if (delta < -20) {
           goPrev(e);
         }
       } else if (showGenerationNav) {
@@ -1759,10 +1759,10 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
           {/* Image Navigation Buttons (Left side, or left if no generation nav) - Only show if not at first image */}
           {(sameDateGallery.length > 1) && !isFirstImage && (
             <button
-              aria-label="Previous image"
-              onClick={(e) => { e.stopPropagation(); goPrev(e); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              type="button"
+            aria-label="Previous image"
+            onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
               className={`absolute ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} top-1/2 -translate-y-1/2 z-[90] w-16 h-16 bg-black/80 hover:bg-black/95 text-white flex items-center justify-center ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 pointer-events-auto transition-all`}
               title="Previous image (←)"
             >
@@ -1780,7 +1780,7 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
               aria-label="Next generation"
               className="absolute right-0 top-1/2 -translate-y-1/2 z-[90] w-16 h-16 rounded-l-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center border-l border-y border-white/30 hover:border-white/50 pointer-events-auto transition-all"
               title="Next generation (Shift + →)"
-            >
+          >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M13 18l6-6-6-6" />
                 <path d="M6 18l6-6-6-6" />
@@ -1790,13 +1790,13 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
           {/* Image Navigation Buttons (Right side, or right if no generation nav) - Only show if not at last image */}
           {(sameDateGallery.length > 1) && !isLastImage && (
             <button
-              aria-label="Next image"
-              onClick={(e) => { e.stopPropagation(); goNext(e); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              type="button"
+            aria-label="Next image"
+            onClick={(e) => { e.stopPropagation(); goNext(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
               className={`absolute ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'right-16 rounded-none' : 'right-0 rounded-l-full'} top-1/2 -translate-y-1/2 z-[90] w-16 h-16 bg-black/80 hover:bg-black/95 text-white flex items-center justify-center ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'border-y border-l' : 'border-l border-y'} border-white/30 hover:border-white/50 pointer-events-auto transition-all`}
               title="Next image (→)"
-            >
+          >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 18l6-6-6-6" />
               </svg>
