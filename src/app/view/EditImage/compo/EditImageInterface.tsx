@@ -3275,7 +3275,7 @@ const EditImageInterface: React.FC = () => {
                                 {liveActiveDropdown === 'liveModel' && (
                                   <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                     {liveAllowedModels.map(opt => (
-                                      <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown('liveFrame'); }} className={`w-full px-3 py-2 text-left text-[13px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
+                                      <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
                                         <span className="truncate">{opt.label}</span>
                                       </button>
                                     ))}
@@ -3334,7 +3334,7 @@ const EditImageInterface: React.FC = () => {
                           {/* Chat UI */}
                           <div className="mt-3">
                             <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Chat to Edit</label>
-                            <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2  flex flex-col ">
+                            <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4') ? 'h-[23rem]' : 'h-[27rem]'}`}>
                               <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 pr-1 pb-1 very-thin-scrollbar">
                                 {liveChatMessages.length === 0 && (
                                   <div className="text-[12px] text-white/50">Start by uploading an image on the right, then tell me what to change.</div>

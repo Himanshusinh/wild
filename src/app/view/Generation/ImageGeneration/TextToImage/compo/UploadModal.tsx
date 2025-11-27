@@ -501,6 +501,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                             hasMore: libraryHasMore,
                             currentItems: libraryItems.length 
                           });
+                          // Set loading state BEFORE async operation
                           setLibraryLoading(true);
                           const result = await getLibraryPage(50, libraryNextCursor, 'image');
                           console.log('[UploadModal] Loaded more library items:', {
@@ -516,13 +517,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                           });
                           setLibraryNextCursor(result.nextCursor);
                           setLibraryHasMore(result.hasMore);
-                          setLibraryLoading(false);
                         } else if (tab === 'uploads') {
                           console.log('[UploadModal] Loading more upload items:', { 
                             nextCursor: uploadNextCursor, 
                             hasMore: uploadHasMore,
                             currentItems: uploadItems.length 
                           });
+                          // Set loading state BEFORE async operation
                           setUploadLoading(true);
                           const result = await getUploadsPage(50, uploadNextCursor, 'image');
                           console.log('[UploadModal] Loaded more upload items:', {
@@ -538,10 +539,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                           });
                           setUploadNextCursor(result.nextCursor);
                           setUploadHasMore(result.hasMore);
-                          setUploadLoading(false);
                         }
                         
                         // After new items are loaded, maintain scroll position
+                        // Keep loading state true until DOM updates complete
                         requestAnimationFrame(() => {
                           requestAnimationFrame(() => {
                             if (el) {
@@ -552,6 +553,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                               if (heightDiff > 0) {
                                 el.scrollTop = scrollTopBefore;
                               }
+                            }
+                            // Set loading to false AFTER scroll position is maintained
+                            if (tab === 'library') {
+                              setLibraryLoading(false);
+                            } else if (tab === 'uploads') {
+                              setUploadLoading(false);
                             }
                             isLoadingMoreRef.current = false;
                           });
