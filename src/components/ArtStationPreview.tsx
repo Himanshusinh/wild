@@ -1,6 +1,5 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react'
-import Image from 'next/image'
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
@@ -302,17 +301,18 @@ export default function ArtStationPreview({
               const audios = (preview.item as any).audios || []
               if (preview.kind === 'image') {
                 const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                const best = (img as any).avifUrl || img.url
+                // Use direct Zata URL (avifUrl or url) - bypass Next.js Image optimization
+                const best = (img as any).avifUrl || (img as any).optimized?.avifUrl || img.url
                 const src = toDirectUrl(best) || best
                 return (
                   <div className="relative w-full h-full">
-                    <Image
+                    <img
                       src={src}
                       alt={preview.item.prompt || ''}
-                      fill
-                      className="object-contain"
-                      priority
+                      loading="eager"
+                      decoding="async"
                       fetchPriority="high"
+                      className="absolute inset-0 w-full h-full object-contain"
                       onLoad={(e) => {
                         const el = e.currentTarget
                         if (el.naturalWidth && el.naturalHeight) {
