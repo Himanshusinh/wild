@@ -2773,10 +2773,7 @@ const EditImageInterface: React.FC = () => {
         key={`upload-modal-${historyEntries.length}-${isUploadOpen}`}
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        historyEntries={historyEntries as any}
         remainingSlots={1}
-        hasMore={historyHasMore}
-        loading={historyLoading}
         onTabChange={useCallback((tab: 'library' | 'computer' | 'uploads') => {
           // Always make fresh API call when switching to library or uploads tab
           if (tab === 'library' || tab === 'uploads') {
@@ -2792,19 +2789,6 @@ const EditImageInterface: React.FC = () => {
             }, 500);
           }
         }, [refreshHistoryImmediate])}
-        onLoadMore={async () => {
-          try {
-            if (!historyHasMore || historyLoading) return;
-            
-            // Always make fresh API call - no cache
-            await (dispatch as any)(loadMoreHistory({
-              filters: { generationType: 'text-to-image' },
-              paginationParams: { limit: 20 }
-            })).unwrap();
-          } catch (err: any) {
-            console.error('[EditImage] Error loading more history:', err);
-          }
-        }}
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {
