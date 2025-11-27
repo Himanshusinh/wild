@@ -9,6 +9,7 @@ import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['wav', 'mp3'];
 const ALLOWED_TYPES = [
   'audio/wav',
@@ -115,6 +116,11 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
     }
     if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(`.${ext}`))) {
       setErrorMessage('Please upload a WAV or MP3 file.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setErrorMessage('Audio file too large. Maximum size is 15MB.');
       e.target.value = '';
       return;
     }

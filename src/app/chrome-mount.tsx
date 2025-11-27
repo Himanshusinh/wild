@@ -14,8 +14,6 @@ import SidePannelFeatures from './view/Generation/Core/SidePannelFeatures';
 export default function ChromeMount() {
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
-  const authUser = useAppSelector((state: any) => state?.auth?.user);
-  const authLoading = useAppSelector((state: any) => state?.auth?.loading);
 
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
@@ -89,12 +87,6 @@ export default function ChromeMount() {
   const shouldHide = isLandingRoute || 
                      isSignupRoute || 
                      (isRoot && currentView === 'landing');
-
-  // Hide chrome if auth not ready (prevents navbar/sidepanel during login flow)
-  const isAuthenticated = !!authUser;
-  if (!isAuthenticated || authLoading) {
-    return null;
-  }
 
   // If explicitly should hide, return null
   if (shouldHide) return null;

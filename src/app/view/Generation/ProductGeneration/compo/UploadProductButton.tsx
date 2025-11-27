@@ -22,33 +22,29 @@ const UploadProductButton: React.FC<UploadProductButtonProps> = ({ onImageUpload
     inputRef.current?.click();
   };
 
-  const handleChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (2MB limit)
+      const maxSize = 20 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        alert("Image too large. Maximum size is 2MB per image.");
+        // Clear the input
+        event.target.value = "";
+        return;
+      }
+      
       setSelectedFileName(file.name);
       
-      if (file.type.startsWith('image/')) {
-        try {
-          const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
-          const processed = await compressImageIfNeeded(file);
-          const asDataUrl = await blobToDataUrl(processed);
-          onImageUpload(asDataUrl);
-        } catch (error) {
-          console.error('Error processing image:', error);
-          alert('Failed to process image');
-          event.target.value = "";
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          onImageUpload(result);
         }
-      } else {
-        // Convert file to base64 for non-image files
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          if (result) {
-            onImageUpload(result);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
+      };
+      reader.readAsDataURL(file);
     }
   };
 

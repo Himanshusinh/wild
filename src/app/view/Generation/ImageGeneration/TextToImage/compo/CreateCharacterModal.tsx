@@ -4,8 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Character } from "./CharacterModal";
 import UploadModal from "./UploadModal";
-import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { loadHistory, loadMoreHistory } from "@/store/slices/historySlice";
 
 type CreateCharacterModalProps = {
   isOpen: boolean;
@@ -26,7 +24,6 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
   initialRightImage,
   embedded = false,
 }) => {
-  const dispatch = useAppDispatch();
   const [name, setName] = useState("");
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [leftImage, setLeftImage] = useState<string | null>(null);
@@ -37,15 +34,6 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
   // Upload modal states
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<'front' | 'left' | 'right'>('front');
-  
-  // History entries for UploadModal
-  const historyEntries = useAppSelector((state: any) => {
-    const allEntries = state.history?.entries || [];
-    // Filter to show only text-to-image generations for the upload modal
-    return allEntries.filter((entry: any) => entry.generationType === 'text-to-image' && entry.status === 'completed' && entry.images && entry.images.length > 0);
-  });
-  const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
-  const loading = useAppSelector((state: any) => state.history?.loading || false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -59,15 +47,6 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
     }
   }, [isOpen]);
 
-  // Load history entries when modal opens
-  useEffect(() => {
-    if (isOpen && uploadModalOpen) {
-      dispatch(loadHistory({
-        filters: { generationType: 'text-to-image' },
-        paginationParams: { limit: 20 }
-      }) as any);
-    }
-  }, [isOpen, uploadModalOpen, dispatch]);
 
   // Prefill when initial images provided
   useEffect(() => {
@@ -349,7 +328,6 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           isOpen={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
           remainingSlots={1}
-          mode="image"
           onAdd={handleUploadModalAdd}
         />
       </>
@@ -369,7 +347,6 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         remainingSlots={1}
-        mode="image"
         onAdd={handleUploadModalAdd}
       />
     </>

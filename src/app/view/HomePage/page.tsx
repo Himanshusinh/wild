@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { ProtectedRoute } from '@/components/ProtectedRoute'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Image from 'next/image'
@@ -90,6 +90,20 @@ const HomePage: React.FC = () => {
     };
 
     checkFirstTimeUser();
+  }, []);
+
+  // Show deferred toast from login (set in signup/signin flow)
+  useEffect(() => {
+    try {
+      const msg = localStorage.getItem('toastMessage');
+      if (msg === 'LOGIN_SUCCESS') {
+        const t = setTimeout(() => {
+          try { toast.success('Logged in successfully') } catch {}
+          try { localStorage.removeItem('toastMessage') } catch {}
+        }, 2000);
+        return () => clearTimeout(t);
+      }
+    } catch {}
   }, []);
 
   const CARDS: WorkflowCard[] = [
@@ -306,8 +320,7 @@ const HomePage: React.FC = () => {
   }, [baseUrl, dims, getCategory])
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-[#07070B]">
+    <div className="min-h-screen bg-[#07070B]">
       {/* DEBUG: This is HomePage component */}
       {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
         🔍 DEBUG: HomePage Component is Rendering
@@ -481,8 +494,7 @@ const HomePage: React.FC = () => {
         isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
       />
-      </div>
-    </ProtectedRoute>
+    </div>
   )
 }
 

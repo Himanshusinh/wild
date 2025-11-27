@@ -1,101 +1,54 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { getApiClient } from '@/lib/axiosInstance';
-import { clearAuthData, clearSessionCookies, clearReduxAuthState } from '@/lib/authUtils';
-import { useAppDispatch } from '@/store/hooks';
-import { setUser } from '@/store/slices/authSlice';
+import React from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAppSelector } from '@/store/hooks';
+import { hasSessionCookie } from '@/lib/authUtils';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  /**
+     * Optional fallback while we confirm auth state.
+     */
+  fallback?: React.ReactNode;
 }
 
 /**
- * Client-side route guard that validates authentication before rendering protected content.
- * This prevents users from bypassing middleware by directly typing URLs.
- * 
- * Behavior:
- * - Checks authentication status on mount
- * - Redirects to signup if not authenticated
- * - Clears invalid sessions on 401 errors
- * - Shows loading state during auth check
+ * Client-side route guard for pages that require authentication.
+ * Falls back to the signup page when no session cookie or user is present.
  */
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, fallback = null }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const dispatch = useAppDispatch();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const user = useAppSelector((state: any) => state.auth?.user);
+  const [checking, setChecking] = React.useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const checkAuthentication = async () => {
+  React.useEffect(() => {
+    let mounted = true;
+    const verify = async () => {
       try {
-        const api = getApiClient();
-        const response = await api.get('/api/auth/me', {
-          params: { _t: Date.now() },
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          },
-        });
-
-        if (response.data?.responseStatus === 'success' && response.data?.data) {
-          const userData = response.data?.data?.user || response.data?.data;
-          dispatch(setUser(userData));
-          if (isMounted) {
-            setIsAuthenticated(true);
-            setIsChecking(false);
-          }
-          return;
+        const hasSession = hasSessionCookie();
+        if (!mounted) return;
+        if (!user && !hasSession) {
+          const nextParam = pathname && pathname !== '/' ? `?next=${encodeURIComponent(pathname)}` : '';
+          router.replace(`/view/signup${nextParam}`);
+        } else {
+          setChecking(false);
         }
-
-        throw new Error('Invalid auth response');
-      } catch (error: any) {
-        if (isMounted) {
-          const status = error?.response?.status;
-          if (status === 401 || status === 403) {
-            clearAuthData();
-            clearSessionCookies();
-            clearReduxAuthState();
-            dispatch(setUser(null));
-          }
-
-          setIsChecking(false);
-          setIsAuthenticated(false);
-          const signupUrl = `/view/signup?next=${encodeURIComponent(pathname)}`;
-          router.replace(signupUrl);
-        }
+      } catch {
+        if (mounted) setChecking(false);
       }
     };
+    verify();
+    return () => { mounted = false; };
+  }, [router, pathname, user]);
 
-    checkAuthentication();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [router, pathname]);
-
-  // Show loading state while checking authentication
-  if (isChecking) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white/90 text-sm">Verifying authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Only render children if authenticated
-  if (!isAuthenticated) {
-    return null; // Will redirect, so return null
+  if (checking) {
+    return <>{fallback}</>;
   }
 
   return <>{children}</>;
-}
+};
+
+export default ProtectedRoute;
 

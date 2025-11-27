@@ -1,14 +1,13 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
-import { OptimizedImage } from '@/components/media/OptimizedImage'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 import ArtStationPreview from '@/components/ArtStationPreview'
-import { toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
+import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -89,6 +88,14 @@ const shouldHideGenerationType = (type?: string) => {
   if (disallowedExactTypes.has(normalized)) return true;
   if (normalized.startsWith('image-edit') || normalized.startsWith('edit-image')) return true;
   return disallowedFeatureTokens.some((token) => normalized.includes(token));
+};
+
+const canonicalMediaKey = (url?: string) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const noQuery = trimmed.split('?')[0];
+  return noQuery.endsWith('/') ? noQuery.slice(0, -1) : noQuery;
 };
 
 export default function ArtStationPage() {
@@ -268,11 +275,10 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
       url.searchParams.set('limit', '50') // Increased limit for better pagination
-      // Sort by createdAt (newest first) - new generations come first
-      url.searchParams.set('sortBy', 'createdAt')
+      // Sort by aesthetic score first (highest first), then by createdAt as tiebreaker
+      url.searchParams.set('sortBy', 'aestheticScore')
       url.searchParams.set('sortOrder', 'desc')
-      // Filter by minimum aesthetic score of 9.0
-      url.searchParams.set('minScore', '9.0')
+      // Don't filter by minScore - show all generations, just prioritize high-scoring ones
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
       if (q.mode) url.searchParams.set('mode', q.mode)
@@ -600,14 +606,12 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     return sanitized;
   }, [items, activeCategory, searchQuery]);
 
-  const normalizeMediaUrl = (url?: string): string | undefined => {
+const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!url) return undefined
     const trimmed = url.trim()
     if (!trimmed) return undefined
     if (/^https?:\/\//i.test(trimmed)) return trimmed
     if (trimmed.startsWith('/api/')) return trimmed
-    const proxied = toResourceProxy(trimmed)
-    if (proxied) return proxied
     return toDirectUrl(trimmed)
   }
 
@@ -631,48 +635,36 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     return undefined
   }
 
-  // Resolve image URL with fallback chain: thumbnailUrl → optimized (avif/webp) → url (Zata) → originalUrl
+  // Resolve image URL with fallback chain: avif → optimized → direct Zata/original
   const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
     
-    const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl) || normalizeMediaUrl(m.thumbUrl)
+    const thumbAvif =
+      normalizeMediaUrl(
+        typeof m.thumbnailUrl === 'string' && m.thumbnailUrl.endsWith('.avif')
+          ? m.thumbnailUrl
+          : undefined
+      ) || normalizeMediaUrl(
+        typeof m.thumbUrl === 'string' && m.thumbUrl.endsWith('.avif')
+          ? m.thumbUrl
+          : undefined
+      )
     const avifUrl = normalizeMediaUrl(m.avifUrl)
-    const webpUrl = normalizeMediaUrl(m.webpUrl)
-    const zataUrl = normalizeMediaUrl(m.url) // Zata URL (e.g., https://idr01.zata.ai/devstoragev1/...)
-    const originalUrl = normalizeMediaUrl(m.originalUrl) // Original source URL (e.g., Azure blob)
-    
-    // Priority: thumbnailUrl → avifUrl → webpUrl → url (Zata) → originalUrl
-    if (thumbnailUrl) {
-      return {
-        url: thumbnailUrl,
-        fallbacks: [avifUrl, webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
-    if (avifUrl) {
-      return {
-        url: avifUrl,
-        fallbacks: [webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
-    if (webpUrl) {
-      return {
-        url: webpUrl,
-        fallbacks: [zataUrl, originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
-    if (zataUrl) {
-      return {
-        url: zataUrl,
-        fallbacks: [originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
+    const optimizedUrl =
+      normalizeMediaUrl(m.optimizedUrl) ||
+      normalizeMediaUrl(m.optimized?.url) ||
+      normalizeMediaUrl(m.webpUrl)
+    const storageUrl = m.storagePath ? toDirectUrl(m.storagePath) : undefined
+    const directUrl = normalizeMediaUrl(m.url) || storageUrl
+    const originalUrl = normalizeMediaUrl(m.originalUrl) || storageUrl
+
+    const ordered = [thumbAvif, avifUrl, optimizedUrl, directUrl, originalUrl].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    ) as string[]
+
     return {
-      url: originalUrl || '',
-      fallbacks: []
+      url: ordered[0] || '',
+      fallbacks: ordered.slice(1)
     }
   }
 
@@ -700,7 +692,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
   }) => {
     const { url: primaryUrl, fallbacks } = resolveImageUrl(media);
     const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
-    const allUrls = [primaryUrl, ...fallbacks].filter(Boolean);
+    const allUrls = [primaryUrl, ...fallbacks].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    );
     const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
 
     const markCompleteFallback = () => {
@@ -758,6 +752,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
     const seenItem = new Set<string>()
+    const seenMediaUrls = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
     if (process.env.NODE_ENV !== 'production') {
@@ -777,14 +772,32 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       const candidate = (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
       const kind: 'image' | 'video' | 'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
       const candidateUrl = resolveMediaUrl(candidate)
+      const candidateKey = canonicalMediaKey(candidateUrl)
+      if (candidateKey && seenMediaUrls.has(candidateKey)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ArtStation] Skipping duplicate media URL:', candidateKey, 'from item', it.id)
+        }
+        continue
+      }
 
       // Only skip if there's truly no media at all - try multiple fallbacks
       if (!candidateUrl) {
         // Try to find any media URL from the item
+        const primaryVideo = it.videos?.[0]
+        const primaryImage = it.images?.[0]
+        const primaryAudio = (it as any).audios?.[0]
         const fallbackUrl = 
-          (it.videos && it.videos.length > 0 && (it.videos[0].url || it.videos[0].originalUrl)) ||
-          (it.images && it.images.length > 0 && (it.images[0].url || it.images[0].originalUrl)) ||
-          (it.audios && it.audios.length > 0 && (it.audios[0].url || it.audios[0].originalUrl))
+          primaryVideo?.url || primaryVideo?.originalUrl || primaryVideo?.storagePath ||
+          primaryImage?.url || primaryImage?.originalUrl || primaryImage?.storagePath ||
+          primaryAudio?.url || primaryAudio?.originalUrl || primaryAudio?.storagePath
+        const fallbackKey = canonicalMediaKey(fallbackUrl)
+        
+        if (fallbackKey && seenMediaUrls.has(fallbackKey)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[ArtStation] Skipping duplicate fallback media URL:', fallbackKey, 'from item', it.id)
+          }
+          continue
+        }
         
         if (!fallbackUrl) {
           if (process.env.NODE_ENV !== 'production') {
@@ -798,9 +811,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           }
           continue
         }
-        // Use fallback URL if candidate URL resolution failed
         const fallbackCandidate = candidate || (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
         seenItem.add(it.id)
+        if (fallbackKey) seenMediaUrls.add(fallbackKey)
         out.push({ 
           item: it, 
           media: { 
@@ -815,6 +828,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
       // Add item to seen set and include in output
       seenItem.add(it.id)
+      if (candidateKey) seenMediaUrls.add(candidateKey)
       out.push({ 
         item: it, 
         media: { 

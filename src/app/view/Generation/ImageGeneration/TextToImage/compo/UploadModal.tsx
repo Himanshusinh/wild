@@ -1,32 +1,28 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import { fetchLibrary, fetchUploads, LibraryItem } from '@/lib/libraryApi';
-import { blobToDataUrl, compressImageIfNeeded } from '@/utils/imageCompression';
+import { fetchLibrary, fetchUploads, LibraryItem, UploadItem, saveUpload, getLibraryPage, getUploadsPage } from '@/lib/libraryApi';
+import { toMediaProxy, toDirectUrl } from '@/lib/thumb';
 
 type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[]) => void;
   remainingSlots: number; // how many images can still be added (max 4 total)
-  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'; // Mode for filtering
   onTabChange?: (tab: 'library' | 'computer' | 'uploads') => void; // Callback when tab changes
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, mode = 'image', onTabChange }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, onTabChange }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
   
-  // State for library items (generated media)
+  // State for library and uploads data
   const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
-  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | undefined>();
+  const [uploadItems, setUploadItems] = React.useState<UploadItem[]>([]);
+  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | number | undefined>();
+  const [uploadNextCursor, setUploadNextCursor] = React.useState<string | number | undefined>();
   const [libraryHasMore, setLibraryHasMore] = React.useState(false);
-  const [libraryLoading, setLibraryLoading] = React.useState(false);
-  
-  // State for upload items (user uploaded media)
-  const [uploadItems, setUploadItems] = React.useState<LibraryItem[]>([]);
-  const [uploadNextCursor, setUploadNextCursor] = React.useState<string | undefined>();
   const [uploadHasMore, setUploadHasMore] = React.useState(false);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
   const [uploadLoading, setUploadLoading] = React.useState(false);
   const onTabChangePrevTabRef = React.useRef<typeof tab | null>(null);
   const onTabChangeCallbackRef = React.useRef(onTabChange);
@@ -152,6 +148,93 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   const scrollPositionBeforeLoadRef = React.useRef<number | null>(null);
   const isLoadingMoreRef = React.useRef(false);
   
+  // Track if we've loaded initial data for each tab
+  const hasLoadedLibraryRef = React.useRef(false);
+  const hasLoadedUploadsRef = React.useRef(false);
+
+  // Fetch library items when modal opens or tab changes to library
+  React.useEffect(() => {
+    if (!isOpen || tab !== 'library') {
+      if (!isOpen) hasLoadedLibraryRef.current = false; // Reset when modal closes
+      return;
+    }
+    
+    const loadLibrary = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedLibraryRef.current && !libraryNextCursor) return; // Already loaded all
+      setLibraryLoading(true);
+      try {
+        const result = await getLibraryPage(50, libraryNextCursor, 'image');
+        console.log('[UploadModal] Loaded library:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor
+        });
+        // Deduplicate items by id to prevent duplicates
+        setLibraryItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setLibraryNextCursor(result.nextCursor);
+        setLibraryHasMore(result.hasMore);
+        hasLoadedLibraryRef.current = true;
+      } catch (error) {
+        console.error('[UploadModal] Error loading library:', error);
+      } finally {
+        setLibraryLoading(false);
+      }
+    };
+    
+    loadLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
+
+  // Fetch upload items when modal opens or tab changes to uploads
+  React.useEffect(() => {
+    if (!isOpen || tab !== 'uploads') {
+      if (!isOpen) hasLoadedUploadsRef.current = false; // Reset when modal closes
+      return;
+    }
+    
+    const loadUploads = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedUploadsRef.current && !uploadNextCursor) return; // Already loaded all
+      setUploadLoading(true);
+      try {
+        const result = await getUploadsPage(50, uploadNextCursor, 'image');
+        console.log('[UploadModal] Loaded uploads:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          sampleItem: result.items[0] ? {
+            id: result.items[0].id,
+            url: result.items[0].url,
+            storagePath: result.items[0].storagePath,
+            originalUrl: result.items[0].originalUrl,
+            convertedUrl: result.items[0].storagePath ? toDirectUrl(result.items[0].storagePath) : result.items[0].url
+          } : null
+        });
+        // Deduplicate items by id to prevent duplicates
+        setUploadItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setUploadNextCursor(result.nextCursor);
+        setUploadHasMore(result.hasMore);
+        hasLoadedUploadsRef.current = true;
+      } catch (error) {
+        console.error('[UploadModal] Error loading uploads:', error);
+      } finally {
+        setUploadLoading(false);
+      }
+    };
+    
+    loadUploads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
+
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
@@ -159,52 +242,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
       setTab('library');
       scrollPositionBeforeLoadRef.current = null;
       isLoadingMoreRef.current = false;
-    }
-  }, [isOpen]);
-
-  // Fetch library items when modal opens or tab changes to library
-  React.useEffect(() => {
-    if (isOpen && tab === 'library' && libraryItems.length === 0 && !libraryLoading) {
-      setLibraryLoading(true);
-      fetchLibrary({ limit: 50, mode }).then((response) => {
-        if (response.responseStatus === 'success' && response.data) {
-          setLibraryItems(response.data.items || []);
-          setLibraryNextCursor(response.data.nextCursor);
-          setLibraryHasMore(response.data.hasMore || false);
-        }
-        setLibraryLoading(false);
-      }).catch(() => {
-        setLibraryLoading(false);
-      });
-    }
-  }, [isOpen, tab, mode]);
-
-  // Fetch upload items when modal opens or tab changes to uploads
-  React.useEffect(() => {
-    if (isOpen && tab === 'uploads' && uploadItems.length === 0 && !uploadLoading) {
-      setUploadLoading(true);
-      fetchUploads({ limit: 50, mode }).then((response) => {
-        if (response.responseStatus === 'success' && response.data) {
-          setUploadItems(response.data.items || []);
-          setUploadNextCursor(response.data.nextCursor);
-          setUploadHasMore(response.data.hasMore || false);
-        }
-        setUploadLoading(false);
-      }).catch(() => {
-        setUploadLoading(false);
-      });
-    }
-  }, [isOpen, tab, mode]);
-
-  // Reset state when modal closes
-  React.useEffect(() => {
-    if (!isOpen) {
+      // Reset library and uploads data when modal closes
       setLibraryItems([]);
-      setLibraryNextCursor(undefined);
-      setLibraryHasMore(false);
       setUploadItems([]);
+      setLibraryNextCursor(undefined);
       setUploadNextCursor(undefined);
+      setLibraryHasMore(false);
       setUploadHasMore(false);
+      // Reset load flags so data reloads when modal opens again
+      hasLoadedLibraryRef.current = false;
+      hasLoadedUploadsRef.current = false;
     }
   }, [isOpen]);
 
@@ -230,73 +277,110 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
     }
   }, [isOpen]);
 
-  // Get current items based on tab
-  const getCurrentItems = (): LibraryItem[] => {
+  // Get items to display based on selected tab
+  const getDisplayItems = () => {
     if (tab === 'library') {
-      return libraryItems;
+      return libraryItems.map(item => {
+        // Convert storagePath to full Zata URL if available
+        let displayUrl = item.url;
+        if (item.storagePath && !item.url?.startsWith('http')) {
+          displayUrl = toDirectUrl(item.storagePath) || item.url;
+        }
+        return {
+          id: item.id,
+          url: displayUrl,
+          thumbnailUrl: item.thumbnail || displayUrl,
+          avifUrl: item.thumbnail || displayUrl,
+          originalUrl: item.url || displayUrl,
+          storagePath: item.storagePath,
+          mediaId: item.mediaId,
+        };
+      });
     } else if (tab === 'uploads') {
-      return uploadItems;
+      return uploadItems.map(item => {
+        // Convert storagePath to full Zata URL if available (e.g., users/rajdeop/input/... -> https://idr01.zata.ai/devstoragev1/users/rajdeop/input/...)
+        // Otherwise use the url or originalUrl
+        let displayUrl = item.url || item.originalUrl;
+        if (item.storagePath) {
+          // Convert storagePath to full Zata public URL
+          displayUrl = toDirectUrl(item.storagePath) || item.url || item.originalUrl;
+        }
+        
+        // Use the displayUrl for thumbnail as well if no thumbnail is provided
+        const thumbnailUrl = item.thumbnail || displayUrl;
+        
+        return {
+          id: item.id,
+          url: displayUrl, // Full Zata URL: https://idr01.zata.ai/devstoragev1/users/username/input/historyId/filename.jpg
+          thumbnailUrl: thumbnailUrl,
+          avifUrl: thumbnailUrl,
+          originalUrl: item.originalUrl || displayUrl,
+          storagePath: item.storagePath, // Keep original storagePath: users/username/input/historyId/filename.jpg
+          mediaId: item.mediaId,
+        };
+      });
     }
     return [];
   };
 
-  const currentItems = getCurrentItems();
-  const currentLoading = tab === 'library' ? libraryLoading : uploadLoading;
-  const currentHasMore = tab === 'library' ? libraryHasMore : uploadHasMore;
-
-  // Load more function
-  const handleLoadMore = React.useCallback(async () => {
-    if (currentLoading || !currentHasMore || isLoadingMoreRef.current) return;
-    
-    isLoadingMoreRef.current = true;
-    
-    if (tab === 'library' && libraryNextCursor) {
-      setLibraryLoading(true);
-      try {
-        const response = await fetchLibrary({ limit: 50, nextCursor: libraryNextCursor, mode });
-        if (response.responseStatus === 'success' && response.data) {
-          setLibraryItems(prev => [...prev, ...(response.data.items || [])]);
-          setLibraryNextCursor(response.data.nextCursor);
-          setLibraryHasMore(response.data.hasMore || false);
-        }
-      } catch (error) {
-        console.error('Failed to load more library items:', error);
-      } finally {
-        setLibraryLoading(false);
-        isLoadingMoreRef.current = false;
-      }
-    } else if (tab === 'uploads' && uploadNextCursor) {
-      setUploadLoading(true);
-      try {
-        const response = await fetchUploads({ limit: 50, nextCursor: uploadNextCursor, mode });
-        if (response.responseStatus === 'success' && response.data) {
-          setUploadItems(prev => [...prev, ...(response.data.items || [])]);
-          setUploadNextCursor(response.data.nextCursor);
-          setUploadHasMore(response.data.hasMore || false);
-        }
-      } catch (error) {
-        console.error('Failed to load more upload items:', error);
-      } finally {
-        setUploadLoading(false);
-        isLoadingMoreRef.current = false;
-      }
-    } else {
-      isLoadingMoreRef.current = false;
-    }
-  }, [tab, libraryNextCursor, uploadNextCursor, currentLoading, currentHasMore, mode]);
+  const displayItems = getDisplayItems();
+  const hasMore = tab === 'library' ? libraryHasMore : uploadHasMore;
+  const loading = tab === 'library' ? libraryLoading : uploadLoading;
 
   if (!isOpen) return null;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (tab === 'library' || tab === 'uploads') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) onAdd(chosen);
       setSelection(new Set());
-    } else {
-      const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen);
-      setLocalUploads([]);
+      onClose();
+      return;
     }
+
+    // tab === 'computer' – user uploaded from their device.
+    // Persist these images as true uploads in Zata WITHOUT tying them
+    // to a specific generation; they become reusable in "Your Uploads".
+    const chosen = localUploads.slice(0, remainingSlots);
+    if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    const savedUrls: string[] = [];
+    for (const url of chosen) {
+      try {
+        const resp = await saveUpload({ url, type: 'image' });
+        console.log('[UploadModal] Save upload response:', {
+          responseStatus: resp.responseStatus,
+          hasData: !!resp.data,
+          url: resp.data?.url,
+          storagePath: resp.data?.storagePath,
+          historyId: resp.data?.historyId
+        });
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          // Use the URL from the response (Zata public URL)
+          savedUrls.push(resp.data.url);
+        } else {
+          console.warn('[UploadModal] Save upload failed:', resp);
+          // Fallback: still pass the original data URL so generation can proceed.
+          savedUrls.push(url);
+        }
+      } catch (error) {
+        console.error('[UploadModal] Error saving upload:', error);
+        savedUrls.push(url);
+      }
+    }
+
+    if (savedUrls.length) {
+      onAdd(savedUrls);
+      // Reset uploads state so it reloads next time the modal opens on uploads tab
+      setUploadItems([]);
+      setUploadNextCursor(undefined);
+      setUploadHasMore(false);
+      hasLoadedUploadsRef.current = false; // Reset flag so it reloads when modal opens again
+    }
+    setLocalUploads([]);
     onClose();
   };
 
@@ -439,10 +523,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
+                    const maxSize = 20 * 1024 * 1024;
                     const urls: string[] = [];
                     for (const file of files) {
-                      const processed = await compressImageIfNeeded(file);
-                      const asDataUrl = await blobToDataUrl(processed);
+                      if (file.size > maxSize) continue;
+                      const reader = new FileReader();
+                      const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
                       urls.push(asDataUrl);
                     }
                     if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
@@ -457,10 +543,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
+                      const maxSize = 20 * 1024 * 1024;
                       const urls: string[] = [];
                       for (const file of files) {
-                        const processed = await compressImageIfNeeded(file);
-                        const asDataUrl = await blobToDataUrl(processed);
+                        if (file.size > maxSize) { continue; }
+                        const reader = new FileReader();
+                        const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
                         urls.push(asDataUrl);
                       }
                       if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
@@ -476,8 +564,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3  w-full place-content-start">
                       {localUploads.map((url, idx) => (
-                        <div key={`${url}-${idx}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
-                          <Image src={url} alt={`upload-${idx}`} fill className="object-cover" />
+                        <div key={`local-upload-${idx}-${url.substring(0, 20)}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
+                          <img src={url} alt={`upload-${idx}`} className="w-full h-full object-cover" />
                           <button
                             aria-label="Remove"
                             title="Remove"

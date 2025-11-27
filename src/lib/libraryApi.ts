@@ -1,5 +1,8 @@
-import { getApiClient } from './axiosInstance';
+import axiosInstance from './axiosInstance';
 
+/**
+ * Library API response types
+ */
 export interface LibraryItem {
   id: string;
   historyId: string;
@@ -13,86 +16,82 @@ export interface LibraryItem {
   mediaId?: string;
   aspectRatio?: string;
   aestheticScore?: number;
-  originalUrl?: string;
 }
 
 export interface LibraryResponse {
   responseStatus: 'success' | 'error';
-  message: string;
-  data: {
+  message?: string;
+  data?: {
     items: LibraryItem[];
-    nextCursor?: string;
-    hasMore: boolean;
+    nextCursor?: string | number;
+    hasMore?: boolean;
+  };
+}
+
+export interface UploadItem {
+  id: string;
+  historyId: string;
+  url: string;
+  type: 'image' | 'video';
+  thumbnail?: string;
+  prompt?: string;
+  model?: string;
+  createdAt?: string;
+  storagePath?: string;
+  mediaId?: string;
+  originalUrl?: string;
+}
+
+export interface UploadResponse {
+  responseStatus: 'success' | 'error';
+  message?: string;
+  data?: {
+    items: UploadItem[];
+    nextCursor?: string | number;
+    hasMore?: boolean;
   };
 }
 
 /**
- * Fetch library items (generated media) from backend
+ * Fetch user's library (generated images/videos)
+ * @param limit - Number of items to return (default: 50, max: 100)
+ * @param cursor - Legacy cursor for pagination
+ * @param nextCursor - Timestamp-based cursor for pagination
+ * @param mode - Filter by mode: 'image', 'video', 'music', 'branding', or 'all' (default: 'all')
  */
-export async function fetchLibrary(params: {
-  limit?: number;
-  cursor?: string;
-  nextCursor?: string;
-  mode?: 'image' | 'video' | 'music' | 'branding' | 'all';
-}): Promise<LibraryResponse> {
+export async function fetchLibrary(
+  limit: number = 50,
+  cursor?: string,
+  nextCursor?: string | number,
+  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'
+): Promise<LibraryResponse> {
   try {
-    const api = getApiClient();
-    const apiParams: any = {
-      limit: params.limit || 50,
-      sortBy: 'createdAt',
+    const params: any = {
+      limit: Math.max(1, Math.min(limit, 100)),
     };
-    
-    if (params.cursor) apiParams.cursor = params.cursor;
-    if (params.nextCursor) apiParams.nextCursor = params.nextCursor;
-    
-    // Map mode to generationType
-    if (params.mode === 'image') {
-      apiParams.generationType = 'text-to-image';
-    } else if (params.mode === 'video') {
-      apiParams.generationType = 'text-to-video';
-    } else if (params.mode === 'music') {
-      apiParams.generationType = 'text-to-music';
+
+    if (cursor) {
+      params.cursor = cursor;
     }
-    // 'all' or undefined means no generationType filter
 
-    const response = await api.get('/api/generations', { params: apiParams });
-    const result = response.data?.data || { items: [], nextCursor: undefined, hasMore: false };
-    
-    // Transform the response to match LibraryItem format
-    const items: LibraryItem[] = (result.items || []).map((item: any) => {
-      const firstImage = item.images?.[0];
-      return {
-        id: item.id,
-        historyId: item.id,
-        url: firstImage?.url || firstImage?.originalUrl || firstImage?.firebaseUrl || '',
-        originalUrl: firstImage?.originalUrl || firstImage?.url || '',
-        type: params.mode === 'video' ? 'video' : 'image',
-        thumbnail: firstImage?.thumbnailUrl || firstImage?.avifUrl || firstImage?.webpUrl,
-        prompt: item.prompt,
-        model: item.model,
-        createdAt: item.createdAt || item.timestamp,
-        storagePath: firstImage?.storagePath,
-        mediaId: firstImage?.id,
-        aspectRatio: item.aspectRatio,
-        aestheticScore: item.aestheticScore,
-      };
-    });
+    if (nextCursor) {
+      params.nextCursor = nextCursor;
+    }
 
-    return {
-      responseStatus: 'success',
-      message: 'Success',
-      data: {
-        items,
-        nextCursor: result.nextCursor,
-        hasMore: result.hasMore || false,
-      },
-    };
+    if (mode && mode !== 'all') {
+      params.mode = mode;
+    }
+
+    const response = await api.get(`/api/library?${queryParams.toString()}`);
+    return response.data;
   } catch (error: any) {
+    console.error('[libraryApi] Error fetching library:', error);
     return {
       responseStatus: 'error',
       message: error?.response?.data?.message || error?.message || 'Failed to fetch library',
       data: {
         items: [],
+        nextCursor: undefined,
         hasMore: false,
       },
     };
@@ -110,65 +109,128 @@ export async function fetchUploads(params: {
 }): Promise<LibraryResponse> {
   try {
     const api = getApiClient();
-    const apiParams: any = {
-      limit: params.limit || 50,
-      sortBy: 'createdAt',
-      isPublic: false, // User uploads are typically private
+    const queryParams = new URLSearchParams();
+    if (params.limit) queryParams.set('limit', String(params.limit));
+    if (params.cursor) queryParams.set('cursor', params.cursor);
+    if (params.nextCursor) queryParams.set('nextCursor', params.nextCursor);
+    if (params.mode) queryParams.set('mode', params.mode);
+
+    const response = await api.get(`/api/uploads?${queryParams.toString()}`);
+    return response.data;
+  } catch (error: any) {
+    return {
+      responseStatus: 'error',
+      message: error?.response?.data?.message || error?.message || 'Failed to save upload',
     };
-    
-    if (params.cursor) apiParams.cursor = params.cursor;
-    if (params.nextCursor) apiParams.nextCursor = params.nextCursor;
-    
-    // Map mode to generationType
-    if (params.mode === 'image') {
-      apiParams.generationType = 'text-to-image';
-    } else if (params.mode === 'video') {
-      apiParams.generationType = 'text-to-video';
-    } else if (params.mode === 'music') {
-      apiParams.generationType = 'text-to-music';
+  }
+}
+
+/**
+ * Fetch user's uploads (inputImages and inputVideos from generation history)
+ * @param limit - Number of items to return (default: 50, max: 100)
+ * @param cursor - Legacy cursor for pagination
+ * @param nextCursor - Timestamp-based cursor for pagination
+ * @param mode - Filter by mode: 'image', 'video', 'music', 'branding', or 'all' (default: 'all')
+ */
+export async function fetchUploads(
+  limit: number = 50,
+  cursor?: string,
+  nextCursor?: string | number,
+  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'
+): Promise<UploadResponse> {
+  try {
+    const params: any = {
+      limit: Math.max(1, Math.min(limit, 100)),
+    };
+
+    if (cursor) {
+      params.cursor = cursor;
     }
 
-    const response = await api.get('/api/generations', { params: apiParams });
-    const result = response.data?.data || { items: [], nextCursor: undefined, hasMore: false };
-    
-    // Transform the response to match LibraryItem format
-    const items: LibraryItem[] = (result.items || []).map((item: any) => {
-      const firstImage = item.images?.[0];
-      return {
-        id: item.id,
-        historyId: item.id,
-        url: firstImage?.url || firstImage?.originalUrl || firstImage?.firebaseUrl || '',
-        originalUrl: firstImage?.originalUrl || firstImage?.url || '',
-        type: params.mode === 'video' ? 'video' : 'image',
-        thumbnail: firstImage?.thumbnailUrl || firstImage?.avifUrl || firstImage?.webpUrl,
-        prompt: item.prompt,
-        model: item.model,
-        createdAt: item.createdAt || item.timestamp,
-        storagePath: firstImage?.storagePath,
-        mediaId: firstImage?.id,
-        aspectRatio: item.aspectRatio,
-        aestheticScore: item.aestheticScore,
-      };
+    if (nextCursor) {
+      params.nextCursor = nextCursor;
+    }
+
+    if (mode && mode !== 'all') {
+      params.mode = mode;
+    }
+
+    const response = await axiosInstance.get('/api/uploads', { params });
+
+    const data = response.data?.data || {
+      items: [],
+      nextCursor: undefined,
+      hasMore: false,
+    };
+
+    console.log('[libraryApi] fetchUploads response:', {
+      status: response.status,
+      hasData: !!response.data?.data,
+      itemsCount: data.items?.length || 0,
+      hasMore: data.hasMore,
+      nextCursor: data.nextCursor ? 'present' : 'null',
+      mode,
+      sampleItem: data.items?.[0]
     });
 
     return {
       responseStatus: 'success',
-      message: 'Success',
-      data: {
-        items,
-        nextCursor: result.nextCursor,
-        hasMore: result.hasMore || false,
-      },
+      message: 'Uploads retrieved',
+      data,
     };
   } catch (error: any) {
+    console.error('[libraryApi] Error fetching uploads:', error);
     return {
       responseStatus: 'error',
       message: error?.response?.data?.message || error?.message || 'Failed to fetch uploads',
       data: {
         items: [],
+        nextCursor: undefined,
         hasMore: false,
       },
     };
   }
+}
+
+/**
+ * Helper function to fetch library with pagination support
+ * Returns items, nextCursor, and hasMore flag
+ */
+export async function getLibraryPage(
+  limit: number = 50,
+  nextCursor?: string | number,
+  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'
+): Promise<{
+  items: LibraryItem[];
+  nextCursor?: string | number;
+  hasMore: boolean;
+}> {
+  const result = await fetchLibrary(limit, undefined, nextCursor, mode);
+  return {
+    items: result.data?.items || [],
+    nextCursor: result.data?.nextCursor,
+    hasMore: result.data?.hasMore || false,
+  };
+}
+
+/**
+ * Helper function to fetch uploads with pagination support
+ * Returns items, nextCursor, and hasMore flag
+ */
+export async function getUploadsPage(
+  limit: number = 50,
+  nextCursor?: string | number,
+  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'
+): Promise<{
+  items: UploadItem[];
+  nextCursor?: string | number;
+  hasMore: boolean;
+}> {
+  const result = await fetchUploads(limit, undefined, nextCursor, mode);
+  return {
+    items: result.data?.items || [],
+    nextCursor: result.data?.nextCursor,
+    hasMore: result.data?.hasMore || false,
+  };
 }
 

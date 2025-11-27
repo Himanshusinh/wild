@@ -473,23 +473,16 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                       const files = Array.from(e.dataTransfer.files || []);
                       if (files.length === 0) return;
                       const file = files[0];
-                      if (file.type.startsWith('image/')) {
-                        try {
-                          const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
-                          const processed = await compressImageIfNeeded(file);
-                          const asDataUrl = await blobToDataUrl(processed);
-                          setLocalUpload(asDataUrl);
-                        } catch (error) {
-                          console.error('Error processing image:', error);
-                          alert('Failed to process image');
-                        }
-                      } else {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          setLocalUpload(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
+                      const maxSize = 20 * 1024 * 1024;
+                      if (file.size > maxSize) {
+                        alert('File size must be less than 2MB');
+                        return;
                       }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setLocalUpload(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
                     }}
                     className={`border-2 border-dashed border-white/30 rounded-lg h-[51.75vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${
                       localUpload ? 'items-start justify-start p-3' : 'items-center justify-center'
@@ -502,23 +495,16 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                         const files = Array.from(input.files || []);
                         if (files.length === 0) return;
                         const file = files[0];
-                        if (file.type.startsWith('image/')) {
-                          try {
-                            const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
-                            const processed = await compressImageIfNeeded(file);
-                            const asDataUrl = await blobToDataUrl(processed);
-                            setLocalUpload(asDataUrl);
-                          } catch (error) {
-                            console.error('Error processing image:', error);
-                            alert('Failed to process image');
-                          }
-                        } else {
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setLocalUpload(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                        const maxSize = 20 * 1024 * 1024;
+                        if (file.size > maxSize) {
+                          alert('File size must be less than 2MB');
+                          return;
                         }
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setLocalUpload(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
                       };
                       input.click();
                     }}
@@ -601,8 +587,11 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
           setIsUploadModalOpen(false);
           setIsCreateModalOpen(true);
         }}
+        historyEntries={characterEntries}
         remainingSlots={3}
-        mode="image"
+        onLoadMore={() => handleLoadMore()}
+        hasMore={hasMore}
+        loading={loadingMore}
       />
       
     </>

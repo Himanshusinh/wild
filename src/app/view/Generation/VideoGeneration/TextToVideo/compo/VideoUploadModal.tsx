@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import { toMediaProxy, toThumbUrl } from '@/lib/thumb';
+import { toThumbUrl, toDirectUrl } from '@/lib/thumb';
 
 // Helper functions for proxy URLs (same as InputBox.tsx and History.tsx)
 const toProxyPath = (urlOrPath: string | undefined) => {
@@ -72,29 +71,30 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
-import { fetchLibrary, LibraryItem } from '@/lib/libraryApi';
+import { saveUpload, getLibraryPage, LibraryItem } from '@/lib/libraryApi';
+import { toMediaProxy } from '@/lib/thumb';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
-  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'; // Mode for filtering
 };
 
-const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, mode = 'video' }) => {
+const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots }) => {
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   
-  // State for library items (generated videos)
+  // State for library items
   const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
-  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | undefined>();
+  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | number | undefined>();
   const [libraryHasMore, setLibraryHasMore] = React.useState(false);
   const [libraryLoading, setLibraryLoading] = React.useState(false);
   const isLoadingMoreRef = React.useRef(false);
+  const hasLoadedLibraryRef = React.useRef(false);
 
   // Remember scroll positions so switching tabs preserves where user was
   const scrollPositionsRef = React.useRef<{ [k in 'library' | 'computer']?: number }>({});
@@ -164,34 +164,57 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     prevTabRef.current = tab;
   }, [tab, isOpen]);
 
-  // Fetch library items when modal opens
+  // Fetch library items when modal opens or tab changes to library
   React.useEffect(() => {
-    if (isOpen && tab === 'library' && libraryItems.length === 0 && !libraryLoading) {
-      setLibraryLoading(true);
-      fetchLibrary({ limit: 50, mode }).then((response) => {
-        if (response.responseStatus === 'success' && response.data) {
-          // Filter to only videos
-          const videos = (response.data.items || []).filter(item => item.type === 'video');
-          setLibraryItems(videos);
-          setLibraryNextCursor(response.data.nextCursor);
-          setLibraryHasMore(response.data.hasMore || false);
-        }
-        setLibraryLoading(false);
-      }).catch(() => {
-        setLibraryLoading(false);
-      });
+    if (!isOpen || tab !== 'library') {
+      if (!isOpen) hasLoadedLibraryRef.current = false; // Reset when modal closes
+      return;
     }
-  }, [isOpen, tab, mode]);
+    
+    const loadLibrary = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedLibraryRef.current && !libraryNextCursor) return; // Already loaded all
+      setLibraryLoading(true);
+      try {
+        const result = await getLibraryPage(50, libraryNextCursor, 'video');
+        console.log('[VideoUploadModal] Loaded library:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          sampleItem: result.items[0]
+        });
+        // Deduplicate items by id to prevent duplicates
+        setLibraryItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setLibraryNextCursor(result.nextCursor);
+        setLibraryHasMore(result.hasMore);
+        hasLoadedLibraryRef.current = true;
+      } catch (error) {
+        console.error('[VideoUploadModal] Error loading library:', error);
+      } finally {
+        setLibraryLoading(false);
+      }
+    };
+    
+    loadLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
 
-  // Reset state when modal closes
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
+      // Reset library data when modal closes
       setLibraryItems([]);
       setLibraryNextCursor(undefined);
       setLibraryHasMore(false);
+      isLoadingMoreRef.current = false;
+      // Reset load flag so data reloads when modal opens again
+      hasLoadedLibraryRef.current = false;
     }
   }, [isOpen]);
 
@@ -219,48 +242,71 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
-  // Load more function
-  const handleLoadMore = React.useCallback(async () => {
-    if (libraryLoading || !libraryHasMore || isLoadingMoreRef.current || !libraryNextCursor) return;
-    
-    isLoadingMoreRef.current = true;
-    setLibraryLoading(true);
-    
-    try {
-      const response = await fetchLibrary({ limit: 50, nextCursor: libraryNextCursor, mode });
-      if (response.responseStatus === 'success' && response.data) {
-        // Filter to only videos
-        const videos = (response.data.items || []).filter(item => item.type === 'video');
-        setLibraryItems(prev => [...prev, ...videos]);
-        setLibraryNextCursor(response.data.nextCursor);
-        setLibraryHasMore(response.data.hasMore || false);
-      }
-    } catch (error) {
-      console.error('Failed to load more library items:', error);
-    } finally {
-      setLibraryLoading(false);
-      isLoadingMoreRef.current = false;
-    }
-  }, [libraryNextCursor, libraryLoading, libraryHasMore, mode]);
-
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) {
-        const selectedItems = libraryItems.filter((item) => {
-          const itemUrl = item.url || item.originalUrl || '';
-          return itemUrl && chosen.includes(itemUrl);
-        });
-        onAdd(chosen, selectedItems as any);
+        // Find the library items corresponding to the selected URLs
+        const selectedItems = libraryItems.filter(item => chosen.includes(item.url));
+        // Pass selected items as entries (library items have the same structure)
+        onAdd(chosen, selectedItems);
       }
       setSelection(new Set());
-    } else {
-      const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen, []); // No entries for local uploads
-      setLocalUploads([]);
+      onClose();
+      return;
     }
+
+    // tab === 'computer' – persist uploaded videos as reusable uploads in Zata.
+    const chosen = localUploads.slice(0, remainingSlots);
+    if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    const savedUrls: string[] = [];
+    for (const url of chosen) {
+      try {
+        const resp = await saveUpload({ url, type: 'video' });
+        console.log('[VideoUploadModal] Save upload response:', {
+          responseStatus: resp.responseStatus,
+          hasData: !!resp.data,
+          url: resp.data?.url,
+          storagePath: resp.data?.storagePath,
+          historyId: resp.data?.historyId
+        });
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          // Use the URL from the response (Zata public URL)
+          savedUrls.push(resp.data.url);
+        } else {
+          console.warn('[VideoUploadModal] Save upload failed:', resp);
+          savedUrls.push(url);
+        }
+      } catch (error) {
+        console.error('[VideoUploadModal] Error saving upload:', error);
+        savedUrls.push(url);
+      }
+    }
+
+    if (savedUrls.length) onAdd(savedUrls, []);
+    setLocalUploads([]);
     onClose();
   };
+
+  // Get display items from library
+  const displayItems = libraryItems.map(item => {
+    // Convert storagePath to full Zata URL if available (e.g., users/rajdeop/input/... -> https://idr01.zata.ai/devstoragev1/users/rajdeop/input/...)
+    let displayUrl = item.url;
+    if (item.storagePath && !item.url?.startsWith('http')) {
+      displayUrl = toDirectUrl(item.storagePath) || item.url;
+    }
+    return {
+      id: item.id,
+      url: displayUrl, // Full Zata URL: https://idr01.zata.ai/devstoragev1/users/username/input/historyId/filename.mp4
+      thumbnailUrl: item.thumbnail || displayUrl,
+      storagePath: item.storagePath, // Keep original storagePath: users/username/input/historyId/filename.mp4
+      mediaId: item.mediaId,
+    };
+  });
 
   return (
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
@@ -281,18 +327,35 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                 <div className="text-white/70 text-sm mb-3">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
                 <div
                   ref={listRef}
-                  onScroll={(e) => {
+                  onScroll={async (e) => {
                     const el = e.currentTarget as HTMLDivElement;
                     try { 
                       scrollPositionsRef.current[tab] = el.scrollTop; 
                       try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
                     } catch {}
+                    
                     if (libraryLoading || isLoadingMoreRef.current || !libraryHasMore) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
+                    
                     if (nearBottom) {
                       const scrollTopBefore = el.scrollTop;
                       const scrollHeightBefore = el.scrollHeight;
-                      handleLoadMore().then(() => {
+                      isLoadingMoreRef.current = true;
+                      
+                      try {
+                        setLibraryLoading(true);
+                        const result = await getLibraryPage(50, libraryNextCursor, 'video');
+                        // Deduplicate items by id
+                        setLibraryItems(prev => {
+                          const existingIds = new Set(prev.map(item => item.id));
+                          const newItems = result.items.filter(item => !existingIds.has(item.id));
+                          return [...prev, ...newItems];
+                        });
+                        setLibraryNextCursor(result.nextCursor);
+                        setLibraryHasMore(result.hasMore);
+                        setLibraryLoading(false);
+                        
+                        // Maintain scroll position
                         requestAnimationFrame(() => {
                           requestAnimationFrame(() => {
                             if (el) {
@@ -302,83 +365,83 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                                 el.scrollTop = scrollTopBefore;
                               }
                             }
+                            isLoadingMoreRef.current = false;
                           });
                         });
-                      });
+                      } catch (error) {
+                        console.error('[VideoUploadModal] Error loading more:', error);
+                        isLoadingMoreRef.current = false;
+                        setLibraryLoading(false);
+                      }
                     }
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {libraryLoading && libraryItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      Loading...
-                    </div>
-                  ) : libraryItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      No videos found
-                    </div>
-                  ) : (
-                    libraryItems.map((item: LibraryItem, index: number) => {
-                      const safeUrl = item.url || item.originalUrl || '';
-                      if (!safeUrl) return null;
-                      const selected = selection.has(safeUrl);
-                      const posterUrl = item.thumbnail 
-                        ? (toFrontendProxyMediaUrl(item.thumbnail) || item.thumbnail)
-                        : (toThumbUrl(safeUrl, { w: 480, q: 60 }) || undefined);
-                      
-                      const mediaUrl = item.storagePath || safeUrl;
-                      const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                      const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
-                      const itemKey = `${item.id || item.historyId || 'video'}-${item.mediaId || index}`;
-                      
-                      return (
-                        <button
-                          key={itemKey}
-                          onClick={() => {
-                            const next = new Set(selection);
-                            if (selected) next.delete(safeUrl);
-                            else next.add(safeUrl);
-                            setSelection(next);
-                          }}
-                          className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}
-                        >
-                          {vsrc ? (
-                            <video
-                              src={vsrc}
-                              className="w-full h-full object-cover transition-opacity duration-200"
-                              muted
-                              playsInline
-                              loop
-                              preload="metadata"
-                              poster={posterUrl}
-                              onMouseEnter={async (e) => { 
-                                try { 
-                                  await (e.currentTarget as HTMLVideoElement).play();
-                                } catch { } 
-                              }}
-                              onMouseLeave={(e) => { 
-                                const v = e.currentTarget as HTMLVideoElement; 
-                                try { v.pause(); v.currentTime = 0 } catch { }
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </div>
-                          )}
-                          {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
-                          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                        </button>
-                      );
-                    })
-                  )}
+                  {displayItems.map((item: any, index: number) => {
+                    const videoUrl = item.url;
+                    const selected = selection.has(videoUrl);
+                    // Create unique key using id, url, and index to prevent duplicates
+                    const key = `video-${item.id || videoUrl || index}-${index}`;
+                    
+                    // Get thumbnail URL with proxy for caching
+                    const thumbnailUrl = item.thumbnailUrl;
+                    const posterUrl = thumbnailUrl 
+                      ? (toMediaProxy(thumbnailUrl) || thumbnailUrl)
+                      : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
+                    
+                    // Get video source URL with proxy support for caching
+                    const mediaUrl = item.storagePath || item.url;
+                    const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                    const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
+                    
+                    return (
+                      <button key={key} onClick={() => {
+                        const next = new Set(selection);
+                        if (selected) next.delete(videoUrl); else next.add(videoUrl);
+                        setSelection(next);
+                      }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
+                        {vsrc ? (
+                          <video
+                            src={vsrc}
+                            className="w-full h-full object-cover transition-opacity duration-200"
+                            muted
+                            playsInline
+                            loop
+                            preload="metadata"
+                            poster={posterUrl}
+                            onMouseEnter={async (e) => { 
+                              try { 
+                                await (e.currentTarget as HTMLVideoElement).play();
+                              } catch { } 
+                            }}
+                            onMouseLeave={(e) => { 
+                              const v = e.currentTarget as HTMLVideoElement; 
+                              try { v.pause(); v.currentTime = 0 } catch { }
+                            }}
+                            onError={(e) => {
+                              console.error('[VideoUploadModal] Video load error:', {
+                                src: vsrc,
+                                videoUrl,
+                                posterUrl,
+                                error: e
+                              });
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        )}
+                        {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                      </button>
+                    );
+                  })}
                 </div>
                 {libraryHasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
-                    {libraryLoading ? 'Loading more…' : 'Scroll to load more'}
-                  </div>
+                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{libraryLoading ? 'Loading more…' : 'Scroll to load more'}</div>
                 )}
                 <div className="flex justify-end mt-0 gap-2">
                   <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
@@ -396,8 +459,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
+                    const maxSize = 50 * 1024 * 1024; // 50MB for videos
                     const urls: string[] = [];
                     for (const file of files) {
+                      if (file.size > maxSize) continue;
                       if (file.type.startsWith('video/')) {
                         const reader = new FileReader();
                         const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
@@ -416,8 +481,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
+                      const maxSize = 50 * 1024 * 1024; // 50MB for videos
                       const urls: string[] = [];
                       for (const file of files) {
+                        if (file.size > maxSize) { continue; }
                         if (file.type.startsWith('video/')) {
                           const reader = new FileReader();
                           const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });

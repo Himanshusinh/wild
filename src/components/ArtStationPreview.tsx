@@ -301,9 +301,14 @@ export default function ArtStationPreview({
               const audios = (preview.item as any).audios || []
               if (preview.kind === 'image') {
                 const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                // Use direct Zata URL (avifUrl or url) - bypass Next.js Image optimization
-                const best = (img as any).avifUrl || (img as any).optimized?.avifUrl || img.url
-                const src = toDirectUrl(best) || best
+                // Always prefer the original Zata asset for preview to avoid duplicate-looking thumbnails
+                const originalSource =
+                  img?.storagePath ||
+                  img?.url ||
+                  img?.originalUrl ||
+                  img?.avifUrl ||
+                  preview.url
+                const src = originalSource ? (toDirectUrl(originalSource) || originalSource) : preview.url
                 return (
                   <div className="relative w-full h-full">
                     <img
