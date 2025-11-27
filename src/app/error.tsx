@@ -17,6 +17,9 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           >
             Try again
           </button>
+
+
+          
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 rounded-lg bg-[#2F6BFF] hover:bg-[#2a5fe3] text-sm"
