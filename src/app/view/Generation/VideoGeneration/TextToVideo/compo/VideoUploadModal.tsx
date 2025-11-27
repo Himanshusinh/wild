@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { toThumbUrl } from '@/lib/thumb';
+import { toThumbUrl, toDirectUrl } from '@/lib/thumb';
 
 // Helper functions for proxy URLs (same as InputBox.tsx and History.tsx)
 const toProxyPath = (urlOrPath: string | undefined) => {
@@ -71,25 +71,30 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
-import { saveUpload } from '@/lib/libraryApi';
+import { saveUpload, getLibraryPage, LibraryItem } from '@/lib/libraryApi';
+import { toMediaProxy } from '@/lib/thumb';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
-  historyEntries: any[];
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  loading?: boolean;
 };
 
-const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
+const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots }) => {
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  
+  // State for library items
+  const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
+  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | number | undefined>();
+  const [libraryHasMore, setLibraryHasMore] = React.useState(false);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const isLoadingMoreRef = React.useRef(false);
+  const hasLoadedLibraryRef = React.useRef(false);
 
   // Remember scroll positions so switching tabs preserves where user was
   const scrollPositionsRef = React.useRef<{ [k in 'library' | 'computer']?: number }>({});
@@ -159,11 +164,57 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     prevTabRef.current = tab;
   }, [tab, isOpen]);
 
+  // Fetch library items when modal opens or tab changes to library
+  React.useEffect(() => {
+    if (!isOpen || tab !== 'library') {
+      if (!isOpen) hasLoadedLibraryRef.current = false; // Reset when modal closes
+      return;
+    }
+    
+    const loadLibrary = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedLibraryRef.current && !libraryNextCursor) return; // Already loaded all
+      setLibraryLoading(true);
+      try {
+        const result = await getLibraryPage(50, libraryNextCursor, 'video');
+        console.log('[VideoUploadModal] Loaded library:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          sampleItem: result.items[0]
+        });
+        // Deduplicate items by id to prevent duplicates
+        setLibraryItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setLibraryNextCursor(result.nextCursor);
+        setLibraryHasMore(result.hasMore);
+        hasLoadedLibraryRef.current = true;
+      } catch (error) {
+        console.error('[VideoUploadModal] Error loading library:', error);
+      } finally {
+        setLibraryLoading(false);
+      }
+    };
+    
+    loadLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
+
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
+      // Reset library data when modal closes
+      setLibraryItems([]);
+      setLibraryNextCursor(undefined);
+      setLibraryHasMore(false);
+      isLoadingMoreRef.current = false;
+      // Reset load flag so data reloads when modal opens again
+      hasLoadedLibraryRef.current = false;
     }
   }, [isOpen]);
 
@@ -195,24 +246,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) {
-        // Find the entries corresponding to the selected URLs (use Set to ensure uniqueness)
-        const entryMap = new Map<string, any>(); // Map entry ID to entry
-        videoEntries.forEach((entry: any) => {
-          const videos = entry.videos || [];
-          const fallbackVideos = (entry.images || []).filter((img: any) => {
-            const url = img.firebaseUrl || img.url || img.originalUrl;
-            return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-          });
-          const allVideos = videos.length > 0 ? videos : fallbackVideos;
-          allVideos.forEach((video: any) => {
-            const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
-            if (chosen.includes(videoUrl) && entry.id) {
-              entryMap.set(entry.id, entry); // Use entry ID as key to ensure uniqueness
-            }
-          });
-        });
-        const selectedEntries = Array.from(entryMap.values());
-        onAdd(chosen, selectedEntries);
+        // Find the library items corresponding to the selected URLs
+        const selectedItems = libraryItems.filter(item => chosen.includes(item.url));
+        // Pass selected items as entries (library items have the same structure)
+        onAdd(chosen, selectedItems);
       }
       setSelection(new Set());
       onClose();
@@ -230,12 +267,22 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     for (const url of chosen) {
       try {
         const resp = await saveUpload({ url, type: 'video' });
+        console.log('[VideoUploadModal] Save upload response:', {
+          responseStatus: resp.responseStatus,
+          hasData: !!resp.data,
+          url: resp.data?.url,
+          storagePath: resp.data?.storagePath,
+          historyId: resp.data?.historyId
+        });
         if (resp.responseStatus === 'success' && resp.data?.url) {
+          // Use the URL from the response (Zata public URL)
           savedUrls.push(resp.data.url);
         } else {
+          console.warn('[VideoUploadModal] Save upload failed:', resp);
           savedUrls.push(url);
         }
-      } catch {
+      } catch (error) {
+        console.error('[VideoUploadModal] Error saving upload:', error);
         savedUrls.push(url);
       }
     }
@@ -245,20 +292,20 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     onClose();
   };
 
-  // Filter history entries to only show videos
-  const videoEntries = historyEntries.filter((entry: any) => {
-    // Check if entry has videos
-    if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-      return true;
+  // Get display items from library
+  const displayItems = libraryItems.map(item => {
+    // Convert storagePath to full Zata URL if available (e.g., users/rajdeop/input/... -> https://idr01.zata.ai/devstoragev1/users/rajdeop/input/...)
+    let displayUrl = item.url;
+    if (item.storagePath && !item.url?.startsWith('http')) {
+      displayUrl = toDirectUrl(item.storagePath) || item.url;
     }
-    // Check if entry has video URLs in images array (fallback)
-    if (entry.images && Array.isArray(entry.images)) {
-      return entry.images.some((img: any) => {
-        const url = img.url || img.firebaseUrl || img.originalUrl;
-        return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-      });
-    }
-    return false;
+    return {
+      id: item.id,
+      url: displayUrl, // Full Zata URL: https://idr01.zata.ai/devstoragev1/users/username/input/historyId/filename.mp4
+      thumbnailUrl: item.thumbnail || displayUrl,
+      storagePath: item.storagePath, // Keep original storagePath: users/username/input/historyId/filename.mp4
+      mediaId: item.mediaId,
+    };
   });
 
   return (
@@ -280,77 +327,72 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                 <div className="text-white/70 text-sm mb-3">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
                 <div
                   ref={listRef}
-                  onScroll={(e) => {
+                  onScroll={async (e) => {
                     const el = e.currentTarget as HTMLDivElement;
                     try { 
                       scrollPositionsRef.current[tab] = el.scrollTop; 
                       try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
                     } catch {}
-                    if (!onLoadMore || loading) return;
+                    
+                    if (libraryLoading || isLoadingMoreRef.current || !libraryHasMore) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-                    if (nearBottom && hasMore && !loading) onLoadMore();
+                    
+                    if (nearBottom) {
+                      const scrollTopBefore = el.scrollTop;
+                      const scrollHeightBefore = el.scrollHeight;
+                      isLoadingMoreRef.current = true;
+                      
+                      try {
+                        setLibraryLoading(true);
+                        const result = await getLibraryPage(50, libraryNextCursor, 'video');
+                        // Deduplicate items by id
+                        setLibraryItems(prev => {
+                          const existingIds = new Set(prev.map(item => item.id));
+                          const newItems = result.items.filter(item => !existingIds.has(item.id));
+                          return [...prev, ...newItems];
+                        });
+                        setLibraryNextCursor(result.nextCursor);
+                        setLibraryHasMore(result.hasMore);
+                        setLibraryLoading(false);
+                        
+                        // Maintain scroll position
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => {
+                            if (el) {
+                              const scrollHeightAfter = el.scrollHeight;
+                              const heightDiff = scrollHeightAfter - scrollHeightBefore;
+                              if (heightDiff > 0) {
+                                el.scrollTop = scrollTopBefore;
+                              }
+                            }
+                            isLoadingMoreRef.current = false;
+                          });
+                        });
+                      } catch (error) {
+                        console.error('[VideoUploadModal] Error loading more:', error);
+                        isLoadingMoreRef.current = false;
+                        setLibraryLoading(false);
+                      }
+                    }
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {videoEntries.flatMap((entry: any) => {
-                    // Get videos from entry.videos or from entry.images (fallback)
-                    const videos = entry.videos || [];
-                    const fallbackVideos = (entry.images || []).filter((img: any) => {
-                      const url = img.firebaseUrl || img.url || img.originalUrl;
-                      return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-                    });
-                    const allVideos = videos.length > 0 ? videos : fallbackVideos;
-                    
-                    return allVideos.map((video: any) => ({ entry, video }));
-                  }).filter(({ video }: any) => {
-                    // Filter out videos without valid URLs
-                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
-                    return !!videoUrl;
-                  }).map(({ entry, video }: any) => {
-                    // Get video URL - prioritize firebaseUrl, then url, then originalUrl (same as InputBox.tsx)
-                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                  {displayItems.map((item: any, index: number) => {
+                    const videoUrl = item.url;
                     const selected = selection.has(videoUrl);
-                    const key = `${entry.id}-${video.id || videoUrl}`;
+                    // Create unique key using id, url, and index to prevent duplicates
+                    const key = `video-${item.id || videoUrl || index}-${index}`;
                     
-                    // Get thumbnail URL - prioritize thumbnailUrl/avifUrl from video object, fallback to toThumbUrl
-                    const thumbnailUrl = (video as any).thumbnailUrl || (video as any).avifUrl;
+                    // Get thumbnail URL with proxy for caching
+                    const thumbnailUrl = item.thumbnailUrl;
                     const posterUrl = thumbnailUrl 
-                      ? (toFrontendProxyMediaUrl(thumbnailUrl) || thumbnailUrl)
+                      ? (toMediaProxy(thumbnailUrl) || thumbnailUrl)
                       : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
                     
-                    // Get video source URL with proxy support (exact same logic as InputBox.tsx)
-                    // Prioritize storagePath, then firebaseUrl, then url, then originalUrl
-                    const mediaUrl = (video as any)?.storagePath 
-                      || video.firebaseUrl 
-                      || video.url 
-                      || video.originalUrl;
+                    // Get video source URL with proxy support for caching
+                    const mediaUrl = item.storagePath || item.url;
                     const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                    // If proxy URL is available, use it; otherwise fall back to original URL
-                    // But if original URL is a storage path (starts with users/), we must use proxy
-                    // Only use direct URL if it's a full HTTP/HTTPS URL
                     const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
-                    
-                    // Debug logging for troubleshooting
-                    if (!vsrc && mediaUrl) {
-                      console.warn('[VideoUploadModal] No valid video source URL:', {
-                        mediaUrl,
-                        proxied,
-                        video: { firebaseUrl: video.firebaseUrl, url: video.url, originalUrl: video.originalUrl },
-                        entryId: entry.id,
-                        videoId: video.id
-                      });
-                    }
-                    
-                    // Additional debug logging for thumbnail
-                    if (!posterUrl && videoUrl) {
-                      console.warn('[VideoUploadModal] No valid poster URL:', {
-                        videoUrl,
-                        thumbnailUrl: (video as any).thumbnailUrl,
-                        avifUrl: (video as any).avifUrl,
-                        entryId: entry.id,
-                        videoId: video.id
-                      });
-                    }
                     
                     return (
                       <button key={key} onClick={() => {
@@ -398,8 +440,8 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     );
                   })}
                 </div>
-                {hasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{loading ? 'Loading more…' : 'Scroll to load more'}</div>
+                {libraryHasMore && (
+                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{libraryLoading ? 'Loading more…' : 'Scroll to load more'}</div>
                 )}
                 <div className="flex justify-end mt-0 gap-2">
                   <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>

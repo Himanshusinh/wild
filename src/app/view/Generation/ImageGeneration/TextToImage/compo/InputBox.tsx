@@ -3984,20 +3984,7 @@ const InputBox = () => {
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
-          historyEntries={historyEntries as any}
           remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
-          hasMore={hasMore}
-          loading={loading}
-          onLoadMore={async () => {
-            try {
-              if (!hasMore || loading) return;
-              await (dispatch as any)(loadMoreHistory({
-                filters: { generationType: ['text-to-image', 'image-to-image'], mode: 'image' } as any,
-                backendFilters: { mode: 'image' } as any,
-                paginationParams: { limit: 10 }
-              })).unwrap();
-            } catch {}
-          }}
           onAdd={(urls: string[]) => {
             try {
               const next = [...(uploadedImages||[]), ...urls];

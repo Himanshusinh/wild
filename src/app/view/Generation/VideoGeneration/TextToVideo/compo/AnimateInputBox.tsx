@@ -2602,29 +2602,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 ? handleCharacterVideoUploadFromModal
                 : handleVideoUploadFromModal
             }
-            historyEntries={modalHistoryEntries}
             remainingSlots={1}
-            onLoadMore={async () => {
-              // Always use fetchLibraryVideos for pagination - it uses local state and doesn't affect Redux
-              // This ensures video history remains intact
-              console.log('[AnimateInputBox] onLoadMore called for videos:', { 
-                libraryVideoLoading, 
-                libraryVideoHasMore, 
-                isUploadModalOpen, 
-                uploadModalType,
-                entriesCount: libraryVideoEntries.length,
-                nextCursor: libraryVideoNextCursorRef.current ? 'present' : 'null'
-              });
-              // Only check loading state - fetchLibraryVideos will handle hasMore check internally
-              if (!libraryVideoLoading && isUploadModalOpen && uploadModalType === 'video') {
-                console.log('[AnimateInputBox] Fetching more library videos...');
-                await fetchLibraryVideos(false);
-              } else {
-                console.log('[AnimateInputBox] onLoadMore blocked for videos:', { libraryVideoLoading, isUploadModalOpen, uploadModalType });
-              }
-            }}
-            hasMore={isUploadModalOpen && uploadModalType === 'video' ? libraryVideoHasMore : false}
-            loading={isUploadModalOpen && uploadModalType === 'video' ? libraryVideoLoading : false}
           />
         );
       })()}

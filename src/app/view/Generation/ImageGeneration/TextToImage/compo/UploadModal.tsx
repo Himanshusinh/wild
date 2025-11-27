@@ -1,24 +1,29 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import { fetchLibrary, fetchUploads, LibraryItem, saveUpload } from '@/lib/libraryApi';
-import { blobToDataUrl, compressImageIfNeeded } from '@/utils/imageCompression';
+import { fetchLibrary, fetchUploads, LibraryItem, UploadItem, saveUpload, getLibraryPage, getUploadsPage } from '@/lib/libraryApi';
+import { toMediaProxy, toDirectUrl } from '@/lib/thumb';
 
 type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[]) => void;
-  historyEntries: any[];
   remainingSlots: number; // how many images can still be added (max 4 total)
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  loading?: boolean;
   onTabChange?: (tab: 'library' | 'computer' | 'uploads') => void; // Callback when tab changes
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading, onTabChange }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, onTabChange }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
+  
+  // State for library and uploads data
+  const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
+  const [uploadItems, setUploadItems] = React.useState<UploadItem[]>([]);
+  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | number | undefined>();
+  const [uploadNextCursor, setUploadNextCursor] = React.useState<string | number | undefined>();
+  const [libraryHasMore, setLibraryHasMore] = React.useState(false);
+  const [uploadHasMore, setUploadHasMore] = React.useState(false);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [uploadLoading, setUploadLoading] = React.useState(false);
   const onTabChangePrevTabRef = React.useRef<typeof tab | null>(null);
   const onTabChangeCallbackRef = React.useRef(onTabChange);
   const isProcessingTabChangeRef = React.useRef(false);
@@ -143,6 +148,93 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
   const scrollPositionBeforeLoadRef = React.useRef<number | null>(null);
   const isLoadingMoreRef = React.useRef(false);
   
+  // Track if we've loaded initial data for each tab
+  const hasLoadedLibraryRef = React.useRef(false);
+  const hasLoadedUploadsRef = React.useRef(false);
+
+  // Fetch library items when modal opens or tab changes to library
+  React.useEffect(() => {
+    if (!isOpen || tab !== 'library') {
+      if (!isOpen) hasLoadedLibraryRef.current = false; // Reset when modal closes
+      return;
+    }
+    
+    const loadLibrary = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedLibraryRef.current && !libraryNextCursor) return; // Already loaded all
+      setLibraryLoading(true);
+      try {
+        const result = await getLibraryPage(50, libraryNextCursor, 'image');
+        console.log('[UploadModal] Loaded library:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor
+        });
+        // Deduplicate items by id to prevent duplicates
+        setLibraryItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setLibraryNextCursor(result.nextCursor);
+        setLibraryHasMore(result.hasMore);
+        hasLoadedLibraryRef.current = true;
+      } catch (error) {
+        console.error('[UploadModal] Error loading library:', error);
+      } finally {
+        setLibraryLoading(false);
+      }
+    };
+    
+    loadLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
+
+  // Fetch upload items when modal opens or tab changes to uploads
+  React.useEffect(() => {
+    if (!isOpen || tab !== 'uploads') {
+      if (!isOpen) hasLoadedUploadsRef.current = false; // Reset when modal closes
+      return;
+    }
+    
+    const loadUploads = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedUploadsRef.current && !uploadNextCursor) return; // Already loaded all
+      setUploadLoading(true);
+      try {
+        const result = await getUploadsPage(50, uploadNextCursor, 'image');
+        console.log('[UploadModal] Loaded uploads:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          sampleItem: result.items[0] ? {
+            id: result.items[0].id,
+            url: result.items[0].url,
+            storagePath: result.items[0].storagePath,
+            originalUrl: result.items[0].originalUrl,
+            convertedUrl: result.items[0].storagePath ? toDirectUrl(result.items[0].storagePath) : result.items[0].url
+          } : null
+        });
+        // Deduplicate items by id to prevent duplicates
+        setUploadItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setUploadNextCursor(result.nextCursor);
+        setUploadHasMore(result.hasMore);
+        hasLoadedUploadsRef.current = true;
+      } catch (error) {
+        console.error('[UploadModal] Error loading uploads:', error);
+      } finally {
+        setUploadLoading(false);
+      }
+    };
+    
+    loadUploads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
+
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
@@ -150,6 +242,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
       setTab('library');
       scrollPositionBeforeLoadRef.current = null;
       isLoadingMoreRef.current = false;
+      // Reset library and uploads data when modal closes
+      setLibraryItems([]);
+      setUploadItems([]);
+      setLibraryNextCursor(undefined);
+      setUploadNextCursor(undefined);
+      setLibraryHasMore(false);
+      setUploadHasMore(false);
+      // Reset load flags so data reloads when modal opens again
+      hasLoadedLibraryRef.current = false;
+      hasLoadedUploadsRef.current = false;
     }
   }, [isOpen]);
 
@@ -175,32 +277,55 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
     }
   }, [isOpen]);
 
-  // Filter history entries based on selected tab
-  const getFilteredHistoryEntries = () => {
-    if (tab === 'uploads') {
-      // Filter to show only user uploads - show entries that have inputImages or inputVideos
-      return historyEntries
-        .map((entry: any) => {
-          const inputImagesArr = (((entry as any).inputImages) || []) as any[];
-          const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
-          
-          // If no user uploads, skip this entry
-          if (inputImagesArr.length === 0 && inputVideosArr.length === 0) return null;
-          
-          // Return entry with inputImages and inputVideos as the media to display
-          return {
-            ...entry,
-            images: inputImagesArr,
-            videos: inputVideosArr,
-          };
-        })
-        .filter((entry: any) => entry !== null && ((entry.images && entry.images.length > 0) || ((entry as any).videos && (entry as any).videos.length > 0)));
+  // Get items to display based on selected tab
+  const getDisplayItems = () => {
+    if (tab === 'library') {
+      return libraryItems.map(item => {
+        // Convert storagePath to full Zata URL if available
+        let displayUrl = item.url;
+        if (item.storagePath && !item.url?.startsWith('http')) {
+          displayUrl = toDirectUrl(item.storagePath) || item.url;
+        }
+        return {
+          id: item.id,
+          url: displayUrl,
+          thumbnailUrl: item.thumbnail || displayUrl,
+          avifUrl: item.thumbnail || displayUrl,
+          originalUrl: item.url || displayUrl,
+          storagePath: item.storagePath,
+          mediaId: item.mediaId,
+        };
+      });
+    } else if (tab === 'uploads') {
+      return uploadItems.map(item => {
+        // Convert storagePath to full Zata URL if available (e.g., users/rajdeop/input/... -> https://idr01.zata.ai/devstoragev1/users/rajdeop/input/...)
+        // Otherwise use the url or originalUrl
+        let displayUrl = item.url || item.originalUrl;
+        if (item.storagePath) {
+          // Convert storagePath to full Zata public URL
+          displayUrl = toDirectUrl(item.storagePath) || item.url || item.originalUrl;
+        }
+        
+        // Use the displayUrl for thumbnail as well if no thumbnail is provided
+        const thumbnailUrl = item.thumbnail || displayUrl;
+        
+        return {
+          id: item.id,
+          url: displayUrl, // Full Zata URL: https://idr01.zata.ai/devstoragev1/users/username/input/historyId/filename.jpg
+          thumbnailUrl: thumbnailUrl,
+          avifUrl: thumbnailUrl,
+          originalUrl: item.originalUrl || displayUrl,
+          storagePath: item.storagePath, // Keep original storagePath: users/username/input/historyId/filename.jpg
+          mediaId: item.mediaId,
+        };
+      });
     }
-    // For 'library' tab, return all entries as-is
-    return historyEntries;
+    return [];
   };
 
-  const filteredHistoryEntries = getFilteredHistoryEntries();
+  const displayItems = getDisplayItems();
+  const hasMore = tab === 'library' ? libraryHasMore : uploadHasMore;
+  const loading = tab === 'library' ? libraryLoading : uploadLoading;
 
   if (!isOpen) return null;
 
@@ -226,18 +351,35 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
     for (const url of chosen) {
       try {
         const resp = await saveUpload({ url, type: 'image' });
+        console.log('[UploadModal] Save upload response:', {
+          responseStatus: resp.responseStatus,
+          hasData: !!resp.data,
+          url: resp.data?.url,
+          storagePath: resp.data?.storagePath,
+          historyId: resp.data?.historyId
+        });
         if (resp.responseStatus === 'success' && resp.data?.url) {
+          // Use the URL from the response (Zata public URL)
           savedUrls.push(resp.data.url);
         } else {
+          console.warn('[UploadModal] Save upload failed:', resp);
           // Fallback: still pass the original data URL so generation can proceed.
           savedUrls.push(url);
         }
-      } catch {
+      } catch (error) {
+        console.error('[UploadModal] Error saving upload:', error);
         savedUrls.push(url);
       }
     }
 
-    if (savedUrls.length) onAdd(savedUrls);
+    if (savedUrls.length) {
+      onAdd(savedUrls);
+      // Reset uploads state so it reloads next time the modal opens on uploads tab
+      setUploadItems([]);
+      setUploadNextCursor(undefined);
+      setUploadHasMore(false);
+      hasLoadedUploadsRef.current = false; // Reset flag so it reloads when modal opens again
+    }
     setLocalUploads([]);
     onClose();
   };
@@ -267,14 +409,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                 </div>
                 <div
                   ref={listRef}
-                  onScroll={(e) => {
+                  onScroll={async (e) => {
                     const el = e.currentTarget as HTMLDivElement;
                     // Save current scroll for this tab
                     try {
                       scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
                     } catch {}
                     
-                    if (!onLoadMore || loading || isLoadingMoreRef.current || !hasMore) return;
+                    if (loading || isLoadingMoreRef.current || !hasMore) return;
                     
                     // Check if user scrolled near bottom (200px threshold)
                     const scrollBottom = el.scrollTop + el.clientHeight;
@@ -287,10 +429,34 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                       const scrollHeightBefore = el.scrollHeight;
                       isLoadingMoreRef.current = true;
                       
-                      // Call onLoadMore to fetch more items
-                      Promise.resolve(onLoadMore()).then(() => {
+                      try {
+                        if (tab === 'library') {
+                          setLibraryLoading(true);
+                          const result = await getLibraryPage(50, libraryNextCursor, 'image');
+                          // Deduplicate items by id
+                          setLibraryItems(prev => {
+                            const existingIds = new Set(prev.map(item => item.id));
+                            const newItems = result.items.filter(item => !existingIds.has(item.id));
+                            return [...prev, ...newItems];
+                          });
+                          setLibraryNextCursor(result.nextCursor);
+                          setLibraryHasMore(result.hasMore);
+                          setLibraryLoading(false);
+                        } else if (tab === 'uploads') {
+                          setUploadLoading(true);
+                          const result = await getUploadsPage(50, uploadNextCursor, 'image');
+                          // Deduplicate items by id
+                          setUploadItems(prev => {
+                            const existingIds = new Set(prev.map(item => item.id));
+                            const newItems = result.items.filter(item => !existingIds.has(item.id));
+                            return [...prev, ...newItems];
+                          });
+                          setUploadNextCursor(result.nextCursor);
+                          setUploadHasMore(result.hasMore);
+                          setUploadLoading(false);
+                        }
+                        
                         // After new items are loaded, maintain scroll position
-                        // Calculate how much new content was added
                         requestAnimationFrame(() => {
                           requestAnimationFrame(() => {
                             if (el) {
@@ -298,64 +464,30 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                               const heightDiff = scrollHeightAfter - scrollHeightBefore;
                               
                               // Maintain scroll position relative to bottom
-                              // This prevents jumping when new items are added
                               if (heightDiff > 0) {
-                                // New content added - keep same scroll position
                                 el.scrollTop = scrollTopBefore;
                               }
                             }
                             isLoadingMoreRef.current = false;
                           });
                         });
-                      }).catch(() => {
+                      } catch (error) {
+                        console.error('[UploadModal] Error loading more:', error);
                         isLoadingMoreRef.current = false;
-                      });
+                        if (tab === 'library') setLibraryLoading(false);
+                        if (tab === 'uploads') setUploadLoading(false);
+                      }
                     }
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {filteredHistoryEntries.flatMap((entry: any) => {
-                    // Include both images and videos for user uploads
-                    const mediaItems = [
-                      ...((entry?.images || []) as any[]),
-                      ...(((entry as any)?.videos || []) as any[]),
-                    ];
-                    // Debug logging for library tab (only log first few to avoid spam)
-                    if (tab === 'library' && mediaItems.length > 0 && filteredHistoryEntries.indexOf(entry) < 3) {
-                      const firstMedia = mediaItems[0];
-                      console.log('[UploadModal] Processing entry (sample):', {
-                        entryId: entry.id,
-                        imagesCount: entry?.images?.length || 0,
-                        videosCount: (entry as any)?.videos?.length || 0,
-                        mediaItemsCount: mediaItems.length,
-                        firstMediaItem: firstMedia ? {
-                          id: firstMedia.id,
-                          hasUrl: !!firstMedia.url,
-                          url: firstMedia.url?.substring(0, 100),
-                          hasFirebaseUrl: !!firstMedia.firebaseUrl,
-                          hasOriginalUrl: !!firstMedia.originalUrl,
-                          hasThumbnailUrl: !!firstMedia.thumbnailUrl,
-                          hasAvifUrl: !!firstMedia.avifUrl,
-                          allKeys: Object.keys(firstMedia),
-                          fullObject: firstMedia
-                        } : null
-                      });
-                    }
-                    return mediaItems.map((im: any) => ({ entry, im }));
-                  }).map(({ entry, im }: any) => {
+                  {displayItems.map((im: any, index: number) => {
                     const selected = selection.has(im.url);
-                    const key = `${entry.id}-${im.id}`;
-                    const imageSrc = im.thumbnailUrl || im.avifUrl || im.url || im.firebaseUrl || im.originalUrl;
-                    
-                    // Debug: Log if image source is missing
-                    if (!imageSrc && tab === 'library') {
-                      console.warn('[UploadModal] ⚠️ Image missing URL:', {
-                        entryId: entry.id,
-                        imageId: im.id,
-                        imageKeys: Object.keys(im),
-                        image: im
-                      });
-                    }
+                    // Create unique key using id, url, and index to prevent duplicates
+                    const key = `${tab}-${im.id || im.url || index}-${index}`;
+                    const imageSrc = im.thumbnailUrl || im.avifUrl || im.url || im.originalUrl;
+                    // Use media proxy for caching and optimization
+                    const proxiedSrc = imageSrc ? (toMediaProxy(imageSrc) || imageSrc) : null;
                     
                     return (
                       <button key={key} onClick={() => {
@@ -363,8 +495,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                         if (selected) next.delete(im.url); else next.add(im.url);
                         setSelection(next);
                       }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
-                        {imageSrc ? (
-                          <Image src={imageSrc} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
+                        {proxiedSrc ? (
+                          <img 
+                            src={proxiedSrc} 
+                            alt={tab === 'uploads' ? 'upload' : 'library'} 
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
                             No image
@@ -436,8 +574,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, histo
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3  w-full place-content-start">
                       {localUploads.map((url, idx) => (
-                        <div key={`${url}-${idx}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
-                          <Image src={url} alt={`upload-${idx}`} fill className="object-cover" />
+                        <div key={`local-upload-${idx}-${url.substring(0, 20)}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
+                          <img src={url} alt={`upload-${idx}`} className="w-full h-full object-cover" />
                           <button
                             aria-label="Remove"
                             title="Remove"

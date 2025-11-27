@@ -128,8 +128,7 @@ export async function saveUpload(params: {
   type: 'image' | 'video';
 }): Promise<SaveUploadResult> {
   try {
-    const api = getApiClient();
-    const response = await api.post('/api/uploads/save', {
+    const response = await axiosInstance.post('/api/uploads/save', {
       url: params.url,
       type: params.type,
     });
@@ -174,14 +173,26 @@ export async function fetchUploads(
 
     const response = await axiosInstance.get('/api/uploads', { params });
 
+    const data = response.data?.data || {
+      items: [],
+      nextCursor: undefined,
+      hasMore: false,
+    };
+
+    console.log('[libraryApi] fetchUploads response:', {
+      status: response.status,
+      hasData: !!response.data?.data,
+      itemsCount: data.items?.length || 0,
+      hasMore: data.hasMore,
+      nextCursor: data.nextCursor ? 'present' : 'null',
+      mode,
+      sampleItem: data.items?.[0]
+    });
+
     return {
       responseStatus: 'success',
       message: 'Uploads retrieved',
-      data: response.data?.data || {
-        items: [],
-        nextCursor: undefined,
-        hasMore: false,
-      },
+      data,
     };
   } catch (error: any) {
     console.error('[libraryApi] Error fetching uploads:', error);

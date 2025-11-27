@@ -5826,11 +5826,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
-          historyEntries={historyEntries}
           remainingSlots={1} // Only 1 video for video-to-video
-          onLoadMore={loadMoreHistory}
-          hasMore={hasMore}
-          loading={loading}
         />
       )}
     </React.Fragment>
