@@ -107,6 +107,41 @@ export async function fetchLibrary(
   }
 }
 
+export interface SaveUploadResult {
+  responseStatus: 'success' | 'error';
+  message: string;
+  data?: {
+    id: string;
+    url: string;
+    storagePath?: string;
+    historyId?: string;
+    type: 'image' | 'video';
+  };
+}
+
+/**
+ * Save an uploaded media item (image/video) as a reusable upload.
+ * This is called when the user uploads from their device and clicks "Add".
+ */
+export async function saveUpload(params: {
+  url: string;
+  type: 'image' | 'video';
+}): Promise<SaveUploadResult> {
+  try {
+    const api = getApiClient();
+    const response = await api.post('/api/uploads/save', {
+      url: params.url,
+      type: params.type,
+    });
+    return response.data;
+  } catch (error: any) {
+    return {
+      responseStatus: 'error',
+      message: error?.response?.data?.message || error?.message || 'Failed to save upload',
+    };
+  }
+}
+
 /**
  * Fetch user's uploads (inputImages and inputVideos from generation history)
  * @param limit - Number of items to return (default: 50, max: 100)

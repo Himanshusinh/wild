@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import { toMediaProxy, toThumbUrl } from '@/lib/thumb';
+import { toThumbUrl } from '@/lib/thumb';
 
 // Helper functions for proxy URLs (same as InputBox.tsx and History.tsx)
 const toProxyPath = (urlOrPath: string | undefined) => {
@@ -71,6 +70,8 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   const encodedPath = encodeURIComponent(path);
   return `/api/proxy/media/${encodedPath}`;
 };
+
+import { saveUpload } from '@/lib/libraryApi';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
@@ -190,7 +191,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) {
@@ -214,11 +215,33 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
         onAdd(chosen, selectedEntries);
       }
       setSelection(new Set());
-    } else {
-      const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen, []); // No entries for local uploads
-      setLocalUploads([]);
+      onClose();
+      return;
     }
+
+    // tab === 'computer' – persist uploaded videos as reusable uploads in Zata.
+    const chosen = localUploads.slice(0, remainingSlots);
+    if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    const savedUrls: string[] = [];
+    for (const url of chosen) {
+      try {
+        const resp = await saveUpload({ url, type: 'video' });
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          savedUrls.push(resp.data.url);
+        } else {
+          savedUrls.push(url);
+        }
+      } catch {
+        savedUrls.push(url);
+      }
+    }
+
+    if (savedUrls.length) onAdd(savedUrls, []);
+    setLocalUploads([]);
     onClose();
   };
 

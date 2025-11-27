@@ -1,11 +1,18 @@
 "use client";
 
 import React, { useState } from 'react';
-import Image, { ImageProps } from 'next/image';
 import { toThumbUrl } from '@/lib/thumb';
 
-type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> & {
+type SmartImageProps = {
 	src: string;
+	alt?: string;
+	className?: string;
+	sizes?: string;
+	fill?: boolean;
+	width?: number;
+	height?: number;
+	priority?: boolean;
+	fetchPriority?: 'high' | 'low' | 'auto';
 	thumbWidth?: number;
 	thumbQuality?: number;
 	/** Optimized thumbnail URL (pre-generated) */
@@ -18,8 +25,10 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 	decorative?: boolean;
 	/** Prefer WebP over AVIF for broader compatibility (e.g., homepage grid) */
 	preferWebp?: boolean;
-	// Note: Next/Image onLoadingComplete receives HTMLImageElement
+	// Note: onLoadingComplete receives HTMLImageElement
 	onLoadingComplete?: (img: HTMLImageElement) => void;
+	loading?: 'lazy' | 'eager';
+	[key: string]: any; // Allow other HTML img attributes
 };
 
 /**
@@ -88,15 +97,19 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	// Default loading behavior: lazy unless explicitly prioritized
 	const loading = (rest as any).loading ?? (priority ? 'eager' : 'lazy');
 
-	// If optimized is an absolute external URL (not a proxied/thumb URL), render a plain <img>
-	// This avoids Next/Image domain/optimization issues for third-party sources and makes
-	// thumbnails visible immediately in the home grid.
+	// Always use direct img tag for Zata URLs and external URLs (bypass Next.js Image optimization)
+	// This ensures thumbnails and optimized images load directly from Zata without Next.js proxy
 	let isExternalAbsolute = false;
 	try {
 		const u = new URL(optimized);
-		// Treat same-origin or proxy paths as non-external
-		const origin = typeof window !== 'undefined' ? window.location.origin : '';
-		if (u.protocol.startsWith('http') && u.origin !== origin) isExternalAbsolute = true;
+		// Treat Zata URLs and other external URLs as external (use direct img tag)
+		if (u.protocol.startsWith('http')) {
+			// Check if it's a Zata URL or external URL
+			const origin = typeof window !== 'undefined' ? window.location.origin : '';
+			if (u.origin !== origin || optimized.includes('zata.ai') || optimized.includes('idr01.zata.ai')) {
+				isExternalAbsolute = true;
+			}
+		}
 	} catch {}
 
 	// Also treat data: and blob: URIs as "external" for rendering with plain <img>
@@ -129,20 +142,19 @@ const SmartImage: React.FC<SmartImageProps> = ({
 					{...(rest as any)}
 				/>
 			) : (
-				<Image
+				// Use direct img tag for all URLs (bypass Next.js Image optimization)
+				<img
 					src={optimized}
 					alt={finalAlt}
-					sizes={sizes}
-					{...(fill ? { fill: true } : { width, height })}
-					placeholder="empty"
-					priority={priority}
+					{...(fill ? {} : { width, height })}
+					loading={(loading as any) || 'lazy'}
+					decoding="async"
 					fetchPriority={fetchPriority}
-					loading={loading}
-					unoptimized
 					className={`absolute inset-0 w-full h-full object-cover ${className || ''}`}
+					style={fill ? { position: 'absolute', inset: 0 } : {}}
 					onLoad={(e) => { try { setLoaded(true); onLoadingComplete && onLoadingComplete(e.currentTarget as HTMLImageElement); } catch {} }}
 					onError={() => { try { setLoaded(true); } catch {} }}
-					{...rest}
+					{...(rest as any)}
 				/>
 			)}
 		</div>
