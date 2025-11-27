@@ -3334,7 +3334,7 @@ const EditImageInterface: React.FC = () => {
                           {/* Chat UI */}
                           <div className="mt-3">
                             <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Chat to Edit</label>
-                            <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 h-88 flex flex-col">
+                            <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2  flex flex-col ">
                               <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 pr-1 pb-1 very-thin-scrollbar">
                                 {liveChatMessages.length === 0 && (
                                   <div className="text-[12px] text-white/50">Start by uploading an image on the right, then tell me what to change.</div>

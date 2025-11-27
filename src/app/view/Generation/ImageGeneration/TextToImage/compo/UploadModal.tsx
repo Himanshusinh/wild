@@ -10,9 +10,14 @@ type UploadModalProps = {
   onAdd: (urls: string[]) => void;
   remainingSlots: number; // how many images can still be added (max 4 total)
   onTabChange?: (tab: 'library' | 'computer' | 'uploads') => void; // Callback when tab changes
+  // Optional: allow parent to pass pre-fetched history/library entries (shape is flexible)
+  historyEntries?: any[];
+  // Optional: allow parent to provide loading/hasMore values for the provided history
+  hasMore?: boolean;
+  loading?: boolean;
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, onTabChange }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, onTabChange, historyEntries: propHistoryEntries, hasMore: propHasMore, loading: propLoading }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
   
   // State for library and uploads data
@@ -151,6 +156,25 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   // Track if we've loaded initial data for each tab
   const hasLoadedLibraryRef = React.useRef(false);
   const hasLoadedUploadsRef = React.useRef(false);
+
+  // If parent provided `historyEntries` (pre-fetched), initialize library state from it
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (!propHistoryEntries || propHistoryEntries.length === 0) return;
+    if (tab !== 'library') return;
+    if (hasLoadedLibraryRef.current) return;
+
+    // Use the provided entries as the initial library items. Caller controls `hasMore`/`loading`.
+    try {
+      setLibraryItems(propHistoryEntries as any[]);
+      setLibraryHasMore(Boolean((propHasMore as any) ?? false));
+      setLibraryLoading(Boolean((propLoading as any) ?? false));
+      hasLoadedLibraryRef.current = true;
+    } catch (e) {
+      // ignore and fall back to normal loading
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab, propHistoryEntries]);
 
   // Fetch library items when modal opens or tab changes to library
   React.useEffect(() => {
