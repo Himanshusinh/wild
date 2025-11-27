@@ -422,7 +422,7 @@ const InputBox = () => {
           {(initialLoading || (loading && stickerHistoryEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <Image src="/styles/Logo.gif" alt="Generating" width={88} height={88} className="mx-auto" />
+                  <Image src="/styles/Logo.gif" alt="Generating" width={88} height={88} className="mx-auto" unoptimized />
                   <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
@@ -446,7 +446,7 @@ const InputBox = () => {
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
                           </div>
@@ -521,7 +521,7 @@ const InputBox = () => {
                             {localGeneratingEntries[0].status === 'generating' ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                  <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
                                   <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
@@ -568,7 +568,7 @@ const InputBox = () => {
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>

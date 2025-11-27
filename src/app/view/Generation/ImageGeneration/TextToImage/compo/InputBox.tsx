@@ -3101,7 +3101,7 @@ const InputBox = () => {
 
             {/* Initial loading overlay - show when loading and no entries */}
             {loading && historyEntries.length === 0 && (
-              <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="fixed top-[64px] md:left-[4.5rem] left-[3.25rem] right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                   <GifLoader size={72} alt="Loading" />
                   <div className="text-white text-lg text-center">Loading generations...</div>

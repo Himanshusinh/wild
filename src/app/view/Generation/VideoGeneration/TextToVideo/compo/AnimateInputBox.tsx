@@ -1608,7 +1608,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     {localVideoPreview.status === 'generating' ? (
                       <div className="w-full h-full flex items-center justify-center bg-black/90">
                         <div className="flex flex-col items-center gap-2">
-                          <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                          <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                           <div className="text-xs text-white/60">Generating...</div>
                         </div>
                       </div>
@@ -1661,7 +1661,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         {localVideoPreview.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
                           </div>
@@ -1704,7 +1704,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                             {entry.status === "generating" ? (
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
-                                  <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                  <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                                   <div className="text-xs text-white/60 text-center">Generating...</div>
                                 </div>
                               </div>
@@ -1750,7 +1750,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>

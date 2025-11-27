@@ -857,44 +857,50 @@ const EditImageInterface: React.FC = () => {
     return () => window.removeEventListener('keydown', handleSpaceScrollBlock as any);
   }, []);
 
-  // Hide page scrollbar when there is no vertical overflow to avoid an
-  // empty scrollbar gutter showing on desktop. Restore on resize/unmount.
-  useEffect(() => {
-    const updateBodyOverflow = () => {
-      try {
-        const doc = document.documentElement;
-        // tolerate small overflows (<= 10px) caused by rounding/margins
-        const shouldHide = doc.scrollHeight <= window.innerHeight + 10;
-        const value = shouldHide ? 'hidden' : 'auto';
-        document.documentElement.style.overflowY = value;
-        document.body.style.overflowY = value;
-      } catch (e) {
-        // ignore in non-browser environments
-      }
-    };
-
-    updateBodyOverflow();
-    window.addEventListener('resize', updateBodyOverflow);
-
-    // Observe layout changes that might affect document height (optional)
-    let ro: ResizeObserver | null = null;
-    try {
-      ro = new ResizeObserver(updateBodyOverflow);
-      ro.observe(document.documentElement);
-    } catch (e) {
-      ro = null;
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateBodyOverflow);
-      try { if (ro) ro.disconnect(); } catch (e) {}
-      // restore defaults on unmount
-      try { document.documentElement.style.overflowY = ''; document.body.style.overflowY = ''; } catch (e) {}
-    };
-  }, []);
-
   // Allow page scroll so actions are reachable on small screens
   // (removed the global overflow lock)
+
+  // Hide empty page scrollbar when content doesn't exceed viewport
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflowY = html.style.overflowY;
+    const prevBodyOverflowY = body.style.overflowY;
+
+    const update = () => {
+      const contentHeight = Math.max(
+        body.scrollHeight,
+        html.scrollHeight,
+        body.offsetHeight,
+        html.offsetHeight,
+        body.clientHeight,
+        html.clientHeight
+      );
+      const needsScroll = contentHeight > window.innerHeight + 1;
+      const val = needsScroll ? 'auto' : 'hidden';
+      html.style.overflowY = val;
+      body.style.overflowY = val;
+    };
+
+    const onResize = () => {
+      requestAnimationFrame(update);
+    };
+
+    const observer = new MutationObserver(() => requestAnimationFrame(update));
+    try {
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+    } catch {}
+
+    update();
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      try { observer.disconnect(); } catch {}
+      html.style.overflowY = prevHtmlOverflowY;
+      body.style.overflowY = prevBodyOverflowY;
+    };
+  }, []);
 
   // Close image menu when clicking outside
   useEffect(() => {
@@ -2907,11 +2913,41 @@ const EditImageInterface: React.FC = () => {
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
       <UploadModal
-        key={`upload-modal-${isUploadOpen}`}
+        key={`upload-modal-${historyEntries.length}-${isUploadOpen}`}
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
+        historyEntries={historyEntries as any}
         remainingSlots={1}
-        mode="image"
+        hasMore={historyHasMore}
+        loading={historyLoading}
+        onTabChange={useCallback((tab: 'library' | 'computer' | 'uploads') => {
+          // Always make fresh API call when switching to library or uploads tab
+          if (tab === 'library' || tab === 'uploads') {
+            if (lastTabChangeRef.current === tab) return; // Prevent duplicate calls
+            
+            lastTabChangeRef.current = tab;
+            // Make fresh API call
+            refreshHistoryImmediate(30, true);
+            
+            // Reset after delay to allow future tab changes
+            setTimeout(() => {
+              lastTabChangeRef.current = null;
+            }, 500);
+          }
+        }, [refreshHistoryImmediate])}
+        onLoadMore={async () => {
+          try {
+            if (!historyHasMore || historyLoading) return;
+            
+            // Always make fresh API call - no cache
+            await (dispatch as any)(loadMoreHistory({
+              filters: { generationType: 'text-to-image' },
+              paginationParams: { limit: 20 }
+            })).unwrap();
+          } catch (err: any) {
+            console.error('[EditImage] Error loading more history:', err);
+          }
+        }}
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {

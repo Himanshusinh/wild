@@ -317,111 +317,116 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
           <div className="p-4">
             {tab === 'library' || tab === 'uploads' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3 ">
-                  {tab === 'uploads' 
-                    ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
-                    : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
-                  }
-                </div>
-                <div
-                  ref={listRef}
-                  onScroll={(e) => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    // Save current scroll for this tab
-                    try {
-                      scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
-                    } catch {}
-                    
-                    if (currentLoading || isLoadingMoreRef.current || !currentHasMore) return;
-                    
-                    // Check if user scrolled near bottom (200px threshold)
-                    const scrollBottom = el.scrollTop + el.clientHeight;
-                    const scrollHeight = el.scrollHeight;
-                    const nearBottom = scrollBottom >= scrollHeight - 200;
-                    
-                    if (nearBottom) {
-                      // Save current scroll position and scroll height before loading
-                      const scrollTopBefore = el.scrollTop;
-                      const scrollHeightBefore = el.scrollHeight;
-                      
-                      // Call handleLoadMore to fetch more items
-                      handleLoadMore().then(() => {
-                        // After new items are loaded, maintain scroll position
-                        requestAnimationFrame(() => {
-                          requestAnimationFrame(() => {
-                            if (el) {
-                              const scrollHeightAfter = el.scrollHeight;
-                              const heightDiff = scrollHeightAfter - scrollHeightBefore;
-                              
-                              // Maintain scroll position relative to bottom
-                              // This prevents jumping when new items are added
-                              if (heightDiff > 0) {
-                                // New content added - keep same scroll position
-                                el.scrollTop = scrollTopBefore;
-                              }
-                            }
-                          });
-                        });
-                      });
-                    }
-                  }}
-                  className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
-                >
-                  {currentLoading && currentItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      Loading...
-                    </div>
-                  ) : currentItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      No items found
-                    </div>
-                  ) : (
-                    currentItems.map((item: LibraryItem, index: number) => {
-                      const safeUrl = item.url || item.originalUrl || '';
-                      if (!safeUrl) return null;
-                      const selected = selection.has(safeUrl);
-                      const imageSrc = item.thumbnail || safeUrl;
-                      const itemKey = `${item.id || item.historyId || 'item'}-${item.mediaId || index}`;
-
-                      return (
-                        <button
-                          key={itemKey}
-                          onClick={() => {
-                            const next = new Set(selection);
-                            if (selected) next.delete(safeUrl);
-                            else next.add(safeUrl);
-                            setSelection(next);
-                          }}
-                          className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}
-                        >
-                          {imageSrc ? (
-                            <Image
-                              src={imageSrc}
-                              alt={tab === 'uploads' ? 'upload' : 'library'}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
-                              No image
-                            </div>
-                          )}
-                          {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
-                          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-                {currentHasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
-                    {currentLoading ? 'Loading more…' : 'Scroll to load more'}
+                {currentLoading && currentItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[50vh] text-white/60">
+                    <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
+                    <div className="text-lg">Loading...</div>
                   </div>
+                ) : (
+                  <>
+                    <div className="text-white/70 text-sm mb-3 ">
+                      {tab === 'uploads' 
+                        ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
+                        : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
+                      }
+                    </div>
+                    <div
+                      ref={listRef}
+                      onScroll={(e) => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        // Save current scroll for this tab
+                        try {
+                          scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
+                        } catch {}
+                        
+                        if (currentLoading || isLoadingMoreRef.current || !currentHasMore) return;
+                        
+                        // Check if user scrolled near bottom (200px threshold)
+                        const scrollBottom = el.scrollTop + el.clientHeight;
+                        const scrollHeight = el.scrollHeight;
+                        const nearBottom = scrollBottom >= scrollHeight - 200;
+                        
+                        if (nearBottom) {
+                          // Save current scroll position and scroll height before loading
+                          const scrollTopBefore = el.scrollTop;
+                          const scrollHeightBefore = el.scrollHeight;
+                          
+                          // Call handleLoadMore to fetch more items
+                          handleLoadMore().then(() => {
+                            // After new items are loaded, maintain scroll position
+                            requestAnimationFrame(() => {
+                              requestAnimationFrame(() => {
+                                if (el) {
+                                  const scrollHeightAfter = el.scrollHeight;
+                                  const heightDiff = scrollHeightAfter - scrollHeightBefore;
+                                  
+                                  // Maintain scroll position relative to bottom
+                                  // This prevents jumping when new items are added
+                                  if (heightDiff > 0) {
+                                    // New content added - keep same scroll position
+                                    el.scrollTop = scrollTopBefore;
+                                  }
+                                }
+                              });
+                            });
+                          });
+                        }
+                      }}
+                      className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
+                    >
+                      {currentItems.length === 0 ? (
+                        <div className="col-span-full flex items-center justify-center h-32 text-white/60">
+                          No items found
+                        </div>
+                      ) : (
+                        currentItems.map((item: LibraryItem, index: number) => {
+                          const safeUrl = item.url || item.originalUrl || '';
+                          if (!safeUrl) return null;
+                          const selected = selection.has(safeUrl);
+                          const imageSrc = item.thumbnail || safeUrl;
+                          const itemKey = `${item.id || item.historyId || 'item'}-${item.mediaId || index}`;
+
+                          return (
+                            <button
+                              key={itemKey}
+                              onClick={() => {
+                                const next = new Set(selection);
+                                if (selected) next.delete(safeUrl);
+                                else next.add(safeUrl);
+                                setSelection(next);
+                              }}
+                              className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}
+                            >
+                              {imageSrc ? (
+                                <Image
+                                  src={imageSrc}
+                                  alt={tab === 'uploads' ? 'upload' : 'library'}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
+                                  No image
+                                </div>
+                              )}
+                              {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
+                              <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                    {currentHasMore && (
+                      <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
+                        {currentLoading ? 'Loading more…' : 'Scroll to load more'}
+                      </div>
+                    )}
+                    <div className="flex justify-end mt-0 gap-2">
+                      <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                      <button className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-end mt-0 gap-2">
-                  <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
-                </div>
               </div>
             ) : (
               <div>

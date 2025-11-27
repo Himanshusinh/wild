@@ -37,14 +37,56 @@ export async function fetchLibrary(params: {
 }): Promise<LibraryResponse> {
   try {
     const api = getApiClient();
-    const queryParams = new URLSearchParams();
-    if (params.limit) queryParams.set('limit', String(params.limit));
-    if (params.cursor) queryParams.set('cursor', params.cursor);
-    if (params.nextCursor) queryParams.set('nextCursor', params.nextCursor);
-    if (params.mode) queryParams.set('mode', params.mode);
+    const apiParams: any = {
+      limit: params.limit || 50,
+      sortBy: 'createdAt',
+    };
+    
+    if (params.cursor) apiParams.cursor = params.cursor;
+    if (params.nextCursor) apiParams.nextCursor = params.nextCursor;
+    
+    // Map mode to generationType
+    if (params.mode === 'image') {
+      apiParams.generationType = 'text-to-image';
+    } else if (params.mode === 'video') {
+      apiParams.generationType = 'text-to-video';
+    } else if (params.mode === 'music') {
+      apiParams.generationType = 'text-to-music';
+    }
+    // 'all' or undefined means no generationType filter
 
-    const response = await api.get(`/api/library?${queryParams.toString()}`);
-    return response.data;
+    const response = await api.get('/api/generations', { params: apiParams });
+    const result = response.data?.data || { items: [], nextCursor: undefined, hasMore: false };
+    
+    // Transform the response to match LibraryItem format
+    const items: LibraryItem[] = (result.items || []).map((item: any) => {
+      const firstImage = item.images?.[0];
+      return {
+        id: item.id,
+        historyId: item.id,
+        url: firstImage?.url || firstImage?.originalUrl || firstImage?.firebaseUrl || '',
+        originalUrl: firstImage?.originalUrl || firstImage?.url || '',
+        type: params.mode === 'video' ? 'video' : 'image',
+        thumbnail: firstImage?.thumbnailUrl || firstImage?.avifUrl || firstImage?.webpUrl,
+        prompt: item.prompt,
+        model: item.model,
+        createdAt: item.createdAt || item.timestamp,
+        storagePath: firstImage?.storagePath,
+        mediaId: firstImage?.id,
+        aspectRatio: item.aspectRatio,
+        aestheticScore: item.aestheticScore,
+      };
+    });
+
+    return {
+      responseStatus: 'success',
+      message: 'Success',
+      data: {
+        items,
+        nextCursor: result.nextCursor,
+        hasMore: result.hasMore || false,
+      },
+    };
   } catch (error: any) {
     return {
       responseStatus: 'error',
@@ -68,14 +110,56 @@ export async function fetchUploads(params: {
 }): Promise<LibraryResponse> {
   try {
     const api = getApiClient();
-    const queryParams = new URLSearchParams();
-    if (params.limit) queryParams.set('limit', String(params.limit));
-    if (params.cursor) queryParams.set('cursor', params.cursor);
-    if (params.nextCursor) queryParams.set('nextCursor', params.nextCursor);
-    if (params.mode) queryParams.set('mode', params.mode);
+    const apiParams: any = {
+      limit: params.limit || 50,
+      sortBy: 'createdAt',
+      isPublic: false, // User uploads are typically private
+    };
+    
+    if (params.cursor) apiParams.cursor = params.cursor;
+    if (params.nextCursor) apiParams.nextCursor = params.nextCursor;
+    
+    // Map mode to generationType
+    if (params.mode === 'image') {
+      apiParams.generationType = 'text-to-image';
+    } else if (params.mode === 'video') {
+      apiParams.generationType = 'text-to-video';
+    } else if (params.mode === 'music') {
+      apiParams.generationType = 'text-to-music';
+    }
 
-    const response = await api.get(`/api/uploads?${queryParams.toString()}`);
-    return response.data;
+    const response = await api.get('/api/generations', { params: apiParams });
+    const result = response.data?.data || { items: [], nextCursor: undefined, hasMore: false };
+    
+    // Transform the response to match LibraryItem format
+    const items: LibraryItem[] = (result.items || []).map((item: any) => {
+      const firstImage = item.images?.[0];
+      return {
+        id: item.id,
+        historyId: item.id,
+        url: firstImage?.url || firstImage?.originalUrl || firstImage?.firebaseUrl || '',
+        originalUrl: firstImage?.originalUrl || firstImage?.url || '',
+        type: params.mode === 'video' ? 'video' : 'image',
+        thumbnail: firstImage?.thumbnailUrl || firstImage?.avifUrl || firstImage?.webpUrl,
+        prompt: item.prompt,
+        model: item.model,
+        createdAt: item.createdAt || item.timestamp,
+        storagePath: firstImage?.storagePath,
+        mediaId: firstImage?.id,
+        aspectRatio: item.aspectRatio,
+        aestheticScore: item.aestheticScore,
+      };
+    });
+
+    return {
+      responseStatus: 'success',
+      message: 'Success',
+      data: {
+        items,
+        nextCursor: result.nextCursor,
+        hasMore: result.hasMore || false,
+      },
+    };
   } catch (error: any) {
     return {
       responseStatus: 'error',
