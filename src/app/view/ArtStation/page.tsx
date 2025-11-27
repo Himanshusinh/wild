@@ -1002,7 +1002,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
             {/* Category Filter Bar */}
             <div className="mb-4">
               <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-                {(['All', 'Images', 'Videos', 'Logos', 'Products'] as Category[]).map((category) => (
+                {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}

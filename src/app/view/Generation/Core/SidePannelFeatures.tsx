@@ -214,7 +214,7 @@ const SidePannelFeatures = ({
       ref={sidebarRef}
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-[width] text-white duration-300 md:w-[68px] w-[50px] hover:w-60 z-40 shadow-2xl'
+      className='fixed top-0 bottom-0 left-0 flex flex-col gap-1 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-[width] text-white duration-300 md:w-[68px] w-[50px] hover:w-60 z-[50] shadow-2xl'
       style={{
         // borderTopLeftRadius: '16px',
         // borderBottomLeftRadius: '16px',
@@ -223,7 +223,7 @@ const SidePannelFeatures = ({
       }}
     >
       {/* Logo at the top */}
-      <div className="flex items-center gap-4 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0 -ml-1">
+      <div className="flex items-center gap-2 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0 -ml-1">
         <div
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
@@ -258,7 +258,7 @@ const SidePannelFeatures = ({
             }
           }}
           className={`${taglineClasses} mt-1 cursor-pointer shrink-0`}>
-          <Image src="/core/logowithtagline.png" alt="WildMind Logo" width={400} height={200} className="h-10 w-auto" unoptimized />
+          <Image src="/icons/wildmind_text_whitebg (2).svg" alt="WildMind Logo" width={400} height={200} className="h-6 w-32" unoptimized />
         </span>
       </div>
 
@@ -288,88 +288,8 @@ const SidePannelFeatures = ({
           }}
           className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
         >
-          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="flex-none shrink-0 w-[30px] h-[30px]" priority unoptimized />
+          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="flex-none shrink-0 w-[24px] h-[24px]" priority unoptimized />
           <span className={labelClasses}>Home</span>
-        </div>
-      </div>
-
-      <div className="relative">
-        <div
-          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleImageGenerationClick();
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="flex-none w-[30px] h-[30px]" priority unoptimized />
-          <span className={labelClasses}>Image Generation</span>
-        </div>
-      </div>
-
-      <div>
-        <div
-          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('edit-image');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
-          <span className={labelClasses}>Image Edit</span>
-        </div>
-      </div>
-
-      <div>
-        <div
-          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('text-to-video');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="flex-none w-[30px] h-[30px]" priority unoptimized />
-          <span className={labelClasses}>Video Generation</span>
-        </div>
-      </div>
-
-      <div>
-        <div
-          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('edit-video');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.videoEdit} alt="Video Edit" width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
-          <span className={labelClasses}>Video Edit</span>
-        </div>
-      </div>
-
-      <div>
-        <div
-          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('text-to-music');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} className="flex-none w-[30px] h-[30px]" priority unoptimized />
-          <span className={labelClasses}>Audio Generation</span>
         </div>
       </div>
 
@@ -387,11 +307,93 @@ const SidePannelFeatures = ({
           }}
           className="flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item"
         >
-          <Image src={imageRoutes.icons.canvas} alt="Canvas Studio" width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
-          <span className={labelClasses}>Canvas Studio</span>
+          <Image src={imageRoutes.icons.canvas} alt="WildCanvas" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+          <span className={labelClasses}>WildCanvas</span>
         </div>
       </div>
 
+      <div className="relative">
+        <div
+          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleImageGenerationClick();
+            }
+          }}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
+          <span className={labelClasses}>Image Generation</span>
+        </div>
+      </div>
+
+      <div>
+        <div
+          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('edit-image');
+            }
+          }}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+          <span className={labelClasses}>Image Edit</span>
+        </div>
+      </div>
+
+      <div>
+        <div
+          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('text-to-video');
+            }
+          }}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
+          <span className={labelClasses}>Video Generation</span>
+        </div>
+      </div>
+
+      <div>
+        <div
+          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('edit-video');
+            }
+          }}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src="/icons/gear-play.svg" alt="Video Edit" width={36} height={36} className="flex-none w-[24px] h-[24px]" unoptimized />
+          <span className={labelClasses}>Video Edit</span>
+        </div>
+      </div>
+
+      <div>
+        <div
+          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              handleGenerationTypeChange('text-to-music');
+            }
+          }}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
+          <span className={labelClasses}>Audio Generation</span>
+        </div>
+      </div>
+
+      
+{/* 
       <div>
         <div
           onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.LIVE_CHAT, () => router.push(NAV_ROUTES.LIVE_CHAT))}
@@ -406,7 +408,7 @@ const SidePannelFeatures = ({
           <Image src={imageRoutes.icons.canvas} alt="Live Chat" width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
           <span className={labelClasses}>Live Canvas</span>
         </div>
-      </div>
+      </div> */}
 
 
 
@@ -432,7 +434,7 @@ const SidePannelFeatures = ({
       </div> */}
 
 
-      <div className="relative">
+      {/* <div className="relative">
         <div
           ref={brandingRef}
           onMouseDown={(e) => {
@@ -492,7 +494,7 @@ const SidePannelFeatures = ({
                 }`}
             >
               <span className='text-sm text-white'>Sticker Generation</span>
-            </div>
+            </div> */}
 
             {/* <div
                         onClick={() => handleGenerationTypeChange('mockup-generation')}
@@ -503,7 +505,7 @@ const SidePannelFeatures = ({
                         <span className='text-sm text-white'>Mockup Generation</span>
                     </div> */}
 
-            <div
+            {/* <div
               onMouseDown={(e) => handleClickWithNewTab(e, '/product-generation', () => router.push('/product-generation'))}
               onClick={(e) => {
                 if (!e.ctrlKey && !e.metaKey) {
@@ -517,7 +519,7 @@ const SidePannelFeatures = ({
             </div>
           </div>)}
 
-      </div>
+      </div> */}
 
       {/* Art Station */}
       <div>
@@ -531,7 +533,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
+          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
           <span className={labelClasses}>Art Station</span>
         </div>
       </div>
@@ -554,7 +556,7 @@ const SidePannelFeatures = ({
           className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
             }`}
         >
-          <Image src={imageRoutes.icons.pricing} alt="Pricing" width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
+          <Image src="/icons/shield-dollar.svg" alt="Pricing" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
           <span className={labelClasses}>Pricing</span>
         </div>
       </div>
@@ -587,7 +589,7 @@ const SidePannelFeatures = ({
           }}
           className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
         >
-          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="flex-none w-[30px] h-[30px]" unoptimized />
+          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
           <span className={labelClasses}>History</span>
         </div>
       </div>
