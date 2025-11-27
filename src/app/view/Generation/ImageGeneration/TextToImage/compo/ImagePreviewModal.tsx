@@ -1,16 +1,14 @@
 'use client';
 
 import React from 'react';
-import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { Share, Trash2, Palette, Video } from 'lucide-react';
 // Redirect to Edit Image page rather than opening inline popups
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { shallowEqual } from 'react-redux';
 import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
-import { removeHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store/slices/historySlice';
+import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 import { toResourceProxy, toMediaProxy, toZataPath } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
@@ -91,127 +89,13 @@ const getCleanPrompt = (promptText: string): string => {
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
   onClose: () => void;
-  onNavigate?: (newPreview: { entry: HistoryEntry; image: { id?: string; url: string } }) => void;
 }
 
-const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose, onNavigate }) => {
+const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
-  
-  // Get all history entries for cross-generation navigation
-  const allHistoryEntries = useAppSelector((state: any) => {
-    const entries = state.history?.entries || [];
-    // Filter to only image generation types and sort by date (newest first)
-    const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-    const filtered = entries.filter((entry: any) => {
-      const normalizedType = normalize(entry.generationType);
-      const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
-      return normalizedType === 'text-to-image' || 
-             normalizedType === 'image-upscale' || 
-             normalizedType === 'image-to-svg' ||
-             normalizedType === 'image-edit' ||
-             normalizedType === 'image-to-image' ||
-             isVectorize;
-    }).filter((entry: any) => {
-      // Only include entries that have images
-      const imgs = entry?.images || [];
-      return Array.isArray(imgs) && imgs.length > 0;
-    });
-    
-    // Sort by timestamp (newest first)
-    const getTs = (x: any) => {
-      const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
-      if (!raw) return 0;
-      const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
-      const ms = Date.parse(t);
-      return Number.isNaN(ms) ? 0 : ms;
-    };
-    
-    return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
-  }, shallowEqual);
-  
-  // Get hasMore and loading state from Redux
-  const hasMore = useAppSelector((state: any) => state.history?.hasMore ?? false);
-  const isLoadingMore = useAppSelector((state: any) => state.history?.loading ?? false);
-  
-  // Create a flat list of all images from all generations for navigation
-  const allGenerationsGallery = React.useMemo(() => {
-    const gallery: Array<{ entry: any; image: any; entryIndex: number; imageIndex: number }> = [];
-    allHistoryEntries.forEach((entry: any, entryIdx: number) => {
-      const imgs = Array.isArray(entry?.images) ? entry.images : [];
-      imgs.forEach((img: any, imgIdx: number) => {
-        gallery.push({ entry, image: img, entryIndex: entryIdx, imageIndex: imgIdx });
-      });
-    });
-    return gallery;
-  }, [allHistoryEntries]);
-  
-  // Find current image position in the all-generations gallery
-  const currentGalleryPosition = React.useMemo(() => {
-    if (!preview || allGenerationsGallery.length === 0) return -1;
-    const currentEntryId = preview.entry?.id;
-    const currentImageId = preview.image?.id;
-    const currentImageUrl = preview.image?.url;
-    
-    return allGenerationsGallery.findIndex((item: any) => {
-      const entryMatch = item.entry?.id === currentEntryId;
-      const imageIdMatch = currentImageId && item.image?.id === currentImageId;
-      const imageUrlMatch = currentImageUrl && (item.image?.url === currentImageUrl || item.image?.storagePath === (preview.image as any)?.storagePath);
-      return entryMatch && (imageIdMatch || imageUrlMatch);
-    });
-  }, [preview, allGenerationsGallery]);
-  
-  const canGoToPrevGeneration = currentGalleryPosition > 0;
-  const canGoToNextGeneration = currentGalleryPosition >= 0 && currentGalleryPosition < allGenerationsGallery.length - 1;
-  
-  // Ref to track if we're currently loading to prevent infinite requests
-  const isLoadingMoreRef = React.useRef(false);
-  const lastLoadMorePositionRef = React.useRef<number>(-1);
-  
-  // Auto-load more history when navigating near the end
-  const checkAndLoadMore = React.useCallback(() => {
-    // Prevent infinite requests
-    if (isLoadingMore || isLoadingMoreRef.current || !hasMore) return;
-    
-    // Check if we're within the last 5 items of the gallery
-    const remainingItems = allGenerationsGallery.length - currentGalleryPosition - 1;
-    if (remainingItems <= 5 && currentGalleryPosition !== lastLoadMorePositionRef.current) {
-      console.log('[ImagePreviewModal] Auto-loading more history, remaining items:', remainingItems);
-      
-      // Mark as loading to prevent duplicate requests
-      isLoadingMoreRef.current = true;
-      lastLoadMorePositionRef.current = currentGalleryPosition;
-      
-      // Use mode filter instead of invalid generation types
-      dispatch(loadMoreHistory({
-        filters: {
-          mode: 'image' // Use mode filter which is valid and will include all image types
-        },
-        paginationParams: {
-          limit: 20
-        }
-      })).finally(() => {
-        // Reset loading flag after request completes (success or failure)
-        setTimeout(() => {
-          isLoadingMoreRef.current = false;
-        }, 1000); // Small delay to prevent rapid-fire requests
-      });
-    }
-  }, [isLoadingMore, hasMore, allGenerationsGallery.length, currentGalleryPosition, dispatch]);
-  
-  // Auto-load more when position changes and we're near the end (with debounce)
-  React.useEffect(() => {
-    if (currentGalleryPosition < 0) return;
-    
-    // Debounce the check to avoid rapid-fire requests
-    const timeoutId = setTimeout(() => {
-      checkAndLoadMore();
-    }, 300); // 300ms debounce
-    
-    return () => clearTimeout(timeoutId);
-  }, [currentGalleryPosition, checkAndLoadMore]);
 
   // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
   
@@ -243,16 +127,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
     } catch {}
     setObjectUrl('');
     setImageDimensions(null);
-    // Clear loaded image ref and reset dimensions when preview changes (for cross-generation navigation)
-    // This ensures new image loads when navigating and aspect ratio is recalculated
-    fsImageLoadedRef.current = null;
-    fsImageRef.current = null;
-    // Reset natural size to force recalculation of aspect ratio
-    setFsNaturalSize({ width: 0, height: 0 });
-    // Reset zoom and offset when image changes (will be recalculated when image loads in fullscreen)
-    setFsScale(1);
-    setFsFitScale(1);
-    setFsOffset({ x: 0, y: 0 });
   }, [preview?.entry?.id, preview?.image?.id]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
@@ -262,27 +136,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
   const entryFetchTokenRef = React.useRef<string | null>(null);
   const isEntryLoadingRef = React.useRef<boolean>(false);
 
-  // Cache for entry details to avoid redundant API calls (5 minute TTL)
-  const entryCacheRef = React.useRef<Map<string, HistoryEntry>>(new Map());
-  const entryCacheTimestampsRef = React.useRef<Map<string, number>>(new Map());
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
   React.useEffect(() => {
     if (!preview?.entry?.id) return;
     
     const entryId = preview.entry.id;
     const currentToken = `entry-${entryId}`;
-    
-    // Check cache first for faster loading
-    const cached = entryCacheRef.current.get(entryId);
-    const cacheTime = entryCacheTimestampsRef.current.get(entryId);
-    const now = Date.now();
-    
-    if (cached && cacheTime && (now - cacheTime) < CACHE_TTL) {
-      // Use cached entry immediately
-      setCurrentEntry(cached);
-      return;
-    }
     
     // Skip if we're already loading the same entry
     if (entryFetchTokenRef.current === currentToken && isEntryLoadingRef.current) {
@@ -323,10 +181,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
             inputImages: (mergedEntry as any)?.inputImages,
           });
           setCurrentEntry(mergedEntry);
-          
-          // Cache the entry for faster future loads
-          entryCacheRef.current.set(entryId, mergedEntry);
-          entryCacheTimestampsRef.current.set(entryId, Date.now());
         }
         isEntryLoadingRef.current = false;
       } catch (error: any) {
@@ -352,7 +206,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
   }, [preview?.entry?.id]);
 
   // single dispatch instance
-  // Fullscreen viewer state - Canvas-based for smooth performance
+  // Fullscreen viewer state
   const [isFsOpen, setIsFsOpen] = React.useState(false);
   const [fsScale, setFsScale] = React.useState(1);
   const [fsFitScale, setFsFitScale] = React.useState(1);
@@ -361,161 +215,35 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
-  const fsCanvasRef = React.useRef<HTMLCanvasElement>(null);
-  const fsImageRef = React.useRef<HTMLImageElement | null>(null);
-  const fsAnimationFrameRef = React.useRef<number | null>(null);
   const wheelNavCooldown = React.useRef(false);
-  const fsImageLoadedRef = React.useRef<string | null>(null); // Track loaded image URL to prevent re-loading
   
   // -------- Fullscreen helpers (declared before any early returns) ---------
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
-    if (!fsContainerRef.current || !fsImageRef.current || !fsImageRef.current.complete) return newOffset;
+    if (!fsContainerRef.current) return newOffset;
     const rect = fsContainerRef.current.getBoundingClientRect();
-    const img = fsImageRef.current;
-    
-    // Use actual image dimensions directly
-    const imgAspectRatio = img.naturalWidth / img.naturalHeight;
-    const containerAspectRatio = rect.width / rect.height;
-    
-    let imgW, imgH;
-    if (imgAspectRatio > containerAspectRatio) {
-      imgW = rect.width * currentScale;
-      imgH = imgW / imgAspectRatio;
-    } else {
-      imgH = rect.height * currentScale;
-      imgW = imgH * imgAspectRatio;
-    }
-    
+    const imgW = fsNaturalSize.width * currentScale;
+    const imgH = fsNaturalSize.height * currentScale;
     const maxX = Math.max(0, (imgW - rect.width) / 2);
     const maxY = Math.max(0, (imgH - rect.height) / 2);
     return {
       x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
       y: Math.max(-maxY, Math.min(maxY, newOffset.y))
     };
-  }, []);
+  }, [fsNaturalSize]);
 
   const fsZoomToPoint = React.useCallback((point: { x: number; y: number }, newScale: number) => {
-    if (!fsContainerRef.current || !fsImageRef.current || !fsImageRef.current.complete) return;
+    if (!fsContainerRef.current) return;
     const rect = fsContainerRef.current.getBoundingClientRect();
-    const img = fsImageRef.current;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-    
-    // Use actual image dimensions directly
-    const imgAspectRatio = img.naturalWidth / img.naturalHeight;
-    const containerAspectRatio = rect.width / rect.height;
-    
-    // Current scale dimensions
-    let currentImgW, currentImgH;
-    if (imgAspectRatio > containerAspectRatio) {
-      currentImgW = rect.width * fsScale;
-      currentImgH = currentImgW / imgAspectRatio;
-    } else {
-      currentImgH = rect.height * fsScale;
-      currentImgW = currentImgH * imgAspectRatio;
-    }
-    
-    // Calculate the point in image coordinates (normalized 0-1)
-    const imgXNormalized = (point.x - centerX - fsOffset.x + currentImgW / 2) / currentImgW;
-    const imgYNormalized = (point.y - centerY - fsOffset.y + currentImgH / 2) / currentImgH;
-    
-    // New scale dimensions
-    let newImgW, newImgH;
-    if (imgAspectRatio > containerAspectRatio) {
-      newImgW = rect.width * newScale;
-      newImgH = newImgW / imgAspectRatio;
-    } else {
-      newImgH = rect.height * newScale;
-      newImgW = newImgH * imgAspectRatio;
-    }
-    
-    // Calculate new offset to keep the same image point under the cursor
-    const newOffsetX = point.x - centerX - (imgXNormalized * newImgW - newImgW / 2);
-    const newOffsetY = point.y - centerY - (imgYNormalized * newImgH - newImgH / 2);
-    
+    const newOffsetX = centerX - (point.x * newScale);
+    const newOffsetY = centerY - (point.y * newScale);
     const clamped = fsClampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
     setFsScale(newScale);
     setFsOffset(clamped);
-  }, [fsClampOffset, fsOffset, fsScale]);
+  }, [fsClampOffset]);
 
-  // Canvas rendering function - uses actual image dimensions directly
-  const fsRenderCanvas = React.useCallback(() => {
-    const canvas = fsCanvasRef.current;
-    const img = fsImageRef.current;
-    if (!canvas || !img || !img.complete || img.naturalWidth === 0 || img.naturalHeight === 0) {
-      return;
-    }
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    
-    // Clear canvas
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, rect.width, rect.height);
-    
-    // Use actual image dimensions directly - simplest approach
-    const imgW = img.naturalWidth;
-    const imgH = img.naturalHeight;
-    const imgAspectRatio = imgW / imgH;
-    const containerAspectRatio = rect.width / rect.height;
-    
-    // Calculate display dimensions maintaining aspect ratio
-    let displayW, displayH;
-    if (imgAspectRatio > containerAspectRatio) {
-      displayW = rect.width * fsScale;
-      displayH = displayW / imgAspectRatio;
-    } else {
-      displayH = rect.height * fsScale;
-      displayW = displayH * imgAspectRatio;
-    }
-    
-    // Center and apply offset
-    const imgX = (rect.width - displayW) / 2 + fsOffset.x;
-    const imgY = (rect.height - displayH) / 2 + fsOffset.y;
-    
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, imgX, imgY, displayW, displayH);
-  }, [fsScale, fsOffset]);
-
-  // Render canvas on state changes - only when image is fully loaded
-  React.useEffect(() => {
-    if (!isFsOpen || !fsImageRef.current || !fsImageRef.current.complete) return;
-    if (fsImageRef.current.naturalWidth === 0 || fsImageRef.current.naturalHeight === 0) return;
-    
-    // Cancel previous animation frame
-    if (fsAnimationFrameRef.current) {
-      cancelAnimationFrame(fsAnimationFrameRef.current);
-    }
-    
-    // Use requestAnimationFrame for smooth rendering
-    fsAnimationFrameRef.current = requestAnimationFrame(() => {
-      if (fsImageRef.current && fsImageRef.current.complete) {
-        fsRenderCanvas();
-      }
-    });
-    
-    return () => {
-      if (fsAnimationFrameRef.current) {
-        cancelAnimationFrame(fsAnimationFrameRef.current);
-      }
-    };
-  }, [isFsOpen, fsScale, fsOffset, fsNaturalSize, fsRenderCanvas]);
-
-  const openFullscreen = React.useCallback((e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-    console.log('[ImagePreviewModal] Opening fullscreen, isFsOpen will be:', true);
+  const openFullscreen = React.useCallback(() => {
     setIsFsOpen(true);
   }, []);
 
@@ -524,158 +252,24 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
     setFsIsPanning(false);
   }, []);
 
-  // Build gallery from images in the SAME ENTRY (same generation run) - moved before useEffect that uses it
-  const sameDateGallery = React.useMemo(() => {
-    try {
-      const entryToUse = currentEntry || preview?.entry;
-      if (!entryToUse) return [] as Array<{ entry: any, image: any }>;
-      const imgs = (entryToUse as any)?.images || [];
-      return imgs.map((im: any) => ({ entry: entryToUse, image: im }));
-    } catch { return []; }
-  }, [currentEntry, preview]);
-
-  // Compute fit scale on open/resize and load image for canvas
+  // Compute fit scale on open/resize
   React.useEffect(() => {
-    if (!isFsOpen) {
-      // Reset when fullscreen closes
-      fsImageLoadedRef.current = null;
-      fsImageRef.current = null;
-      return;
-    }
-    
-    // Load image for canvas rendering
-    const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
-    const selectedImage: any = selectedPair.image || preview?.image;
-    const imageUrl = objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage?.url) || (selectedImage as any)?.avifUrl || selectedImage?.url);
-    
-    if (!imageUrl) {
-      return;
-    }
-    
-    // Always reload if URL changed (for navigation) - this ensures aspect ratio is recalculated
-    if (fsImageLoadedRef.current === imageUrl && fsImageRef.current && fsImageRef.current.complete) {
-      // Same image, but ensure we recalculate fit scale in case container size changed
-      if (fsContainerRef.current && fsImageRef.current) {
-        const rect = fsContainerRef.current.getBoundingClientRect();
-        const imgW = fsImageRef.current.naturalWidth;
-        const imgH = fsImageRef.current.naturalHeight;
-        const imgAspectRatio = imgW / imgH;
-        const containerAspectRatio = rect.width / rect.height;
-        
-        let fitScale;
-        if (imgAspectRatio > containerAspectRatio) {
-          fitScale = rect.width / imgW;
-        } else {
-          fitScale = rect.height / imgH;
-        }
-        
-        const base = Math.min(1, fitScale || 1);
-        setFsFitScale(base);
-        // Only reset scale if we're at or below fit scale
-        if (fsScale <= base) {
-          setFsScale(base);
-          setFsOffset({ x: 0, y: 0 });
-        }
-      }
-      fsRenderCanvas();
-      return;
-    }
-    
-    // Load new image - clear everything first
-    fsImageLoadedRef.current = null;
-    fsImageRef.current = null;
-    setFsNaturalSize({ width: 0, height: 0 });
-    setFsScale(1);
-    setFsFitScale(1);
-    setFsOffset({ x: 0, y: 0 });
-    
-    const img = document.createElement('img');
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      if (!fsContainerRef.current) return;
-      
+    if (!isFsOpen) return;
+    const computeFit = () => {
+      if (!fsContainerRef.current || !fsNaturalSize.width || !fsNaturalSize.height) return;
       const rect = fsContainerRef.current.getBoundingClientRect();
-      // Use actual image dimensions directly - simplest approach
-      const imgW = img.naturalWidth;
-      const imgH = img.naturalHeight;
-      
-      // Validate dimensions
-      if (imgW === 0 || imgH === 0) {
-        console.warn('[Fullscreen] Invalid image dimensions:', { imgW, imgH });
-        return;
-      }
-      
-      const imgAspectRatio = imgW / imgH;
-      const containerAspectRatio = rect.width / rect.height;
-      
-      // Calculate fit scale maintaining aspect ratio
-      let fitScale;
-      if (imgAspectRatio > containerAspectRatio) {
-        // Image is wider - fit to width
-        fitScale = rect.width / imgW;
-      } else {
-        // Image is taller - fit to height
-        fitScale = rect.height / imgH;
-      }
-      
-      const base = Math.min(1, fitScale || 1);
-      
-      // Set image and state
-      fsImageRef.current = img;
-      fsImageLoadedRef.current = imageUrl;
-      setFsNaturalSize({ width: imgW, height: imgH });
+      const fit = Math.min(rect.width / fsNaturalSize.width, rect.height / fsNaturalSize.height) || 1;
+      const base = Math.min(1, fit); // do not upscale by default
       setFsFitScale(base);
       setFsScale(base);
       setFsOffset({ x: 0, y: 0 });
-      
-      // Render after state updates - use requestAnimationFrame for smoother rendering
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (fsCanvasRef.current && fsImageRef.current && fsImageRef.current.complete) {
-            fsRenderCanvas();
-          }
-        }, 10);
-      });
     };
-    img.onerror = () => {
-      console.warn('[Fullscreen] Failed to load image:', imageUrl);
-      fsImageLoadedRef.current = null;
-      fsImageRef.current = null;
-      setFsNaturalSize({ width: 0, height: 0 });
-    };
-    img.src = imageUrl;
-    
-    const onResize = () => {
-      if (!fsContainerRef.current || !fsImageRef.current || !fsImageRef.current.complete) return;
-      
-      const rect = fsContainerRef.current.getBoundingClientRect();
-      const img = fsImageRef.current;
-      // Use actual image dimensions directly
-      const imgW = img.naturalWidth;
-      const imgH = img.naturalHeight;
-      const imgAspectRatio = imgW / imgH;
-      const containerAspectRatio = rect.width / rect.height;
-      
-      let fitScale;
-      if (imgAspectRatio > containerAspectRatio) {
-        fitScale = rect.width / imgW;
-      } else {
-        fitScale = rect.height / imgH;
-      }
-      
-      const base = Math.min(1, fitScale || 1);
-      setFsFitScale(base);
-      if (fsScale <= fsFitScale) {
-        setFsScale(base);
-        setFsOffset({ x: 0, y: 0 });
-      }
-      setTimeout(() => fsRenderCanvas(), 10);
-    };
+    computeFit();
+    const onResize = () => computeFit();
     window.addEventListener('resize', onResize);
-    return () => {
-      window.removeEventListener('resize', onResize);
-    };
-  }, [isFsOpen, selectedIndex, preview?.entry?.id, preview?.image?.id, objectUrl, sameDateGallery, currentEntry]); // Include all relevant dependencies
+    return () => window.removeEventListener('resize', onResize);
+    
+  }, [isFsOpen, fsNaturalSize]);
 
   // Lock background scroll while fullscreen is open
   React.useEffect(() => {
@@ -685,7 +279,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
     return () => { document.body.style.overflow = prev; };
   }, [isFsOpen]);
 
-  // Navigate within same generation (existing behavior)
+  // Build gallery from images in the SAME ENTRY (same generation run)
+  // Use currentEntry instead of preview.entry so it updates after deletion
+  const sameDateGallery = React.useMemo(() => {
+    try {
+      const entryToUse = currentEntry || preview?.entry;
+      if (!entryToUse) return [] as Array<{ entry: any, image: any }>;
+      const imgs = (entryToUse as any)?.images || [];
+      return imgs.map((im: any) => ({ entry: entryToUse, image: im }));
+    } catch { return []; }
+  }, [currentEntry, preview]);
+
   const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
     try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
     setSelectedIndex((idx) => {
@@ -696,13 +300,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
         const prevPair: any = (sameDateGallery as any[])[prevIdx];
         console.log('[Fullscreen] Prev image clicked', { fromIndex: idx, toIndex: prevIdx, total, url: prevPair?.image?.url || prevPair?.image?.storagePath });
       } catch {}
-      // Reset image state to force reload with correct aspect ratio
-      fsImageLoadedRef.current = null;
-      fsImageRef.current = null;
-      setFsNaturalSize({ width: 0, height: 0 });
-      setFsScale(1);
-      setFsFitScale(1);
-      setFsOffset({ x: 0, y: 0 });
       return prevIdx;
     });
   }, [sameDateGallery]);
@@ -717,71 +314,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
         const nextPair: any = (sameDateGallery as any[])[nextIdx];
         console.log('[Fullscreen] Next image clicked', { fromIndex: idx, toIndex: nextIdx, total, url: nextPair?.image?.url || nextPair?.image?.storagePath });
       } catch {}
-      // Reset image state to force reload with correct aspect ratio
-      fsImageLoadedRef.current = null;
-      fsImageRef.current = null;
-      setFsNaturalSize({ width: 0, height: 0 });
-      setFsScale(1);
-      setFsFitScale(1);
-      setFsOffset({ x: 0, y: 0 });
       return nextIdx;
     });
   }, [sameDateGallery]);
 
-  // Navigate to previous generation (cross-generation navigation)
-  const goToPrevGeneration = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
-    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
-    if (!canGoToPrevGeneration || !onNavigate || currentGalleryPosition <= 0) return;
-    
-    const prevItem = allGenerationsGallery[currentGalleryPosition - 1];
-    if (prevItem) {
-      // Reset all image state to force reload with correct aspect ratio
-      fsImageLoadedRef.current = null;
-      fsImageRef.current = null;
-      setFsNaturalSize({ width: 0, height: 0 });
-      setFsScale(1);
-      setFsFitScale(1);
-      setFsOffset({ x: 0, y: 0 });
-      onNavigate({ entry: prevItem.entry, image: prevItem.image });
-    }
-  }, [canGoToPrevGeneration, onNavigate, currentGalleryPosition, allGenerationsGallery]);
-
-  // Navigate to next generation (cross-generation navigation)
-  const goToNextGeneration = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
-    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
-    if (!canGoToNextGeneration || !onNavigate || currentGalleryPosition < 0 || currentGalleryPosition >= allGenerationsGallery.length - 1) return;
-    
-    const nextItem = allGenerationsGallery[currentGalleryPosition + 1];
-    if (nextItem) {
-      // Reset all image state to force reload with correct aspect ratio
-      fsImageLoadedRef.current = null;
-      fsImageRef.current = null;
-      setFsNaturalSize({ width: 0, height: 0 });
-      setFsScale(1);
-      setFsFitScale(1);
-      setFsOffset({ x: 0, y: 0 });
-      onNavigate({ entry: nextItem.entry, image: nextItem.image });
-      
-      // Check if we need to load more after navigation (with debounce)
-      setTimeout(() => checkAndLoadMore(), 500);
-    }
-  }, [canGoToNextGeneration, onNavigate, currentGalleryPosition, allGenerationsGallery, checkAndLoadMore]);
-
   const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!fsContainerRef.current || !fsImageRef.current || !fsImageRef.current.complete) return;
+    if (!fsContainerRef.current) return;
 
-    // Always zoom at cursor position, regardless of current zoom level
-    const rect = fsContainerRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    
-    // Check if user wants to navigate (hold Shift or Ctrl for navigation, otherwise always zoom)
-    const isNavigation = e.shiftKey || e.ctrlKey || e.metaKey;
-    
-    if (isNavigation && fsScale <= fsFitScale + 0.001) {
-      // Only allow navigation when at fit scale and modifier key is pressed
+    // If not zoomed in, use wheel to navigate between images
+    if (fsScale <= fsFitScale + 0.001) {
       if (wheelNavCooldown.current) return;
       const dy = e.deltaY || 0;
       const dx = e.deltaX || 0;
@@ -796,14 +339,14 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
       return;
     }
 
-    // Always zoom at cursor position
-    const zoomSpeed = 0.1;
-    const deltaZoom = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+    // When zoomed, keep existing zoom-to-point behavior
+    const rect = fsContainerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const deltaZoom = e.deltaY > 0 ? -0.1 : 0.1;
     const next = Math.max(0.5, Math.min(6, fsScale + deltaZoom));
-    if (Math.abs(next - fsScale) > 0.01) {
-      fsZoomToPoint({ x: mx, y: my }, next);
-    }
-  }, [fsScale, fsFitScale, fsZoomToPoint, goNext, goPrev, fsNaturalSize]);
+    if (next !== fsScale) fsZoomToPoint({ x: mx, y: my }, next);
+  }, [fsScale, fsFitScale, fsZoomToPoint, goNext, goPrev]);
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -865,83 +408,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
 
   const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
 
-  // Touch support for mobile devices
-  const fsTouchStartRef = React.useRef<{ x: number; y: number; distance: number } | null>(null);
-  const fsOnTouchStart = React.useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 1) {
-      // Single touch - start panning
-      const touch = e.touches[0];
-      setFsIsPanning(true);
-      setFsLastPoint({ x: touch.clientX, y: touch.clientY });
-    } else if (e.touches.length === 2) {
-      // Two touches - pinch zoom
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-      fsTouchStartRef.current = {
-        x: (touch1.clientX + touch2.clientX) / 2,
-        y: (touch1.clientY + touch2.clientY) / 2,
-        distance,
-      };
-    }
-  }, []);
-
-  const fsOnTouchMove = React.useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (e.touches.length === 1 && fsIsPanning) {
-      // Single touch - panning
-      const touch = e.touches[0];
-      const dx = touch.clientX - fsLastPoint.x;
-      const dy = touch.clientY - fsLastPoint.y;
-      const clamped = fsClampOffset({ x: fsOffset.x + dx, y: fsOffset.y + dy }, fsScale);
-      setFsOffset(clamped);
-      setFsLastPoint({ x: touch.clientX, y: touch.clientY });
-    } else if (e.touches.length === 2 && fsTouchStartRef.current) {
-      // Two touches - pinch zoom
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-      const scaleChange = distance / fsTouchStartRef.current.distance;
-      const newScale = Math.max(0.5, Math.min(6, fsScale * scaleChange));
-      const centerX = (touch1.clientX + touch2.clientX) / 2;
-      const centerY = (touch1.clientY + touch2.clientY) / 2;
-      if (fsContainerRef.current) {
-        const rect = fsContainerRef.current.getBoundingClientRect();
-        const mx = centerX - rect.left;
-        const my = centerY - rect.top;
-        fsZoomToPoint({ x: mx, y: my }, newScale);
-      }
-      fsTouchStartRef.current.distance = distance;
-    }
-  }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale, fsZoomToPoint]);
-
-  const fsOnTouchEnd = React.useCallback(() => {
-    setFsIsPanning(false);
-    fsTouchStartRef.current = null;
-  }, []);
-
-  // Keyboard navigation in fullscreen - handles both same-generation and cross-generation
+  // Keyboard navigation in fullscreen
   React.useEffect(() => {
     if (!isFsOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        e.stopPropagation();
-        // Try cross-generation first, then same-generation
-        if (canGoToPrevGeneration && onNavigate) {
-          goToPrevGeneration(e);
-        } else {
-          goPrev(e);
-        }
+        goPrev();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        e.stopPropagation();
-        // Try cross-generation first, then same-generation
-        if (canGoToNextGeneration && onNavigate) {
-          goToNextGeneration(e);
-        } else {
-          goNext(e);
-        }
+        goNext();
       } else if (e.key === 'Escape') {
         e.preventDefault();
         closeFullscreen();
@@ -949,41 +425,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFsOpen, goPrev, goNext, goToPrevGeneration, goToNextGeneration, canGoToPrevGeneration, canGoToNextGeneration, onNavigate, closeFullscreen]);
-
-  // ESC key to close modal when popup is open (not in fullscreen)
-  React.useEffect(() => {
-    if (!preview || isFsOpen) return; // Only handle when modal is open but not in fullscreen
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [preview, isFsOpen, onClose]);
-
-  // Keyboard navigation for cross-generation (when not in fullscreen)
-  // Arrow keys navigate between different generations when popup is open
-  React.useEffect(() => {
-    if (!preview || isFsOpen) return; // Only handle when modal is open but not in fullscreen
-    const onKey = (e: KeyboardEvent) => {
-      // Arrow keys for cross-generation navigation (when not in fullscreen)
-      if (e.key === 'ArrowLeft' && canGoToPrevGeneration) {
-        e.preventDefault();
-        e.stopPropagation();
-        goToPrevGeneration(e);
-      } else if (e.key === 'ArrowRight' && canGoToNextGeneration) {
-        e.preventDefault();
-        e.stopPropagation();
-        goToNextGeneration(e);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [preview, isFsOpen, goToPrevGeneration, goToNextGeneration, canGoToPrevGeneration, canGoToNextGeneration]);
+  }, [isFsOpen, goPrev, goNext, closeFullscreen]);
   
   // (moved above for navigation callbacks)
 
@@ -1084,51 +526,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
   const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
   const selectedImage: any = selectedPair.image || preview?.image;
   const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
-
-  // Measure the actual resolution from the highest-quality source (storagePath or original URL)
-  React.useEffect(() => {
-    const measurementSource =
-      (selectedImage as any)?.storagePath ||
-      (selectedImage as any)?.originalUrl ||
-      (selectedImage as any)?.url ||
-      '';
-
-    if (!measurementSource) return;
-
-    const proxiedMeasurementUrl =
-      toMediaProxy(measurementSource) ||
-      (measurementSource.startsWith('http') ? measurementSource : `${ZATA_PREFIX}${measurementSource.replace(/^\/+/, '')}`);
-
-    if (!proxiedMeasurementUrl) return;
-    if (typeof window === 'undefined' || typeof window.Image === 'undefined') return;
-
-    let cancelled = false;
-    const img = new window.Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      if (cancelled) return;
-      if (img.naturalWidth && img.naturalHeight) {
-        setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-      }
-    };
-    img.onerror = (err: Event | string | null) => {
-      if (!cancelled) {
-        console.warn('[ImagePreviewModal] Failed to measure image dimensions from source:', measurementSource, err);
-      }
-    };
-    img.src = proxiedMeasurementUrl;
-
-    return () => {
-      cancelled = true;
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [
-    (selectedImage as any)?.id,
-    (selectedImage as any)?.storagePath,
-    (selectedImage as any)?.originalUrl,
-    (selectedImage as any)?.url
-  ]);
   const storedResolution = React.useMemo(() => {
     const candidates = [
       selectedImage?.width && selectedImage?.height
@@ -1156,10 +553,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
     return null;
   }, [selectedEntry, selectedImage]);
   const displayedResolution = React.useMemo(() => {
-    if (imageDimensions && imageDimensions.width > 0 && imageDimensions.height > 0) {
-      return imageDimensions;
+    if (storedResolution && imageDimensions) {
+      const storedArea = storedResolution.width * storedResolution.height;
+      const measuredArea = imageDimensions.width * imageDimensions.height;
+      return storedArea >= measuredArea ? storedResolution : imageDimensions;
     }
-    return storedResolution || null;
+    return storedResolution || imageDimensions || null;
   }, [storedResolution, imageDimensions]);
   const isUserUploadSelected = false;
 
@@ -1619,38 +1018,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
         }
       }}
     > 
-      {/* Cross-generation navigation buttons (left/right sides) */}
-      {canGoToPrevGeneration && onNavigate && (
-        <button
-          aria-label="Previous generation"
-          onClick={(e) => {
-            e.stopPropagation();
-            goToPrevGeneration(e);
-          }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center ring-1 ring-white/20 hover:ring-white/30 transition-all backdrop-blur-sm"
-          title="Previous generation (←)"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-      )}
-      
-      {canGoToNextGeneration && onNavigate && (
-        <button
-          aria-label="Next generation"
-          onClick={(e) => {
-            e.stopPropagation();
-            goToNextGeneration(e);
-          }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center ring-1 ring-white/20 hover:ring-white/30 transition-all backdrop-blur-sm"
-          title="Next generation (→)"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </button>
-      )}
 
     <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
       <div 
@@ -1694,24 +1061,22 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
                 {isUserUploadSelected && (
                   <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm ">User upload</div>
                 )}
-                {/* Left/Right Navigation Buttons (for same-generation navigation) */}
+                {/* Left/Right Navigation Buttons */}
                 {sameDateGallery.length > 1 && (
                   <>
                     <button
-                      aria-label="Previous image (same generation)"
+                      aria-label="Previous image"
                       onClick={(e) => { e.stopPropagation(); goPrev(e); }}
                       className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
-                      title="Previous image in this generation"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                         <path d="M15 18l-6-6 6-6" />
                       </svg>
                     </button>
                     <button
-                      aria-label="Next image (same generation)"
+                      aria-label="Next image"
                       onClick={(e) => { e.stopPropagation(); goNext(e); }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/30"
-                      title="Next image in this generation"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                         <path d="M9 18l6-6-6-6" />
@@ -1725,12 +1090,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('[ImagePreviewModal] Fullscreen button clicked');
-                openFullscreen(e);
-              }}
+              onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <path d="M3 9V5a2 2 0 0 1 2-2h4" />
@@ -2034,117 +1394,72 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
           </div>
         </div>
       </div>
-      {/* Fullscreen viewer overlay - rendered via portal to ensure proper z-index */}
-      {typeof window !== 'undefined' && isFsOpen && createPortal(
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+      {/* Fullscreen viewer overlay */}
+      {isFsOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
           <div className="absolute top-3 right-4 z-[90]">
             <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
               ✕
             </button>
           </div>
-          {/* Cross-generation navigation arrows (left/right sides) */}
-          {canGoToPrevGeneration && onNavigate && (
-            <button
-              aria-label="Previous generation"
-              onClick={(e) => {
-                e.stopPropagation();
-                goToPrevGeneration(e);
-              }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center ring-1 ring-white/20 hover:ring-white/30 transition-all backdrop-blur-sm pointer-events-auto"
-              title="Previous generation (←)"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-          )}
-          
-          {canGoToNextGeneration && onNavigate && (
-            <button
-              aria-label="Next generation"
-              onClick={(e) => {
-                e.stopPropagation();
-                goToNextGeneration(e);
-              }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center ring-1 ring-white/20 hover:ring-white/30 transition-all backdrop-blur-sm pointer-events-auto"
-              title="Next generation (→)"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          )}
-
-          {/* Same-generation navigation arrows (only when multiple images in this run) */}
-          {(sameDateGallery.length > 1) && (
-            <>
-              <button
-                aria-label="Previous image (same generation)"
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  goPrev(e);
-                  // Reset zoom when navigating to new image
-                  setFsScale(fsFitScale);
-                  setFsOffset({ x: 0, y: 0 });
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                type="button"
-                className="absolute left-20 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
-                title="Previous image in this generation"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-              </button>
-              <button
-                aria-label="Next image (same generation)"
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  goNext(e);
-                  // Reset zoom when navigating to new image
-                  setFsScale(fsFitScale);
-                  setFsOffset({ x: 0, y: 0 });
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                type="button"
-                className="absolute right-20 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
-                title="Next image in this generation"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
-              </button>
-            </>
-          )}
+          {/* Navigation arrows (only when multiple images in this run) */}
+          {(sameDateGallery.length > 1) && <button
+            aria-label="Previous image"
+            onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          </button>}
+          {(sameDateGallery.length > 1) && <button
+            aria-label="Next image"
+            onClick={(e) => { e.stopPropagation(); goNext(e); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-[90] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center ring-1 ring-white/20 pointer-events-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+          </button>}
           <div
             ref={fsContainerRef}
-            className="relative w-full h-full cursor-zoom-in overflow-hidden"
+            className="relative w-full h-full cursor-zoom-in"
             onWheel={fsOnWheel}
             onMouseDown={fsOnMouseDown}
             onMouseMove={fsOnMouseMove}
             onMouseUp={fsOnMouseUp}
             onMouseLeave={fsOnMouseUp}
-            onTouchStart={fsOnTouchStart}
-            onTouchMove={fsOnTouchMove}
-            onTouchEnd={fsOnTouchEnd}
             onContextMenu={(e) => { e.preventDefault(); }}
             style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
           >
-            <canvas
-              ref={fsCanvasRef}
-              className="absolute inset-0 w-full h-full pointer-events-none"
+            <div
+              className="absolute inset-0 flex items-center justify-center"
               style={{
-                imageRendering: 'auto' as const,
-                touchAction: 'none',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                msUserSelect: 'none',
-                pointerEvents: 'none',
+                transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`,
+                transformOrigin: 'center center',
+                transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out'
               }}
-            />
+            >
+              <img
+                src={objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage?.url) || (selectedImage as any)?.avifUrl || selectedImage?.url) || (toMediaProxy((preview.image as any)?.avifUrl || preview.image.url) || (preview.image as any)?.avifUrl || preview.image.url)}
+                alt=""
+                aria-hidden="true"
+                decoding="async"
+                fetchPriority="high"
+                onLoad={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                }}
+                className="max-w-full max-h-full object-contain select-none"
+                draggable={false}
+              />
+            </div>
           </div>
           {/* Instructions */}
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
             Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

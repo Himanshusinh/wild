@@ -3983,7 +3983,6 @@ const InputBox = () => {
         <ImagePreviewModal 
           preview={preview} 
           onClose={() => setPreview(null)}
-          onNavigate={(newPreview) => setPreview(newPreview)}
         />
       )}
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
