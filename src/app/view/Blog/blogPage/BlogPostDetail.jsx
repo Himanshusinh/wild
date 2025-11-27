@@ -1,8 +1,71 @@
 'use client';
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 function BlogPostDetail({ post, onBack }) {
+  const router = useRouter()
+
+  // Map blog post topics to specific Edit tools (Upscale, Remove BG, Replace, Resize, etc.)
+  const getFeatureLink = (post) => {
+    const title = post.title?.toLowerCase() || ''
+    const description = post.description?.toLowerCase() || ''
+    const content = JSON.stringify(post.content || {}).toLowerCase()
+    const text = `${title} ${description} ${content}`
+
+    // Image / video enhancement → Upscale
+    if (text.includes('upscale') || text.includes('upscaling') || text.includes('enhance') || text.includes('sharpen')) {
+      return {
+        text: 'Explore WildMind AI Feature: Upscale',
+        href: '/edit-image?feature=upscale',
+      }
+    }
+
+    // Background removal → Remove BG
+    if (text.includes('remove bg') || text.includes('remove background') || text.includes('background removal') || text.includes('cut out')) {
+      return {
+        text: 'Explore WildMind AI Feature: Remove Background',
+        href: '/edit-image?feature=remove-bg',
+      }
+    }
+
+    // Replace / inpaint → Fill (replace content)
+    if (text.includes('replace') || text.includes('inpaint') || text.includes('swap') || text.includes('object removal')) {
+      return {
+        text: 'Explore WildMind AI Feature: Replace',
+        href: '/edit-image?feature=fill',
+      }
+    }
+
+    // Resize / expand canvas
+    if (text.includes('resize') || text.includes('expand canvas') || text.includes('outpaint') || text.includes('extend background')) {
+      return {
+        text: 'Explore WildMind AI Feature: Resize',
+        href: '/edit-image?feature=resize',
+      }
+    }
+
+    // Vectorize illustrations / logos
+    if (text.includes('vectorize') || text.includes('svg') || text.includes('vector graphic')) {
+      return {
+        text: 'Explore WildMind AI Feature: Vectorize',
+        href: '/edit-image?feature=vectorize',
+      }
+    }
+
+    // Reimagine / redesign sections
+    if (text.includes('reimagine') || text.includes('redesign') || text.includes('remix')) {
+      return {
+        text: 'Explore WildMind AI Feature: Reimagine',
+        href: '/edit-image?feature=reimagine',
+      }
+    }
+
+    // No clear match → no CTA (avoid sending everything to Upscale)
+    return null
+  }
+
+  const featureLink = getFeatureLink(post)
   // Update page title
   useEffect(() => {
     const originalTitle = document.title
@@ -9926,11 +9989,34 @@ function BlogPostDetail({ post, onBack }) {
             )}
           </div>
 
-          <div className="blog-post-cta">
-            <button className="cta-button" onClick={onBack}>
-              Explore More Articles
-            </button>
-          </div>
+          {featureLink && (
+            <div className="blog-post-cta">
+              <div
+                className="feature-link-box"
+                onClick={() => router.push(featureLink.href)}
+              >
+                <div className="feature-link-content">
+                  <span className="feature-link-text">{featureLink.text}</span>
+                  <svg
+                    className="feature-link-arrow"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M7.5 5L12.5 10L7.5 15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
         </article>
       </div>
     </div>

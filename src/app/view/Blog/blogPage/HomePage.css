@@ -63,6 +63,28 @@
   position: relative;
 }
 
+/* Logo */
+.blog-logo {
+  height: 3.5rem;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+  margin: 0 auto 16px auto;
+}
+
+/* Header Wrapper for Back Button */
+.blog-header-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin: 0 0 16px 0;
+  padding: 0;
+  position: relative;
+}
+
 /* Back Button */
 .blog-back-button {
   display: flex;
@@ -80,9 +102,7 @@
   font-family: inherit;
   position: absolute;
   left: 0;
-  top: 100;
   white-space: nowrap;
-  z-index: 10;
 }
 
 .blog-back-button:hover {
@@ -98,23 +118,6 @@
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-}
-
-/* Blog Logo */
-.blog-logo-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 3rem;
-  opacity: 0;
-  animation: slideUpFade 0.8s ease-out 0.1s forwards;
-}
-
-.blog-logo {
-  height: 3.5rem;
-  width: auto;
-  object-fit: contain;
-  display: block;
 }
 
 /* Main Heading */
@@ -152,7 +155,7 @@
   font-size: 1.125rem;
   line-height: 1.8;
   color: #cbd5f5;
-  max-width: 900px;
+  max-width: 700px;
   margin: 0 auto 3.5rem;
   font-weight: 400;
   opacity: 0;
@@ -264,6 +267,16 @@
     padding: 1.5rem;
   }
 
+  .blog-logo {
+    height: 2rem;
+    margin: 0 auto 12px auto;
+  }
+
+  .blog-header-wrapper {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
   .blog-back-button {
     padding: 8px 12px;
     font-size: 13px;
@@ -273,14 +286,6 @@
   .blog-back-button svg {
     width: 16px;
     height: 16px;
-  }
-
-  .blog-logo-wrapper {
-    margin-bottom: 2rem;
-  }
-
-  .blog-logo {
-    height: 2.5rem;
   }
 
   .main-heading {

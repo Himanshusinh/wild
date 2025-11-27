@@ -235,7 +235,7 @@ export default function SignInForm() {
   useEffect(() => { 
     console.log("🎯 SignUp Form Component Mounted") 
     console.log("🌐 Current URL:", window.location.href)
-    console.log("🔧 Axios configured:", !!axios)
+    console.log("🔧 Axios configured:", !!axiosInstance)
   }, [])
 
 
@@ -545,13 +545,86 @@ export default function SignInForm() {
       const idToken = await user.getIdToken()
       console.log("🔑 Firebase ID token obtained")
 
-      // Step 3: Send to backend
+      // Step 3: Send to backend with retry logic for transient errors
       console.log("📤 Sending to backend /api/auth/google via same-origin proxy")
-      const response = await axiosInstance.post(`/api/auth/google`, {
-        idToken: idToken
-      }, {
-        withCredentials: true
-      })
+      
+      // Retry logic for transient errors (503, 502, 504)
+      let response
+      let lastError: any = null
+      const maxRetries = 3
+      const retryableStatusCodes = [503, 502, 504]
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          response = await axiosInstance.post(`/api/auth/google`, {
+            idToken: idToken
+          }, {
+            withCredentials: true
+          })
+          // Success, break out of retry loop
+          if (response) {
+            console.log(`✅ Request succeeded on attempt ${attempt + 1}`)
+            break
+          }
+        } catch (err: any) {
+          lastError = err
+          const statusCode = err.response?.status || err.status || err.code
+          const errorMessage = err.message || err.toString() || 'Unknown error'
+          const responseData = err.response?.data
+          
+          // Log error details for debugging
+          const errorDetails = {
+            attempt: attempt + 1,
+            maxRetries,
+            statusCode: statusCode || 'N/A',
+            message: errorMessage,
+            isRetryable: statusCode ? retryableStatusCodes.includes(statusCode) : false,
+            hasResponse: !!err.response,
+            responseData: responseData ? JSON.stringify(responseData).substring(0, 200) : 'N/A'
+          }
+          
+          console.warn(`⚠️ Request failed on attempt ${attempt + 1}/${maxRetries}:`, errorDetails)
+          
+          // If it's a retryable error and we have retries left, wait and retry
+          if (statusCode && retryableStatusCodes.includes(statusCode) && attempt < maxRetries - 1) {
+            const delay = Math.min(1000 * Math.pow(2, attempt), 5000) // Exponential backoff, max 5s
+            console.log(`🔄 Retrying in ${delay}ms...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+          
+          // If not retryable or out of retries, break and handle error below
+          if (attempt === maxRetries - 1) {
+            console.error(`❌ Request failed after ${maxRetries} attempts. Final error:`, {
+              statusCode: statusCode || 'N/A',
+              message: errorMessage,
+              errorType: err.name || 'Unknown',
+              hasResponse: !!err.response,
+              responseStatus: err.response?.status || 'N/A',
+              responseData: responseData || 'N/A'
+            })
+          }
+          break
+        }
+      }
+      
+      // If we don't have a response after all retries, throw the error
+      if (!response) {
+        if (lastError) {
+          // Ensure the error has useful information
+          if (!lastError.response && !lastError.status) {
+            // Network or other non-HTTP error
+            const networkError = new Error(lastError.message || 'Network error: Unable to reach the server')
+            ;(networkError as any).isNetworkError = true
+            ;(networkError as any).originalError = lastError
+            throw networkError
+          }
+          // Re-throw the last error so it can be caught by the outer catch block
+          throw lastError
+        } else {
+          throw new Error('Failed to get response from server after multiple attempts')
+        }
+      }
 
       console.log("📥 Backend response:", response.data)
 
@@ -610,7 +683,57 @@ export default function SignInForm() {
     } catch (error: any) {
       console.error("❌ Google sign-in failed:", error)
 
-      const errorMessage = error.response?.data?.message || 'An error occurred'
+      const statusCode = error.response?.status || error.status
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'An error occurred'
+      const errorData = error.response?.data
+
+      // Handle 503 Service Unavailable errors (with retry context)
+      if (statusCode === 503) {
+        const friendlyMessage = "The authentication service is temporarily unavailable. We've tried multiple times but the service is still down. Please try again in a few minutes."
+        setError(friendlyMessage)
+        toast.error('Service temporarily unavailable. Please try again later.')
+        console.warn("⚠️ Backend service returned 503 - service may be down or overloaded")
+        return
+      }
+
+      // Handle 502 Bad Gateway errors
+      if (statusCode === 502) {
+        const friendlyMessage = "Unable to connect to the authentication service. This usually means the backend server is down or unreachable. Please check your connection and try again."
+        setError(friendlyMessage)
+        toast.error('Connection error. Please try again.')
+        console.warn("⚠️ Backend service returned 502 - gateway error")
+        return
+      }
+
+      // Handle 504 Gateway Timeout errors
+      if (statusCode === 504) {
+        const friendlyMessage = "The request timed out after multiple attempts. The service may be slow or overloaded. Please try again."
+        setError(friendlyMessage)
+        toast.error('Request timed out. Please try again.')
+        console.warn("⚠️ Backend service returned 504 - timeout")
+        return
+      }
+
+      // Handle network errors (no response) or errors without status code
+      if (!error.response || !statusCode) {
+        const isNetworkError = error.isNetworkError || 
+                              error.message?.includes('Network Error') || 
+                              error.message?.includes('timeout') || 
+                              error.code === 'ECONNABORTED' ||
+                              error.code === 'ECONNREFUSED' ||
+                              error.name === 'NetworkError'
+        
+        if (isNetworkError || !statusCode) {
+          setError("Unable to reach the authentication service. Please check your internet connection and try again.")
+          toast.error('Network error. Please check your connection.')
+          console.warn("⚠️ Network error or no response from server:", {
+            message: error.message,
+            code: error.code,
+            name: error.name
+          })
+          return
+        }
+      }
 
       if (errorMessage.includes('already have an account with email/password')) {
         setError("This email is registered with email/password. Please use the regular sign-in form above.")
@@ -618,8 +741,15 @@ export default function SignInForm() {
         setError("Google sign-in was cancelled.")
       } else if (error.code === 'auth/popup-blocked') {
         setError("Google sign-in popup was blocked. Please allow popups and try again.")
+      } else if (errorMessage.includes('Authentication service unavailable') || errorMessage.includes('service unavailable')) {
+        setError("The authentication service is temporarily unavailable. Please try again in a few moments.")
+        toast.error('Service temporarily unavailable. Please try again.')
       } else {
-        setError(errorMessage)
+        // For other errors, show a generic but helpful message
+        setError(errorMessage || "An unexpected error occurred during sign-in. Please try again.")
+        if (statusCode >= 500) {
+          toast.error('Server error. Please try again later.')
+        }
       }
     } finally {
       setProcessing(false)

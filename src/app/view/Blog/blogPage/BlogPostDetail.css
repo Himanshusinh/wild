@@ -381,6 +381,54 @@
   align-items: center;
 }
 
+/* Feature Link Box - Professional Styling */
+.feature-link-box {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: none;
+  width: auto;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  display: inline-flex;
+}
+
+.feature-link-box:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.2);
+}
+
+.feature-link-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.feature-link-text {
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+
+.feature-link-arrow {
+  color: #60a5fa;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.feature-link-box:hover .feature-link-arrow {
+  transform: translateX(4px);
+  color: #93c5fd;
+}
+
 .blog-post-cta .cta-button {
   background: #3b82f6;
   color: white;

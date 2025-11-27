@@ -30,7 +30,7 @@ export default function AudioGeneration() {
             className="flex items-center text-white hover:text-white transition-all duration-200 text-sm group "
           >
                          <span>{feature.title}</span>
-            {feature.coming && <span className="text-xs text-yellow-400 ml-2">(Soon)</span>}
+            {/* {feature.coming && <span className="text-xs text-yellow-400 ml-2">(Soon)</span>} */}
           </Link>
         ))}
       </div>

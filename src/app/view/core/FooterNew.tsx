@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { getImageUrl } from '@/routes/imageroute'
 import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION, LEGAL_ROUTES } from '@/routes/routes'
 // import {
@@ -13,6 +14,11 @@ import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION, LEGAL_ROUTES
 import Squares from './Squares'
 
 const FooterNew: React.FC = () => {
+  const router = useRouter()
+  const handleBlogClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    router.push(NAV_ROUTES.BLOG)
+  }
   const legalLinks = [
     { name: "Terms of use", href: LEGAL_ROUTES.TERMS },
     { name: "Privacy Policy", href: LEGAL_ROUTES.PRIVACY },
@@ -49,11 +55,11 @@ const FooterNew: React.FC = () => {
   // ];
 
   return (
-    <footer className="relative z-[10] bg-[#07070B] w-full py-12 md:py-16">
+    <footer className="relative z-[10] bg-black w-full">
       <div className="max-w-[680px] md:max-w-6xl lg:max-w-7xl mx-3 md:mx-auto px-6 sm:px-10 md:px-4 lg:px-1">
-        <div className="relative z-0 max-w-7xl mx-auto text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-3xl border border-white/20 bg-[#07070B] overflow-hidden">
+        <div className="relative z-0 pb-2 max-w-7xl mx-auto text-white p-6 sm:p-10 md:p-8 lg:p-10 rounded-t-3xl border border-b-0 border-white/20 overflow-hidden ">
            {/* Background decorative grid */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
+           <div className="absolute inset-0 opacity-10">
              <Squares 
                speed={0.5}
                squareSize={40}
@@ -62,7 +68,7 @@ const FooterNew: React.FC = () => {
                hoverFillColor='#222222'
              />
            </div>
-           <div className="relative z-10 pb-6">
+           <div className="relative z-10">
             {/* Main Footer Content */}
             <div className="py-8 md:py-6 lg:py-8 border-b border-white/10">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8">
@@ -173,9 +179,12 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200 leading-tight">
+                      <Link
+                        href={NAV_ROUTES.BLOG}
+                        onClick={handleBlogClick}
+                        className="text-gray-400 text-sm hover:text-white transition-colors duration-200 leading-tight"
+                      >
                         <span className="block">Blog</span>
-                  
                       </Link>
                     </li>
                    

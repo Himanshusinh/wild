@@ -39,6 +39,7 @@ export function middleware(req: NextRequest) {
     '/templates': '/view/workflows',
     '/contactus': '/view/Landingpage?section=contact',
     '/blogger': '/view/Landingpage',
+    '/view/blog': '/blog',
     '/$': '/view/Landingpage',
     '/&': '/view/Landingpage',
   };
@@ -164,6 +165,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
     pathnameLower.startsWith('/view/blog') ||
+    pathnameLower.startsWith('/blog') ||
     // Allow static assets and Next.js internals
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||

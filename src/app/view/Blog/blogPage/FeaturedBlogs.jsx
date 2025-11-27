@@ -1,4 +1,6 @@
- 'use client';
+'use client';
+
+import './FeaturedBlogs.css'
 
 function FeaturedBlogs({ featuredPosts, onPostClick }) {
   if (!featuredPosts || featuredPosts.length === 0) {
@@ -76,4 +78,3 @@ function FeaturedBlogs({ featuredPosts, onPostClick }) {
 }
 
 export default FeaturedBlogs
-

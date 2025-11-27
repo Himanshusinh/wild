@@ -6,6 +6,7 @@ import LandingPage from './view/Landingpage/page';
 import HomePage from './view/HomePage/page';
 import PricingPage from './view/pricing/page';
 import WorkflowsPage from './view/workflows/page';
+import BlogPage from './view/Blog/page';
 import MainLayout from './view/Generation/Core/MainLayout';
 import { ViewType, GenerationType } from '@/types/generation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -18,6 +19,7 @@ export default function App() {
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
   
+  console.log('🔍 App - Current pathname:', pathname);
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
@@ -50,6 +52,8 @@ export default function App() {
   };
 
   // Hard route-based overrides to avoid race conditions
+  // Explicitly handle routes that need special handling or are not working with file-based routing
+  
   if (pathname?.startsWith('/view/Landingpage')) {
     console.log('🔍 App - Route override: rendering LandingPage for', pathname);
     return <LandingPage />;
@@ -57,6 +61,17 @@ export default function App() {
   if (pathname?.startsWith('/view/HomePage')) {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
     return <HomePage />;
+  }
+  if (pathname && (pathname.toLowerCase().startsWith('/view/blog') || pathname.startsWith('/view/Blog') || pathname.startsWith('/blog'))) {
+    console.log('🔍 App - Route override: rendering BlogPage for', pathname);
+    return <BlogPage />;
+  }
+  
+  // For root path only, handle Redux state-based rendering
+  // Other routes like /view/pricing, /view/workflows are handled by their own page files via Next.js file-based routing
+  if (pathname !== '/') {
+    // This should not be reached for routes with their own page files, but return null just in case
+    return null;
   }
 
   // Render different views based on current state

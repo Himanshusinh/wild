@@ -56,7 +56,7 @@ export const NAV_ROUTES = {
   TEMPLATES: '/view/workflows',
   ART_STATION: '/view/ArtStation',
   PRICING: '/view/pricing',
-  BLOG: '/view/Blog',
+  BLOG: '/blog',
   CONTACT: '/view/Landingpage?section=contact',
   SUPPORT: '/view/Landingpage?section=support',
   ABOUT: '/view/Landingpage?section=about',

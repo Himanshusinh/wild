@@ -158,24 +158,22 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
           })()}
             </div>
 
-                 {/* Features Dropdown */}
-         <div 
-           className="relative"
-         >
-           <span
-             className="cursor-pointer px-3 py-1 flex items-center gap-1 hover:bg-gradient-to-l hover:bg-clip-text font-poppins bg-transparent hover:text-[#dbdbdb]"
-             onClick={() => toggleDropdown("features")}
-           >
-             Features
-             <Image
-               width={12}
-               height={12}
-               src={activeDropdown === "features" ? getImageUrl("core", "arrowup") : getImageUrl("core", "arrowdown")}
-               alt="dropdown-arrow"
-               className="ml-1"
-             />
-           </span>
-         </div>
+        {/* Features Dropdown */}
+        <div className="relative">
+          <span
+            className="cursor-pointer px-3 py-1 flex items-center gap-1 hover:bg-gradient-to-l hover:bg-clip-text font-poppins bg-transparent hover:text-[#dbdbdb]"
+            onClick={() => toggleDropdown("features")}
+          >
+            Features
+            <Image
+              width={12}
+              height={12}
+              src={activeDropdown === "features" ? getImageUrl("core", "arrowup") : getImageUrl("core", "arrowdown")}
+              alt="dropdown-arrow"
+              className="ml-1"
+            />
+          </span>
+        </div>
 
         <div>
           <span
@@ -204,16 +202,15 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
           </span>
         </div>
 
-                 {/* Get Started Button */}
-         <div>
-           <button
-             className="md:block md:flex-nowrap  
-                       px-4 py-1.5 mr-2 rounded-full  button bg-[#1C303D] text-white text-sm font-regular relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center"
-             onClick={handleGetStarted}
-           >
-             Get Started
-           </button>
-         </div>
+        {/* Get Started Button */}
+        <div>
+          <button
+            className="md:block md:flex-nowrap px-4 py-1.5 mr-2 rounded-full button bg-[#1C303D] text-white text-sm font-regular relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center"
+            onClick={handleGetStarted}
+          >
+            Get Started
+          </button>
+        </div>
 
       </motion.header>
 
@@ -233,13 +230,13 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
               top: visible ? "6rem" : "4.7rem",
             }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 lg:gap-6 font-poppins">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 lg:gap-6 font-poppins">
               <div className="col-span-1 md:col-span1">
                 <ImageGeneration />
               </div>
-              <div className="col-span-1 md:col-span1">
-                <BrandingKit />
-              </div>
+              {/* <div className="col-span-1 md:col-span1"> */}
+                {/* <BrandingKit /> */}
+              {/* </div> */}
               <div className="col-span-1 md:col-span1">
                 <VideoGeneration />
               </div>
@@ -399,7 +396,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                           </div>
                         </div>
                         
-                        <div className="space-y-2">
+                        {/* <div className="space-y-2">
                           <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Branding Kit</h4>
                           <div className="space-y-1 pl-2">
                             <div
@@ -445,7 +442,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
                               Add Music in Video (Soon)
                             </div>
                           </div>
-                        </div>
+                        </div> */}
 
                         <div className="space-y-2">
                           <h4 className="text-white/90 font-semibold text-[13px] tracking-wide">Video Generation</h4>

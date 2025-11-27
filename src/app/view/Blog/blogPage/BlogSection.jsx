@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react'
+import './BlogSection.css'
 
 function BlogSection({ blogPosts, onPostClick }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -168,4 +169,3 @@ function BlogSection({ blogPosts, onPostClick }) {
 }
 
 export default BlogSection
-
