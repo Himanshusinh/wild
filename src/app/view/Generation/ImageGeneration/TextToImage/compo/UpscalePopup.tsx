@@ -69,28 +69,24 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   // Crystal Upscaler
   const [crystalResolution, setCrystalResolution] = useState<'1080p'|'1440p'|'2160p'|'6K'|'8K'|'12K'>('1080p');
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type.startsWith('image/')) {
-        try {
-          const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
-          const processed = await compressImageIfNeeded(file);
-          const asDataUrl = await blobToDataUrl(processed);
-          setUploadedImage(asDataUrl);
-          setUpscaledImage(null); // Reset upscaled image when new image is uploaded
-        } catch (error) {
-          console.error('Error processing image:', error);
-          alert('Failed to process image');
-        }
-      } else {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setUploadedImage(e.target?.result as string);
-          setUpscaledImage(null);
-        };
-        reader.readAsDataURL(file);
+      // Check file size (2MB limit)
+      const maxSize = 20 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        alert("Image too large. Maximum size is 2MB per image.");
+        // Clear the input
+        event.target.value = "";
+        return;
       }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedImage(e.target?.result as string);
+        setUpscaledImage(null); // Reset upscaled image when new image is uploaded
+      };
+      reader.readAsDataURL(file);
     }
   };
 

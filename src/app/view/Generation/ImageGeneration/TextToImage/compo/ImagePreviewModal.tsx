@@ -106,7 +106,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [copiedButtonId, setCopiedButtonId] = React.useState<string | null>(null);
   const [isPublicFlag, setIsPublicFlag] = React.useState<boolean>(true);
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null);
-  // Local state to track the current entry (updated after deletion)
+  const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
+  const [entryDetails, setEntryDetails] = React.useState<Record<string, HistoryEntry>>({});
   const [currentEntry, setCurrentEntry] = React.useState<HistoryEntry | null>(preview?.entry || null);
   
   // Update currentEntry and reset selected state immediately when preview changes
@@ -318,17 +319,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     });
   }, [sameDateGallery]);
 
-  const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!fsContainerRef.current) return;
 
-    // If not zoomed in, use wheel to navigate between images
-    if (fsScale <= fsFitScale + 0.001) {
+    const wantNavigate = (sameDateGallery.length > 1) && e.shiftKey && fsScale <= fsFitScale + 0.001;
+    if (wantNavigate) {
       if (wheelNavCooldown.current) return;
       const dy = e.deltaY || 0;
       const dx = e.deltaX || 0;
-      const delta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+      const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (delta > 20) {
         goNext();
       } else if (delta < -20) {
@@ -339,14 +340,14 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       return;
     }
 
-    // When zoomed, keep existing zoom-to-point behavior
     const rect = fsContainerRef.current.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const deltaZoom = e.deltaY > 0 ? -0.1 : 0.1;
-    const next = Math.max(0.5, Math.min(6, fsScale + deltaZoom));
-    if (next !== fsScale) fsZoomToPoint({ x: mx, y: my }, next);
-  }, [fsScale, fsFitScale, fsZoomToPoint, goNext, goPrev]);
+    const zoomFactor = e.deltaY > 0 ? 1 / 1.15 : 1.15;
+    const next = Math.max(0.4, Math.min(6, fsScale * zoomFactor));
+    if (Math.abs(next - fsScale) < 0.001) return;
+    fsZoomToPoint({ x: mx, y: my }, next);
+  }, [fsScale, fsFitScale, sameDateGallery, goNext, goPrev, fsZoomToPoint]);
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -526,6 +527,51 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
   const selectedImage: any = selectedPair.image || preview?.image;
   const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+
+  // Measure the actual resolution from the highest-quality source (storagePath or original URL)
+  React.useEffect(() => {
+    const measurementSource =
+      (selectedImage as any)?.storagePath ||
+      (selectedImage as any)?.originalUrl ||
+      (selectedImage as any)?.url ||
+      '';
+
+    if (!measurementSource) return;
+
+    const proxiedMeasurementUrl =
+      toMediaProxy(measurementSource) ||
+      (measurementSource.startsWith('http') ? measurementSource : `${ZATA_PREFIX}${measurementSource.replace(/^\/+/, '')}`);
+
+    if (!proxiedMeasurementUrl) return;
+    if (typeof window === 'undefined' || typeof window.Image === 'undefined') return;
+
+    let cancelled = false;
+    const img = new window.Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      if (cancelled) return;
+      if (img.naturalWidth && img.naturalHeight) {
+        setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      }
+    };
+    img.onerror = (err: Event | string | null) => {
+      if (!cancelled) {
+        console.warn('[ImagePreviewModal] Failed to measure image dimensions from source:', measurementSource, err);
+      }
+    };
+    img.src = proxiedMeasurementUrl;
+
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [
+    (selectedImage as any)?.id,
+    (selectedImage as any)?.storagePath,
+    (selectedImage as any)?.originalUrl,
+    (selectedImage as any)?.url
+  ]);
   const storedResolution = React.useMemo(() => {
     const candidates = [
       selectedImage?.width && selectedImage?.height
@@ -553,12 +599,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return null;
   }, [selectedEntry, selectedImage]);
   const displayedResolution = React.useMemo(() => {
-    if (storedResolution && imageDimensions) {
-      const storedArea = storedResolution.width * storedResolution.height;
-      const measuredArea = imageDimensions.width * imageDimensions.height;
-      return storedArea >= measuredArea ? storedResolution : imageDimensions;
+    if (imageDimensions && imageDimensions.width > 0 && imageDimensions.height > 0) {
+      return imageDimensions;
     }
-    return storedResolution || imageDimensions || null;
+    return storedResolution || null;
   }, [storedResolution, imageDimensions]);
   const isUserUploadSelected = false;
 
@@ -1457,7 +1501,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           </div>
           {/* Instructions */}
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
-            Scroll to navigate images. Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
+            Scroll to zoom (hold Shift to switch images). Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
           </div>
         </div>
       )}

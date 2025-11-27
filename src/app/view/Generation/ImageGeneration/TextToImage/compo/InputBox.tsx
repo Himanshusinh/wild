@@ -772,13 +772,13 @@ const InputBox = () => {
         return [];
       }
       
-        const getTs = (x: any) => {
-          const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+      const getTs = (x: any) => {
+        const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
         if (!raw) return 0;
         const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
-          const ms = Date.parse(t);
-          return Number.isNaN(ms) ? 0 : ms;
-        };
+        const ms = Date.parse(t);
+        return Number.isNaN(ms) ? 0 : ms;
+      };
       
       return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
     },
@@ -1318,30 +1318,6 @@ const InputBox = () => {
 
     const originalPrompt = prompt;
     let finalPrompt = originalPrompt;
-    
-    // Create a local history-style loading entry IMMEDIATELY to show loading GIF right away
-    // We'll update it later with the actual details after prompt enhancement
-    const tempEntryId = `loading-${Date.now()}`;
-    const initialTempEntry: HistoryEntry = {
-      id: tempEntryId,
-      prompt: originalPrompt,
-      model: selectedModel,
-      generationType: 'text-to-image',
-      frameSize: frameSize || undefined,
-      aspect_ratio: frameSize || undefined,
-      images: Array.from({ length: imageCount }, (_, index) => ({
-        id: `loading-${index}`,
-        url: '',
-        originalUrl: ''
-      })),
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      imageCount: imageCount,
-      status: 'generating'
-    } as any;
-    
-    // Set immediately so loading GIF shows right away
-    setLocalGeneratingEntries([initialTempEntry]);
 
     // If prompt-enhance toggles are enabled for the selected model(s), call the backend enhancer first
     if ((lucidPromptEnhance || phoenixPromptEnhance) && !isEnhancing) {
@@ -1399,12 +1375,6 @@ const InputBox = () => {
     // Clear any previous credit errors
     clearCreditsError();
 
-    // Update the local entry with final prompt (after enhancement if applicable)
-    setLocalGeneratingEntries([{
-      ...initialTempEntry,
-      prompt: finalPrompt
-    }]);
-
     // Validate and reserve credits before generation
     let transactionId: string;
     try {
@@ -1418,11 +1388,28 @@ const InputBox = () => {
       return;
     }
 
-    // Use the existing local entry (already created above)
-    const tempEntry = localGeneratingEntries[0] || initialTempEntry;
+    // Create a local history-style loading entry that mirrors the Logo flow
+    const tempEntryId = `loading-${Date.now()}`;
+    const tempEntry: HistoryEntry = {
+      id: tempEntryId,
+      prompt: finalPrompt,
+      model: selectedModel,
+      generationType: 'text-to-image',
+      frameSize: frameSize || undefined,
+      aspect_ratio: frameSize || undefined,
+      images: Array.from({ length: imageCount }, (_, index) => ({
+        id: `loading-${index}`,
+        url: '',
+        originalUrl: ''
+      })),
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      imageCount: imageCount,
+      status: 'generating'
+    } as any;
     
-    console.log('[DEBUG handleGenerate] Using local entry:', {
-      tempEntryId: tempEntry.id,
+    console.log('[DEBUG handleGenerate] Creating local entry:', {
+      tempEntryId,
       entry: {
         id: tempEntry.id,
         firebaseHistoryId: (tempEntry as any)?.firebaseHistoryId,
@@ -3979,62 +3966,69 @@ const InputBox = () => {
       </div>
   {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
-      {preview && (
-        <ImagePreviewModal 
-          preview={preview} 
-          onClose={() => setPreview(null)}
-        />
-      )}
+      {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isRemoveBgOpen && <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isEditOpen && (
-      <EditPopup
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        onUpscale={() => setIsUpscaleOpen(true)}
-        onRemoveBg={() => setIsRemoveBgOpen(true)}
-        onResize={() => {
-          // Open frame size dropdown programmatically (optional improvement)
-          const dropdown = document.querySelector('[data-frame-size-dropdown]') as HTMLElement | null;
-          if (dropdown) dropdown.click();
-        }}
-      />
+        <EditPopup
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          onUpscale={() => setIsUpscaleOpen(true)}
+          onRemoveBg={() => setIsRemoveBgOpen(true)}
+          onResize={() => {
+            // Open frame size dropdown programmatically (optional improvement)
+            const dropdown = document.querySelector('[data-frame-size-dropdown]') as HTMLElement | null;
+            if (dropdown) dropdown.click();
+          }}
+        />
       )}
 
       {/* Upload Modal - Lazy loaded */}
       {isUploadOpen && (
-      <UploadModal
-        isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
-        mode="image"
-        onAdd={(urls: string[]) => {
-          try {
-            const next = [...(uploadedImages||[]), ...urls];
-            dispatch(setUploadedImages(next.slice(0, 10)));
-          } catch {}
-        }}
-      />
+        <UploadModal
+          isOpen={isUploadOpen}
+          onClose={() => setIsUploadOpen(false)}
+          historyEntries={historyEntries as any}
+          remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
+          hasMore={hasMore}
+          loading={loading}
+          onLoadMore={async () => {
+            try {
+              if (!hasMore || loading) return;
+              await (dispatch as any)(loadMoreHistory({
+                filters: { generationType: ['text-to-image', 'image-to-image'], mode: 'image' } as any,
+                backendFilters: { mode: 'image' } as any,
+                paginationParams: { limit: 10 }
+              })).unwrap();
+            } catch {}
+          }}
+          onAdd={(urls: string[]) => {
+            try {
+              const next = [...(uploadedImages||[]), ...urls];
+              dispatch(setUploadedImages(next.slice(0, 10)));
+            } catch {}
+          }}
+        />
       )}
 
       {/* Character Modal - Lazy loaded */}
       {isCharacterModalOpen && (
-      <CharacterModal
-        isOpen={isCharacterModalOpen}
-        onClose={() => setIsCharacterModalOpen(false)}
-        onAdd={(character: Character) => {
-          try {
-            dispatch(addSelectedCharacter(character));
-          } catch {}
-        }}
-        onRemove={(characterId: string) => {
-          try {
-            dispatch(removeSelectedCharacter(characterId));
-          } catch {}
-        }}
-        selectedCharacters={selectedCharacters}
-        maxCharacters={10}
-      />
+        <CharacterModal
+          isOpen={isCharacterModalOpen}
+          onClose={() => setIsCharacterModalOpen(false)}
+          onAdd={(character: Character) => {
+            try {
+              dispatch(addSelectedCharacter(character));
+            } catch {}
+          }}
+          onRemove={(characterId: string) => {
+            try {
+              dispatch(removeSelectedCharacter(characterId));
+            } catch {}
+          }}
+          selectedCharacters={selectedCharacters}
+          maxCharacters={10}
+        />
       )}
     </>
   );

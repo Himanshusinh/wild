@@ -269,11 +269,10 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
       url.searchParams.set('limit', '50') // Increased limit for better pagination
-      // Sort by createdAt (newest first) - new generations come first
-      url.searchParams.set('sortBy', 'createdAt')
+      // Sort by aesthetic score first (highest first), then by createdAt as tiebreaker
+      url.searchParams.set('sortBy', 'aestheticScore')
       url.searchParams.set('sortOrder', 'desc')
-      // Filter by minimum aesthetic score of 9.0
-      url.searchParams.set('minScore', '9.0')
+      // Don't filter by minScore - show all generations, just prioritize high-scoring ones
       // Apply server-side filtering based on active tab
       const q = mapCategoryToQuery(activeCategory)
       if (q.mode) url.searchParams.set('mode', q.mode)

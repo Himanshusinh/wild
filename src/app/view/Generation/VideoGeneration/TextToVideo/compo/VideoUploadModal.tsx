@@ -72,29 +72,23 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
-import { fetchLibrary, LibraryItem } from '@/lib/libraryApi';
-
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
+  historyEntries: any[];
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
-  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'; // Mode for filtering
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loading?: boolean;
 };
 
-const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, mode = 'video' }) => {
+const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
-  
-  // State for library items (generated videos)
-  const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
-  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | undefined>();
-  const [libraryHasMore, setLibraryHasMore] = React.useState(false);
-  const [libraryLoading, setLibraryLoading] = React.useState(false);
-  const isLoadingMoreRef = React.useRef(false);
 
   // Remember scroll positions so switching tabs preserves where user was
   const scrollPositionsRef = React.useRef<{ [k in 'library' | 'computer']?: number }>({});
@@ -164,34 +158,11 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     prevTabRef.current = tab;
   }, [tab, isOpen]);
 
-  // Fetch library items when modal opens
-  React.useEffect(() => {
-    if (isOpen && tab === 'library' && libraryItems.length === 0 && !libraryLoading) {
-      setLibraryLoading(true);
-      fetchLibrary({ limit: 50, mode }).then((response) => {
-        if (response.responseStatus === 'success' && response.data) {
-          // Filter to only videos
-          const videos = (response.data.items || []).filter(item => item.type === 'video');
-          setLibraryItems(videos);
-          setLibraryNextCursor(response.data.nextCursor);
-          setLibraryHasMore(response.data.hasMore || false);
-        }
-        setLibraryLoading(false);
-      }).catch(() => {
-        setLibraryLoading(false);
-      });
-    }
-  }, [isOpen, tab, mode]);
-
-  // Reset state when modal closes
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
-      setLibraryItems([]);
-      setLibraryNextCursor(undefined);
-      setLibraryHasMore(false);
     }
   }, [isOpen]);
 
@@ -219,39 +190,28 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
-  // Load more function
-  const handleLoadMore = React.useCallback(async () => {
-    if (libraryLoading || !libraryHasMore || isLoadingMoreRef.current || !libraryNextCursor) return;
-    
-    isLoadingMoreRef.current = true;
-    setLibraryLoading(true);
-    
-    try {
-      const response = await fetchLibrary({ limit: 50, nextCursor: libraryNextCursor, mode });
-      if (response.responseStatus === 'success' && response.data) {
-        // Filter to only videos
-        const videos = (response.data.items || []).filter(item => item.type === 'video');
-        setLibraryItems(prev => [...prev, ...videos]);
-        setLibraryNextCursor(response.data.nextCursor);
-        setLibraryHasMore(response.data.hasMore || false);
-      }
-    } catch (error) {
-      console.error('Failed to load more library items:', error);
-    } finally {
-      setLibraryLoading(false);
-      isLoadingMoreRef.current = false;
-    }
-  }, [libraryNextCursor, libraryLoading, libraryHasMore, mode]);
-
   const handleAdd = () => {
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) {
-        const selectedItems = libraryItems.filter((item) => {
-          const itemUrl = item.url || item.originalUrl || '';
-          return itemUrl && chosen.includes(itemUrl);
+        // Find the entries corresponding to the selected URLs (use Set to ensure uniqueness)
+        const entryMap = new Map<string, any>(); // Map entry ID to entry
+        videoEntries.forEach((entry: any) => {
+          const videos = entry.videos || [];
+          const fallbackVideos = (entry.images || []).filter((img: any) => {
+            const url = img.firebaseUrl || img.url || img.originalUrl;
+            return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+          });
+          const allVideos = videos.length > 0 ? videos : fallbackVideos;
+          allVideos.forEach((video: any) => {
+            const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+            if (chosen.includes(videoUrl) && entry.id) {
+              entryMap.set(entry.id, entry); // Use entry ID as key to ensure uniqueness
+            }
+          });
         });
-        onAdd(chosen, selectedItems as any);
+        const selectedEntries = Array.from(entryMap.values());
+        onAdd(chosen, selectedEntries);
       }
       setSelection(new Set());
     } else {
@@ -261,6 +221,22 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     }
     onClose();
   };
+
+  // Filter history entries to only show videos
+  const videoEntries = historyEntries.filter((entry: any) => {
+    // Check if entry has videos
+    if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+      return true;
+    }
+    // Check if entry has video URLs in images array (fallback)
+    if (entry.images && Array.isArray(entry.images)) {
+      return entry.images.some((img: any) => {
+        const url = img.url || img.firebaseUrl || img.originalUrl;
+        return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+      });
+    }
+    return false;
+  });
 
   return (
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
@@ -287,98 +263,120 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       scrollPositionsRef.current[tab] = el.scrollTop; 
                       try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
                     } catch {}
-                    if (libraryLoading || isLoadingMoreRef.current || !libraryHasMore) return;
+                    if (!onLoadMore || loading) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-                    if (nearBottom) {
-                      const scrollTopBefore = el.scrollTop;
-                      const scrollHeightBefore = el.scrollHeight;
-                      handleLoadMore().then(() => {
-                        requestAnimationFrame(() => {
-                          requestAnimationFrame(() => {
-                            if (el) {
-                              const scrollHeightAfter = el.scrollHeight;
-                              const heightDiff = scrollHeightAfter - scrollHeightBefore;
-                              if (heightDiff > 0) {
-                                el.scrollTop = scrollTopBefore;
-                              }
-                            }
-                          });
-                        });
-                      });
-                    }
+                    if (nearBottom && hasMore && !loading) onLoadMore();
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {libraryLoading && libraryItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      Loading...
-                    </div>
-                  ) : libraryItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      No videos found
-                    </div>
-                  ) : (
-                    libraryItems.map((item: LibraryItem, index: number) => {
-                      const safeUrl = item.url || item.originalUrl || '';
-                      if (!safeUrl) return null;
-                      const selected = selection.has(safeUrl);
-                      const posterUrl = item.thumbnail 
-                        ? (toFrontendProxyMediaUrl(item.thumbnail) || item.thumbnail)
-                        : (toThumbUrl(safeUrl, { w: 480, q: 60 }) || undefined);
-                      
-                      const mediaUrl = item.storagePath || safeUrl;
-                      const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                      const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
-                      const itemKey = `${item.id || item.historyId || 'video'}-${item.mediaId || index}`;
-                      
-                      return (
-                        <button
-                          key={itemKey}
-                          onClick={() => {
-                            const next = new Set(selection);
-                            if (selected) next.delete(safeUrl);
-                            else next.add(safeUrl);
-                            setSelection(next);
-                          }}
-                          className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}
-                        >
-                          {vsrc ? (
-                            <video
-                              src={vsrc}
-                              className="w-full h-full object-cover transition-opacity duration-200"
-                              muted
-                              playsInline
-                              loop
-                              preload="metadata"
-                              poster={posterUrl}
-                              onMouseEnter={async (e) => { 
-                                try { 
-                                  await (e.currentTarget as HTMLVideoElement).play();
-                                } catch { } 
-                              }}
-                              onMouseLeave={(e) => { 
-                                const v = e.currentTarget as HTMLVideoElement; 
-                                try { v.pause(); v.currentTime = 0 } catch { }
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </div>
-                          )}
-                          {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
-                          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                        </button>
-                      );
-                    })
-                  )}
+                  {videoEntries.flatMap((entry: any) => {
+                    // Get videos from entry.videos or from entry.images (fallback)
+                    const videos = entry.videos || [];
+                    const fallbackVideos = (entry.images || []).filter((img: any) => {
+                      const url = img.firebaseUrl || img.url || img.originalUrl;
+                      return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+                    });
+                    const allVideos = videos.length > 0 ? videos : fallbackVideos;
+                    
+                    return allVideos.map((video: any) => ({ entry, video }));
+                  }).filter(({ video }: any) => {
+                    // Filter out videos without valid URLs
+                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                    return !!videoUrl;
+                  }).map(({ entry, video }: any) => {
+                    // Get video URL - prioritize firebaseUrl, then url, then originalUrl (same as InputBox.tsx)
+                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                    const selected = selection.has(videoUrl);
+                    const key = `${entry.id}-${video.id || videoUrl}`;
+                    
+                    // Get thumbnail URL - prioritize thumbnailUrl/avifUrl from video object, fallback to toThumbUrl
+                    const thumbnailUrl = (video as any).thumbnailUrl || (video as any).avifUrl;
+                    const posterUrl = thumbnailUrl 
+                      ? (toFrontendProxyMediaUrl(thumbnailUrl) || thumbnailUrl)
+                      : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
+                    
+                    // Get video source URL with proxy support (exact same logic as InputBox.tsx)
+                    // Prioritize storagePath, then firebaseUrl, then url, then originalUrl
+                    const mediaUrl = (video as any)?.storagePath 
+                      || video.firebaseUrl 
+                      || video.url 
+                      || video.originalUrl;
+                    const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                    // If proxy URL is available, use it; otherwise fall back to original URL
+                    // But if original URL is a storage path (starts with users/), we must use proxy
+                    // Only use direct URL if it's a full HTTP/HTTPS URL
+                    const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
+                    
+                    // Debug logging for troubleshooting
+                    if (!vsrc && mediaUrl) {
+                      console.warn('[VideoUploadModal] No valid video source URL:', {
+                        mediaUrl,
+                        proxied,
+                        video: { firebaseUrl: video.firebaseUrl, url: video.url, originalUrl: video.originalUrl },
+                        entryId: entry.id,
+                        videoId: video.id
+                      });
+                    }
+                    
+                    // Additional debug logging for thumbnail
+                    if (!posterUrl && videoUrl) {
+                      console.warn('[VideoUploadModal] No valid poster URL:', {
+                        videoUrl,
+                        thumbnailUrl: (video as any).thumbnailUrl,
+                        avifUrl: (video as any).avifUrl,
+                        entryId: entry.id,
+                        videoId: video.id
+                      });
+                    }
+                    
+                    return (
+                      <button key={key} onClick={() => {
+                        const next = new Set(selection);
+                        if (selected) next.delete(videoUrl); else next.add(videoUrl);
+                        setSelection(next);
+                      }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
+                        {vsrc ? (
+                          <video
+                            src={vsrc}
+                            className="w-full h-full object-cover transition-opacity duration-200"
+                            muted
+                            playsInline
+                            loop
+                            preload="metadata"
+                            poster={posterUrl}
+                            onMouseEnter={async (e) => { 
+                              try { 
+                                await (e.currentTarget as HTMLVideoElement).play();
+                              } catch { } 
+                            }}
+                            onMouseLeave={(e) => { 
+                              const v = e.currentTarget as HTMLVideoElement; 
+                              try { v.pause(); v.currentTime = 0 } catch { }
+                            }}
+                            onError={(e) => {
+                              console.error('[VideoUploadModal] Video load error:', {
+                                src: vsrc,
+                                videoUrl,
+                                posterUrl,
+                                error: e
+                              });
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        )}
+                        {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full" />}
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                      </button>
+                    );
+                  })}
                 </div>
-                {libraryHasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
-                    {libraryLoading ? 'Loading more…' : 'Scroll to load more'}
-                  </div>
+                {hasMore && (
+                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{loading ? 'Loading more…' : 'Scroll to load more'}</div>
                 )}
                 <div className="flex justify-end mt-0 gap-2">
                   <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
@@ -396,8 +394,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
+                    const maxSize = 50 * 1024 * 1024; // 50MB for videos
                     const urls: string[] = [];
                     for (const file of files) {
+                      if (file.size > maxSize) continue;
                       if (file.type.startsWith('video/')) {
                         const reader = new FileReader();
                         const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
@@ -416,8 +416,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
+                      const maxSize = 50 * 1024 * 1024; // 50MB for videos
                       const urls: string[] = [];
                       for (const file of files) {
+                        if (file.size > maxSize) { continue; }
                         if (file.type.startsWith('video/')) {
                           const reader = new FileReader();
                           const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });

@@ -2,32 +2,21 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { fetchLibrary, fetchUploads, LibraryItem } from '@/lib/libraryApi';
-import { blobToDataUrl, compressImageIfNeeded } from '@/utils/imageCompression';
 
 type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[]) => void;
+  historyEntries: any[];
   remainingSlots: number; // how many images can still be added (max 4 total)
-  mode?: 'image' | 'video' | 'music' | 'branding' | 'all'; // Mode for filtering
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loading?: boolean;
   onTabChange?: (tab: 'library' | 'computer' | 'uploads') => void; // Callback when tab changes
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, mode = 'image', onTabChange }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading, onTabChange }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
-  
-  // State for library items (generated media)
-  const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
-  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | undefined>();
-  const [libraryHasMore, setLibraryHasMore] = React.useState(false);
-  const [libraryLoading, setLibraryLoading] = React.useState(false);
-  
-  // State for upload items (user uploaded media)
-  const [uploadItems, setUploadItems] = React.useState<LibraryItem[]>([]);
-  const [uploadNextCursor, setUploadNextCursor] = React.useState<string | undefined>();
-  const [uploadHasMore, setUploadHasMore] = React.useState(false);
-  const [uploadLoading, setUploadLoading] = React.useState(false);
   const onTabChangePrevTabRef = React.useRef<typeof tab | null>(null);
   const onTabChangeCallbackRef = React.useRef(onTabChange);
   const isProcessingTabChangeRef = React.useRef(false);
@@ -162,52 +151,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
     }
   }, [isOpen]);
 
-  // Fetch library items when modal opens or tab changes to library
-  React.useEffect(() => {
-    if (isOpen && tab === 'library' && libraryItems.length === 0 && !libraryLoading) {
-      setLibraryLoading(true);
-      fetchLibrary({ limit: 50, mode }).then((response) => {
-        if (response.responseStatus === 'success' && response.data) {
-          setLibraryItems(response.data.items || []);
-          setLibraryNextCursor(response.data.nextCursor);
-          setLibraryHasMore(response.data.hasMore || false);
-        }
-        setLibraryLoading(false);
-      }).catch(() => {
-        setLibraryLoading(false);
-      });
-    }
-  }, [isOpen, tab, mode]);
-
-  // Fetch upload items when modal opens or tab changes to uploads
-  React.useEffect(() => {
-    if (isOpen && tab === 'uploads' && uploadItems.length === 0 && !uploadLoading) {
-      setUploadLoading(true);
-      fetchUploads({ limit: 50, mode }).then((response) => {
-        if (response.responseStatus === 'success' && response.data) {
-          setUploadItems(response.data.items || []);
-          setUploadNextCursor(response.data.nextCursor);
-          setUploadHasMore(response.data.hasMore || false);
-        }
-        setUploadLoading(false);
-      }).catch(() => {
-        setUploadLoading(false);
-      });
-    }
-  }, [isOpen, tab, mode]);
-
-  // Reset state when modal closes
-  React.useEffect(() => {
-    if (!isOpen) {
-      setLibraryItems([]);
-      setLibraryNextCursor(undefined);
-      setLibraryHasMore(false);
-      setUploadItems([]);
-      setUploadNextCursor(undefined);
-      setUploadHasMore(false);
-    }
-  }, [isOpen]);
-
   // Lock background scroll when modal is open
   React.useEffect(() => {
     if (isOpen) {
@@ -230,60 +173,32 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
     }
   }, [isOpen]);
 
-  // Get current items based on tab
-  const getCurrentItems = (): LibraryItem[] => {
-    if (tab === 'library') {
-      return libraryItems;
-    } else if (tab === 'uploads') {
-      return uploadItems;
+  // Filter history entries based on selected tab
+  const getFilteredHistoryEntries = () => {
+    if (tab === 'uploads') {
+      // Filter to show only user uploads - show entries that have inputImages or inputVideos
+      return historyEntries
+        .map((entry: any) => {
+          const inputImagesArr = (((entry as any).inputImages) || []) as any[];
+          const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
+          
+          // If no user uploads, skip this entry
+          if (inputImagesArr.length === 0 && inputVideosArr.length === 0) return null;
+          
+          // Return entry with inputImages and inputVideos as the media to display
+          return {
+            ...entry,
+            images: inputImagesArr,
+            videos: inputVideosArr,
+          };
+        })
+        .filter((entry: any) => entry !== null && ((entry.images && entry.images.length > 0) || ((entry as any).videos && (entry as any).videos.length > 0)));
     }
-    return [];
+    // For 'library' tab, return all entries as-is
+    return historyEntries;
   };
 
-  const currentItems = getCurrentItems();
-  const currentLoading = tab === 'library' ? libraryLoading : uploadLoading;
-  const currentHasMore = tab === 'library' ? libraryHasMore : uploadHasMore;
-
-  // Load more function
-  const handleLoadMore = React.useCallback(async () => {
-    if (currentLoading || !currentHasMore || isLoadingMoreRef.current) return;
-    
-    isLoadingMoreRef.current = true;
-    
-    if (tab === 'library' && libraryNextCursor) {
-      setLibraryLoading(true);
-      try {
-        const response = await fetchLibrary({ limit: 50, nextCursor: libraryNextCursor, mode });
-        if (response.responseStatus === 'success' && response.data) {
-          setLibraryItems(prev => [...prev, ...(response.data.items || [])]);
-          setLibraryNextCursor(response.data.nextCursor);
-          setLibraryHasMore(response.data.hasMore || false);
-        }
-      } catch (error) {
-        console.error('Failed to load more library items:', error);
-      } finally {
-        setLibraryLoading(false);
-        isLoadingMoreRef.current = false;
-      }
-    } else if (tab === 'uploads' && uploadNextCursor) {
-      setUploadLoading(true);
-      try {
-        const response = await fetchUploads({ limit: 50, nextCursor: uploadNextCursor, mode });
-        if (response.responseStatus === 'success' && response.data) {
-          setUploadItems(prev => [...prev, ...(response.data.items || [])]);
-          setUploadNextCursor(response.data.nextCursor);
-          setUploadHasMore(response.data.hasMore || false);
-        }
-      } catch (error) {
-        console.error('Failed to load more upload items:', error);
-      } finally {
-        setUploadLoading(false);
-        isLoadingMoreRef.current = false;
-      }
-    } else {
-      isLoadingMoreRef.current = false;
-    }
-  }, [tab, libraryNextCursor, uploadNextCursor, currentLoading, currentHasMore, mode]);
+  const filteredHistoryEntries = getFilteredHistoryEntries();
 
   if (!isOpen) return null;
 
@@ -332,7 +247,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
                     } catch {}
                     
-                    if (currentLoading || isLoadingMoreRef.current || !currentHasMore) return;
+                    if (!onLoadMore || loading || isLoadingMoreRef.current || !hasMore) return;
                     
                     // Check if user scrolled near bottom (200px threshold)
                     const scrollBottom = el.scrollTop + el.clientHeight;
@@ -343,10 +258,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       // Save current scroll position and scroll height before loading
                       const scrollTopBefore = el.scrollTop;
                       const scrollHeightBefore = el.scrollHeight;
+                      isLoadingMoreRef.current = true;
                       
-                      // Call handleLoadMore to fetch more items
-                      handleLoadMore().then(() => {
+                      // Call onLoadMore to fetch more items
+                      Promise.resolve(onLoadMore()).then(() => {
                         // After new items are loaded, maintain scroll position
+                        // Calculate how much new content was added
                         requestAnimationFrame(() => {
                           requestAnimationFrame(() => {
                             if (el) {
@@ -360,63 +277,80 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                                 el.scrollTop = scrollTopBefore;
                               }
                             }
+                            isLoadingMoreRef.current = false;
                           });
                         });
+                      }).catch(() => {
+                        isLoadingMoreRef.current = false;
                       });
                     }
                   }}
                   className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {currentLoading && currentItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      Loading...
-                    </div>
-                  ) : currentItems.length === 0 ? (
-                    <div className="col-span-full flex items-center justify-center h-32 text-white/60">
-                      No items found
-                    </div>
-                  ) : (
-                    currentItems.map((item: LibraryItem, index: number) => {
-                      const safeUrl = item.url || item.originalUrl || '';
-                      if (!safeUrl) return null;
-                      const selected = selection.has(safeUrl);
-                      const imageSrc = item.thumbnail || safeUrl;
-                      const itemKey = `${item.id || item.historyId || 'item'}-${item.mediaId || index}`;
-
-                      return (
-                        <button
-                          key={itemKey}
-                          onClick={() => {
-                            const next = new Set(selection);
-                            if (selected) next.delete(safeUrl);
-                            else next.add(safeUrl);
-                            setSelection(next);
-                          }}
-                          className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}
-                        >
-                          {imageSrc ? (
-                            <Image
-                              src={imageSrc}
-                              alt={tab === 'uploads' ? 'upload' : 'library'}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
-                              No image
-                            </div>
-                          )}
-                          {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
-                          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                        </button>
-                      );
-                    })
-                  )}
+                  {filteredHistoryEntries.flatMap((entry: any) => {
+                    // Include both images and videos for user uploads
+                    const mediaItems = [
+                      ...((entry?.images || []) as any[]),
+                      ...(((entry as any)?.videos || []) as any[]),
+                    ];
+                    // Debug logging for library tab (only log first few to avoid spam)
+                    if (tab === 'library' && mediaItems.length > 0 && filteredHistoryEntries.indexOf(entry) < 3) {
+                      const firstMedia = mediaItems[0];
+                      console.log('[UploadModal] Processing entry (sample):', {
+                        entryId: entry.id,
+                        imagesCount: entry?.images?.length || 0,
+                        videosCount: (entry as any)?.videos?.length || 0,
+                        mediaItemsCount: mediaItems.length,
+                        firstMediaItem: firstMedia ? {
+                          id: firstMedia.id,
+                          hasUrl: !!firstMedia.url,
+                          url: firstMedia.url?.substring(0, 100),
+                          hasFirebaseUrl: !!firstMedia.firebaseUrl,
+                          hasOriginalUrl: !!firstMedia.originalUrl,
+                          hasThumbnailUrl: !!firstMedia.thumbnailUrl,
+                          hasAvifUrl: !!firstMedia.avifUrl,
+                          allKeys: Object.keys(firstMedia),
+                          fullObject: firstMedia
+                        } : null
+                      });
+                    }
+                    return mediaItems.map((im: any) => ({ entry, im }));
+                  }).map(({ entry, im }: any) => {
+                    const selected = selection.has(im.url);
+                    const key = `${entry.id}-${im.id}`;
+                    const imageSrc = im.thumbnailUrl || im.avifUrl || im.url || im.firebaseUrl || im.originalUrl;
+                    
+                    // Debug: Log if image source is missing
+                    if (!imageSrc && tab === 'library') {
+                      console.warn('[UploadModal] ⚠️ Image missing URL:', {
+                        entryId: entry.id,
+                        imageId: im.id,
+                        imageKeys: Object.keys(im),
+                        image: im
+                      });
+                    }
+                    
+                    return (
+                      <button key={key} onClick={() => {
+                        const next = new Set(selection);
+                        if (selected) next.delete(im.url); else next.add(im.url);
+                        setSelection(next);
+                      }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
+                        {imageSrc ? (
+                          <Image src={imageSrc} alt={tab === 'uploads' ? 'upload' : 'library'} fill className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/50 text-xs">
+                            No image
+                          </div>
+                        )}
+                        {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                      </button>
+                    );
+                  })}
                 </div>
-                {currentHasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
-                    {currentLoading ? 'Loading more…' : 'Scroll to load more'}
-                  </div>
+                {hasMore && (
+                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{loading ? 'Loading more…' : 'Scroll to load more'}</div>
                 )}
                 <div className="flex justify-end mt-0 gap-2">
                   <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
@@ -434,10 +368,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
+                    const maxSize = 20 * 1024 * 1024;
                     const urls: string[] = [];
                     for (const file of files) {
-                      const processed = await compressImageIfNeeded(file);
-                      const asDataUrl = await blobToDataUrl(processed);
+                      if (file.size > maxSize) continue;
+                      const reader = new FileReader();
+                      const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
                       urls.push(asDataUrl);
                     }
                     if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
@@ -452,10 +388,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
+                      const maxSize = 20 * 1024 * 1024;
                       const urls: string[] = [];
                       for (const file of files) {
-                        const processed = await compressImageIfNeeded(file);
-                        const asDataUrl = await blobToDataUrl(processed);
+                        if (file.size > maxSize) { continue; }
+                        const reader = new FileReader();
+                        const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
                         urls.push(asDataUrl);
                       }
                       if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }

@@ -40,41 +40,22 @@ const ResizePopup: React.FC<ResizePopupProps> = ({ isOpen, onClose, defaultImage
     };
   }, [isOpen, inline]);
 
-  const onFile = async (file: File) => {
-    if (file.type.startsWith('image/')) {
-      try {
-        const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
-        const processed = await compressImageIfNeeded(file);
-        const asDataUrl = await blobToDataUrl(processed);
-        setImage(asDataUrl);
-        // Get natural size to compute ratio
-        const img = new Image();
-        img.onload = () => {
-          setOriginalRatio(img.width / img.height);
-          setWidth(img.width);
-          setHeight(img.height);
-        };
-        img.src = asDataUrl;
-      } catch (error) {
-        console.error('Error processing image:', error);
-        alert('Failed to process image');
-      }
-    } else {
-      const fr = new FileReader();
-      fr.onload = () => {
-        const url = String(fr.result || '');
-        setImage(url);
-        // Get natural size to compute ratio
-        const img = new Image();
-        img.onload = () => {
-          setOriginalRatio(img.width / img.height);
-          setWidth(img.width);
-          setHeight(img.height);
-        };
-        img.src = url;
+  const onFile = (file: File) => {
+    const max = 2 * 1024 * 1024; if (file.size > max) { alert('Max 2MB'); return; }
+    const fr = new FileReader();
+    fr.onload = () => {
+      const url = String(fr.result || '');
+      setImage(url);
+      // Get natural size to compute ratio
+      const img = new Image();
+      img.onload = () => {
+        setOriginalRatio(img.width / img.height);
+        setWidth(img.width);
+        setHeight(img.height);
       };
-      fr.readAsDataURL(file);
-    }
+      img.src = url;
+    };
+    fr.readAsDataURL(file);
   };
 
   const handleRun = async () => {

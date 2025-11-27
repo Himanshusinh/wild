@@ -348,8 +348,19 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
         <UploadModal
           isOpen={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
+          historyEntries={historyEntries as any}
           remainingSlots={1}
-          mode="image"
+          hasMore={hasMore}
+          loading={loading}
+          onLoadMore={async () => {
+            try {
+              if (!hasMore || loading) return;
+              await (dispatch as any)(loadMoreHistory({
+                filters: { generationType: 'text-to-image' },
+                paginationParams: { limit: 20 }
+              })).unwrap();
+            } catch {}
+          }}
           onAdd={handleUploadModalAdd}
         />
       </>
@@ -368,8 +379,19 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       <UploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
+        historyEntries={historyEntries as any}
         remainingSlots={1}
-        mode="image"
+        hasMore={hasMore}
+        loading={loading}
+        onLoadMore={async () => {
+          try {
+            if (!hasMore || loading) return;
+            await (dispatch as any)(loadMoreHistory({
+              filters: { generationType: 'text-to-image' },
+              paginationParams: { limit: 20 }
+            })).unwrap();
+          } catch {}
+        }}
         onAdd={handleUploadModalAdd}
       />
     </>

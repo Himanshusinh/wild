@@ -1,109 +1,153 @@
-export function blobToDataUrl(blob: Blob): Promise<string> {
+export interface ImageCompressionOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  maxBytes?: number;
+  quality?: number;
+  mimeType?: 'image/jpeg' | 'image/png' | 'image/webp';
+  convertTo?: 'jpeg' | 'png' | 'webp';
+}
+
+export interface ImageCompressionResult {
+  blob: Blob;
+  dataUrl: string;
+  width: number;
+  height: number;
+  originalSize: number;
+  finalSize: number;
+  iterations: number;
+}
+
+const DEFAULTS: Required<Omit<ImageCompressionOptions, 'maxBytes' | 'convertTo'>> = {
+  maxWidth: 2048,
+  maxHeight: 2048,
+  quality: 0.9,
+  mimeType: 'image/jpeg',
+};
+
+const MIN_QUALITY = 0.4;
+
+const isBrowser = () => typeof window !== 'undefined' && typeof document !== 'undefined';
+
+const pickMimeType = (
+  options: ImageCompressionOptions
+): 'image/jpeg' | 'image/png' | 'image/webp' => {
+  if (options.mimeType) return options.mimeType;
+  if (options.convertTo === 'png') return 'image/png';
+  if (options.convertTo === 'webp') return 'image/webp';
+  return 'image/jpeg';
+};
+
+async function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (err) => reject(err);
-    reader.readAsDataURL(blob);
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.decoding = 'async';
+    img.src = dataUrl;
   });
 }
 
-const loadImageElement = (file: File): Promise<HTMLImageElement> => {
+function createCanvas(width: number, height: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
+function drawToCanvas(image: HTMLImageElement, maxWidth: number, maxHeight: number): { canvas: HTMLCanvasElement; width: number; height: number } {
+  let { width, height } = image;
+  if (width > maxWidth || height > maxHeight) {
+    const ratio = Math.min(maxWidth / width, maxHeight / height);
+    width = Math.floor(width * ratio);
+    height = Math.floor(height * ratio);
+  }
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Failed to create 2D context');
+  }
+  ctx.drawImage(image, 0, 0, width, height);
+  return { canvas, width, height };
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = (err) => {
-      URL.revokeObjectURL(url);
-      reject(err);
-    };
-    img.src = url;
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas conversion failed'));
+        return;
+      }
+      resolve(blob);
+    }, mimeType, quality);
   });
-};
+}
 
-/**
- * Compresses an image file until it is below the requested size.
- * Returns the original file if compression fails.
- */
-export async function compressImageIfNeeded(
-  file: File,
-  maxBytes: number = 10 * 1024 * 1024
-): Promise<Blob> {
-  if (!file.type.startsWith('image/')) {
-    return file;
-  }
-  if (file.size <= maxBytes) {
-    return file;
-  }
+export async function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-  try {
-    const img = await loadImageElement(file);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return file;
-    }
+export async function compressImageFile(file: File, options: ImageCompressionOptions = {}): Promise<ImageCompressionResult> {
+  const dataUrl = await readFileAsDataURL(file);
+  return compressImageDataUrl(dataUrl, {
+    ...options,
+    mimeType: options.mimeType ?? pickMimeType(options),
+  });
+}
 
-    let width = img.naturalWidth;
-    let height = img.naturalHeight;
-    const MAX_DIMENSION = 4096;
-
-    const clampDimensions = () => {
-      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-        const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
-        width = Math.floor(width * ratio);
-        height = Math.floor(height * ratio);
-      }
+export async function compressImageDataUrl(dataUrl: string, options: ImageCompressionOptions = {}): Promise<ImageCompressionResult> {
+  if (!isBrowser()) {
+    const blob = await fetch(dataUrl).then((res) => res.blob());
+    return {
+      blob,
+      dataUrl,
+      width: 0,
+      height: 0,
+      originalSize: blob.size,
+      finalSize: blob.size,
+      iterations: 0,
     };
-
-    clampDimensions();
-
-    let quality = 0.92;
-    const MIN_QUALITY = 0.4;
-    const SCALE_STEP = 0.88;
-    let blob: Blob | null = null;
-
-    const renderToBlob = (w: number, h: number, q: number) =>
-      new Promise<Blob>((resolve, reject) => {
-        canvas.width = w;
-        canvas.height = h;
-        ctx.clearRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        canvas.toBlob(
-          (result) => {
-            if (!result) {
-              reject(new Error('Unable to create blob from canvas'));
-              return;
-            }
-            resolve(result);
-          },
-          'image/jpeg',
-          q
-        );
-      });
-
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      blob = await renderToBlob(width, height, quality);
-      if (blob.size <= maxBytes) {
-        return blob;
-      }
-
-      if (quality > MIN_QUALITY) {
-        quality = Math.max(MIN_QUALITY, quality - 0.1);
-      } else {
-        width = Math.floor(width * SCALE_STEP);
-        height = Math.floor(height * SCALE_STEP);
-        if (width < 256 || height < 256) {
-          break;
-        }
-      }
-    }
-
-    return blob || file;
-  } catch {
-    return file;
   }
+
+  const merged = { ...DEFAULTS, ...options };
+  const image = await loadImage(dataUrl);
+  const { canvas, width, height } = drawToCanvas(image, merged.maxWidth, merged.maxHeight);
+
+  let quality = merged.quality;
+  let blob = await canvasToBlob(canvas, pickMimeType(merged), quality);
+  let iterations = 1;
+
+  if (merged.maxBytes) {
+    while (blob.size > merged.maxBytes && quality > MIN_QUALITY) {
+      quality = Math.max(MIN_QUALITY, quality - 0.1);
+      blob = await canvasToBlob(canvas, pickMimeType(merged), quality);
+      iterations += 1;
+    }
+  }
+
+  const finalDataUrl = await blobToDataUrl(blob);
+
+  return {
+    blob,
+    dataUrl: finalDataUrl,
+    width,
+    height,
+    originalSize: dataUrl.length,
+    finalSize: blob.size,
+    iterations,
+  };
+}
+
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 

@@ -1,7 +1,3 @@
-/**
- * TypeScript type definitions for authentication
- */
-
 export interface AuthUser {
   uid: string;
   email?: string;
@@ -11,23 +7,22 @@ export interface AuthUser {
   provider?: string;
   credits?: number;
   plan?: string;
-  planCode?: string;
-  canTogglePublicGenerations?: boolean;
-  forcePublicGenerations?: boolean;
+  roles?: string[];
+  metadata?: Record<string, any>;
 }
 
-export interface SessionInfo {
-  uid: string;
-  exp?: number;
-  issuedAt?: number;
-  userAgent?: string;
-  ip?: string;
+export interface AuthSessionInfo {
+  token?: string;
+  createdAt?: number;
+  expiresAt?: number;
+  lastVerifiedAt?: number;
 }
 
-export interface LogoutOptions {
-  redirectTo?: string;
-  clearLocalStorage?: boolean;
-  clearCookies?: boolean;
-  signOutFirebase?: boolean;
+declare global {
+  interface Window {
+    __AUTH_DEBUG__?: boolean;
+  }
 }
+
+export {};
 

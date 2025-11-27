@@ -59,34 +59,22 @@ const AdvancedManualForm: React.FC<AdvancedManualFormProps> = ({
   const handleLocalImageChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const file = e.target.files?.[0] || null;
     if (!file) return;
-    // Validate type
+    // Validate type and size (<= 8MB)
     if (!file.type.startsWith('image/')) {
       alert('Unsupported file. Please upload an image.');
       e.currentTarget.value = '';
       return;
     }
-    
-    // Compress image if needed
-    if (file.type.startsWith('image/')) {
-      (async () => {
-        try {
-          const { compressImageIfNeeded, blobToDataUrl } = await import('@/utils/imageCompression');
-          const processed = await compressImageIfNeeded(file);
-          const asDataUrl = await blobToDataUrl(processed);
-          setLocalImage(processed as any);
-          setLocalPreview(asDataUrl);
-        } catch (error) {
-          console.error('Error processing image:', error);
-          alert('Failed to process image');
-          e.currentTarget.value = '';
-        }
-      })();
-    } else {
-      setLocalImage(file);
-      const reader = new FileReader();
-      reader.onload = () => setLocalPreview(reader.result as string);
-      reader.readAsDataURL(file);
+    const maxBytes = 8 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert('Image too large. Please upload an image ≤ 8MB.');
+      e.currentTarget.value = '';
+      return;
     }
+    setLocalImage(file);
+    const reader = new FileReader();
+    reader.onload = () => setLocalPreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleInputChange = (section: string, field: string, value: any) => {

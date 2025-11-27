@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { ViewType, GenerationType } from '@/types/generation';
@@ -30,14 +29,12 @@ const EditVideoPage = () => {
   };
 
   return (
-    <ProtectedRoute>
-      <MainLayout
-        onViewChange={onViewChange}
-        onGenerationTypeChange={onGenerationTypeChange}
-        currentView="generation"
-        currentGenerationType="edit-video"
-      />
-    </ProtectedRoute>
+    <MainLayout
+      onViewChange={onViewChange}
+      onGenerationTypeChange={onGenerationTypeChange}
+      currentView="generation"
+      currentGenerationType="edit-video"
+    />
   );
 };
 
