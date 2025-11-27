@@ -17,6 +17,8 @@ const ResizePopup: React.FC<ResizePopupProps> = ({ isOpen, onClose, defaultImage
   const [model, setModel] = useState<ResizeModel>('Lanczos');
   const [width, setWidth] = useState<number>(1024);
   const [height, setHeight] = useState<number>(1024);
+  const [originalWidth, setOriginalWidth] = useState<number | null>(null);
+  const [originalHeight, setOriginalHeight] = useState<number | null>(null);
   const [keepAspect, setKeepAspect] = useState<boolean>(true);
   const [originalRatio, setOriginalRatio] = useState<number>(1);
   const [output, setOutput] = useState<string | null>(null);
@@ -50,9 +52,14 @@ const ResizePopup: React.FC<ResizePopupProps> = ({ isOpen, onClose, defaultImage
         // Get natural size to compute ratio
         const img = new Image();
         img.onload = () => {
-          setOriginalRatio(img.width / img.height);
-          setWidth(img.width);
-          setHeight(img.height);
+          const w = img.width;
+          const h = img.height || 1;
+          // Lock resize to original pixel dimensions so resolution never changes.
+          setOriginalWidth(w);
+          setOriginalHeight(h);
+          setOriginalRatio(w / h);
+          setWidth(w);
+          setHeight(h);
         };
         img.src = asDataUrl;
       } catch (error) {
@@ -67,9 +74,13 @@ const ResizePopup: React.FC<ResizePopupProps> = ({ isOpen, onClose, defaultImage
         // Get natural size to compute ratio
         const img = new Image();
         img.onload = () => {
-          setOriginalRatio(img.width / img.height);
-          setWidth(img.width);
-          setHeight(img.height);
+          const w = img.width;
+          const h = img.height || 1;
+          setOriginalWidth(w);
+          setOriginalHeight(h);
+          setOriginalRatio(w / h);
+          setWidth(w);
+          setHeight(h);
         };
         img.src = url;
       };
@@ -84,8 +95,11 @@ const ResizePopup: React.FC<ResizePopupProps> = ({ isOpen, onClose, defaultImage
       // Client-side resize with canvas; model is advisory for future backend
       const src = await loadImage(image);
       const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.floor(width));
-      canvas.height = Math.max(1, Math.floor(height));
+      // Always keep the original resolution; only change encoding / file size.
+      const targetW = originalWidth ?? width;
+      const targetH = originalHeight ?? height;
+      canvas.width = Math.max(1, Math.floor(targetW));
+      canvas.height = Math.max(1, Math.floor(targetH));
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas not supported');
 

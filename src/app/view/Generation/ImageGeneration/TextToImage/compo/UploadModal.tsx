@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { fetchLibrary, fetchUploads, LibraryItem } from '@/lib/libraryApi';
+import { fetchLibrary, fetchUploads, LibraryItem, saveUpload } from '@/lib/libraryApi';
 import { blobToDataUrl, compressImageIfNeeded } from '@/utils/imageCompression';
 
 type UploadModalProps = {
@@ -287,16 +287,41 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
 
   if (!isOpen) return null;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (tab === 'library' || tab === 'uploads') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) onAdd(chosen);
       setSelection(new Set());
-    } else {
-      const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen);
-      setLocalUploads([]);
+      onClose();
+      return;
     }
+
+    // tab === 'computer' – user uploaded from their device.
+    // Persist these images as true uploads in Zata WITHOUT tying them
+    // to a specific generation; they become reusable in "Your Uploads".
+    const chosen = localUploads.slice(0, remainingSlots);
+    if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    const savedUrls: string[] = [];
+    for (const url of chosen) {
+      try {
+        const resp = await saveUpload({ url, type: 'image' });
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          savedUrls.push(resp.data.url);
+        } else {
+          // Fallback: still pass the original data URL so generation can proceed.
+          savedUrls.push(url);
+        }
+      } catch {
+        savedUrls.push(url);
+      }
+    }
+
+    if (savedUrls.length) onAdd(savedUrls);
+    setLocalUploads([]);
     onClose();
   };
 

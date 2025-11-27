@@ -72,7 +72,7 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
-import { fetchLibrary, LibraryItem } from '@/lib/libraryApi';
+import { fetchLibrary, LibraryItem, saveUpload } from '@/lib/libraryApi';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
@@ -243,7 +243,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     }
   }, [libraryNextCursor, libraryLoading, libraryHasMore, mode]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) {
@@ -254,11 +254,33 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
         onAdd(chosen, selectedItems as any);
       }
       setSelection(new Set());
-    } else {
-      const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen, []); // No entries for local uploads
-      setLocalUploads([]);
+      onClose();
+      return;
     }
+
+    // tab === 'computer' – persist uploaded videos as reusable uploads in Zata.
+    const chosen = localUploads.slice(0, remainingSlots);
+    if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    const savedUrls: string[] = [];
+    for (const url of chosen) {
+      try {
+        const resp = await saveUpload({ url, type: 'video' });
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          savedUrls.push(resp.data.url);
+        } else {
+          savedUrls.push(url);
+        }
+      } catch {
+        savedUrls.push(url);
+      }
+    }
+
+    if (savedUrls.length) onAdd(savedUrls, []);
+    setLocalUploads([]);
     onClose();
   };
 
