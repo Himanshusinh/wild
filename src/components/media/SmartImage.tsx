@@ -3,8 +3,16 @@
 import React, { useState } from 'react';
 import { toThumbUrl } from '@/lib/thumb';
 
-type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> & {
+type SmartImageProps = {
 	src: string;
+	alt?: string;
+	className?: string;
+	sizes?: string;
+	fill?: boolean;
+	width?: number;
+	height?: number;
+	priority?: boolean;
+	fetchPriority?: 'high' | 'low' | 'auto';
 	thumbWidth?: number;
 	thumbQuality?: number;
 	/** Optimized thumbnail URL (pre-generated) */
@@ -17,8 +25,10 @@ type SmartImageProps = Omit<ImageProps, 'src' | 'placeholder' | 'blurDataURL'> &
 	decorative?: boolean;
 	/** Prefer WebP over AVIF for broader compatibility (e.g., homepage grid) */
 	preferWebp?: boolean;
-	// Note: Next/Image onLoadingComplete receives HTMLImageElement
+	// Note: onLoadingComplete receives HTMLImageElement
 	onLoadingComplete?: (img: HTMLImageElement) => void;
+	loading?: 'lazy' | 'eager';
+	[key: string]: any; // Allow other HTML img attributes
 };
 
 /**

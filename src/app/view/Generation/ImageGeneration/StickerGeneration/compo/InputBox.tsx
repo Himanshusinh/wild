@@ -459,12 +459,12 @@ const InputBox = () => {
                           </div>
                         ) : (
                           <div className="relative w-full h-full group">
-                            <Image 
+                            <img 
                               src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-sticker.png'} 
                               alt={localGeneratingEntries[0].prompt} 
-                              fill 
-                              className="object-cover" 
-                              sizes="192px" 
+                              loading="lazy"
+                              decoding="async"
+                              className="absolute inset-0 w-full h-full object-cover" 
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover buttons overlay */}
@@ -593,12 +593,12 @@ const InputBox = () => {
                           ) : image.url ? (
                             // Completed sticker with shimmer loading
                             <div className="relative w-full h-full group">
-                              <Image
+                              <img
                                 src={image.thumbnailUrl || image.avifUrl || image.url}
                                 alt={`Generated sticker ${imageIndex + 1}`}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200"
-                                sizes="192px"
+                                loading="lazy"
+                                decoding="async"
+                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                 onLoad={() => {
                                   setTimeout(() => {
                                     const shimmer = document.querySelector(`[data-image-id="${entry.id}-${image.id}"] .shimmer`) as HTMLElement;
