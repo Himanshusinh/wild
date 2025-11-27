@@ -587,11 +587,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
           setIsUploadModalOpen(false);
           setIsCreateModalOpen(true);
         }}
-        historyEntries={characterEntries}
         remainingSlots={3}
-        onLoadMore={() => handleLoadMore()}
-        hasMore={hasMore}
-        loading={loadingMore}
       />
       
     </>

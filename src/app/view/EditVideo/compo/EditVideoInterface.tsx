@@ -827,19 +827,7 @@ const EditVideoInterface: React.FC = () => {
       <VideoUploadModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        historyEntries={historyEntries as any}
         remainingSlots={1}
-        hasMore={historyHasMore}
-        loading={historyLoading}
-        onLoadMore={async () => {
-          try {
-            if (!historyHasMore || historyLoading) return;
-            await (dispatch as any)(loadMoreHistory({
-              filters: { generationType: 'text-to-video' },
-              paginationParams: { limit: 20 }
-            })).unwrap();
-          } catch { }
-        }}
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {

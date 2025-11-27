@@ -394,13 +394,95 @@ const markSessionCreated = () => {
   try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch {}
 }
 
+// Session refresh state management
+let isRefreshingSession = false;
+let lastSessionRefreshAt = 0;
+const SESSION_REFRESH_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
+
+const refreshSessionIfNeeded = async (): Promise<void> => {
+  // Prevent concurrent refresh attempts
+  if (isRefreshingSession) {
+    if (isApiDebugEnabled()) console.log('[API][session-refresh] Already refreshing, skipping');
+    return;
+  }
+
+  // Throttle refresh attempts (5-minute cooldown)
+  const now = Date.now();
+  if (now - lastSessionRefreshAt < SESSION_REFRESH_COOLDOWN_MS) {
+    if (isApiDebugEnabled()) console.log('[API][session-refresh] Cooldown active, skipping');
+    return;
+  }
+
+  try {
+    isRefreshingSession = true;
+    lastSessionRefreshAt = now;
+
+    if (isApiDebugEnabled()) console.log('[API][session-refresh] Starting automatic session refresh');
+
+    // Get current Firebase user
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      if (isApiDebugEnabled()) console.warn('[API][session-refresh] No current user, cannot refresh');
+      return;
+    }
+
+    // Get fresh ID token
+    const freshIdToken = await currentUser.getIdToken(true);
+    if (!freshIdToken) {
+      if (isApiDebugEnabled()) console.warn('[API][session-refresh] Failed to get fresh ID token');
+      return;
+    }
+
+    // Call refresh endpoint
+    const backendBase = resolvedBaseUrl;
+    const refreshResponse = await axios.post(
+      `${backendBase}/api/auth/session/refresh`,
+      { idToken: freshIdToken },
+      { 
+        withCredentials: true, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+
+    if (refreshResponse.data?.responseStatus === 'success') {
+      if (isApiDebugEnabled()) console.log('[API][session-refresh] Session refreshed successfully', {
+        expiresIn: refreshResponse.data?.data?.expiresIn
+      });
+    } else {
+      if (isApiDebugEnabled()) console.warn('[API][session-refresh] Refresh response indicates failure', refreshResponse.data);
+    }
+  } catch (error: any) {
+    // Silently fail - non-critical operation
+    if (isApiDebugEnabled()) {
+      console.warn('[API][session-refresh] Failed to refresh session (non-critical):', {
+        message: error?.message,
+        status: error?.response?.status
+      });
+    }
+  } finally {
+    isRefreshingSession = false;
+  }
+};
+
 axiosInstance.interceptors.response.use(
-  (response) => {
+  async (response) => {
     try {
       if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status })
       const urlStr = String(response?.config?.url || '')
       if (urlStr.includes('/api/auth/logout')) {
         console.log('[API][logout][response]', { status: response?.status, url: response?.config?.url })
+      }
+
+      // Check for session refresh header (automatic refresh when session expires within 3 days)
+      // Axios normalizes headers to lowercase, but check both cases for safety
+      const refreshHeader = response.headers['x-session-refresh-needed'] || 
+                           response.headers['X-Session-Refresh-Needed'];
+      const refreshNeeded = refreshHeader === 'true';
+      if (refreshNeeded && typeof window !== 'undefined') {
+        // Refresh session in background (non-blocking)
+        refreshSessionIfNeeded().catch(() => {
+          // Silently fail - non-critical
+        });
       }
     } catch {}
     return response
