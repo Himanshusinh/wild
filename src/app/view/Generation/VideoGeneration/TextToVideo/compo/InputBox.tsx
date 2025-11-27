@@ -4050,7 +4050,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {localVideoPreview.status === 'generating' ? (
                         <div className="w-full h-full flex items-center justify-center bg-black/90">
                           <div className="flex flex-col items-center gap-2">
-                            <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                            <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                             <div className="text-xs text-white/60">Generating...</div>
                           </div>
                         </div>
@@ -4141,7 +4141,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           {localVideoPreview.status === 'generating' ? (
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                                 <div className="text-xs text-white/60 text-center">Generating...</div>
                               </div>
                             </div>
@@ -4216,7 +4216,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                             // Loading frame
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                                 <div className="text-xs text-white/60 text-center">
                                   Generating...
                                 </div>
@@ -4344,7 +4344,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               {hasMore && loading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
-                    <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                    <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                     <div className="text-sm text-white/60">Loading more generations...</div>
                   </div>
                 </div>

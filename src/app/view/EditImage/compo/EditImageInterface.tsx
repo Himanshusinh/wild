@@ -721,6 +721,48 @@ const EditImageInterface: React.FC = () => {
   // Allow page scroll so actions are reachable on small screens
   // (removed the global overflow lock)
 
+  // Hide empty page scrollbar when content doesn't exceed viewport
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflowY = html.style.overflowY;
+    const prevBodyOverflowY = body.style.overflowY;
+
+    const update = () => {
+      const contentHeight = Math.max(
+        body.scrollHeight,
+        html.scrollHeight,
+        body.offsetHeight,
+        html.offsetHeight,
+        body.clientHeight,
+        html.clientHeight
+      );
+      const needsScroll = contentHeight > window.innerHeight + 1;
+      const val = needsScroll ? 'auto' : 'hidden';
+      html.style.overflowY = val;
+      body.style.overflowY = val;
+    };
+
+    const onResize = () => {
+      requestAnimationFrame(update);
+    };
+
+    const observer = new MutationObserver(() => requestAnimationFrame(update));
+    try {
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+    } catch {}
+
+    update();
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      try { observer.disconnect(); } catch {}
+      html.style.overflowY = prevHtmlOverflowY;
+      body.style.overflowY = prevBodyOverflowY;
+    };
+  }, []);
+
   // Close image menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

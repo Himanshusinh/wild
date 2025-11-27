@@ -612,5 +612,3 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
 };
 
 export default UploadModal;
-
-
