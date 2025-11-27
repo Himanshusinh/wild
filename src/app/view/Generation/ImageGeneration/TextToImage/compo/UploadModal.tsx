@@ -155,27 +155,30 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   // Fetch library items when modal opens or tab changes to library
   React.useEffect(() => {
     if (!isOpen || tab !== 'library') {
-      if (!isOpen) hasLoadedLibraryRef.current = false; // Reset when modal closes
+      if (!isOpen) {
+        hasLoadedLibraryRef.current = false; // Reset when modal closes
+        // Reset state when modal closes
+        setLibraryItems([]);
+        setLibraryNextCursor(undefined);
+        setLibraryHasMore(false);
+      }
       return;
     }
     
     const loadLibrary = async () => {
-      // Only load if we haven't loaded yet or if we have a cursor (pagination)
-      if (hasLoadedLibraryRef.current && !libraryNextCursor) return; // Already loaded all
+      // Only load initial page if we haven't loaded yet
+      // Pagination will be handled by scroll handler
+      if (hasLoadedLibraryRef.current) return; // Already loaded initial page
       setLibraryLoading(true);
       try {
-        const result = await getLibraryPage(50, libraryNextCursor, 'image');
-        console.log('[UploadModal] Loaded library:', {
+        const result = await getLibraryPage(50, undefined, 'image');
+        console.log('[UploadModal] Loaded library (initial):', {
           itemsCount: result.items.length,
           hasMore: result.hasMore,
           nextCursor: result.nextCursor
         });
-        // Deduplicate items by id to prevent duplicates
-        setLibraryItems(prev => {
-          const existingIds = new Set(prev.map(item => item.id));
-          const newItems = result.items.filter(item => !existingIds.has(item.id));
-          return [...prev, ...newItems];
-        });
+        // Set initial items (don't merge, replace)
+        setLibraryItems(result.items);
         setLibraryNextCursor(result.nextCursor);
         setLibraryHasMore(result.hasMore);
         hasLoadedLibraryRef.current = true;
@@ -193,17 +196,24 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   // Fetch upload items when modal opens or tab changes to uploads
   React.useEffect(() => {
     if (!isOpen || tab !== 'uploads') {
-      if (!isOpen) hasLoadedUploadsRef.current = false; // Reset when modal closes
+      if (!isOpen) {
+        hasLoadedUploadsRef.current = false; // Reset when modal closes
+        // Reset state when modal closes
+        setUploadItems([]);
+        setUploadNextCursor(undefined);
+        setUploadHasMore(false);
+      }
       return;
     }
     
     const loadUploads = async () => {
-      // Only load if we haven't loaded yet or if we have a cursor (pagination)
-      if (hasLoadedUploadsRef.current && !uploadNextCursor) return; // Already loaded all
+      // Only load initial page if we haven't loaded yet
+      // Pagination will be handled by scroll handler
+      if (hasLoadedUploadsRef.current) return; // Already loaded initial page
       setUploadLoading(true);
       try {
-        const result = await getUploadsPage(50, uploadNextCursor, 'image');
-        console.log('[UploadModal] Loaded uploads:', {
+        const result = await getUploadsPage(50, undefined, 'image');
+        console.log('[UploadModal] Loaded uploads (initial):', {
           itemsCount: result.items.length,
           hasMore: result.hasMore,
           nextCursor: result.nextCursor,
@@ -215,14 +225,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
             convertedUrl: result.items[0].storagePath ? toDirectUrl(result.items[0].storagePath) : result.items[0].url
           } : null
         });
-        // Deduplicate items by id to prevent duplicates
-        setUploadItems(prev => {
-          const existingIds = new Set(prev.map(item => item.id));
-          const newItems = result.items.filter(item => !existingIds.has(item.id));
-          return [...prev, ...newItems];
-        });
+        // Set initial items (don't merge, replace)
+        setUploadItems(result.items);
         setUploadNextCursor(result.nextCursor);
         setUploadHasMore(result.hasMore);
+        console.log('[UploadModal] Set upload state:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor ? 'present' : 'null',
+          nextCursorValue: result.nextCursor
+        });
         hasLoadedUploadsRef.current = true;
       } catch (error) {
         console.error('[UploadModal] Error loading uploads:', error);
@@ -401,22 +413,51 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
           <div className="p-4">
             {tab === 'library' || tab === 'uploads' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3 ">
-                  {tab === 'uploads' 
-                    ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
-                    : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
-                  }
-                </div>
-                <div
-                  ref={listRef}
-                  onScroll={async (e) => {
+                {loading && displayItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[50vh] text-white/60">
+                    <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
+                    <div className="text-lg">
+                      {tab === 'uploads' ? 'Loading uploads...' : 'Loading library...'}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-white/70 text-sm mb-3 ">
+                      {tab === 'uploads' 
+                        ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
+                        : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
+                      }
+                    </div>
+                    <div
+                      ref={listRef}
+                      onScroll={async (e) => {
                     const el = e.currentTarget as HTMLDivElement;
                     // Save current scroll for this tab
                     try {
                       scrollPositionsRef.current[tab as 'library' | 'uploads'] = el.scrollTop;
                     } catch {}
                     
-                    if (loading || isLoadingMoreRef.current || !hasMore) return;
+                    // Check if we should load more - use specific state for current tab
+                    const currentHasMore = tab === 'library' ? libraryHasMore : uploadHasMore;
+                    const currentLoading = tab === 'library' ? libraryLoading : uploadLoading;
+                    const currentNextCursor = tab === 'library' ? libraryNextCursor : uploadNextCursor;
+                    const currentItems = tab === 'library' ? libraryItems : uploadItems;
+                    
+                    // Don't load if already loading or no more items
+                    if (currentLoading || isLoadingMoreRef.current || !currentHasMore) {
+                      return;
+                    }
+                    
+                    // Log state for debugging
+                    if (tab === 'uploads') {
+                      console.log('[UploadModal] Scroll check for uploads:', {
+                        hasMore: currentHasMore,
+                        loading: currentLoading,
+                        nextCursor: currentNextCursor,
+                        itemsCount: currentItems.length,
+                        isLoadingMore: isLoadingMoreRef.current
+                      });
+                    }
                     
                     // Check if user scrolled near bottom (200px threshold)
                     const scrollBottom = el.scrollTop + el.clientHeight;
@@ -431,8 +472,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       
                       try {
                         if (tab === 'library') {
+                          console.log('[UploadModal] Loading more library items:', { 
+                            nextCursor: libraryNextCursor, 
+                            hasMore: libraryHasMore,
+                            currentItems: libraryItems.length 
+                          });
                           setLibraryLoading(true);
                           const result = await getLibraryPage(50, libraryNextCursor, 'image');
+                          console.log('[UploadModal] Loaded more library items:', {
+                            itemsCount: result.items.length,
+                            hasMore: result.hasMore,
+                            nextCursor: result.nextCursor
+                          });
                           // Deduplicate items by id
                           setLibraryItems(prev => {
                             const existingIds = new Set(prev.map(item => item.id));
@@ -443,8 +494,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                           setLibraryHasMore(result.hasMore);
                           setLibraryLoading(false);
                         } else if (tab === 'uploads') {
+                          console.log('[UploadModal] Loading more upload items:', { 
+                            nextCursor: uploadNextCursor, 
+                            hasMore: uploadHasMore,
+                            currentItems: uploadItems.length 
+                          });
                           setUploadLoading(true);
                           const result = await getUploadsPage(50, uploadNextCursor, 'image');
+                          console.log('[UploadModal] Loaded more upload items:', {
+                            itemsCount: result.items.length,
+                            hasMore: result.hasMore,
+                            nextCursor: result.nextCursor
+                          });
                           // Deduplicate items by id
                           setUploadItems(prev => {
                             const existingIds = new Set(prev.map(item => item.id));
@@ -479,9 +540,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       }
                     }
                   }}
-                  className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
-                >
-                  {displayItems.map((im: any, index: number) => {
+                      className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
+                    >
+                      {displayItems.length === 0 ? (
+                        <div className="col-span-full flex items-center justify-center h-32 text-white/60">
+                          No items found
+                        </div>
+                      ) : (
+                        displayItems.map((im: any, index: number) => {
                     const selected = selection.has(im.url);
                     // Create unique key using id, url, and index to prevent duplicates
                     const key = `${tab}-${im.id || im.url || index}-${index}`;
@@ -512,15 +578,26 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                       </button>
                     );
-                  })}
-                </div>
-                {hasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{loading ? 'Loading more…' : 'Scroll to load more'}</div>
+                      })
+                      )}
+                    </div>
+                    {hasMore && (
+                      <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
+                        {loading ? 'Loading more…' : 'Scroll to load more'}
+                      </div>
+                    )}
+                    {/* Debug info for uploads tab */}
+                    {tab === 'uploads' && process.env.NODE_ENV === 'development' && (
+                      <div className="flex items-center justify-center pt-1 text-white/30 text-[10px]">
+                        Debug: hasMore={String(uploadHasMore)}, loading={String(uploadLoading)}, cursor={uploadNextCursor ? 'yes' : 'no'}, items={uploadItems.length}
+                      </div>
+                    )}
+                    <div className="flex justify-end mt-0 gap-2">
+                      <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                      <button className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-end mt-0 gap-2">
-                  <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
-                </div>
               </div>
             ) : (
               <div>

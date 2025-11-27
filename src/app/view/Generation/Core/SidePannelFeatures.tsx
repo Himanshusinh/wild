@@ -214,7 +214,7 @@ const SidePannelFeatures = ({
       ref={sidebarRef}
       onMouseEnter={() => setIsSidebarHovered(true)}
       onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-[width] text-white duration-300 md:w-[68px] w-[50px] hover:w-60 z-40 shadow-2xl'
+      className='fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-[width] text-white duration-300 md:w-[68px] w-[50px] hover:w-60 z-[50] shadow-2xl'
       style={{
         // borderTopLeftRadius: '16px',
         // borderBottomLeftRadius: '16px',

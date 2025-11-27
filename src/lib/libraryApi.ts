@@ -104,8 +104,16 @@ export async function fetchUploads(params: {
     const api = getApiClient();
     const queryParams = new URLSearchParams();
     if (params.limit) queryParams.set('limit', String(params.limit));
-    if (params.cursor) queryParams.set('cursor', params.cursor);
-    if (params.nextCursor !== undefined) queryParams.set('nextCursor', String(params.nextCursor));
+    // Some backends expect `cursor`, others expect `nextCursor`.
+    // Send both when we have a value to maximize compatibility.
+    if (params.cursor !== undefined && params.cursor !== null) {
+      queryParams.set('cursor', String(params.cursor));
+      queryParams.set('nextCursor', String(params.cursor));
+    }
+    if (params.nextCursor !== undefined && params.nextCursor !== null) {
+      queryParams.set('nextCursor', String(params.nextCursor));
+      queryParams.set('cursor', String(params.nextCursor));
+    }
     if (params.mode) queryParams.set('mode', params.mode);
 
     const response = await api.get(`/api/uploads?${queryParams.toString()}`);
@@ -157,10 +165,15 @@ export async function getUploadsPage(
   hasMore: boolean;
 }> {
   const result = await fetchUploads({ limit, nextCursor, mode });
+  const items = (result.data?.items || []) as UploadItem[];
+  // Support both `nextCursor` and `cursor` response fields
+  const next = (result as any)?.data?.nextCursor ?? (result as any)?.data?.cursor;
+  // Derive hasMore from explicit flag or the presence of a cursor
+  const hasMore = Boolean((result as any)?.data?.hasMore ?? next);
   return {
-    items: (result.data?.items || []) as UploadItem[],
-    nextCursor: result.data?.nextCursor,
-    hasMore: result.data?.hasMore || false,
+    items,
+    nextCursor: next,
+    hasMore,
   };
 }
 
