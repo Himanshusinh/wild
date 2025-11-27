@@ -229,7 +229,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   );
 
   return (
-    <>
+    <>  
       {createPortal(popupContent, document.body)}
     </>
   );
