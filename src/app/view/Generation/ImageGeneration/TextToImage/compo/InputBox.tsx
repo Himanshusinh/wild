@@ -3284,14 +3284,12 @@ const InputBox = () => {
                                 </div>
                               )}
                               {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
-                                <Image
+                                <img
                                   src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
                                   alt=""
-                                  fill
-                                  sizes="(max-width: 768px) 140px, 300px"
                                   loading="lazy"
-                                  quality={85}
-                                  className="object-contain"
+                                  decoding="async"
+                                  className="absolute inset-0 w-full h-full object-contain"
                                   onLoad={() => {
                                     setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
                                   }}
@@ -3431,14 +3429,12 @@ const InputBox = () => {
                             ) : (
                               // Completed image
                               <div className="absolute inset-0 group">
-                                <Image
+                                <img
                                   src={image.thumbnailUrl || image.avifUrl || image.url}
                                   alt=""
-                                  fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-200"
-                                  sizes="(max-width: 768px) 140px, 300px"
                                   loading="lazy"
-                                  quality={85}
+                                  decoding="async"
+                                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                   onLoad={() => {
                                     setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
                                   }}
@@ -3983,7 +3979,6 @@ const InputBox = () => {
         <ImagePreviewModal 
           preview={preview} 
           onClose={() => setPreview(null)}
-          onNavigate={(newPreview) => setPreview(newPreview)}
         />
       )}
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}

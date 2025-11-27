@@ -1672,11 +1672,12 @@
                                     );
                                   }
                                   return (
-                                    <Image
+                                    <img
                                       src={(media as any).thumbnailUrl || (media as any).avifUrl || mediaUrl}
                                       alt={entry.prompt}
-                                      fill
-                                      className="object-cover group-hover:scale-105 transition-transform duration-200"
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                       sizes="192px"
                                       onLoad={() => {
                                         try {

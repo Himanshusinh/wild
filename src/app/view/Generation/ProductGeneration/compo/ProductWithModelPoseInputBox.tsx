@@ -580,7 +580,7 @@ GENERATOR HINTS:
                           </div>
                         ) : (
                           <div className="relative w-full h-full">
-                            <Image src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-product.png'} alt={localGeneratingEntries[0].prompt} fill className="object-cover" sizes="192px" />
+                            <img src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-product.png'} alt={localGeneratingEntries[0].prompt} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                           </div>
                         )}
