@@ -7,6 +7,34 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setStyle } from '@/store/slices/generationSlice';
 import { STYLE_CATALOG } from '@/styles/stylesCatalog';
 
+// Wrapper component for style preview images with error handling
+const StylePreviewImage = ({ src, alt }: { src: string; alt: string }) => {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(src);
+    setHasError(false);
+  }, [src]);
+
+  return (
+    <Image 
+      src={imgSrc} 
+      alt={alt} 
+      fill 
+      sizes="(max-width: 768px) 33vw, 25vw" 
+      style={{ objectFit: 'cover' }} 
+      unoptimized
+      onError={() => {
+        if (!hasError) {
+          setHasError(true);
+          setImgSrc('/styles/Logo.gif');
+        }
+      }}
+    />
+  );
+};
+
 interface StylePopupProps {
   isOpen: boolean;
   onClose: () => void;
@@ -166,7 +194,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
                 >
                   {/* Style Preview Image */}
                   <div className="aspect-square relative bg-gray-200 rounded-lg overflow-hidden">
-                    <Image src={style.image} alt={style.name} fill sizes="(max-width: 768px) 33vw, 25vw" style={{ objectFit: 'cover' }} />
+                    <StylePreviewImage src={style.image} alt={style.name} />
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute bottom-2 left-2 text-white/95 text-xs px-2 py-1 rounded bg-black/40 backdrop-blur-sm">
                       {style.name}

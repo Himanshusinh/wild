@@ -738,6 +738,7 @@ const InputBox = () => {
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
+  const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -1229,7 +1230,7 @@ const InputBox = () => {
     frameSize,
     count: imageCount,
     style,
-    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : undefined
+    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined)
   });
 
   // Function to clear input after successful generation
@@ -1419,7 +1420,20 @@ const InputBox = () => {
       currentLocalEntriesCount: localGeneratingEntries.length
     });
     
+    // Set loading entry immediately to show loading GIF
+    // Use flushSync to force immediate React render (if available) or use setTimeout
     setLocalGeneratingEntries([tempEntry]);
+    
+    // Force a synchronous render cycle by using requestAnimationFrame
+    // This ensures the loading GIF appears immediately before any async operations
+    await new Promise(resolve => {
+      // Use double RAF to ensure DOM update
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve(undefined);
+        });
+      });
+    });
 
     // No local writes to global history; backend tracks persistent history
 
@@ -1977,6 +1991,85 @@ const InputBox = () => {
         // Handle credit success
         if (transactionId) {
           await handleGenerationSuccess(transactionId);
+        }
+      } else if (selectedModel === 'flux-2-pro') {
+        // FAL Flux 2 Pro immediate generate flow
+        try {
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
+          const result = await dispatch(falGenerate({
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt, // Store original user-entered prompt
+            model: selectedModel,
+            // New schema: num_images + aspect_ratio + resolution
+            num_images: imageCount,
+            aspect_ratio: frameSize as any,
+            resolution: flux2ProResolution, // 1K or 2K
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
+            output_format: 'jpeg',
+            generationType: 'text-to-image',
+            isPublic,
+          })).unwrap();
+
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch {}
+
+        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+        clearInputs();
+        
+        // Refresh only the single completed generation instead of reloading all
+        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+        if (resultHistoryId) {
+          await refreshSingleGeneration(resultHistoryId);
+        } else {
+          await refreshHistory();
+        }
+
+          // Handle credit success
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          // Update loading entry to show failed state instead of clearing it
+          try {
+            const failedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              status: 'failed',
+              timestamp: new Date().toISOString(),
+              error: error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro',
+            } as any;
+            setLocalGeneratingEntries([failedEntry]);
+          } catch {}
+          
+          // Stop generation process
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          
+          // Show error toast with more specific message
+          const errorMessage = error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro';
+          toast.error(errorMessage);
+          
+          // Clear failed entry after a delay to allow user to see the error
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 3000);
+          return;
         }
       } else if (selectedModel === 'gemini-25-flash-image') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
@@ -3160,6 +3253,7 @@ const InputBox = () => {
                           <div 
                             key={uniqueImageKey} 
                             className="image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                            style={{ minHeight: localEntry.status === 'generating' ? '300px' : undefined }}
                           >
                             <div className="absolute inset-0 group animate-fade-in-up" style={{
                               animation: 'fadeInUp 0.6s ease-out forwards',
@@ -3167,6 +3261,15 @@ const InputBox = () => {
                             }} onAnimationEnd={(e) => {
                               e.currentTarget.style.opacity = '1';
                             }}>
+                              {/* Always show loading overlay when generating, even if no image URL yet */}
+                              {localEntry.status === 'generating' && (
+                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <GifLoader size={64} alt="Generating" />
+                                    <div className="text-xs text-white/60 text-center">Generating...</div>
+                                  </div>
+                                </div>
+                              )}
                               {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
                                 <Image
                                   src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
@@ -3180,17 +3283,12 @@ const InputBox = () => {
                                     setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
                                   }}
                                 />
-                              ) : null}
-                              {!loadedImages.has(uniqueImageKey) && (
+                              ) : localEntry.status !== 'generating' ? (
+                                // Only show shimmer if not generating (generating shows GIF loader)
                                 <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              )}
-                              {localEntry.status === 'generating' && (
-                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
-                                  <div className="flex flex-col items-center gap-2">
-                                    <GifLoader size={64} alt="Generating" />
-                                    <div className="text-xs text-white/60 text-center">Generating...</div>
-                                  </div>
-                                </div>
+                              ) : null}
+                              {!loadedImages.has(uniqueImageKey) && localEntry.status !== 'generating' && (
+                                <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                               )}
                               {localEntry.status === 'failed' && (
                                 <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
@@ -3771,6 +3869,35 @@ const InputBox = () => {
                           >
                             <span>{opt}</span>
                             {nanoBananaProResolution === opt && (
+                              <span className="w-2 h-2 bg-black rounded-full"></span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {selectedModel === 'flux-2-pro' && (
+                <div className="flex items-center gap-2 relative">
+                  <div className="relative dropdown-container">
+                    <button
+                      onClick={() => dispatch(toggleDropdown('flux2ProResolution'))}
+                      className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                    >
+                      {flux2ProResolution}
+                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'flux2ProResolution' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'flux2ProResolution' && (
+                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                        {['1K','2K'].map((opt) => (
+                          <button
+                            key={opt}
+                            onClick={(e) => { e.stopPropagation(); setFlux2ProResolution(opt as '1K' | '2K'); dispatch(toggleDropdown('')); }}
+                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${flux2ProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                          >
+                            <span>{opt}</span>
+                            {flux2ProResolution === opt && (
                               <span className="w-2 h-2 bg-black rounded-full"></span>
                             )}
                           </button>
