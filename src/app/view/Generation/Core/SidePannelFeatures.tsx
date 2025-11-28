@@ -265,7 +265,7 @@ const SidePannelFeatures = ({
       <button
         data-hamburger-button
         onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-        className="fixed top-0 left-1 z-[60] md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition"
+        className="fixed top-0 left-1 z-[60] md:hidden p-2 text-white  rounded-lg transition"
         aria-label="Toggle menu"
       >
         <svg
@@ -296,7 +296,7 @@ const SidePannelFeatures = ({
       {/* Original sidebar - keeps original CSS styling */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3 bg-black/20 backdrop-blur-md group transition-all text-white duration-300 border-r border-white/10 ${
+        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-all text-white duration-300 border-r border-white/10 ${
           isMobileSidebarOpen 
             ? 'w-60 translate-x-0 z-[56]' 
             : '-translate-x-full md:translate-x-0 z-[50]'

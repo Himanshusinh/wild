@@ -3113,13 +3113,13 @@ const InputBox = () => {
 
             {/* Initial loading overlay - show when loading and no entries */}
             {loading && historyEntries.length === 0 && (
-              <div className="fixed top-[64px] md:left-[4.5rem] left-0 md:right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                <GifLoader size={72} alt="Loading" />
-                <div className="text-white text-lg text-center">Loading generations...</div>
+              <div className="fixed top-[64px] md:top-0 md:left-[4.5rem] left-0 right-0 md:right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 px-4">
+                  <GifLoader size={72} alt="Loading" />
+                  <div className="text-white text-lg md:text-lg text-base text-center">Loading generations...</div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           <div>
             {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
