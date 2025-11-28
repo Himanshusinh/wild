@@ -239,22 +239,70 @@ const SidePannelFeatures = ({
 
   // Label classes - smooth slide animation (no pop effect)
   const labelClasses =
-    'text-white hidden md:inline-block whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ' +
-    (isSidebarHovered 
-      ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
-      : 'md:max-w-0 md:opacity-0 md:-translate-x-full');
+    `text-white whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
+      isMobileSidebarOpen 
+        ? 'inline-block' 
+        : 'hidden'
+    } md:inline-block ${
+      isSidebarHovered 
+        ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
+        : 'md:max-w-0 md:opacity-0 md:-translate-x-full'
+    }`;
   const taglineClasses =
-    'text-white hidden md:inline-block whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ' +
-    (isSidebarHovered 
-      ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
-      : 'md:max-w-0 md:opacity-0 md:-translate-x-full');
+    `text-white whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
+      isMobileSidebarOpen 
+        ? 'inline-block' 
+        : 'hidden'
+    } md:inline-block ${
+      isSidebarHovered 
+        ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
+        : 'md:max-w-0 md:opacity-0 md:-translate-x-full'
+    }`;
 
   return (
     <>
+      {/* Hamburger Menu Button - Mobile/Tablet Only */}
+      <button
+        data-hamburger-button
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        className="fixed top-0 left-1 z-[60] md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition"
+        aria-label="Toggle menu"
+      >
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          {isMobileSidebarOpen ? (
+            <path d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Mobile Overlay - Dark blurred background when sidebar is open */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Original sidebar - keeps original CSS styling */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-black/20 backdrop-blur-md group transition-[width] text-white duration-300 z-[50] border-r border-white/10 ${isSidebarHovered ? 'md:w-60 w-60' : 'md:w-[68px] w-[50px]'}`}
+        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3 bg-black/20 backdrop-blur-md group transition-all text-white duration-300 border-r border-white/10 ${
+          isMobileSidebarOpen 
+            ? 'w-60 translate-x-0 z-[56]' 
+            : '-translate-x-full md:translate-x-0 z-[50]'
+        } ${
+          isSidebarHovered ? 'md:w-60' : 'md:w-[68px]'
+        }`}
         style={{
           // borderTopLeftRadius: '16px',
           // borderBottomLeftRadius: '16px',
@@ -275,7 +323,7 @@ const SidePannelFeatures = ({
         }}
       >
       {/* Logo at the top */}
-      <div className="flex items-center gap-2 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0 -ml-1 overflow-hidden">
+      <div className="flex items-center gap-2 md:p-2 px-3 py-0 mt-8 md:-mt-4 md:mb-0 mb-0 -ml-2 overflow-hidden">
         <div
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
