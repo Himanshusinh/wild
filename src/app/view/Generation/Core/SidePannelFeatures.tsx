@@ -33,6 +33,7 @@ const SidePannelFeatures = ({
   const router = useRouter();
   const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
@@ -143,7 +144,13 @@ const SidePannelFeatures = ({
       console.error('Error in handleGenerationTypeChange:', error);
     }
     setShowBrandingDropdown(false);
+    closeMobileSidebar();
     await navigateForType(type);
+  };
+
+  // Helper to close mobile sidebar
+  const closeMobileSidebar = () => {
+    setIsMobileSidebarOpen(false);
   };
 
   const handleImageGenerationClick = () => {
@@ -192,6 +199,36 @@ const SidePannelFeatures = ({
       return () => clearTimeout(timer);
     }
   }, [isSidebarHovered]);
+
+  // Close mobile sidebar when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isMobileSidebarOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
+        // Check if click is on the hamburger button (it's outside the sidebar)
+        const target = event.target as HTMLElement;
+        if (!target.closest('[data-hamburger-button]')) {
+          setIsMobileSidebarOpen(false);
+        }
+      }
+    };
+
+    if (isMobileSidebarOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Prevent body scroll when sidebar is open on mobile
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = '';
+    };
+  }, [isMobileSidebarOpen]);
 
   const isBrandingActive = pathname?.includes('/logo') ||
     pathname?.includes('/sticker-generation') ||
@@ -249,6 +286,7 @@ const SidePannelFeatures = ({
           })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
               try { dispatch(setCurrentView('landing')); } catch { }
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
@@ -269,6 +307,7 @@ const SidePannelFeatures = ({
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }
               try { dispatch(setCurrentView('landing')); } catch { }
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
@@ -294,6 +333,7 @@ const SidePannelFeatures = ({
             // Handle normal left-click (button 0)
             if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
               e.preventDefault();
+              closeMobileSidebar();
               (async () => {
                 try {
                   await ensureSessionReady(600)
@@ -552,6 +592,7 @@ const SidePannelFeatures = ({
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               router.push('/view/ArtStation');
             }
           }}
@@ -576,6 +617,7 @@ const SidePannelFeatures = ({
           onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               router.push(NAV_ROUTES.PRICING);
             }
           }}
@@ -604,6 +646,7 @@ const SidePannelFeatures = ({
           })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               try {
                 if (onViewChange && typeof onViewChange === 'function') {
                   onViewChange('history');

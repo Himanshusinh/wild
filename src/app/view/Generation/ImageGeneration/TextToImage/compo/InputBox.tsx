@@ -123,10 +123,10 @@ const InputBox = () => {
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
-  
+
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
-  
+
   // Track which images have loaded to hide shimmer effect
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   // Local state to track prompt enhancement (loading skeleton)
@@ -134,7 +134,7 @@ const InputBox = () => {
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
-  
+
   // Track entries that have been added to history to prevent duplicate rendering
   // This ref is updated immediately when entries are added, before React re-renders
   const historyEntryIdsRef = useRef<Set<string>>(new Set());
@@ -151,17 +151,17 @@ const InputBox = () => {
       // This ensures button stays in "Generating..." state during generation
       return;
     }
-    
+
     // Check if this entry already exists in Redux history (by id or firebaseHistoryId)
     // Check all possible ID combinations to catch duplicates
     const entryId = entry.id;
     const entryFirebaseId = (entry as any)?.firebaseHistoryId;
-    
+
     // FIRST: Check ref (updated immediately when entry is added to history)
     // This catches duplicates even before Redux state propagates
     const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
-                       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
-    
+      (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
+
     // SECOND: Check Redux state
     const existsInHistory = existingEntries.some((e: HistoryEntry) => {
       const eId = e.id;
@@ -171,7 +171,7 @@ const InputBox = () => {
       if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
       return false;
     });
-    
+
     // CRITICAL: If entry exists in ref OR history, immediately clear local entry
     // This prevents flickering - once in history, history handles all rendering
     if (existsInRef || existsInHistory) {
@@ -186,7 +186,7 @@ const InputBox = () => {
       });
       return;
     }
-    
+
     // If entry completes/fails but not in history yet, reset button state
     if (entry.status === 'completed' || entry.status === 'failed') {
       setIsGeneratingLocally(false);
@@ -204,7 +204,7 @@ const InputBox = () => {
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
-      
+
       // Handle image upload - prioritize sp (storage path) over image URL
       if (sp) {
         const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
@@ -218,7 +218,7 @@ const InputBox = () => {
           dispatch(setUploadedImages([imageUrl] as any));
         }
       }
-      
+
       if (prm) dispatch(setPrompt(prm));
       if (mdl) {
         const mapIncomingModel = (m: string): string => {
@@ -230,10 +230,10 @@ const InputBox = () => {
         dispatch(setSelectedModel(mapIncomingModel(mdl)));
       }
       if (frm) {
-        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frm }); } catch {}
+        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frm }); } catch { }
       }
       if (sty) {
-        try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch {}
+        try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
       }
       // Consume params once so a refresh doesn't keep the image selected
       if (img || prm || sp || mdl || frm || sty) {
@@ -245,7 +245,7 @@ const InputBox = () => {
         current.searchParams.delete('style');
         window.history.replaceState({}, '', current.toString());
       }
-    } catch {}
+    } catch { }
   }, [dispatch, searchParams, pathname]);
 
   // Unified initial load (single guarded request) via custom hook
@@ -282,10 +282,10 @@ const InputBox = () => {
     try {
       e.stopPropagation();
       e.preventDefault();
-      
+
       // Get the first image from the entry
       const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
-      
+
       // Extract storagePath from image
       const storagePath = (entryImage as any)?.storagePath || (() => {
         try {
@@ -293,23 +293,23 @@ const InputBox = () => {
           const original = entryImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch {}
+        } catch { }
         return '';
       })();
-      
+
       // Get fallback HTTP URL (not blob/data URLs)
       const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
-      
+
       // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
       const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
-      
+
       const qs = new URLSearchParams();
-      
+
       // Use userPrompt for remix if available, otherwise use cleanPrompt
       const cleanPrompt = getCleanPrompt(entry.prompt || '');
       const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
       if (remixPrompt) qs.set('prompt', remixPrompt);
-      
+
       // Always set sp if we have storagePath (InputBox prioritizes sp over image)
       if (storagePath) {
         qs.set('sp', storagePath);
@@ -317,7 +317,7 @@ const InputBox = () => {
         // If no storagePath, set image URL directly
         qs.set('image', imgUrl);
       }
-      
+
       // Also pass model, frameSize and style for preselection
       if (entry.model) {
         // Map backend model ids to UI dropdown ids where needed
@@ -326,10 +326,10 @@ const InputBox = () => {
         qs.set('model', mapped);
       }
       if (entry.frameSize) qs.set('frame', String(entry.frameSize));
-      
+
       const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
       if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
-      
+
       // Client-side navigation to avoid full page reload
       router.push(`/text-to-image?${qs.toString()}`);
     } catch (error) {
@@ -481,7 +481,7 @@ const InputBox = () => {
     console.log(`Range check: width=${result.width} (${result.width >= 256 && result.width <= 1440 ? '✓ in range 256-1440' : '✗ out of range'}), height=${result.height} (${result.height >= 256 && result.height <= 1440 ? '✓ in range 256-1440' : '✗ out of range'})`);
     return result;
   };
-  
+
 
   // Copy prompt to clipboard (used on hover overlay)
   const copyPrompt = async (e: React.MouseEvent, text: string) => {
@@ -495,7 +495,7 @@ const InputBox = () => {
     } catch {
       try {
         (await import('react-hot-toast')).default.error('Failed to copy');
-      } catch {}
+      } catch { }
     }
   };
 
@@ -506,7 +506,7 @@ const InputBox = () => {
       e.preventDefault();
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      try { dispatch(removeHistoryEntry(entry.id)); } catch { }
       // Clear/reset document title when image is deleted
       if (typeof document !== 'undefined') {
         document.title = 'WildMind';
@@ -546,7 +546,7 @@ const InputBox = () => {
   const refreshAllHistory = () => refreshHistoryImmediate();
   const lastRefreshTimeRef = useRef(0);
   const REFRESH_COOLDOWN_MS = 2000; // suppress clustered refreshes that follow a generation completion
-  
+
   // Function to fetch and add/update a single generation instead of reloading all
   const refreshSingleGeneration = async (historyId: string) => {
     try {
@@ -558,7 +558,7 @@ const InputBox = () => {
         refreshHistory();
         return;
       }
-      
+
       // Normalize the item to match HistoryEntry format
       const created = item?.createdAt || item?.updatedAt || item?.timestamp;
       const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
@@ -568,12 +568,12 @@ const InputBox = () => {
         timestamp: iso,
         createdAt: iso,
       } as HistoryEntry;
-      
+
       // Check if entry already exists in current Redux state
       // Note: existingEntries is from useAppSelector, so it's current at render time
       // For async operations, we'll check again by reading from store if needed
       const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
-      
+
       // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
       // This ensures we can check it in the same render cycle
       console.log('[DEBUG refreshSingleGeneration] Tracking entry IDs:', {
@@ -583,23 +583,23 @@ const InputBox = () => {
         currentRefSize: historyEntryIdsRef.current.size,
         currentRefContents: Array.from(historyEntryIdsRef.current)
       });
-      
+
       historyEntryIdsRef.current.add(historyId);
       if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
       if ((normalizedEntry as any)?.firebaseHistoryId) {
         historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
       }
-      
+
       console.log('[DEBUG refreshSingleGeneration] After adding to ref:', {
         newRefSize: historyEntryIdsRef.current.size,
         newRefContents: Array.from(historyEntryIdsRef.current)
       });
-      
+
       if (exists) {
         // Update existing entry - only update changed fields to avoid overwriting
         console.log('[DEBUG refreshSingleGeneration] Updating existing entry:', historyId);
-        dispatch(updateHistoryEntry({ 
-          id: historyId, 
+        dispatch(updateHistoryEntry({
+          id: historyId,
           updates: {
             status: normalizedEntry.status,
             images: normalizedEntry.images,
@@ -620,7 +620,7 @@ const InputBox = () => {
         dispatch(addHistoryEntry(normalizedEntry));
         console.log('[refreshSingleGeneration] Added new generation:', historyId);
       }
-      
+
       // CRITICAL: Immediately clear local entry when history entry is added/updated
       // Since there's only one local entry at a time (the most recent generation),
       // and this history entry just completed, we should clear ALL local entries
@@ -628,20 +628,20 @@ const InputBox = () => {
       setLocalGeneratingEntries((prev) => {
         console.log('[DEBUG refreshSingleGeneration] Checking local entries to clear:', {
           localEntriesCount: prev.length,
-          localEntryIds: prev.map(e => ({ 
-            id: e.id, 
+          localEntryIds: prev.map(e => ({
+            id: e.id,
             firebaseId: (e as any)?.firebaseHistoryId,
-            status: e.status 
+            status: e.status
           })),
           historyId,
           normalizedEntryId: normalizedEntry.id,
           normalizedFirebaseId: (normalizedEntry as any)?.firebaseHistoryId
         });
-        
+
         const filtered = prev.filter((e) => {
           const eId = e.id;
           const eFirebaseId = (e as any)?.firebaseHistoryId;
-          
+
           // FIRST: Check if IDs match (exact match)
           if (eId === historyId || eFirebaseId === historyId) {
             console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches historyId):', { eId, eFirebaseId, historyId });
@@ -656,23 +656,23 @@ const InputBox = () => {
             console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches normalizedFirebaseId):', { eId, eFirebaseId, normalizedFirebaseId });
             return false;
           }
-          
+
           // SECOND: If local entry is completed and we just added a completed history entry,
           // clear it (since there's only one local entry at a time, this must be the one)
           if (e.status === 'completed' && normalizedEntry.status === 'completed') {
-            console.log('[DEBUG refreshSingleGeneration] Removing local entry (both completed - must be the same generation):', { 
-              eId, 
-              eFirebaseId, 
+            console.log('[DEBUG refreshSingleGeneration] Removing local entry (both completed - must be the same generation):', {
+              eId,
+              eFirebaseId,
               localStatus: e.status,
-              historyStatus: normalizedEntry.status 
+              historyStatus: normalizedEntry.status
             });
             return false;
           }
-          
+
           // Keep other entries (they might be for different generations that are still generating)
           return true;
         });
-        
+
         if (filtered.length !== prev.length) {
           console.log('[DEBUG refreshSingleGeneration] Cleared local entry:', {
             before: prev.length,
@@ -702,7 +702,7 @@ const InputBox = () => {
       refreshHistory();
     }
   };
-  
+
   const refreshHistory = () => {
     const now = Date.now();
     if (now - lastRefreshTimeRef.current < REFRESH_COOLDOWN_MS) return; // skip redundant refresh within cooldown
@@ -763,27 +763,27 @@ const InputBox = () => {
   const historyEntries = useAppSelector(
     (state: any) => {
       const allEntries = state.history?.entries || [];
-      
+
       if (allEntries.length === 0) {
         return [];
       }
-      
+
       const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-      
+
       const filtered = allEntries.filter((entry: any) => {
         const normalizedType = normalize(entry.generationType);
         const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
-        return normalizedType === 'text-to-image' || 
-               normalizedType === 'image-upscale' || 
-               normalizedType === 'image-to-svg' ||
-               normalizedType === 'image-edit' ||
-               isVectorize;
+        return normalizedType === 'text-to-image' ||
+          normalizedType === 'image-upscale' ||
+          normalizedType === 'image-to-svg' ||
+          normalizedType === 'image-edit' ||
+          isVectorize;
       });
-      
+
       if (filtered.length === 0) {
         return [];
       }
-      
+
       const getTs = (x: any) => {
         const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
         if (!raw) return 0;
@@ -791,7 +791,7 @@ const InputBox = () => {
         const ms = Date.parse(t);
         return Number.isNaN(ms) ? 0 : ms;
       };
-      
+
       return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
     },
     shallowEqual
@@ -810,12 +810,12 @@ const InputBox = () => {
       groups[date].push(entry);
       return groups;
     }, {});
-    
+
     // Sort entries within each date group by timestamp (newest first) for stable ordering
     Object.keys(groups).forEach(date => {
       groups[date].sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     });
-    
+
     return groups;
   }, [historyEntries]);
 
@@ -823,7 +823,7 @@ const InputBox = () => {
   const sortedDates = useMemo(() => Object.keys(groupedByDate).sort((a: string, b: string) =>
     new Date(b).getTime() - new Date(a).getTime()
   ), [groupedByDate]);
-  
+
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
   useEffect(() => {
@@ -831,10 +831,10 @@ const InputBox = () => {
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
   }, [historyEntries]);
-  
+
   // Memoize today key to avoid recreating on every render
   const todayKey = useMemo(() => new Date().toDateString(), []);
-  
+
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -854,15 +854,15 @@ const InputBox = () => {
   // ContentEditable approach for inline character tags (like Cursor)
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
-  
+
   // Function to update contentEditable with tags
   const updateContentEditable = React.useCallback(() => {
     if (!contentEditableRef.current || isUpdatingRef.current) return;
-    
+
     const div = contentEditableRef.current;
     const selection = window.getSelection();
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-    
+
     // Save cursor position
     let cursorOffset = 0;
     if (range && div.contains(range.startContainer)) {
@@ -871,29 +871,29 @@ const InputBox = () => {
       preCaretRange.setEnd(range.endContainer, range.endOffset);
       cursorOffset = preCaretRange.toString().length;
     }
-    
+
     isUpdatingRef.current = true;
-    
+
     // Clear and rebuild content
     div.innerHTML = '';
-    
+
     // If no prompt and no characters, leave empty
     if (!prompt && selectedCharacters.length === 0) {
       isUpdatingRef.current = false;
       return;
     }
-    
-  // Parse prompt and create nodes
-  let parts: Array<{ type: 'text' | 'tag'; content: string; character?: any }> = [];
+
+    // Parse prompt and create nodes
+    let parts: Array<{ type: 'text' | 'tag'; content: string; character?: any }> = [];
     let lastIndex = 0;
-    
+
     // Find all @references in the prompt
     const refMatches = Array.from(prompt.matchAll(/@(\w+)/gi)) as RegExpMatchArray[];
-    
+
     refMatches.forEach((match) => {
       const matchIndex = match.index!;
       const refName = match[1];
-      const character = selectedCharacters.find((char: any) => 
+      const character = selectedCharacters.find((char: any) =>
         char.name.toLowerCase() === refName.toLowerCase()
       );
 
@@ -943,11 +943,11 @@ const InputBox = () => {
         tagSpan.style.display = 'inline-flex';
         tagSpan.style.verticalAlign = 'baseline';
         tagSpan.setAttribute('data-character-id', part.character.id);
-        
+
         const nameSpan = document.createElement('span');
         nameSpan.textContent = `@${part.character.name}`;
         tagSpan.appendChild(nameSpan);
-        
+
         const removeBtn = document.createElement('button');
         removeBtn.className = 'opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 text-blue-200 hover:text-white';
         removeBtn.type = 'button';
@@ -959,14 +959,14 @@ const InputBox = () => {
           removeCharacterReference(part.character.name);
         };
         tagSpan.appendChild(removeBtn);
-        
+
         div.appendChild(tagSpan);
       } else {
         const textNode = document.createTextNode(part.content);
         div.appendChild(textNode);
       }
     });
-    
+
     // Restore cursor position
     if (range && cursorOffset > 0) {
       try {
@@ -975,7 +975,7 @@ const InputBox = () => {
           NodeFilter.SHOW_TEXT,
           null
         );
-        
+
         let currentPos = 0;
         let node;
         while (node = walker.nextNode()) {
@@ -994,11 +994,11 @@ const InputBox = () => {
         // Ignore cursor restoration errors
       }
     }
-    
+
     // Adjust height
     div.style.height = 'auto';
     div.style.height = Math.min(div.scrollHeight, 96) + 'px';
-    
+
     setTimeout(() => { isUpdatingRef.current = false; }, 50);
   }, [prompt, selectedCharacters]);
 
@@ -1017,26 +1017,26 @@ const InputBox = () => {
   // Helper function to convert AVIF thumbnail URLs back to original JPG/PNG format
   const convertAvifToOriginal = (url: string): string => {
     if (!url) return url;
-    
+
     // If it's already a non-AVIF URL, return as-is
     if (!url.includes('_thumb.avif') && !url.endsWith('.avif')) {
       return url;
     }
-    
+
     // Replace _thumb.avif with .jpg (default, backend should handle if it's actually png)
     // Also handle cases where the URL ends with .avif
     let converted = url.replace('_thumb.avif', '.jpg');
     if (converted.endsWith('.avif')) {
       converted = converted.replace(/\.avif$/, '.jpg');
     }
-    
+
     return converted;
   };
 
   // Helper function to get the best available image URL from a character object
   const getCharacterImageUrl = (char: any): string | null => {
     if (!char) return null;
-    
+
     // If character has an entry structure with images array (from history), use that
     if (char.images && Array.isArray(char.images) && char.images.length > 0) {
       const image = char.images[0];
@@ -1063,19 +1063,19 @@ const InputBox = () => {
         return `${zataBase}${basePath}`;
       }
     }
-    
+
     // Priority order: original URL > firebase URL > frontImageUrl (converted if AVIF)
     // Check if character has original URL fields (from the entry structure)
     const originalUrl = char.url || char.originalUrl;
     if (originalUrl && !originalUrl.includes('_thumb.avif') && !originalUrl.endsWith('.avif')) {
       return originalUrl;
     }
-    
+
     const firebaseUrl = char.firebaseUrl;
     if (firebaseUrl && !firebaseUrl.includes('_thumb.avif') && !firebaseUrl.endsWith('.avif')) {
       return firebaseUrl;
     }
-    
+
     // If frontImageUrl is AVIF, try to convert it to original format
     if (char.frontImageUrl) {
       const frontUrl = String(char.frontImageUrl);
@@ -1095,7 +1095,7 @@ const InputBox = () => {
       }
       return converted;
     }
-    
+
     return null;
   };
 
@@ -1322,7 +1322,7 @@ const InputBox = () => {
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
     // This ensures the loader shows instantly when the button is clicked
     setIsGeneratingLocally(true);
-    
+
     // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
     postGenerationBlockRef.current = true;
 
@@ -1337,29 +1337,29 @@ const InputBox = () => {
         const res = await enhancePromptAPI(originalPrompt, selectedModel as any, 'image');
         if (res && res.ok && res.enhancedPrompt) {
           finalPrompt = res.enhancedPrompt;
-          
+
           // Update Redux state - this will trigger the useEffect that calls updateContentEditable
           dispatch(setPrompt(finalPrompt));
-          
+
           // Immediately update the contentEditable element for instant visual feedback
           // This bypasses any Redux state propagation delays
           const el = contentEditableRef.current as HTMLElement | null;
           if (el) {
             // Set text content directly for immediate update
             el.textContent = finalPrompt;
-            
+
             // Focus and position cursor at end
             el.focus();
             const range = document.createRange();
             range.selectNodeContents(el);
             range.collapse(false);
             const sel = window.getSelection();
-            if (sel) { 
-              sel.removeAllRanges(); 
-              sel.addRange(range); 
+            if (sel) {
+              sel.removeAllRanges();
+              sel.addRange(range);
             }
           }
-          
+
           // Let updateContentEditable run after Redux state has updated to properly format
           // with character tags if needed (runs via useEffect watching prompt)
           // Also call it directly after a brief delay to ensure proper formatting
@@ -1417,7 +1417,7 @@ const InputBox = () => {
       imageCount: imageCount,
       status: 'generating'
     } as any;
-    
+
     console.log('[DEBUG handleGenerate] Creating local entry:', {
       tempEntryId,
       entry: {
@@ -1429,11 +1429,11 @@ const InputBox = () => {
       },
       currentLocalEntriesCount: localGeneratingEntries.length
     });
-    
+
     // Set loading entry immediately to show loading GIF
     // Use flushSync to force immediate React render (if available) or use setTimeout
     setLocalGeneratingEntries([tempEntry]);
-    
+
     // Force a synchronous render cycle by using requestAnimationFrame
     // This ensures the loading GIF appears immediately before any async operations
     await new Promise(resolve => {
@@ -1487,7 +1487,7 @@ const InputBox = () => {
             frameSize,
             style
           });
-          
+
           // Update localGeneratingEntries with firebaseHistoryId for matching
           if (firebaseHistoryId) {
             console.log('[DEBUG handleGenerate] Updating local entry with firebaseHistoryId:', {
@@ -1498,7 +1498,7 @@ const InputBox = () => {
                 firebaseHistoryId: (localGeneratingEntries[0] as any)?.firebaseHistoryId
               } : null
             });
-            
+
             setLocalGeneratingEntries((prev) => {
               if (prev.length > 0 && prev[0].id === tempEntryId) {
                 const updated = [{
@@ -1506,13 +1506,13 @@ const InputBox = () => {
                   id: firebaseHistoryId!, // Update ID to match the real historyId
                   firebaseHistoryId: firebaseHistoryId,
                 } as HistoryEntry];
-                
+
                 console.log('[DEBUG handleGenerate] Updated local entry:', {
                   oldId: prev[0].id,
                   newId: updated[0].id,
                   firebaseHistoryId: (updated[0] as any)?.firebaseHistoryId
                 });
-                
+
                 return updated;
               }
               console.log('[DEBUG handleGenerate] No local entry found to update with firebaseHistoryId');
@@ -1901,7 +1901,7 @@ const InputBox = () => {
 
         if (successfulResults.length > 0) {
           console.log('Runway generation completed successfully!');
-          
+
           // Update local preview with completed images
           try {
             const completedEntry: HistoryEntry = {
@@ -1914,11 +1914,11 @@ const InputBox = () => {
               imageCount: successfulResults.length,
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
-          
+          } catch { }
+
           toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
-          
+
           // Refresh only the single completed generation instead of reloading all
           if (firebaseHistoryId) {
             await refreshSingleGeneration(firebaseHistoryId);
@@ -1932,7 +1932,7 @@ const InputBox = () => {
           }
         } else {
           console.log('All Runway generations failed');
-          
+
           // Update local preview to failed status
           setLocalGeneratingEntries((prev) => prev.map((e) => ({
             ...e,
@@ -1943,16 +1943,16 @@ const InputBox = () => {
         console.log('=== RUNWAY GENERATION COMPLETED ===');
       } else if (isMiniMaxModel) {
         // Use MiniMax generation
-          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
-          const result = await dispatch(
-            generateMiniMaxImages({
+        const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+        const result = await dispatch(
+          generateMiniMaxImages({
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: selectedModel,
             aspect_ratio: frameSize,
             imageCount,
             generationType: "text-to-image",
             uploadedImages,
-              style
+            style
           })
         ).unwrap();
 
@@ -1985,12 +1985,12 @@ const InputBox = () => {
             imageCount: result.images.length,
           } as any;
           setLocalGeneratingEntries([completedEntry]);
-        } catch {}
+        } catch { }
 
         // Show success notification
         toast.success(`MiniMax generation completed! Generated ${result.images.length} image(s)`);
         clearInputs();
-        
+
         // Refresh only the single completed generation instead of reloading all
         if (firebaseHistoryId) {
           await refreshSingleGeneration(firebaseHistoryId);
@@ -2033,18 +2033,18 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
-        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-        clearInputs();
-        
-        // Refresh only the single completed generation instead of reloading all
-        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
-        if (resultHistoryId) {
-          await refreshSingleGeneration(resultHistoryId);
-        } else {
-          await refreshHistory();
-        }
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           // Handle credit success
           if (transactionId) {
@@ -2061,20 +2061,20 @@ const InputBox = () => {
               error: error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro',
             } as any;
             setLocalGeneratingEntries([failedEntry]);
-          } catch {}
-          
+          } catch { }
+
           // Stop generation process
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          
+
           // Show error toast with more specific message
           const errorMessage = error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro';
           toast.error(errorMessage);
-          
+
           // Clear failed entry after a delay to allow user to see the error
           setTimeout(() => {
             setLocalGeneratingEntries([]);
@@ -2111,18 +2111,18 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
-        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-        clearInputs();
-        
-        // Refresh only the single completed generation instead of reloading all
-        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
-        if (resultHistoryId) {
-          await refreshSingleGeneration(resultHistoryId);
-        } else {
-          await refreshHistory();
-        }
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           // Handle credit success
           if (transactionId) {
@@ -2172,24 +2172,24 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
-        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-        clearInputs();
-        
-        // Keep local entries visible for a moment before refreshing
-        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
-        setTimeout(() => {
-          setLocalGeneratingEntries([]);
-        }, 1000);
-        
-        // Refresh only the single completed generation instead of reloading all
-        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
-        if (resultHistoryId) {
-          await refreshSingleGeneration(resultHistoryId);
-        } else {
-          await refreshHistory();
-        }
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Keep local entries visible for a moment before refreshing
+          // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           // Handle credit success
           if (transactionId) {
@@ -2200,7 +2200,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2212,7 +2212,7 @@ const InputBox = () => {
         try {
           // Build Seedream payload per new schema
           const seedreamAllowedAspect = new Set([
-            'match_input_image','1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'
+            'match_input_image', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'
           ]);
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const payload: any = {
@@ -2255,24 +2255,24 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
-        toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-        clearInputs();
-        
-        // Keep local entries visible for a moment before refreshing
-        // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
-        setTimeout(() => {
-          setLocalGeneratingEntries([]);
-        }, 1000);
-        
-        // Refresh only the single completed generation instead of reloading all
-        const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
-        if (resultHistoryId) {
-          await refreshSingleGeneration(resultHistoryId);
-        } else {
-          await refreshHistory();
-        }
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Keep local entries visible for a moment before refreshing
+          // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
 
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
@@ -2282,7 +2282,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2294,7 +2294,7 @@ const InputBox = () => {
         try {
           // Map our frameSize to allowed aspect ratios for ideogram (validator list)
           const allowedAspect = new Set([
-            '1:3','3:1','1:2','2:1','9:16','16:9','10:16','16:10','2:3','3:2','3:4','4:3','4:5','5:4','1:1'
+            '1:3', '3:1', '1:2', '2:1', '9:16', '16:9', '10:16', '16:10', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '1:1'
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
 
@@ -2324,7 +2324,7 @@ const InputBox = () => {
 
           // Wait for all generations to complete
           const results = await Promise.all(generationPromises);
-          
+
           // Combine all images from all results
           const allImages = results.flatMap(result => result.images || []);
           const combinedResult = {
@@ -2343,16 +2343,16 @@ const InputBox = () => {
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          
+
           // Keep local entries visible for a moment before refreshing
           setTimeout(() => {
             setLocalGeneratingEntries([]);
           }, 1000);
-          
+
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
@@ -2369,7 +2369,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2381,7 +2381,7 @@ const InputBox = () => {
         try {
           // Map our frameSize to allowed aspect ratios for ideogram (validator list)
           const allowedAspect = new Set([
-            '1:3','3:1','1:2','2:1','9:16','16:9','10:16','16:10','2:3','3:2','3:4','4:3','4:5','5:4','1:1'
+            '1:3', '3:1', '1:2', '2:1', '9:16', '16:9', '10:16', '16:10', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '1:1'
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
 
@@ -2411,7 +2411,7 @@ const InputBox = () => {
 
           // Wait for all generations to complete
           const results = await Promise.all(generationPromises);
-          
+
           // Combine all images from all results
           const allImages = results.flatMap(result => result.images || []);
           const combinedResult = {
@@ -2430,16 +2430,16 @@ const InputBox = () => {
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          
+
           // Keep local entries visible for a moment before refreshing
           setTimeout(() => {
             setLocalGeneratingEntries([]);
           }, 1000);
-          
+
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
@@ -2456,7 +2456,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2468,7 +2468,7 @@ const InputBox = () => {
         try {
           // Map our frameSize to allowed aspect ratios for Lucid Origin
           const allowedAspect = new Set([
-            '1:1','16:9','9:16','3:2','2:3','4:5','5:4','3:4','4:3','2:1','1:2','3:1','1:3'
+            '1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3'
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
 
@@ -2494,7 +2494,7 @@ const InputBox = () => {
 
           // Wait for all generations to complete
           const results = await Promise.all(generationPromises);
-          
+
           // Combine all images from all results
           const allImages = results.flatMap(result => result.images || []);
           const combinedResult = {
@@ -2513,16 +2513,16 @@ const InputBox = () => {
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          
+
           // Keep local entries visible for a moment before refreshing
           setTimeout(() => {
             setLocalGeneratingEntries([]);
           }, 1000);
-          
+
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
@@ -2539,7 +2539,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2551,7 +2551,7 @@ const InputBox = () => {
         try {
           // Map our frameSize to allowed aspect ratios for Phoenix 1.0
           const allowedAspect = new Set([
-            '1:1','16:9','9:16','3:2','2:3','4:5','5:4','3:4','4:3','2:1','1:2','3:1','1:3'
+            '1:1', '16:9', '9:16', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '2:1', '1:2', '3:1', '1:3'
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
 
@@ -2576,7 +2576,7 @@ const InputBox = () => {
 
           // Wait for all generations to complete
           const results = await Promise.all(generationPromises);
-          
+
           // Combine all images from all results
           const allImages = results.flatMap(result => result.images || []);
           const combinedResult = {
@@ -2595,16 +2595,16 @@ const InputBox = () => {
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          
+
           // Keep local entries visible for a moment before refreshing
           setTimeout(() => {
             setLocalGeneratingEntries([]);
           }, 1000);
-          
+
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
@@ -2621,7 +2621,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2636,21 +2636,21 @@ const InputBox = () => {
             'match_input_image', '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
-          
+
           // Use the selected resolution from state
           const resolution = nanoBananaProResolution;
-          
+
           // Nano Banana Pro supports up to 14 images in image_input array
           const uploadedImages = getCombinedUploadedImages();
-          const imageInput = uploadedImages.length > 0 
+          const imageInput = uploadedImages.length > 0
             ? uploadedImages.slice(0, 14).map((img: string) => toAbsoluteFromProxy(img))
             : [];
-          
+
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, uploadedImages, selectedCharacters);
-          
+
           // Nano Banana Pro doesn't support multiple images in single request, so we make parallel requests
           const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
-          
+
           const generationPromises = Array.from({ length: totalToGenerate }, async () => {
             const payload: any = {
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -2660,26 +2660,26 @@ const InputBox = () => {
               output_format: 'jpg', // Default to jpg, can be 'jpg' or 'png'
               safety_filter_level: 'block_only_high', // Default safety filter
             };
-            
+
             // Add image_input if user provided images
             if (imageInput.length > 0) {
               payload.image_input = imageInput;
             }
-            
+
             const result = await dispatch(replicateGenerate(payload)).unwrap();
             return result;
           });
-          
+
           // Wait for all generations to complete
           const results = await Promise.all(generationPromises);
-          
+
           // Combine all images from all results
           const allImages = results.flatMap(result => result.images || []);
           const combinedResult = {
             ...results[0], // Use first result as base
             images: allImages
           };
-          
+
           try {
             const completedEntry: HistoryEntry = {
               ...(localGeneratingEntries[0] || tempEntry),
@@ -2691,16 +2691,16 @@ const InputBox = () => {
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
-          
+          } catch { }
+
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
-          
+
           // Keep local entries visible for a moment before refreshing
           setTimeout(() => {
             setLocalGeneratingEntries([]);
           }, 1000);
-          
+
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
@@ -2708,7 +2708,7 @@ const InputBox = () => {
           } else {
             await refreshHistory();
           }
-          
+
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
@@ -2717,7 +2717,7 @@ const InputBox = () => {
           setLocalGeneratingEntries([]);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
-          
+
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
@@ -2845,7 +2845,7 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
-          } catch {}
+          } catch { }
 
           // History is persisted by backend; no local completed entry needed
 
@@ -2877,7 +2877,7 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         }
-        
+
         // Reset local generation state on success
         setIsGeneratingLocally(false);
       }
@@ -2927,7 +2927,7 @@ const InputBox = () => {
       if (!runwayBaseRespToastShownRef.current) {
         toast.error(error instanceof Error ? error.message : 'Failed to generate images');
       }
-      
+
       // Reset local generation state immediately on error
       setIsGeneratingLocally(false);
       postGenerationBlockRef.current = false;
@@ -2954,29 +2954,29 @@ const InputBox = () => {
       const res = await enhancePromptAPI(prompt, selectedModel, 'image');
       if (res.ok && res.enhancedPrompt) {
         const enhancedPrompt = res.enhancedPrompt;
-        
+
         // Update Redux state - this will trigger the useEffect that calls updateContentEditable
         dispatch(setPrompt(enhancedPrompt));
-        
+
         // Immediately update the contentEditable element for instant visual feedback
         // This bypasses any Redux state propagation delays
         const el = contentEditableRef.current as HTMLElement | null;
         if (el) {
           // Set text content directly for immediate update
           el.textContent = enhancedPrompt;
-          
+
           // Focus and position cursor at end
           el.focus();
           const range = document.createRange();
           range.selectNodeContents(el);
           range.collapse(false);
           const sel = window.getSelection();
-          if (sel) { 
-            sel.removeAllRanges(); 
-            sel.addRange(range); 
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
           }
         }
-        
+
         // Let updateContentEditable run after Redux state has updated to properly format
         // with character tags if needed (runs via useEffect watching prompt)
         // Also call it directly after a brief delay to ensure proper formatting
@@ -2987,7 +2987,7 @@ const InputBox = () => {
             console.error('Error in updateContentEditable after enhancement:', err);
           }
         }, 100);
-        
+
         toast.success('Prompt enhanced');
       } else {
         toast.error(res.error || 'Failed to enhance prompt');
@@ -3059,8 +3059,8 @@ const InputBox = () => {
         
         /* Simple fixed-size image containers */
         .image-item {
-          width: 140px;
-          height: 140px;
+          min-width: 170px;
+          min-height: 170px;
           position: relative;
         }
         
@@ -3074,44 +3074,45 @@ const InputBox = () => {
         /* Simple grid layout - stable to prevent reflow */
         .image-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, 140px);
-          gap: 12px;
-          grid-auto-rows: 140px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          grid-auto-rows: auto;
         }
         
         @media (min-width: 768px) {
           .image-grid {
             grid-template-columns: repeat(auto-fill, 272px);
             grid-auto-rows: 272px;
+            gap: 12px;
           }
         }
       `}</style>
-      
-  <div ref={scrollRootRef} className="inset-0 pl-0 pr-6 pb-6 overflow-y-auto no-scrollbar z-0">
-        <div className="md:py-6 py-0 md:pl-4 pl-2 ">
+
+      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
+        <div className="md:py-6  py-0 md:pl-4  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 ml-13 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-4">
-            <h2 className="md:text-xl text-md font-semibold text-white pl-0">Image Generation</h2>
-            </div>
-            {/* Spacer to keep content below fixed header */}
-            <div className="h-0"></div>
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
+            <h2 className="md:text-xl text-md font-semibold text-white">Image Generation</h2>
+          </div>
+          {/* Spacer to keep content below fixed header */}
+          <div className="h-0"></div>
 
             {/* Initial loading overlay - show when loading and no entries */}
             {loading && historyEntries.length === 0 && (
-              <div className="fixed top-[64px] md:left-[4.5rem] left-[3.25rem] right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <GifLoader size={72} alt="Loading" />
-                  <div className="text-white text-lg text-center">Loading generations...</div>
-                </div>
+              <div className="fixed top-[64px] md:left-[4.5rem] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <GifLoader size={72} alt="Loading" />
+                <div className="text-white text-lg text-center">Loading generations...</div>
               </div>
-            )}
+            </div>
+          )}
 
-            <div>
+          <div>
             {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
             {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
             {/* History Entries - Grouped by Date */}
-            <div className=" space-y-8  ">
+            <div className=" space-y-8 md:px-0 px-5 ">
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
@@ -3140,7 +3141,7 @@ const InputBox = () => {
                       const localEntry = localGeneratingEntries[0];
                       const localEntryId = localEntry.id;
                       const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
-                      
+
                       console.log('[DEBUG LocalEntry Render] Checking if local entry should render:', {
                         localEntryId,
                         localFirebaseId,
@@ -3151,18 +3152,18 @@ const InputBox = () => {
                         historyEntriesCount: historyEntries.length,
                         groupedByDateCount: groupedByDate[date]?.length || 0
                       });
-                      
+
                       // FIRST CHECK: Check ref (updated immediately when entry is added to history)
                       // This catches duplicates even before Redux state propagates
                       const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
-                                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
-                      
+                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
+
                       console.log('[DEBUG LocalEntry Render] Ref check result:', {
                         existsInRef,
                         localEntryIdInRef: localEntryId ? historyEntryIdsRef.current.has(localEntryId) : false,
                         localFirebaseIdInRef: localFirebaseId ? historyEntryIdsRef.current.has(localFirebaseId) : false
                       });
-                      
+
                       // SECOND CHECK: Check historyEntries (from Redux selector)
                       const existsInHistory = historyEntries.some((e: HistoryEntry) => {
                         const eId = e.id;
@@ -3172,7 +3173,7 @@ const InputBox = () => {
                         if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
                         return false;
                       });
-                      
+
                       const matchingHistoryEntry = historyEntries.find((e: HistoryEntry) => {
                         const eId = e.id;
                         const eFirebaseId = (e as any)?.firebaseHistoryId;
@@ -3180,7 +3181,7 @@ const InputBox = () => {
                         if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
                         return false;
                       });
-                      
+
                       console.log('[DEBUG LocalEntry Render] History check result:', {
                         existsInHistory,
                         matchingEntry: matchingHistoryEntry ? {
@@ -3190,7 +3191,7 @@ const InputBox = () => {
                           imageCount: matchingHistoryEntry.images?.length || 0
                         } : null
                       });
-                      
+
                       // THIRD CHECK: Check groupedByDate (might have entries not yet in historyEntries)
                       const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
                         const eId = e.id;
@@ -3200,7 +3201,7 @@ const InputBox = () => {
                         if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
                         return false;
                       });
-                      
+
                       const matchingGroupedEntry = groupedByDate[date]?.find((e: HistoryEntry) => {
                         const eId = e.id;
                         const eFirebaseId = (e as any)?.firebaseHistoryId;
@@ -3208,7 +3209,7 @@ const InputBox = () => {
                         if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
                         return false;
                       });
-                      
+
                       console.log('[DEBUG LocalEntry Render] Grouped check result:', {
                         existsInGrouped,
                         matchingEntry: matchingGroupedEntry ? {
@@ -3218,7 +3219,7 @@ const InputBox = () => {
                           imageCount: matchingGroupedEntry.images?.length || 0
                         } : null
                       });
-                      
+
                       // CRITICAL: If entry exists ANYWHERE (ref, history, or grouped), IMMEDIATELY don't show local entry
                       // This is the primary duplicate prevention - once in history, history handles all rendering
                       if (existsInRef || existsInHistory || existsInGrouped) {
@@ -3231,7 +3232,7 @@ const InputBox = () => {
                         });
                         return null;
                       }
-                      
+
                       // ADDITIONAL SAFETY CHECK: If local entry is completed and we have history entries,
                       // don't show it (it should have been cleared, but if not, prevent duplicate)
                       // Since there's only one local entry at a time, if it's completed and history exists, it's likely a duplicate
@@ -3245,87 +3246,87 @@ const InputBox = () => {
                         });
                         return null;
                       }
-                      
+
                       console.log('[DEBUG LocalEntry Render] ALLOWING local entry render (no duplicates found):', {
                         localEntryId,
                         localFirebaseId,
                         status: localEntry.status
                       });
-                      
+
                       return (
                         <>
                           {localEntry.images.map((image: any, idx: number) => {
                             // Generate unique key for local entries to prevent duplicates
                             const localEntryId = localEntry.id || (localEntry as any)?.firebaseHistoryId || `local-${Date.now()}`;
                             const uniqueImageKey = image?.id ? `local-${localEntryId}-${image.id}` : `local-${localEntryId}-img-${idx}`;
-                            
+
                             return (
-                          <div 
-                            key={uniqueImageKey} 
-                            className="image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
-                            style={{ minHeight: localEntry.status === 'generating' ? '300px' : undefined }}
-                          >
-                            <div className="absolute inset-0 group animate-fade-in-up" style={{
-                              animation: 'fadeInUp 0.6s ease-out forwards',
-                              opacity: 0,
-                            }} onAnimationEnd={(e) => {
-                              e.currentTarget.style.opacity = '1';
-                            }}>
-                              {/* Always show loading overlay when generating, even if no image URL yet */}
-                              {localEntry.status === 'generating' && (
-                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
-                                  <div className="flex flex-col items-center gap-2">
-                                    <GifLoader size={64} alt="Generating" />
-                                    <div className="text-xs text-white/60 text-center">Generating...</div>
-                                  </div>
+                              <div
+                                key={uniqueImageKey}
+                                className="image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                                style={{ minHeight: localEntry.status === 'generating' ? '300px' : undefined }}
+                              >
+                                <div className="absolute inset-0 group animate-fade-in-up" style={{
+                                  animation: 'fadeInUp 0.6s ease-out forwards',
+                                  opacity: 0,
+                                }} onAnimationEnd={(e) => {
+                                  e.currentTarget.style.opacity = '1';
+                                }}>
+                                  {/* Always show loading overlay when generating, even if no image URL yet */}
+                                  {localEntry.status === 'generating' && (
+                                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
+                                      <div className="flex flex-col items-center gap-2">
+                                        <GifLoader size={64} alt="Generating" />
+                                        <div className="text-xs text-white/60 text-center">Generating...</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+                                    <img
+                                      src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                                      alt=""
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="absolute inset-0 w-full h-full object-contain"
+                                      onLoad={() => {
+                                        setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                      }}
+                                    />
+                                  ) : localEntry.status !== 'generating' ? (
+                                    // Only show shimmer if not generating (generating shows GIF loader)
+                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                  ) : null}
+                                  {!loadedImages.has(uniqueImageKey) && localEntry.status !== 'generating' && (
+                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                  )}
+                                  {localEntry.status === 'failed' && (
+                                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
+                                      <div className="flex flex-col items-center gap-2">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                        </svg>
+                                        <div className="text-xs text-red-400">Failed</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {localEntry.status === 'completed' && (
+                                    <>
+                                      {/* Hover copy button overlay */}
+                                      <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                        <button
+                                          aria-label="Copy prompt"
+                                          className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
+                                          onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
-                              )}
-                              {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
-                                <img
-                                  src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="absolute inset-0 w-full h-full object-contain"
-                                  onLoad={() => {
-                                    setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                  }}
-                                />
-                              ) : localEntry.status !== 'generating' ? (
-                                // Only show shimmer if not generating (generating shows GIF loader)
-                                <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              ) : null}
-                              {!loadedImages.has(uniqueImageKey) && localEntry.status !== 'generating' && (
-                                <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                              )}
-                              {localEntry.status === 'failed' && (
-                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
-                                  <div className="flex flex-col items-center gap-2">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                    </svg>
-                                    <div className="text-xs text-red-400">Failed</div>
-                                  </div>
-                                </div>
-                              )}
-                              {localEntry.status === 'completed' && (
-                                <>
-                                  {/* Hover copy button overlay */}
-                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                  <button
-                                    aria-label="Copy prompt"
-                                    className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
-                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                  </button>
-                                </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          );
+                              </div>
+                            );
                           })}
                         </>
                       );
@@ -3342,7 +3343,7 @@ const InputBox = () => {
                           if (localFirebaseId) localEntryIds.add(localFirebaseId);
                         });
                       }
-                      
+
                       // Filter out history entries that match local entries
                       const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
                         if (localEntryIds.size === 0) return true; // No local entries, show all history
@@ -3353,127 +3354,126 @@ const InputBox = () => {
                         if (entryFirebaseId && localEntryIds.has(entryFirebaseId)) return false;
                         return true;
                       });
-                      
+
                       return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
                         // Check if entry has ready images
                         const hasImages = entry.images && entry.images.length > 0;
-                        const hasReadyImages = hasImages && entry.images.some((img: any) => 
+                        const hasReadyImages = hasImages && entry.images.some((img: any) =>
                           img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
                         );
                         // Show loading if generating OR if completed but no ready images yet
-                        const shouldShowLoading = entry.status === "generating" || 
+                        const shouldShowLoading = entry.status === "generating" ||
                           (entry.status === "completed" && !hasReadyImages);
-                        
+
                         return entry.images.map((image: any, imgIdx: number) => {
                           // Generate unique key: use image.id if available, otherwise use index
                           // This prevents duplicate keys when image.id is undefined
                           const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
                           const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
                           const isImageLoaded = loadedImages.has(uniqueImageKey);
-                          
+
                           // Check if this is a newly loaded entry for animation
                           // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
                           // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
                           const isNewEntry = !previousEntriesRef.current.has(entry.id);
-                          
-                          return (
-                          <div
-                            key={uniqueImageKey}
-                            data-image-id={uniqueImageId}
-                            onClick={() => setPreview({ entry, image })}
-                            className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${
-                              isNewEntry ? 'animate-fade-in-up' : ''
-                            }`}
-                            style={{
-                              ...(isNewEntry ? {
-                                animation: 'fadeInUp 0.6s ease-out forwards',
-                                opacity: 0,
-                              } : {}),
-                            }}
-                            onAnimationEnd={(e) => {
-                              if (isNewEntry) {
-                                e.currentTarget.style.opacity = '1';
-                              }
-                            }}
-                          >
-                            {shouldShowLoading ? (
-                              // Loading frame - show if generating OR if completed but no images ready yet
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                <div className="flex flex-col items-center gap-2">
-                                  <GifLoader size={64} alt="Generating" />
 
-                                  <div className="text-xs text-white/60 text-center">
-                                    {entry.status === "generating" ? "Generating..." : "Loading..."}
+                          return (
+                            <div
+                              key={uniqueImageKey}
+                              data-image-id={uniqueImageId}
+                              onClick={() => setPreview({ entry, image })}
+                              className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
+                                }`}
+                              style={{
+                                ...(isNewEntry ? {
+                                  animation: 'fadeInUp 0.6s ease-out forwards',
+                                  opacity: 0,
+                                } : {}),
+                              }}
+                              onAnimationEnd={(e) => {
+                                if (isNewEntry) {
+                                  e.currentTarget.style.opacity = '1';
+                                }
+                              }}
+                            >
+                              {shouldShowLoading ? (
+                                // Loading frame - show if generating OR if completed but no images ready yet
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <GifLoader size={64} alt="Generating" />
+
+                                    <div className="text-xs text-white/60 text-center">
+                                      {entry.status === "generating" ? "Generating..." : "Loading..."}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ) : entry.status === "failed" ? (
-                              // Error frame
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                <div className="flex flex-col items-center gap-2">
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="text-red-400"
-                                  >
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                  </svg>
-                                  <div className="text-xs text-red-400">Failed</div>
+                              ) : entry.status === "failed" ? (
+                                // Error frame
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <svg
+                                      width="20"
+                                      height="20"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                      className="text-red-400"
+                                    >
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                    </svg>
+                                    <div className="text-xs text-red-400">Failed</div>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              // Completed image
-                              <div className="absolute inset-0 group">
-                                <img
-                                  src={image.thumbnailUrl || image.avifUrl || image.url}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                  onLoad={() => {
-                                    setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                  }}
-                                />
-                                {/* Shimmer loading effect - only show if image hasn't loaded yet */}
-                                {!isImageLoaded && (
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                )}
-                                {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                                <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                  <button
-                                    aria-label="Recreate image"
-                                    className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                    onClick={(e) => handleRecreate(e, entry)}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
-                                  </button>
-                                  
+                              ) : (
+                                // Completed image
+                                <div className="absolute inset-0 group">
+                                  <img
+                                    src={image.thumbnailUrl || image.avifUrl || image.url}
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                    onLoad={() => {
+                                      setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                    }}
+                                  />
+                                  {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                  {!isImageLoaded && (
+                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                  )}
+                                  {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                                  <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                    <button
+                                      aria-label="Recreate image"
+                                      className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                      onClick={(e) => handleRecreate(e, entry)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                      <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                    </button>
+
+                                  </div>
+                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                    <button
+                                      aria-label="Copy prompt"
+                                      className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                    </button>
+                                    <button
+                                      aria-label="Delete image"
+                                      className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                      onClick={(e) => handleDeleteImage(e, entry)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                  <button
-                                    aria-label="Copy prompt"
-                                    className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                  </button>
-                                  <button
-                                    aria-label="Delete image"
-                                    className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                    onClick={(e) => handleDeleteImage(e, entry)}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                          </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                            </div>
                           );
                         });
                       });
@@ -3492,7 +3492,7 @@ const InputBox = () => {
                 </div>
               )}
 
-              
+
             </div>
             {/* Infinite scroll sentinel inside scroll container */}
             <div ref={sentinelRef} style={{ height: 24 }} />
@@ -3500,10 +3500,10 @@ const InputBox = () => {
         </div>
       </div>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[60] h-auto">
-        <div className="rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl p-5 space-y-4">
+        <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch gap-3">
-            <div className="flex-1 flex items-start gap-3 bg-transparent rounded-xl  w-full relative min-h-[120px]">
+            <div className="flex-1 flex items-start gap-3 bg-transparent rounded-lg  w-full relative md:min-h-[120px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
                 ref={contentEditableRef}
@@ -3511,9 +3511,9 @@ const InputBox = () => {
                 suppressContentEditableWarning
                 onInput={(e) => {
                   if (isUpdatingRef.current) return;
-                  
+
                   const div = e.currentTarget;
-                  
+
                   // Extract text content (including from tags)
                   let text = '';
                   const walker = document.createTreeWalker(
@@ -3521,7 +3521,7 @@ const InputBox = () => {
                     NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
                     null
                   );
-                  
+
                   let node;
                   while (node = walker.nextNode()) {
                     if (node.nodeType === Node.TEXT_NODE) {
@@ -3539,18 +3539,18 @@ const InputBox = () => {
                       }
                     }
                   }
-                  
+
                   // Clean duplicates
                   const cleanedText = text.replace(/(@\w+)(\s*\1)+/g, '$1');
-                  
+
                   // Update state
                   isUpdatingRef.current = true;
                   dispatch(setPrompt(cleanedText));
-                  
+
                   // Adjust height
                   div.style.height = 'auto';
                   div.style.height = Math.min(div.scrollHeight, 96) + 'px';
-                  
+
                   // Re-render tags after a short delay to ensure they're visible
                   setTimeout(() => {
                     isUpdatingRef.current = false;
@@ -3570,7 +3570,7 @@ const InputBox = () => {
                     if (selection && selection.rangeCount > 0) {
                       const range = selection.getRangeAt(0);
                       let node: Node | null = range.startContainer;
-                      
+
                       while (node && node !== div) {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                           const el = node as Element;
@@ -3622,9 +3622,8 @@ const InputBox = () => {
                   const inputEvent = new Event('input', { bubbles: true });
                   e.currentTarget.dispatchEvent(inputEvent);
                 }}
-                className={`flex-1 min-w-[200px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${
-                  !prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
-                }`}
+                className={`flex-1 min-w-[200px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
+                  }`}
                 style={{
                   minHeight: '24px',
                   maxHeight: '96px',
@@ -3636,15 +3635,15 @@ const InputBox = () => {
                 }}
                 data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
               />
-                {/* Enhancement overlay */}
-                {isEnhancing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-40 rounded-lg pointer-events-none">
-                    <div className="flex items-center gap-2">
-                      <svg className="animate-spin text-white/90" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      <div className="text-white/90 text-sm">Enhancing…</div>
-                    </div>
+              {/* Enhancement overlay */}
+              {isEnhancing && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-40 rounded-lg pointer-events-none">
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin text-white/90" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <div className="text-white/90 text-sm">Enhancing…</div>
                   </div>
-                )}
+                </div>
+              )}
               {/* Fixed position buttons container */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
@@ -3769,7 +3768,7 @@ const InputBox = () => {
                     })}
                   </div>
                 )}
-               <div className="relative flex items-center gap-2 self-start pt-1 pb-4 pr-1">
+                <div className="relative flex items-center gap-2 self-start pt-1 pb-4 pr-1">
                   {/* Enhance prompt button (manual trigger) */}
                   <div className="relative">
                     <button
@@ -3817,13 +3816,13 @@ const InputBox = () => {
               </div>
             </div>
 
-            {/* Fixed position Generate button */}
-            <div className="absolute bottom-5 right-5 flex flex-col items-end gap-3">
+            {/* Fixed position Generate button - Desktop only */}
+            <div className="absolute bottom-3 right-5 hidden md:flex flex-col items-end gap-3">
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
                 onClick={handleGenerate}
                 disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 aria-busy={isEnhancing}
               >
                 {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
@@ -3832,39 +3831,25 @@ const InputBox = () => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            {/* Selection Summary */}
-            {/* <div className="flex items-center gap-2 text-xs text-white/60 bg-white/5 px-3 py-1.5 rounded-lg transition-all duration-300">
-            <span>Selected:</span>
-            <span className="text-white/80 font-medium flex flex-wrap gap-1">
-              {selectedModel !== 'flux-dev' && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
-                  {selectedModel.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                </span>
-              )}
-              {imageCount !== 1 && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
-                  {imageCount} Image{imageCount > 1 ? 's' : ''}
-                </span>
-              )}
-              {frameSize !== '1:1' && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded mr-2 animate-pulse">
-                  {frameSize}
-                </span>
-              )}
-              {style !== 'realistic' && (
-                <span className="bg-white/20 text-white px-2 py-0.5 rounded animate-pulse">
-                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                </span>
-              )}
-              {(selectedModel === 'flux-dev' && imageCount === 1 && frameSize === '1:1' && style === 'realistic') && (
-                <span className="text-white/40">Default settings</span>
-              )}
-            </span>
-          </div> */}
+          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-1">
+            {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
+            <div className="flex items-center justify-between gap-3 md:hidden w-full">
+              <div className="flex-1">
+                <ModelsDropdown />
+              </div>
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
+                aria-busy={isEnhancing}
+              >
+                {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
+              </button>
+            </div>
 
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
-              <div className="flex items-center gap-3 -mb-2"><ModelsDropdown />
+            {/* Mobile/Tablet: Second row - Other dropdowns */}
+            <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto overflow-y-visible no-scrollbar relative" style={{ zIndex: 70 }}>
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
@@ -3872,121 +3857,241 @@ const InputBox = () => {
               <PhoenixOptions />
               <FileTypeDropdown />
               {selectedModel === 'google/nano-banana-pro' && (
-                <div className="flex items-center gap-2 relative">
-                  <div className="relative dropdown-container">
-                    <button
-                      onClick={() => dispatch(toggleDropdown('nanoBananaProResolution'))}
-                      className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                    >
-                      {nanoBananaProResolution}
-                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'nanoBananaProResolution' && (
-                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                        {['1K','2K','4K'].map((opt) => (
-                          <button
-                            key={opt}
-                            onClick={(e) => { e.stopPropagation(); setNanoBananaProResolution(opt as '1K' | '2K' | '4K'); dispatch(toggleDropdown('')); }}
-                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${nanoBananaProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <span>{opt}</span>
-                            {nanoBananaProResolution === opt && (
-                              <span className="w-2 h-2 bg-black rounded-full"></span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('nanoBananaProResolution'))}
+                        className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                      >
+                        {nanoBananaProResolution}
+                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'nanoBananaProResolution' && (
+                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 md:z-50 z-[70]`}>
+                          {['1K', '2K', '4K'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setNanoBananaProResolution(opt as '1K' | '2K' | '4K'); dispatch(toggleDropdown('')); }}
+                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${nanoBananaProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {nanoBananaProResolution === opt && (
+                                <span className="w-2 h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {selectedModel === 'flux-2-pro' && (
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('flux2ProResolution'))}
+                        className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                      >
+                        {flux2ProResolution}
+                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'flux2ProResolution' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'flux2ProResolution' && (
+                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 md:z-50 z-[70]`}>
+                          {['1K', '2K'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setFlux2ProResolution(opt as '1K' | '2K'); dispatch(toggleDropdown('')); }}
+                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${flux2ProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {flux2ProResolution === opt && (
+                                <span className="w-2 h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {selectedModel === 'seedream-v4' && (
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('seedreamSize'))}
+                        className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                      >
+                        {seedreamSize}
+                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'seedreamSize' && (
+                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 md:z-50 z-[70]`}>
+                          {['1K', '2K', '4K', 'custom'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
+                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {seedreamSize === opt && (
+                                <span className="w-2 h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {seedreamSize === 'custom' && (
+                      <>
+                        <input
+                          type="number"
+                          min={1024}
+                          max={4096}
+                          value={seedreamWidth}
+                          onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
+                          placeholder="Width"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                        <input
+                          type="number"
+                          min={1024}
+                          max={4096}
+                          value={seedreamHeight}
+                          onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
+                          placeholder="Height"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                      </>
                     )}
                   </div>
-                </div>
-              )}
-              {selectedModel === 'flux-2-pro' && (
-                <div className="flex items-center gap-2 relative">
-                  <div className="relative dropdown-container">
-                    <button
-                      onClick={() => dispatch(toggleDropdown('flux2ProResolution'))}
-                      className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                    >
-                      {flux2ProResolution}
-                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'flux2ProResolution' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'flux2ProResolution' && (
-                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                        {['1K','2K'].map((opt) => (
-                          <button
-                            key={opt}
-                            onClick={(e) => { e.stopPropagation(); setFlux2ProResolution(opt as '1K' | '2K'); dispatch(toggleDropdown('')); }}
-                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${flux2ProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <span>{opt}</span>
-                            {flux2ProResolution === opt && (
-                              <span className="w-2 h-2 bg-black rounded-full"></span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {selectedModel === 'seedream-v4' && (
-                <div className="flex items-center gap-2 relative">
-                  <div className="relative dropdown-container">
-                    <button
-                      onClick={() => dispatch(toggleDropdown('seedreamSize'))}
+                )}
+            </div>
+
+            {/* Desktop: All dropdowns in one row */}
+            <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
+              <div className="flex items-center gap-3 -mb-2">
+                <ModelsDropdown />
+                <ImageCountDropdown />
+                <FrameSizeDropdown />
+                <StyleSelector />
+                <LucidOriginOptions />
+                <PhoenixOptions />
+                <FileTypeDropdown />
+                {selectedModel === 'google/nano-banana-pro' && (
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('nanoBananaProResolution'))}
                         className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                    >
-                      {seedreamSize}
-                      <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'seedreamSize' && (
-                      <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                        {['1K','2K','4K','custom'].map((opt) => (
-                          <button
-                            key={opt}
-                            onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
-                            className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <span>{opt}</span>
-                            {seedreamSize === opt && (
-                              <span className="w-2 h-2 bg-black rounded-full"></span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                      >
+                        {nanoBananaProResolution}
+                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'nanoBananaProResolution' && (
+                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                          {['1K', '2K', '4K'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setNanoBananaProResolution(opt as '1K' | '2K' | '4K'); dispatch(toggleDropdown('')); }}
+                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${nanoBananaProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {nanoBananaProResolution === opt && (
+                                <span className="w-2 h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {selectedModel === 'flux-2-pro' && (
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('flux2ProResolution'))}
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                      >
+                        {flux2ProResolution}
+                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'flux2ProResolution' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'flux2ProResolution' && (
+                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                          {['1K', '2K'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setFlux2ProResolution(opt as '1K' | '2K'); dispatch(toggleDropdown('')); }}
+                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${flux2ProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {flux2ProResolution === opt && (
+                                <span className="w-2 h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {selectedModel === 'seedream-v4' && (
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative dropdown-container">
+                      <button
+                        onClick={() => dispatch(toggleDropdown('seedreamSize'))}
+                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+                      >
+                        {seedreamSize}
+                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'seedreamSize' && (
+                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
+                          {['1K', '2K', '4K', 'custom'].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
+                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <span>{opt}</span>
+                              {seedreamSize === opt && (
+                                <span className="w-2 h-2 bg-black rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {seedreamSize === 'custom' && (
+                      <>
+                        <input
+                          type="number"
+                          min={1024}
+                          max={4096}
+                          value={seedreamWidth}
+                          onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
+                          placeholder="Width"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                        <input
+                          type="number"
+                          min={1024}
+                          max={4096}
+                          value={seedreamHeight}
+                          onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
+                          placeholder="Height"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                      </>
                     )}
                   </div>
-                  {seedreamSize === 'custom' && (
-                    <>
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamWidth}
-                        onChange={(e)=>setSeedreamWidth(Number(e.target.value)||2048)}
-                        placeholder="Width"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamHeight}
-                        onChange={(e)=>setSeedreamHeight(Number(e.target.value)||2048)}
-                        placeholder="Height"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-</div>
-              
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-  {/* sentinel moved inside scroll container */}
+      {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
       {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
       
@@ -4022,9 +4127,9 @@ const InputBox = () => {
           remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
           onAdd={(urls: string[]) => {
             try {
-              const next = [...(uploadedImages||[]), ...urls];
+              const next = [...(uploadedImages || []), ...urls];
               dispatch(setUploadedImages(next.slice(0, 10)));
-            } catch {}
+            } catch { }
           }}
         />
       )}
@@ -4037,12 +4142,12 @@ const InputBox = () => {
           onAdd={(character: Character) => {
             try {
               dispatch(addSelectedCharacter(character));
-            } catch {}
+            } catch { }
           }}
           onRemove={(characterId: string) => {
             try {
               dispatch(removeSelectedCharacter(characterId));
-            } catch {}
+            } catch { }
           }}
           selectedCharacters={selectedCharacters}
           maxCharacters={10}
