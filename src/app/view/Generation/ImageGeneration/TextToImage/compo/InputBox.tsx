@@ -47,9 +47,7 @@ import StyleSelector from "./StyleSelector";
 import LucidOriginOptions from "./LucidOriginOptions";
 import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
-import NanoBananaProResolutionDropdown from "./NanoBananaProResolutionDropdown";
-import SeedreamSizeDropdown from "./SeedreamSizeDropdown";
-import Flux2ProResolutionDropdown from "./Flux2ProResolutionDropdown";
+import ResolutionDropdown from "./ResolutionDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -3872,25 +3870,31 @@ const InputBox = () => {
               <FileTypeDropdown />
               {selectedModel === 'google/nano-banana-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <NanoBananaProResolutionDropdown
+                    <ResolutionDropdown
                       resolution={nanoBananaProResolution}
-                      onResolutionChange={setNanoBananaProResolution}
+                      onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
+                      options={['1K', '2K', '4K']}
+                      dropdownId="nanoBananaProResolution"
                     />
                   </div>
                 )}
                 {selectedModel === 'flux-2-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <Flux2ProResolutionDropdown
+                    <ResolutionDropdown
                       resolution={flux2ProResolution}
-                      onResolutionChange={setFlux2ProResolution}
+                      onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="flux2ProResolution"
                     />
                   </div>
                 )}
                 {selectedModel === 'seedream-v4' && (
                   <div className="flex items-center gap-2 relative">
-                    <SeedreamSizeDropdown
-                      size={seedreamSize}
-                      onSizeChange={setSeedreamSize}
+                    <ResolutionDropdown
+                      resolution={seedreamSize}
+                      onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
+                      options={['1K', '2K', '4K', 'custom']}
+                      dropdownId="seedreamSize"
                     />
                     {seedreamSize === 'custom' && (
                       <>
@@ -3930,25 +3934,31 @@ const InputBox = () => {
                 <FileTypeDropdown />
                 {selectedModel === 'google/nano-banana-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <NanoBananaProResolutionDropdown
+                    <ResolutionDropdown
                       resolution={nanoBananaProResolution}
-                      onResolutionChange={setNanoBananaProResolution}
+                      onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
+                      options={['1K', '2K', '4K']}
+                      dropdownId="nanoBananaProResolution"
                     />
                   </div>
                 )}
                 {selectedModel === 'flux-2-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <Flux2ProResolutionDropdown
+                    <ResolutionDropdown
                       resolution={flux2ProResolution}
-                      onResolutionChange={setFlux2ProResolution}
+                      onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="flux2ProResolution"
                     />
                   </div>
                 )}
                 {selectedModel === 'seedream-v4' && (
                   <div className="flex items-center gap-2 relative">
-                    <SeedreamSizeDropdown
-                      size={seedreamSize}
-                      onSizeChange={setSeedreamSize}
+                    <ResolutionDropdown
+                      resolution={seedreamSize}
+                      onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
+                      options={['1K', '2K', '4K', 'custom']}
+                      dropdownId="seedreamSize"
                     />
                     {seedreamSize === 'custom' && (
                       <>
