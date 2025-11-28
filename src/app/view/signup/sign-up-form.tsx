@@ -1123,8 +1123,8 @@ export default function SignInForm() {
       {/* Form Content - Centered (Krea Style) */}
       <div className="flex-1 flex items-center justify-center overflow-hidden px-6 md:px-12">
         <div className="w-full max-w-md space-y-6">
-          {/* Welcome Section - Only show when not on OTP screen, username screen, or login screen */}
-          {!otpSent && !showUsernameForm && !showLoginForm && (
+          {/* Welcome Section - Only show when not on OTP screen, username screen, login screen, or redeem code screen */}
+          {!otpSent && !showUsernameForm && !showLoginForm && !showRedeemCodeForm && (
             <div className="text-center space-y-4 mb-8">
               {/* Logo - Just above Welcome text */}
               <div className="flex justify-center mb-2">
