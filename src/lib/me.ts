@@ -64,6 +64,40 @@ export async function getMeCached(): Promise<MePayload> {
       try { writeToStorage(meCachedAt, meCache) } catch {}
       return payload
     })
+    .catch((error: any) => {
+      // CRITICAL FIX: If /api/auth/me returns 401, clear cache and cookies
+      // This handles the case where cookie exists but backend rejects it
+      if (error?.response?.status === 401) {
+        console.warn('[getMeCached] 401 Unauthorized - clearing cache and cookies', {
+          hasCookie: typeof document !== 'undefined' ? document.cookie.includes('app_session=') : false,
+          error: error?.response?.data?.message || error?.message
+        });
+        
+        // Clear cache
+        meCache = null
+        meCachedAt = 0
+        try { 
+          sessionStorage.removeItem(STORAGE_KEY)
+          localStorage.removeItem(STORAGE_KEY)
+        } catch {}
+        
+        // Clear expired/invalid cookies (they exist but backend rejects them)
+        if (typeof document !== 'undefined') {
+          try {
+            const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/'
+            // Clear all cookie variants
+            document.cookie = `app_session=; ${expired}; SameSite=None; Secure`
+            document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`
+            document.cookie = `app_session=; ${expired}; SameSite=Lax`
+            document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`
+            console.log('[getMeCached] Cleared invalid/expired cookies');
+          } catch (e) {
+            console.warn('[getMeCached] Failed to clear cookies:', e);
+          }
+        }
+      }
+      throw error
+    })
     .finally(() => {
       inFlight = null
       try { const g: any = typeof window !== 'undefined' ? (window as any) : undefined; if (g) g.__meInFlight = null } catch {}
