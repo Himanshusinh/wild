@@ -158,15 +158,15 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
   // Inner dialog (no overlay)
   const dialog = (
-    <div className="w-auto max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl md:min-h-[70vh] min-h-[95vh] overflow-y-auto">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+    <div className="w-auto max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl md:min-h-[70vh] min-h-[30vh] overflow-y-auto">
+      <div className="flex items-center justify-between md:px-4 px-3 gap-2 md:py-3 py-2 border-b border-white/10">
         <h2 className="text-white text-lg font-semibold">Create New Character</h2>
         <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
       </div>
 
-      <div className="p-6 space-y-4">
+      <div className="px-2 md:p-4 py-1 md:pt-0 space-y-4">
         <div>
-          <label className="block text-white/90 text-sm font-medium mb-2">
+          <label className="block text-white/90 md:text-sm text-[11px] font-medium md:mb-2 mb-1">
             Character Name <span className="text-red-400">*</span>
           </label>
           <input
@@ -174,29 +174,29 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter character name"
-            className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="w-full md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
           />
         </div>
 
         <div>
-          <label className="block text-white/90 text-sm font-medium mb-2">
-            Front Photo <span className="text-red-400">*</span>
+          <label className="block text-white/90 md:text-sm text-[11px] font-medium md:mb-2 mb-1">
+            Front Photo <span className="md:text-red-400 text-red-500">*</span>
           </label>
           <div
-            className={`border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-white/60 transition-colors md:max-h-auto h-auto w-auto md:max-w-full ${
+            className={`border-2 border-dashed rounded-lg md:p-4 p-2 cursor-pointer hover:border-white/60 transition-colors md:max-h-auto h-auto w-auto md:max-w-full ${
               frontImage ? "border-white/40" : "border-white/30"
             }`}
             onClick={() => handleOpenUploadModal('front')}
           >
             {frontImage ? (
-              <div className="relative w-full aspect-square max-w-xs mx-auto rounded-lg overflow-hidden ring-1 ring-white/20 md:max-h-[200px] max-h-[150px] md:max-w-[200px] max-w-[150px]">
+              <div className="relative w-full aspect-square max-w-xs mx-auto rounded-lg overflow-hidden ring-1 ring-white/20 md:max-h-[200px] max-h-[100px] md:max-w-[200px] max-w-[100px]">
                 <Image src={frontImage} alt="Front" fill className="object-cover " />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setFrontImage(null);
                   }}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center"
+                  className="absolute top-2 right-2 md:w-7 md:h-7 w-5 h-5 rounded-lg bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
                     <path d="M3 6h18" />
@@ -211,13 +211,13 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
                   <path d="M12 5v14" />
                   <path d="M5 12h14" />
                 </svg>
-                <div className="mt-2 text-sm">Click to upload front photo</div>
+                <div className="mt-2 md:text-sm text-[11px]">Click to upload front photo</div>
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:gap-4 gap-2">
           <div>
             <label className="block text-white/90 text-sm font-medium mb-2">
               Upload from Left Side <span className="text-white/50 text-xs">(Optional)</span>
