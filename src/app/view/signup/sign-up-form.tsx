@@ -64,12 +64,15 @@ export default function SignInForm() {
   const [processing, setProcessing] = useState(false)
   const [username, setUsername] = useState("")
   const [showUsernameForm, setShowUsernameForm] = useState(false)
-  const [termsAccepted, setTermsAccepted] = useState(false)
+  // Live validation states
+  const [passwordError, setPasswordError] = useState("")
+  const [emailError, setEmailError] = useState("")
   const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
+  const [showPassword, setShowPassword] = useState(false) // Password visibility toggle (synced for both fields)
 
   // Redeem code states
   const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
@@ -86,6 +89,45 @@ export default function SignInForm() {
   // Check for capital letters in username
   const hasCapitalLetters = /[A-Z]/.test(username)
 
+  // Email validation function
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
+
+  // Live validation: Check passwords match and email is valid
+  useEffect(() => {
+    // Validate passwords match - only show error if both fields have values
+    if (confirmPassword.length > 0 && password.length > 0) {
+      if (password !== confirmPassword) {
+        setPasswordError("Passwords don't match")
+      } else {
+        setPasswordError("")
+      }
+    } else {
+      setPasswordError("")
+    }
+
+    // Validate email - only show error if email field has value
+    if (email.length > 0) {
+      if (!isValidEmail(email)) {
+        setEmailError("Invalid email address")
+      } else {
+        setEmailError("")
+      }
+    } else {
+      setEmailError("")
+    }
+  }, [password, confirmPassword, email])
+
+  // Check if form is valid (passwords match, email valid, password length >= 6)
+  const isFormValid = 
+    password.length >= 6 &&
+    password === confirmPassword &&
+    isValidEmail(email) &&
+    email.length > 0 &&
+    confirmPassword.length > 0
+
   // Test cookie setting function
   const testCookieSetting = () => {
     console.log("🧪 Testing cookie setting...")
@@ -98,17 +140,17 @@ export default function SignInForm() {
     }, 200)
   }
 
-  // Loading Spinner Component (white ring, no label)
+  // Loading Spinner Component (light theme)
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center py-1">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
     </div>
   )
 
-  // Redirect Spinner Component (white ring, no label) 
+  // Redirect Spinner Component (light theme)
   const RedirectSpinner = () => (
     <div className="flex items-center justify-center py-1">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
     </div>
   )
 
@@ -163,6 +205,9 @@ export default function SignInForm() {
         console.log("✅ Login successful!")
         console.log("👤 User:", user)
 
+        // Show success toast
+        toast.success('Login successful! Welcome back!', { duration: 2500 })
+
         // Optionally store ID token (helps with Bearer-first APIs); safe to proceed without it since cookie is set
         try {
           if (passwordLoginIdToken && typeof passwordLoginIdToken === 'string') {
@@ -197,7 +242,9 @@ export default function SignInForm() {
 
       } else {
         console.error("❌ Login failed:", response.data?.message)
-        setError(response.data?.message || "Login failed. Please try again.")
+        const errorMsg = response.data?.message || "Login failed. Please try again."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       }
 
     } catch (error: any) {
@@ -205,24 +252,37 @@ export default function SignInForm() {
 
       // Prefer detailed validation errors when present
       const validationList = error?.response?.data?.data
+      let errorMessage = 'An error occurred'
+      
       if (Array.isArray(validationList) && validationList.length > 0) {
         const detailedMessage = validationList
           .map((e: any) => e?.msg || e?.message)
           .filter(Boolean)
           .join('\n')
-        setError(detailedMessage || 'Please fix the highlighted fields and try again.')
+        errorMessage = detailedMessage || 'Please fix the highlighted fields and try again.'
+        setError(errorMessage)
+        toast.error(errorMessage, { duration: 4000 })
       } else {
-        const errorMessage = error.response?.data?.message || 'An error occurred'
+        errorMessage = error.response?.data?.message || 'An error occurred'
         if (errorMessage.includes('already have an account with Google')) {
-          setError("This email is registered with Google. Please use the Google sign-in button below.")
+          errorMessage = "This email is registered with Google. Please use the Google sign-in button below."
+          setError(errorMessage)
+          toast.error(errorMessage, { duration: 4000 })
         } else if (error.response?.status === 401) {
-          setError("Invalid credentials. Please check your email and password.")
+          errorMessage = "Invalid credentials. Please check your email and password."
+          setError(errorMessage)
+          toast.error(errorMessage, { duration: 4000 })
         } else if (error.response?.status === 404) {
-          setError("User not found. Please check your email.")
+          errorMessage = "User not found. Please check your email."
+          setError(errorMessage)
+          toast.error(errorMessage, { duration: 4000 })
         } else if (error.response?.status === 400 && errorMessage === 'Validation failed') {
-          setError('Please check your input and try again.')
+          errorMessage = 'Please check your input and try again.'
+          setError(errorMessage)
+          toast.error(errorMessage, { duration: 4000 })
         } else {
           setError(errorMessage)
+          toast.error(errorMessage, { duration: 4000 })
         }
       }
     } finally {
@@ -246,21 +306,19 @@ export default function SignInForm() {
     console.log("🚀 Starting OTP send process...")
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", !!password)
-    console.log("✅ Terms accepted:", termsAccepted)
 
-    if (!termsAccepted) {
-      console.log("❌ Terms not accepted")
-      setError("Please accept the terms & policy to continue")
-      return
-    }
     if (password !== confirmPassword) {
       console.log("❌ Password mismatch")
-      setError("Password doesn't match")
+      const errorMsg = "Password doesn't match"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
     if (password.length < 6) {
       console.log("❌ Password too short")
-      setError("Password must be at least 6 characters")
+      const errorMsg = "Password must be at least 6 characters"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
 
@@ -297,7 +355,9 @@ export default function SignInForm() {
         console.log("❌ response.data:", response.data)
         console.log("❌ response.data.data:", response.data?.data)
         console.log("❌ response.data.data.sent:", response.data?.data?.sent)
-        setError("Failed to send OTP. Please try again.")
+        const errorMsg = "Failed to send OTP. Please try again."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       }
     } catch (error: any) {
       console.error("❌ OTP sending error details:")
@@ -307,15 +367,36 @@ export default function SignInForm() {
       console.error("Error status:", error.response?.status)
       console.error("Error data:", error.response?.data)
 
-      const errorMessage = error.response?.data?.message || 'An error occurred'
+      // Extract error message from response
+      let errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to send OTP. Please try again.'
+      
+      // Handle validation errors array
+      if (error.response?.data?.data && Array.isArray(error.response.data.data)) {
+        const validationErrors = error.response.data.data
+        errorMessage = validationErrors.map((err: any) => err.msg || err.message).join(', ') || errorMessage
+      }
 
+      // Specific error handling
       if (errorMessage.includes('already have an account with Google')) {
-        setError("This email is registered with Google. Please use the Google sign-in button below.")
+        const errorMsg = "This email is registered with Google. Please use the Google sign-in button below."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       } else if (errorMessage.includes('Account already exists')) {
-        setError("Account already exists. Please use sign-in instead.")
+        const errorMsg = "Account already exists. Please use sign-in instead."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
+      } else if (errorMessage.includes('Temporary') || errorMessage.includes('disposable')) {
+        // Temporary/disposable email error
+        setError(errorMessage)
+        toast.error(errorMessage, { duration: 5000 })
+      } else if (errorMessage.includes('Invalid email address') || errorMessage.includes('mail server')) {
+        // MX record validation error
+        setError(errorMessage)
+        toast.error(errorMessage, { duration: 5000 })
       } else {
         // Handle other errors normally
         setError(errorMessage)
+        toast.error(errorMessage, { duration: 4000 })
       }
     } finally {
       console.log("🏁 OTP send process completed")
@@ -398,27 +479,20 @@ export default function SignInForm() {
               console.log("✅ Session created with ID token!")
               console.log("🍪 Cookies after session creation:", document.cookie)
 
-              // Test /api/me immediately to verify it works
-              try {
-                console.log("🧪 Testing /api/auth/me immediately...")
-                const meResponse = await axiosInstance.get('/api/auth/me', {
-                  withCredentials: true
-                })
-                console.log("✅ /api/auth/me SUCCESS:", meResponse.data)
-              } catch (meError: any) {
-                console.error("❌ /api/auth/me still fails:", meError.response?.data)
-              }
-
               // Store user profile only; rely on httpOnly cookie for auth
               const createdUser = response.data?.data?.user || response.data?.user || response.data
               localStorage.setItem("user", JSON.stringify(createdUser))
               try { localStorage.setItem('authToken', actualIdToken) } catch {}
+              toast.success('OTP verified successfully! Please choose a username.', { duration: 3000 })
               setShowUsernameForm(true)
               setOtp("")
               setOtpSent(false)
               setError("")
             } else {
               console.error("❌ Session creation failed:", sessionResponse.status)
+              const errorMsg = "Session creation failed. Please try again."
+              setError(errorMsg)
+              toast.error(errorMsg, { duration: 4000 })
             }
           } catch (conversionError: any) {
             console.error("❌ Token conversion error:", conversionError)
@@ -446,15 +520,22 @@ export default function SignInForm() {
         const errorMessages = validationErrors.map((err: any) => err.msg).join(', ')
         console.log("📝 Setting validation errors:", errorMessages)
         setError(errorMessages)
+        toast.error(errorMessages, { duration: 4000 })
       } else if (error.response?.data?.message) {
         console.log("📝 Setting error from response:", error.response.data.message)
-        setError(error.response.data.message)
+        const errorMsg = error.response.data.message
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       } else if (error.response?.data?.error) {
         console.log("📝 Setting error from response.error:", error.response.data.error)
-        setError(error.response.data.error)
+        const errorMsg = error.response.data.error
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       } else {
         console.log("📝 Setting generic error message")
-        setError("Invalid OTP or expired. Please try again.")
+        const errorMsg = "Invalid OTP or expired. Please try again."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       }
     } finally {
       console.log("🏁 OTP verification process completed")
@@ -486,14 +567,18 @@ export default function SignInForm() {
 
       if (response.data && response.data.data && response.data.data.sent) {
         console.log("✅ OTP resent successfully!")
+        const successMsg = `OTP resent to ${email.trim()}`
         setError("")
-        setSuccess(`OTP resent to ${email.trim()}`)
+        setSuccess(successMsg)
+        toast.success(successMsg, { duration: 3000 })
       } else {
         console.log("❌ OTP not resent - checking response structure:")
         console.log("❌ response.data:", response.data)
         console.log("❌ response.data.data:", response.data?.data)
         console.log("❌ response.data.data.sent:", response.data?.data?.sent)
-        setError("Failed to resend OTP. Please try again.")
+        const errorMsg = "Failed to resend OTP. Please try again."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       }
     } catch (error: any) {
       console.error("❌ Resend OTP error details:")
@@ -501,11 +586,9 @@ export default function SignInForm() {
       console.error("Resend error response:", error.response)
       console.error("Resend error data:", error.response?.data)
 
-      if (error.response?.data?.message) {
-        setError(error.response.data.message)
-      } else {
-        setError("Failed to resend OTP. Please try again.")
-      }
+      const errorMessage = error.response?.data?.message || "Failed to resend OTP. Please try again."
+      setError(errorMessage)
+      toast.error(errorMessage, { duration: 4000 })
     } finally {
       console.log("🏁 OTP resend process completed")
       setProcessing(false)
@@ -538,6 +621,11 @@ export default function SignInForm() {
       // Step 1: Sign in with Google popup
       const result = await signInWithPopup(auth, provider)
       const user = result.user
+
+      // Track that Google was used (for "Last Used" tag)
+      try {
+        localStorage.setItem('lastAuthMethod', 'google')
+      } catch {}
 
       console.log("✅ Google popup successful!")
       console.log("👤 Google user:", user.email)
@@ -589,6 +677,10 @@ export default function SignInForm() {
           try { if (resp?.ok) { localStorage.setItem('authToken', finalIdToken) } } catch {}
 
           console.log("✅ Session created, redirecting...")
+          
+          // Show success toast
+          toast.success('Login successful! Welcome back!', { duration: 2500 })
+          
           // Defer toast to Home page: mark a flag so Home shows a success message after redirect
           try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
 
@@ -612,15 +704,27 @@ export default function SignInForm() {
       console.error("❌ Google sign-in failed:", error)
 
       const errorMessage = error.response?.data?.message || 'An error occurred'
+      let displayMessage = errorMessage
 
       if (errorMessage.includes('already have an account with email/password')) {
-        setError("This email is registered with email/password. Please use the regular sign-in form above.")
+        displayMessage = "This email is registered with email/password. Please use the regular sign-in form above."
+        setError(displayMessage)
+        toast.error(displayMessage, { duration: 4000 })
       } else if (error.code === 'auth/popup-closed-by-user') {
-        setError("Google sign-in was cancelled.")
+        displayMessage = "Google sign-in was cancelled."
+        setError(displayMessage)
+        toast.error(displayMessage, { duration: 3000 })
       } else if (error.code === 'auth/popup-blocked') {
-        setError("Google sign-in popup was blocked. Please allow popups and try again.")
+        displayMessage = "Google sign-in popup was blocked. Please allow popups and try again."
+        setError(displayMessage)
+        toast.error(displayMessage, { duration: 4000 })
+      } else if (error.code === 'auth/network-request-failed') {
+        displayMessage = "Network error. Please check your connection and try again."
+        setError(displayMessage)
+        toast.error(displayMessage, { duration: 4000 })
       } else {
-        setError(errorMessage)
+        setError(displayMessage)
+        toast.error(displayMessage, { duration: 4000 })
       }
     } finally {
       setProcessing(false)
@@ -633,14 +737,18 @@ export default function SignInForm() {
     console.log("👤 Username entered:", username.trim())
 
     if (!username.trim()) {
-      setError("Please enter a username")
+      const errorMsg = "Please enter a username"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 3000 })
       return
     }
 
     // Validate username format
     const usernameRegex = /^[a-z0-9_.-]{3,30}$/
     if (!usernameRegex.test(username.trim())) {
-      setError("Username must be 3-30 characters, lowercase letters, numbers, dots, underscores, and hyphens only")
+      const errorMsg = "Username must be 3-30 characters, lowercase letters, numbers, dots, underscores, and hyphens only"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
 
@@ -697,7 +805,7 @@ export default function SignInForm() {
           setShowUsernameForm(false)
           setShowRedeemCodeForm(true)
           setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
-          toast.success('Account created successfully')
+          toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
         }
 
       } else {
@@ -769,17 +877,6 @@ export default function SignInForm() {
                   console.log("✅ Session created with ID token after username creation!")
                   console.log("🍪 Cookies after session creation:", document.cookie)
 
-                  // Test /api/me immediately to verify it works
-                  try {
-                    console.log("🧪 Testing /api/auth/me after username creation...")
-                    const meResponse = await axiosInstance.get('/api/auth/me', {
-                      withCredentials: true
-                    })
-                    console.log("✅ /api/auth/me SUCCESS after username:", meResponse.data)
-                  } catch (meError: any) {
-                    console.error("❌ /api/auth/me still fails:", meError.response?.data)
-                  }
-
                   // Store user data in localStorage for Nav component
                   const userData = {
                     uid: response.data.uid || response.data.data?.uid,
@@ -805,16 +902,20 @@ export default function SignInForm() {
             setUsername("")
             setShowUsernameForm(false)
             setOtpSent(false)
-            setTermsAccepted(false)
+            setPasswordError("")
+            setEmailError("")
             setError("")
 
             // Show redeem code form
             setShowRedeemCodeForm(true)
             setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
+            toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
           }
         } else {
           console.log("❌ No user data found in localStorage")
-          setError("User data not found. Please try the sign-up process again.")
+          const errorMsg = "User data not found. Please try the sign-up process again."
+          setError(errorMsg)
+          toast.error(errorMsg, { duration: 4000 })
         }
       }
 
@@ -827,12 +928,19 @@ export default function SignInForm() {
       console.error("Error data:", error.response?.data)
       console.error("Error config:", error.config)
 
+      let errorMsg = "Failed to set username. Please try again."
+
       if (error.response?.data?.message) {
-        setError(error.response.data.message)
+        errorMsg = error.response.data.message
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       } else if (error.response?.status === 400) {
-        setError("Username already taken. Please choose another.")
+        errorMsg = "Username already taken. Please choose another."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       } else {
-        setError("Failed to set username. Please try again.")
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 4000 })
       }
     } finally {
       console.log("🏁 Username submission process completed")
@@ -921,109 +1029,172 @@ export default function SignInForm() {
   }
 
 
+  // Check if user has used Google before (for "Last Used" tag)
+  const [hasUsedGoogle, setHasUsedGoogle] = useState(false)
+  useEffect(() => {
+    // Check localStorage for previous Google sign-in
+    try {
+      const lastAuth = localStorage.getItem('lastAuthMethod')
+      setHasUsedGoogle(lastAuth === 'google')
+    } catch {}
+  }, [])
+
   return (
-    <div className="w-full h-full flex flex-col px-4 sm:px-6 md:px-10 lg:px-auto bg-[#1E1E1E] relative overflow-x-hidden">
+    <div className="w-full h-full flex flex-col bg-gray-900 relative overflow-x-hidden">
       {(authLoading || isRedirecting) && (
         <LoadingScreen message={isRedirecting ? 'Redirecting…' : 'Signing you in…'} subMessage={isRedirecting ? 'Just a moment while we finish up' : undefined} />
       )}
-      <div className="flex items-center mt-4 md:mt-8 mb-4">
-        <Image
-          src={getImageUrl('core', 'logo')}
-          alt="WildMind Logo"
-          width={120}
-          height={40}
-          className="h-8 md:h-10 w-auto"
-        />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-l from-gray-900/90 via-transparent to-transparent pointer-events-none"></div>
-
-
-      {/* Header with WildMind Logo - Top Left */}
-
-
-      {/* Form Content - No scrolling */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-lg space-y-4 md:space-y-6 px-1 sm:px-0">
+      
+      {/* Form Content - Centered (Krea Style) */}
+      <div className="flex-1 flex items-center justify-center overflow-hidden px-6 md:px-12">
+        <div className="w-full max-w-md space-y-6">
           {/* Welcome Section - Only show when not on OTP screen, username screen, or login screen */}
           {!otpSent && !showUsernameForm && !showLoginForm && (
-            <div className="text-start space-y-2 mb-4">
-              <h1 className="text-xl md:text-2xl lg:text-4xl font-semibold text-white">Welcome to WildMind!</h1>
-              <p className="text-white text-sm md:text-base font-light">Sign up to access the platform.</p>
+            <div className="text-center space-y-4 mb-8">
+              {/* Logo - Just above Welcome text */}
+              <div className="flex justify-center mb-2">
+                <div className="w-12 h-12 flex items-center justify-center">
+                  <img
+                    src="/core/logosquare.png"
+                    alt="WildMind Logo"
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Silently handle error - don't log to console
+                      const target = e.target as HTMLImageElement;
+                      if (target) {
+                        target.style.display = 'none';
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
+              <p className="text-gray-400 text-base">Log in or sign up.</p>
             </div>
           )}
 
           {showUsernameForm ? (
-            <div className="space-y-2 md:space-y-2 mb:space-y-4 lg:space-y-4">
-              {/* Title */}
-              <div className="text-start space-y-2 mb-4">
-                <h1 className="text-xl md:text-2xl lg:text-4xl font-semibold text-white">Verification Successful!</h1>
-                <p className="text-white text-sm md:text-base font-light">Last step, Make a Unique Username</p>
+            <div className="space-y-6">
+              {/* Title (Dark) */}
+              <div className="text-center space-y-4 mb-8">
+                {/* Logo - Just above Username text */}
+                <div className="flex justify-center mb-2">
+                  <div className="w-12 h-12 flex items-center justify-center">
+                    <img
+                      src="/core/logosquare.png"
+                      alt="WildMind Logo"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Verification Successful!</h1>
+                <p className="text-gray-400 text-base">Last step, Make a Unique Username</p>
               </div>
 
-              {/* Username Input */}
-              <div className="space-y-1">
-                <label className="text-white font-medium text-base md:text-lg">Enter User Name</label>
+              {/* Username Input (Krea Style - Dark) */}
+              <div>
                 <input
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 md:px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base md:text-lg"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
                   required
                 />
-                {/* Capital letters validation */}
+                {/* Capital letters validation (Dark) */}
                 {hasCapitalLetters && (
-                  <div className="rounded-xl p-2 bg-red-500/20 border border-red-500/25">
-                    <p className="text-white text-xs">Capital letters are not allowed in usernames. Please use lowercase letters only.</p>
+                  <div className="mt-2 rounded-lg p-2 bg-red-900/30 border border-red-800">
+                    <p className="text-red-300 text-xs">Capital letters are not allowed in usernames. Please use lowercase letters only.</p>
                   </div>
                 )}
 
                 {/* Live availability feedback - only show if no capital letters */}
                 {!hasCapitalLetters && (
-                  <UsernameAvailabilityFeedback
-                    status={availability.status}
-                    result={availability.result}
-                    error={availability.error}
-                    onSuggestion={setUsername}
-                  />
+                  <div className="mt-2">
+                    <UsernameAvailabilityFeedback
+                      status={availability.status}
+                      result={availability.result}
+                      error={availability.error}
+                      onSuggestion={setUsername}
+                    />
+                  </div>
                 )}
               </div>
 
-              {/* Access WildMind Button */}
+              {/* Continue Button (Krea Style - Dark) */}
               <button
                 onClick={handleUsernameSubmit}
                 disabled={!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting}
-                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-base md:text-lg text-white transition-all duration-200"
+                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
+                  !availability.isAvailable || hasCapitalLetters || isUsernameSubmitting
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
               >
-                {isUsernameSubmitting ? <LoadingSpinner /> : "Access WildMind"}
+                {isUsernameSubmitting ? <LoadingSpinner /> : (
+                  <>
+                    Continue
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                )}
               </button>
             </div>
           ) : showRedeemCodeForm ? (
-            <div className="space-y-4">
-              {/* Title */}
-              <div className="text-start space-y-2 mb-4">
-                <h1 className="text-xl md:text-4xl font-semibold text-white">Almost There!</h1>
-                <p className="text-white text-sm md:text-base font-light">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
+            <div className="space-y-6">
+              {/* Title (Dark) */}
+              <div className="text-center space-y-4 mb-8">
+                {/* Logo - Just above Redeem Code text */}
+                <div className="flex justify-center mb-2">
+                  <div className="w-12 h-12 flex items-center justify-center">
+                    <img
+                      src="/core/logosquare.png"
+                      alt="WildMind Logo"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Almost There!</h1>
+                <p className="text-gray-400 text-base">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
               </div>
 
-              {/* Success Message */}
+              {/* Success Message (Dark) */}
               {success && (
-                <div className="rounded-xl p-4 bg-emerald-500/20 border border-emerald-500/25">
-                  <p className="text-white text-base leading-relaxed">{success}</p>
+                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
+                  <p className="text-green-300 text-sm leading-relaxed">{success}</p>
                 </div>
               )}
 
-              {/* Error Message */}
+              {/* Error Message (Dark) */}
               {error && (
-                <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
-                  <p className="text-white text-base leading-relaxed">{error}</p>
+                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
+                  <p className="text-red-300 text-sm leading-relaxed">{error}</p>
                 </div>
               )}
 
-              {/* Redeem Code Input */}
-              <div className="space-y-1">
-                <label className="text-white font-medium text-lg">
-                  Redeem Code <span className="text-gray-400 text-base">(Optional)</span>
+              {/* Redeem Code Input (Krea Style - Dark) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Redeem Code <span className="text-gray-500 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -1036,36 +1207,40 @@ export default function SignInForm() {
                     setError("")
                     setSuccess("")
                   }}
-                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg uppercase"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base uppercase"
                 />
 
-                {/* Validation feedback */}
+                {/* Validation feedback (Dark) */}
                 {redeemCodeInfo && redeemCodeValidated && (
-                  <div className="text-sm text-green-400 ml-2 flex items-center space-x-2">
+                  <div className="mt-2 text-sm text-green-300 flex items-center space-x-2">
                     <span>✓</span>
                     <span>
                       Valid {redeemCodeInfo.planName} - You'll get {redeemCodeInfo.creditsToGrant.toLocaleString()} credits!
                       {redeemCodeInfo.remainingTime && (
-                        <span className="text-green-300 ml-1">(expires in {redeemCodeInfo.remainingTime})</span>
+                        <span className="text-green-400 ml-1">(expires in {redeemCodeInfo.remainingTime})</span>
                       )}
                     </span>
                   </div>
                 )}
 
-                {/* Help text */}
-                <div className="text-xs text-gray-400 ml-2">
+                {/* Help text (Dark) */}
+                <div className="mt-1 text-xs text-gray-500">
                   Student codes start with "STU-" and Business codes start with "BUS-"
                 </div>
               </div>
 
-              {/* Buttons */}
-              <div className="space-y-4 mt-6">
+              {/* Buttons (Krea Style - Dark) */}
+              <div className="space-y-3">
                 {/* Validate/Apply Code Button */}
                 {redeemCode && !redeemCodeValidated ? (
                   <button
                     onClick={handleRedeemCodeValidation}
                     disabled={processing || !redeemCode.trim()}
-                    className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
+                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${
+                      processing || !redeemCode.trim()
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                    }`}
                   >
                     {processing ? <LoadingSpinner /> : "Validate Code"}
                   </button>
@@ -1073,330 +1248,464 @@ export default function SignInForm() {
                   <button
                     onClick={handleRedeemCodeSubmit}
                     disabled={processing}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-[#3A3A3A] disabled:text-[#9B9B9B] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
+                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${
+                      processing
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
                   >
                     {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
                   </button>
                 ) : null}
 
-                {/* Skip Button */}
+                {/* Skip Button (Krea Style - Dark) */}
                 <button
                   onClick={handleSkipRedeemCode}
                   disabled={processing}
-                  className="w-full bg-[#2e2e2e] hover:bg-[#3e3e3e] border border-[#464646] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
+                  className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white transition-colors"
                 >
                   Continue with Free Plan
                 </button>
 
-                {/* Info about free plan */}
+                {/* Info about free plan (Dark) */}
                 <div className="text-center">
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-500">
                     Free plan includes 4,120 credits to get you started
                   </p>
                 </div>
               </div>
             </div>
           ) : showLoginForm ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              {/* Title */}
-              <div className="text-start space-y-2 mb-4">
-                <h1 className="text-4xl font-semibold text-white">Welcome back!</h1>
-                <p className="text-white text-base font-light">Enter your Credentials to access your account.</p>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
-                  <p className="text-white text-base leading-relaxed">{error}</p>
+            <form onSubmit={handleLogin} className="space-y-6">
+              {/* Title (Krea Style - Dark) */}
+              <div className="text-center space-y-4 mb-8">
+                {/* Logo - Just above Welcome text */}
+                <div className="flex justify-center mb-2">
+                  <div className="w-12 h-12 flex items-center justify-center">
+                    <img
+                      src="/core/logosquare.png"
+                      alt="WildMind Logo"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
-              )}
-
-              {/* Success Message or Redirect Spinner */}
-              {isRedirecting ? (
-                <RedirectSpinner />
-              ) : success && (
-                <div className="rounded-xl p-4 bg-emerald-500/20 border border-emerald-500/25">
-                  <p className="text-white text-base leading-relaxed">{success}</p>
-                </div>
-              )}
-
-              {/* Email/Username Input */}
-              <div className="space-y-1">
-                <label className="text-white font-medium text-lg">Email address / User Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
-                  required
-                />
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
+                <p className="text-gray-400 text-base">Log in or sign up.</p>
               </div>
 
-              {/* Password Input */}
-              <div className="space-y-1">
-                <label className="text-white font-medium text-lg">Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  className="w-full px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-lg"
-                  required
-                />
-              </div>
-
-              {/* Remember Me Checkbox */}
-              <div className="flex items-center mt-6">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-5 h-5 text-[#5AD7FF] bg-[#2e2e2e] border-[#464646] rounded focus:ring-[#5AD7FF] focus:ring-2"
-                  />
-                  <label htmlFor="remember" className="text-base text-[#A0A0A0]">
-                    Remember for 30 days
-                  </label>
-                </div>
-              </div>
-
-              {/* Login Button */}
-              <button
-                type="submit"
-                disabled={processing}
-                className="w-full bg-[#1C303D] hover:bg-[#3367D6] disabled:bg-[#464646] py-2 rounded-full font-semibold text-lg text-white transition-all duration-200"
-              >
-                {processing ? "Logging in..." : "Login"}
-              </button>
-
-              {/* Separator */}
-              <div className="flex items-center gap-4 my-8">
-                <div className="flex-grow h-px bg-[#464646]"></div>
-                <span className="text-[#A0A0A0] text-base">Or</span>
-                <div className="flex-grow h-px bg-[#464646]"></div>
-              </div>
-
-              {/* Social Login Button */}
-              <div className="mb-8">
+              {/* Google Sign-in Button First (Krea Style - Dark) */}
+              <div className="relative">
+                {hasUsedGoogle && (
+                  <div className="absolute -top-2 right-0 z-10">
+                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full bg-[#1a1a1a] text-white font-medium py-4 px-6 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-4"
+                  className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors"
                 >
-                  <Image src={getImageUrl('core', 'google')} alt="Google" width={24} height={24} className="w-6 h-6" />
-                  <span className="text-base">{showLoginForm ? "Sign in with Google" : "Sign up with Google"}</span>
+                  <Image src={getImageUrl('core', 'google')} alt="Google" width={20} height={20} className="w-5 h-5" />
+                  <span className="text-base">Continue with Google</span>
                 </button>
               </div>
 
-              {/* Sign Up Link */}
-              <div className="text-center mb-10">
-                <span className="text-[#A0A0A0] text-base">Don&apos;t have an account? </span>
+              {/* OR Separator (Krea Style - Dark) */}
+              <div className="flex items-center gap-4">
+                <div className="flex-grow h-px bg-gray-700"></div>
+                <span className="text-gray-500 text-sm font-medium">OR</span>
+                <div className="flex-grow h-px bg-gray-700"></div>
+              </div>
+
+              {/* Error Message (Dark) */}
+              {error && (
+                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
+                  <p className="text-red-300 text-sm leading-relaxed">{error}</p>
+                </div>
+              )}
+
+              {/* Success Message or Redirect Spinner (Dark) */}
+              {isRedirecting ? (
+                <RedirectSpinner />
+              ) : success && (
+                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
+                  <p className="text-green-300 text-sm leading-relaxed">{success}</p>
+                </div>
+              )}
+
+              {/* Email Input (Krea Style - Dark with Icon) */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                  required
+                />
+              </div>
+
+              {/* Password Input (Krea Style - Dark with Icon and Eye Toggle) */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
+                >
+                  {showPassword ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+
+              {/* Continue with Email Button (Krea Style - Dark) */}
+              <button
+                type="submit"
+                disabled={processing}
+                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
+                  processing
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+              >
+                {processing ? "Logging in..." : (
+                  <>
+                    Continue with Email
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+
+              {/* Sign Up Link (Dark) */}
+              <div className="text-center pt-4">
+                <span className="text-gray-400 text-sm">Don&apos;t have an account? </span>
                 <button
                   type="button"
                   onClick={() => setShowLoginForm(false)}
-                  className="text-[#4285F4] underline cursor-pointer text-base font-medium"
+                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
                 >
                   Sign Up
                 </button>
               </div>
             </form>
           ) : otpSent ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              {/* Title */}
-              <div className="text-start space-y-2 mb-4">
-                <h1 className="text-xl md:text-4xl font-semibold text-white">Verify code</h1>
-                <p className="text-white text-sm md:text-base font-light">An authentication code has been sent to your email.</p>
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              {/* Title (Krea Style - Dark) */}
+              <div className="text-center space-y-4 mb-8">
+                {/* Logo - Just above Verify text */}
+                <div className="flex justify-center mb-2">
+                  <div className="w-12 h-12 flex items-center justify-center">
+                    <img
+                      src="/core/logosquare.png"
+                      alt="WildMind Logo"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Verify code</h1>
+                <p className="text-gray-400 text-base">An authentication code has been sent to your email.</p>
               </div>
 
-              {/* Code Input */}
-              <div className="space-y-1">
-                <label className="text-white font-medium text-base md:text-lg">Enter Code</label>
+              {/* Code Input (Krea Style - Dark) */}
+              <div>
                 <input
                   type="text"
-                  placeholder="Enter your Code"
+                  placeholder="Enter 6-digit code"
                   value={otp}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, "").slice(0, 6)
                     setOtp(value)
                   }}
-                  className="w-full px-4 md:px-6 py-2 mt-2 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base md:text-lg"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base text-center tracking-widest"
                   required
+                  maxLength={6}
                 />
               </div>
 
-              {/* Verify Button */}
+              {/* Error Message (Dark) */}
+              {error && (
+                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
+                  <p className="text-red-300 text-sm text-center leading-relaxed">{error}</p>
+                </div>
+              )}
+
+              {/* Success Message or Redirect Spinner (Dark) */}
+              {isRedirecting ? (
+                <RedirectSpinner />
+              ) : success && (
+                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
+                  <p className="text-green-300 text-sm text-center leading-relaxed">{success}</p>
+                </div>
+              )}
+
+              {/* Verify Button (Krea Style - Dark) */}
               <button
                 type="submit"
-                disabled={processing || otp.length < 4}
-                className={`w-full py-2 rounded-full font-semibold text-base md:text-lg transition-all duration-200 ${processing || otp.length < 4
-                    ? "bg-[#3A3A3A] text-[#9B9B9B] cursor-not-allowed"
-                    : "bg-[#1C303D] hover:bg-[#3367D6] text-white"
-                  }`}
+                disabled={processing || otp.length < 6}
+                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
+                  processing || otp.length < 6
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
               >
-                {processing ? "Verifying..." : "Verify"}
+                {processing ? "Verifying..." : (
+                  <>
+                    Continue with Email
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                )}
               </button>
 
-              {/* Resend Link */}
-              <div className="text-center mt-6">
-                <span className="text-[#A0A0A0] text-sm md:text-base">Not receive email? </span>
+              {/* Resend Link (Dark) */}
+              <div className="text-center">
+                <span className="text-gray-400 text-sm">Not receive email? </span>
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  className="text-[#4285F4] underline cursor-pointer text-sm md:text-base font-medium"
+                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
                 >
                   Resend
                 </button>
               </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
-                  <p className="text-white text-base text-center leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              {/* Success Message or Redirect Spinner */}
-              {isRedirecting ? (
-                <RedirectSpinner />
-              ) : success && (
-                <div className="rounded-xl p-4 bg-emerald-500/20 border border-emerald-500/25">
-                  <p className="text-white text-base text-center leading-relaxed">{success}</p>
-                </div>
-              )}
             </form>
           ) : (
             <>
-              {/* Email Form */}
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                <div className="space-y-0.5">
-                  <label className="text-white font-medium text-sm md:text-base">Email address</label>
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value.trim())}
-                    autoComplete="email"
-                    className="w-full px-4 md:px-6 py-2 md:py-1.5 mt-1 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base md:text-lg"
-                    required
-                  />
-                </div>
-
-                {/* Password Field */}
-                <div className="space-y-1">
-                  <label className="text-white font-medium text-sm md:text-base">Password</label>
-                  <input
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                    className="w-full px-4 md:px-6 py-2 md:py-1.5 mt-1 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base md:text-lg"
-                    required
-                  />
-                </div>
-
-                {/* Confirm Password Field */}
-                <div className="space-y-1">
-                  <label className="text-white font-medium text-sm md:text-base">Confirm Password</label>
-                  <input
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    autoComplete="new-password"
-                    className="w-full px-4 md:px-6 py-2 md:py-1.5 mt-1 bg-[#171717] border border-[#464646] placeholder-[#9094A6] focus:outline-none focus:border-[#5AD7FF] rounded-full text-white text-base md:text-lg"
-                    required
-                  />
-                </div>
-
-                {/* Terms Checkbox */}
-                <div className="flex items-start space-x-3 mt-4">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-[#5AD7FF] bg-[#2e2e2e] border-[#464646] rounded focus:ring-[#5AD7FF] focus:ring-2"
-                  />
-                  <label htmlFor="terms" className="text-sm md:text-base text-[#A0A0A0]">
-                    I agree to the{" "}
-                    <span className="text-[#5AD7FF] underline cursor-pointer text-sm md:text-base">terms & policy</span>
-                  </label>
-                </div>
-
-                {/* Error Message */}
-                {error && (
-                  <div className="rounded-xl p-4 bg-red-500/20 border border-red-500/25">
-                    <p className="text-white text-base leading-relaxed">{error}</p>
+              {/* Google Sign-in Button First (Krea Style - Dark) */}
+              <div className="relative">
+                {hasUsedGoogle && (
+                  <div className="absolute -top-2 right-0 z-10">
+                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
                   </div>
                 )}
-
-                <button
-                  type="submit"
-                  disabled={processing || !termsAccepted}
-                  className={`w-full mx-auto py-2 rounded-full font-semibold text-base md:text-lg transition-all duration-200 ${processing || !termsAccepted
-                      ? "bg-[#3A3A3A] text-[#9B9B9B] cursor-not-allowed"
-                      : "bg-[#1C303D] hover:bg-[#3367D6] text-white"
-                    }`}
-                >
-                  {processing ? "Sending..." : "Sign Up"}
-                </button>
-              </form>
-
-              {/* Separator */}
-              <div className="flex items-center gap-4 my-6 md:my-8">
-                <div className="flex-grow h-px bg-[#464646]"></div>
-                <span className="text-[#A0A0A0] text-sm md:text-base">Or</span>
-                <div className="flex-grow h-px bg-[#464646]"></div>
-              </div>
-
-              {/* Social Login Button */}
-              <div className="mb-6 md:mb-8">
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full bg-[#1a1a1a] text-white font-medium py-3 md:py-4 px-4 md:px-6 rounded-full border border-[#464646] hover:bg-[#2a2a2a] transition-all duration-200 flex items-center justify-center gap-3 md:gap-4"
+                  className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors"
                 >
-                  <Image src={getImageUrl('core', 'google')} alt="Google" width={24} height={24} className="w-5 h-5 md:w-6 md:h-6" />
-                  <span className="text-sm md:text-base">{showLoginForm ? "Sign in with Google" : "Sign up with Google"}</span>
+                  <Image src={getImageUrl('core', 'google')} alt="Google" width={20} height={20} className="w-5 h-5" />
+                  <span className="text-base">Continue with Google</span>
                 </button>
               </div>
 
-              {/* Already have an account link */}
-              <div className="text-center mb-8 md:mb-10">
-                <span className="text-[#A0A0A0] text-sm md:text-base">Already have an account? </span>
+              {/* OR Separator (Krea Style - Dark) */}
+              <div className="flex items-center gap-4">
+                <div className="flex-grow h-px bg-gray-700"></div>
+                <span className="text-gray-500 text-sm font-medium">OR</span>
+                <div className="flex-grow h-px bg-gray-700"></div>
+              </div>
+
+              {/* Email Form (Krea Style - Dark) */}
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                {/* Email Input with Icon */}
+                <div>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value.trim())}
+                      autoComplete="email"
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-800 border ${
+                        emailError ? 'border-red-500' : 'border-gray-700'
+                      } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
+                      required
+                    />
+                  </div>
+                  {emailError && (
+                    <p className="mt-1.5 text-xs text-red-400">{emailError}</p>
+                  )}
+                </div>
+
+                {/* Password Fields with Icons and Eye Toggle */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="new-password"
+                      className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Confirm Password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        className={`w-full pl-10 pr-12 py-3 bg-gray-800 border ${
+                          passwordError ? 'border-red-500' : 'border-gray-700'
+                        } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
+                      >
+                        {showPassword ? (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    {passwordError && (
+                      <p className="mt-1.5 text-xs text-red-400">{passwordError}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Terms Text (Dark) - Checkbox removed, text only */}
+                <div className="text-xs text-center text-gray-400 leading-relaxed">
+                  By signing up, you agree to our{" "}
+                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
+                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
+                </div>
+
+                {/* Error Message (Dark) - Only show server/API errors */}
+                {error && (
+                  <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
+                    <p className="text-red-300 text-sm leading-relaxed">{error}</p>
+                  </div>
+                )}
+
+                {/* Continue with Email Button (Krea Style - Dark) */}
+                <button
+                  type="submit"
+                  disabled={processing || !isFormValid}
+                  className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
+                    processing || !isFormValid
+                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  {processing ? "Sending..." : (
+                    <>
+                      Continue with Email
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Already have an account link (Dark) */}
+              <div className="text-center pt-4">
+                <span className="text-gray-400 text-sm">Already have an account? </span>
                 <button
                   type="button"
                   onClick={() => setShowLoginForm(true)}
-                  className="text-[#4285F4] underline cursor-pointer text-sm md:text-base font-medium"
+                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
                 >
                   Sign In
                 </button>
               </div>
-
-
             </>
           )}
         </div>
       </div>
 
-      {/* Separator for visual break */}
-      <div className="h-2"></div>
-
-      {/* Footer - Only show when not on OTP screen, username screen, or login screen */}
-      {!otpSent && !showUsernameForm && !showLoginForm && (
-        <div className="text-center text-xs text-[#A0A0A0] space-y-2 md:space-y-3 pb-6 md:pb-10">
-          <p>By Continuing, you agree to WildMind&apos;s</p>
-          <p>
-            <span className="text-[#4285F4] ">Terms of Use</span> and{" "}
-            <span className="text-[#4285F4] ">Privacy Policy</span>.
+      {/* Footer - Terms & Privacy (Krea Style - Dark) - Only show when not on OTP screen, username screen, or login screen */}
+      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
+        <div className="absolute bottom-6 left-0 right-0 text-center px-6">
+          <p className="text-xs text-gray-500">
+            By signing up, you agree to our{" "}
+            <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
+            <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
           </p>
         </div>
-      )}
+      )} */}
 
       {/* Debug: Test Cookie Button - Always visible for debugging */}
       {/* <div className="text-center mb-4">
@@ -1425,38 +1734,38 @@ function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: {
   if (status === 'idle') return null
   if (status === 'invalid') {
     return (
-      <div className="rounded-xl p-2 bg-amber-500/20 border border-amber-500/25">
-        <p className="text-white text-xs">Use 3-30 chars: a-z 0-9 _ . -</p>
+      <div className="rounded-lg p-2 bg-amber-900/30 border border-amber-800">
+        <p className="text-amber-300 text-xs">Use 3-30 chars: a-z 0-9 _ . -</p>
       </div>
     )
   }
   if (status === 'checking') {
     return (
-      <div className="rounded-xl p-2 bg-white/5 border border-white/10 inline-flex items-center gap-2">
-        <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white" />
-        <span className="text-white text-xs">Checking…</span>
+      <div className="rounded-lg p-2 bg-gray-800 border border-gray-700 inline-flex items-center gap-2">
+        <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-600 border-t-blue-500" />
+        <span className="text-gray-400 text-xs">Checking…</span>
       </div>
     )
   }
   if (status === 'error') {
     return (
-      <div className="rounded-xl p-2 bg-red-500/20 border border-red-500/25">
-        <p className="text-white text-xs">{error || 'Something went wrong'}</p>
+      <div className="rounded-lg p-2 bg-red-900/30 border border-red-800">
+        <p className="text-red-300 text-xs">{error || 'Something went wrong'}</p>
       </div>
     )
   }
   if (status === 'available') {
     return (
-      <div className="rounded-xl p-2 bg-emerald-500/20 border border-emerald-500/25">
-        <p className="text-white text-xs">Username “{result?.normalized}” is available</p>
+      <div className="rounded-lg p-2 bg-green-900/30 border border-green-800">
+        <p className="text-green-300 text-xs">Username "{result?.normalized}" is available</p>
       </div>
     )
   }
   if (status === 'taken') {
     return (
       <div className="space-y-2">
-        <div className="rounded-xl p-2 bg-red-500/20 border border-red-500/25">
-          <p className="text-white text-xs">Username is already taken</p>
+        <div className="rounded-lg p-2 bg-red-900/30 border border-red-800">
+          <p className="text-red-300 text-xs">Username is already taken</p>
         </div>
         {result?.suggestions && result.suggestions.length > 0 && (
           <div className="flex gap-2 flex-wrap">
@@ -1465,7 +1774,7 @@ function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: {
                 key={s}
                 type="button"
                 onClick={() => onSuggestion(s)}
-                className="px-3 py-1 rounded-full border border-white/15 bg-white/5 text-white text-xs hover:bg-white/10"
+                className="px-3 py-1 rounded-lg border border-gray-700 bg-gray-800 text-gray-300 text-xs hover:bg-gray-700"
               >
                 {s}
               </button>
