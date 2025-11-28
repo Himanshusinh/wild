@@ -15,9 +15,23 @@ export default function AuthBootstrap() {
       try {
         const me = await getMeCached()
         if (!mounted) return
-        if (me) dispatch(setUser(me))
-      } catch {
-        // ignore; anonymous users are valid
+        if (me) {
+          dispatch(setUser(me))
+        } else {
+          // CRITICAL FIX: If getMeCached returns null/undefined, clear user state
+          // This handles the case where cookie exists but backend rejects it
+          dispatch(setUser(null))
+        }
+      } catch (error: any) {
+        // CRITICAL FIX: If /api/auth/me returns 401, clear user state
+        // This handles the case where cookie exists but is expired/invalid
+        if (error?.response?.status === 401) {
+          console.warn('[AuthBootstrap] 401 Unauthorized - clearing user state', {
+            hasCookie: typeof document !== 'undefined' ? document.cookie.includes('app_session=') : false
+          });
+          dispatch(setUser(null))
+        }
+        // ignore other errors; anonymous users are valid
       }
     })()
     return () => { mounted = false }
