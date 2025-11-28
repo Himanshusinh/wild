@@ -29,6 +29,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   const [uploadHasMore, setUploadHasMore] = React.useState(false);
   const [libraryLoading, setLibraryLoading] = React.useState(false);
   const [uploadLoading, setUploadLoading] = React.useState(false);
+  const uploadExhaustedRef = React.useRef(false); // stop infinite fetch when backend returns no items
   const onTabChangePrevTabRef = React.useRef<typeof tab | null>(null);
   const onTabChangeCallbackRef = React.useRef(onTabChange);
   const isProcessingTabChangeRef = React.useRef(false);
@@ -252,7 +253,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
         // Set initial items (don't merge, replace)
         setUploadItems(result.items);
         setUploadNextCursor(result.nextCursor);
-        setUploadHasMore(result.hasMore);
+        // If backend returns 0 items, treat as exhausted regardless of hasMore
+        if (!result.items || result.items.length === 0) {
+          setUploadHasMore(false);
+          uploadExhaustedRef.current = true;
+        } else {
+          setUploadHasMore(Boolean(result.hasMore));
+          uploadExhaustedRef.current = false;
+        }
         console.log('[UploadModal] Set upload state:', {
           itemsCount: result.items.length,
           hasMore: result.hasMore,
@@ -462,7 +470,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                     } catch {}
                     
                     // Check if we should load more - use specific state for current tab
-                    const currentHasMore = tab === 'library' ? libraryHasMore : uploadHasMore;
+                    const currentHasMore = tab === 'library' ? libraryHasMore : uploadHasMore && !uploadExhaustedRef.current;
                     const currentLoading = tab === 'library' ? libraryLoading : uploadLoading;
                     const currentNextCursor = tab === 'library' ? libraryNextCursor : uploadNextCursor;
                     const currentItems = tab === 'library' ? libraryItems : uploadItems;
@@ -538,7 +546,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                             return [...prev, ...newItems];
                           });
                           setUploadNextCursor(result.nextCursor);
-                          setUploadHasMore(result.hasMore);
+                          // If backend returns no items OR nextCursor is null, stop further fetches
+                          if (!result.items || result.items.length === 0 || !result.nextCursor) {
+                            setUploadHasMore(false);
+                            uploadExhaustedRef.current = true;
+                          } else {
+                            setUploadHasMore(Boolean(result.hasMore));
+                            uploadExhaustedRef.current = !result.hasMore && !result.nextCursor ? true : false;
+                          }
                         }
                         
                         // After new items are loaded, maintain scroll position
@@ -641,10 +656,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
-                    const maxSize = 20 * 1024 * 1024;
                     const urls: string[] = [];
                     for (const file of files) {
-                      if (file.size > maxSize) continue;
                       const reader = new FileReader();
                       const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
                       urls.push(asDataUrl);
@@ -661,10 +674,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 20 * 1024 * 1024;
                       const urls: string[] = [];
                       for (const file of files) {
-                        if (file.size > maxSize) { continue; }
                         const reader = new FileReader();
                         const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
                         urls.push(asDataUrl);
