@@ -449,7 +449,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     });
   }, [sameDateGallery]);
 
-const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+const fsOnWheel = React.useCallback((e: WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!fsContainerRef.current) return;
@@ -462,15 +462,15 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
       const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (sameDateGallery.length > 1) {
       if (delta > 20) {
-          goNext(e);
+          goNext(e as any);
       } else if (delta < -20) {
-          goPrev(e);
+          goPrev(e as any);
         }
       } else if (showGenerationNav) {
         if (delta > 20) {
-          goNextGeneration(e);
+          goNextGeneration(e as any);
         } else if (delta < -20) {
-          goPrevGeneration(e);
+          goPrevGeneration(e as any);
         }
       }
       wheelNavCooldown.current = true;
@@ -486,6 +486,17 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     if (Math.abs(next - fsScale) < 0.001) return;
     fsZoomToPoint({ x: mx, y: my }, next);
   }, [fsScale, fsFitScale, sameDateGallery, goNext, goPrev, fsZoomToPoint, showGenerationNav, goNextGeneration, goPrevGeneration]);
+
+  // Add non-passive wheel event listener directly to DOM element
+  React.useEffect(() => {
+    const container = fsContainerRef.current;
+    if (!container || !isFsOpen) return;
+
+    container.addEventListener('wheel', fsOnWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', fsOnWheel);
+    };
+  }, [fsOnWheel, isFsOpen]);
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -1805,7 +1816,6 @@ const fsOnWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
           <div
             ref={fsContainerRef}
             className="relative w-full h-full cursor-zoom-in"
-            onWheel={fsOnWheel}
             onMouseDown={fsOnMouseDown}
             onMouseMove={fsOnMouseMove}
             onMouseUp={fsOnMouseUp}

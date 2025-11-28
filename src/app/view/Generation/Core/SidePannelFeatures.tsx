@@ -237,67 +237,47 @@ const SidePannelFeatures = ({
 
   const isVideoEditActive = pathname === '/edit-video' || pathname?.startsWith('/edit-video') || pathname?.includes('/EditVideo') || pathname?.includes('edit-video') || pathname?.includes('/video-edit');
 
-  // Labels: visible on mobile when sidebar is open, hidden on desktop until hover
-  const labelClasses = `text-white whitespace-nowrap transition-all duration-300 ease-out ${
-    isMobileSidebarOpen ? 'inline-block' : 'hidden'
-  } md:inline-block md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] md:group-hover:opacity-100 md:group-hover:translate-x-0`;
-  const taglineClasses = `text-white whitespace-nowrap transition-all duration-300 ease-out ${
-    isMobileSidebarOpen ? 'inline-block' : 'hidden'
-  } md:inline-block md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] md:group-hover:opacity-100 md:group-hover:translate-x-0`;
+  // Label classes - smooth slide animation (no pop effect)
+  const labelClasses =
+    'text-white hidden md:inline-block whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ' +
+    (isSidebarHovered 
+      ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
+      : 'md:max-w-0 md:opacity-0 md:-translate-x-full');
+  const taglineClasses =
+    'text-white hidden md:inline-block whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ' +
+    (isSidebarHovered 
+      ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
+      : 'md:max-w-0 md:opacity-0 md:-translate-x-full');
 
   return (
     <>
-      {/* Hamburger Menu Button - Only visible on mobile/tablet */}
-      <button
-        data-hamburger-button
-        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-        className='fixed top-0 left-1 z-[100] md:hidden flex items-center justify-center w-10 h-10   rounded-lg  text-white hover:bg-white/20 transition-colors shadow-xl'
-        aria-label='Toggle menu'
-      >
-        {isMobileSidebarOpen ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
-        )}
-      </button>
-
-      {/* Mobile Overlay - Only visible when sidebar is open on mobile */}
-      {isMobileSidebarOpen && (
-        <div
-          className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] md:hidden'
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
+      {/* Original sidebar - keeps original CSS styling */}
       <div
         ref={sidebarRef}
-        onMouseEnter={() => setIsSidebarHovered(true)}
-        onMouseLeave={() => setIsSidebarHovered(false)}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-1 px-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-all text-white duration-300 shadow-2xl
-          ${isMobileSidebarOpen 
-            ? 'w-60 translate-x-0 z-[56]' 
-            : '-translate-x-full md:translate-x-0 z-[50]'
-          }
-          md:w-[68px] md:hover:w-60 md:z-[50]
-        `}
+        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-3 md:py-6 py-0 md:px-3 bg-black/20 backdrop-blur-md group transition-[width] text-white duration-300 z-[50] border-r border-white/10 ${isSidebarHovered ? 'md:w-60 w-60' : 'md:w-[68px] w-[50px]'}`}
         style={{
           // borderTopLeftRadius: '16px',
           // borderBottomLeftRadius: '16px',
           // borderTopRightRadius: '16px',
           // borderBottomRightRadius: '16px'
         }}
+        onMouseEnter={(e) => {
+          // Only keep expanded if already expanded - NEVER trigger expansion from full width
+          // Only icon elements should trigger expansion
+          if (!isSidebarHovered) {
+            return;
+          }
+          // Sidebar is already expanded - keep it expanded when mouse moves to expanded content
+        }}
+        onMouseLeave={() => {
+          // Collapse when mouse leaves the entire sidebar
+          setIsSidebarHovered(false);
+        }}
       >
       {/* Logo at the top */}
-      <div className="flex items-center gap-2 md:p-2 px-3 py-1 md:-mt-4 md:mb-0 mb-0 -ml-2 mt-8">
+      <div className="flex items-center gap-2 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0 -ml-1 overflow-hidden">
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
             try { dispatch(setCurrentView('landing')); } catch { }
@@ -323,6 +303,7 @@ const SidePannelFeatures = ({
           />
         </div>
         <span
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -339,6 +320,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, APP_ROUTES.HOME, async () => {
             try {
               await ensureSessionReady(600)
@@ -371,6 +353,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onClick={() => {
             // Check if we're in production by checking the hostname
             const isProd = typeof window !== 'undefined' && 
@@ -390,6 +373,7 @@ const SidePannelFeatures = ({
 
       <div className="relative">
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -406,6 +390,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -422,6 +407,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -438,6 +424,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -454,6 +441,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -600,6 +588,7 @@ const SidePannelFeatures = ({
       {/* Art Station */}
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -624,6 +613,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
@@ -643,6 +633,7 @@ const SidePannelFeatures = ({
 
       <div>
         <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseDown={(e) => handleClickWithNewTab(e, '/history', () => {
             try {
               if (onViewChange && typeof onViewChange === 'function') {
@@ -701,50 +692,8 @@ const SidePannelFeatures = ({
         </div> */}
 
       {/* Bottom: credits + profile */}
-      <div className='mt-auto pb-3'>
-        <div className='flex items-center gap-2 px-2'>
-          
-          <div
-            onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.ACCOUNT_MANAGEMENT, () => router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
-              router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
-            }
-          }}
-            className={`flex items-center gap-2 p-0 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
-            role='button'
-            aria-label='Profile'
-          >
-            <div className='w-[30px] h-[30px] rounded-full overflow-hidden bg-white/10 flex items-center justify-center flex-none'>
-              {userData?.photoURL && !avatarFailed ? (
-                <img
-                  src={userData.photoURL}
-                  alt='profile'
-                  referrerPolicy='no-referrer'
-                  onError={() => setAvatarFailed(true)}
-                  className='w-full h-full object-cover'
-                />
-              ) : (
-                <Image src="/icons/person.svg" alt='profile' width={24} height={24} className='w-5 h-5' unoptimized />
-              )}
-            </div>
-            {/* <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Profile</span> */}
-          </div>
-
-          <button
-            onClick={() => refreshCredits()}
-            className='text-xs flex items-center gap-2 bg-white/15 border border-white/15 backdrop-blur-3xl rounded-full shadow-xl p-1 px-0 overflow-hidden w-0 opacity-0 pointer-events-none group-hover:w-auto group-hover:px-2 group-hover:opacity-100 group-hover:pointer-events-auto transition-all'
-            title={`Credits: ${creditBalance ?? userData?.credits ?? 0}${creditsError ? ` (Error: ${creditsError})` : ''}`}
-          >
-            {creditsLoading ? '...' : (creditBalance ?? userData?.credits ?? 0)}
-            <Image className='cursor-pointer w-4 h-4' src="/icons/coinswhite.svg" alt='credits' width={16} height={16} unoptimized />
-          </button>
-        </div>
-      </div>
-
-
-      </div>
+   
+    </div>
     </>
   )
 }

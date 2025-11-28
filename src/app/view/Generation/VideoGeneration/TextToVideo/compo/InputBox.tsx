@@ -46,6 +46,8 @@ import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
+import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
+import AssetViewerModal from '@/components/AssetViewerModal';
 
 
 interface InputBoxProps {
@@ -62,6 +64,17 @@ const InputBox = (props: InputBoxProps = {}) => {
     entry: HistoryEntry;
     video: any;
   } | null>(null);
+  const [assetViewer, setAssetViewer] = useState<{
+    isOpen: boolean;
+    assetUrl: string;
+    assetType: 'image' | 'video' | 'audio';
+    title: string;
+  }>({
+    isOpen: false,
+    assetUrl: '',
+    assetType: 'image',
+    title: 'Uploaded Asset'
+  });
   const inputEl = useRef<HTMLTextAreaElement>(null);
   
   // Helper functions for proxy URLs (same as History.tsx)
@@ -80,24 +93,24 @@ const InputBox = (props: InputBoxProps = {}) => {
     return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
   };
 
-  // Video generation state
-  const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("seedance-1.0-lite-t2v");
-  const [frameSize, setFrameSize] = useState("16:9");
-  const [duration, setDuration] = useState(6);
+  // Video generation state - persisted in localStorage
+  const [prompt, setPrompt] = usePersistedGenerationState("prompt", "", "text-to-video");
+  const [selectedModel, setSelectedModel] = usePersistedGenerationState("selectedModel", "seedance-1.0-lite-t2v", "text-to-video");
+  const [frameSize, setFrameSize] = usePersistedGenerationState("frameSize", "16:9", "text-to-video");
+  const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
 
   // Debug uploadedImages changes
   useEffect(() => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
   }, [uploadedImages]);
-  const [uploadedVideo, setUploadedVideo] = useState<string>("");
-  const [uploadedAudio, setUploadedAudio] = useState<string>(""); // For WAN models audio file
-  const [uploadedCharacterImage, setUploadedCharacterImage] = useState<string>(""); // For WAN 2.2 Animate Replace character image
+  const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState("uploadedVideo", "", "text-to-video");
+  const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState("uploadedAudio", "", "text-to-video"); // For WAN models audio file
+  const [uploadedCharacterImage, setUploadedCharacterImage] = usePersistedGenerationState("uploadedCharacterImage", "", "text-to-video"); // For WAN 2.2 Animate Replace character image
   const [sourceHistoryEntryId, setSourceHistoryEntryId] = useState<string>(""); // For Sora 2 Remix source video
-  const [references, setReferences] = useState<string[]>([]);
-  const [generationMode, setGenerationMode] = useState<"text_to_video" | "image_to_video" | "video_to_video">("text_to_video");
+  const [references, setReferences] = usePersistedGenerationState<string[]>("references", [], "text-to-video");
+  const [generationMode, setGenerationMode] = usePersistedGenerationState<"text_to_video" | "image_to_video" | "video_to_video">("generationMode", "text_to_video", "text-to-video");
   const [error, setError] = useState("");
 
   // Handle image parameter from URL for image-to-video mode
@@ -147,31 +160,31 @@ const InputBox = (props: InputBoxProps = {}) => {
   const libraryImageLoadingRef = useRef<boolean>(false);
   const libraryImageInitRef = useRef<boolean>(false);
 
-  // MiniMax specific state
-  const [selectedResolution, setSelectedResolution] = useState("1080P");
-  const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] = useState(6);
+  // MiniMax specific state - persisted
+  const [selectedResolution, setSelectedResolution] = usePersistedGenerationState("selectedResolution", "1080P", "text-to-video");
+  const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] = usePersistedGenerationState("selectedMiniMaxDuration", 6, "text-to-video");
   const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false);
   const [durationDropdownOpen, setDurationDropdownOpen] = useState(false);
   const [cameraMovementPopupOpen, setCameraMovementPopupOpen] = useState(false);
-  const [selectedCameraMovements, setSelectedCameraMovements] = useState<string[]>([]);
-  const [lastFrameImage, setLastFrameImage] = useState<string>(""); // For MiniMax-Hailuo-02 last frame
-  const [selectedQuality, setSelectedQuality] = useState("720p"); // For Veo3 quality
+  const [selectedCameraMovements, setSelectedCameraMovements] = usePersistedGenerationState<string[]>("selectedCameraMovements", [], "text-to-video");
+  const [lastFrameImage, setLastFrameImage] = usePersistedGenerationState("lastFrameImage", "", "text-to-video"); // For MiniMax-Hailuo-02 last frame
+  const [selectedQuality, setSelectedQuality] = usePersistedGenerationState("selectedQuality", "720p", "text-to-video"); // For Veo3 quality
   // Kling specific state (v2.1 mode determines resolution): 'standard'->720p, 'pro'->1080p
-  const [klingMode, setKlingMode] = useState<'standard' | 'pro'>('standard');
+  const [klingMode, setKlingMode] = usePersistedGenerationState<'standard' | 'pro'>("klingMode", 'standard', "text-to-video");
   // Seedance specific state
-  const [seedanceResolution, setSeedanceResolution] = useState("1080p"); // For Seedance resolution (480p/720p/1080p)
+  const [seedanceResolution, setSeedanceResolution] = usePersistedGenerationState("seedanceResolution", "1080p", "text-to-video"); // For Seedance resolution (480p/720p/1080p)
   // PixVerse specific state
-  const [pixverseQuality, setPixverseQuality] = useState("720p"); // For PixVerse quality (360p/540p/720p/1080p)
+  const [pixverseQuality, setPixverseQuality] = usePersistedGenerationState("pixverseQuality", "720p", "text-to-video"); // For PixVerse quality (360p/540p/720p/1080p)
   // WAN 2.2 Animate Replace specific state
-  const [wanAnimateResolution, setWanAnimateResolution] = useState<"720" | "480">("720"); // For WAN Animate Replace resolution
-  const [wanAnimateRefertNum, setWanAnimateRefertNum] = useState<1 | 5>(1); // For WAN Animate Replace reference frames
-  const [wanAnimateGoFast, setWanAnimateGoFast] = useState<boolean>(true); // For WAN Animate Replace go_fast
-  const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = useState<boolean>(true); // For WAN Animate Replace merge_audio
-  const [wanAnimateFps, setWanAnimateFps] = useState<number>(24); // For WAN Animate Replace frames_per_second
-  const [wanAnimateSeed, setWanAnimateSeed] = useState<number | undefined>(undefined); // For WAN Animate Replace seed (optional)
+  const [wanAnimateResolution, setWanAnimateResolution] = usePersistedGenerationState<"720" | "480">("wanAnimateResolution", "720", "text-to-video"); // For WAN Animate Replace resolution
+  const [wanAnimateRefertNum, setWanAnimateRefertNum] = usePersistedGenerationState<1 | 5>("wanAnimateRefertNum", 1, "text-to-video"); // For WAN Animate Replace reference frames
+  const [wanAnimateGoFast, setWanAnimateGoFast] = usePersistedGenerationState("wanAnimateGoFast", true, "text-to-video"); // For WAN Animate Replace go_fast
+  const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = usePersistedGenerationState("wanAnimateMergeAudio", true, "text-to-video"); // For WAN Animate Replace merge_audio
+  const [wanAnimateFps, setWanAnimateFps] = usePersistedGenerationState("wanAnimateFps", 24, "text-to-video"); // For WAN Animate Replace frames_per_second
+  const [wanAnimateSeed, setWanAnimateSeed] = usePersistedGenerationState<number | undefined>("wanAnimateSeed", undefined, "text-to-video"); // For WAN Animate Replace seed (optional)
   // LTX and audio controls
-  const [fps, setFps] = useState<25 | 50>(25);
-  const [generateAudio, setGenerateAudio] = useState<boolean>(true);
+  const [fps, setFps] = usePersistedGenerationState<25 | 50>("fps", 25, "text-to-video");
+  const [generateAudio, setGenerateAudio] = usePersistedGenerationState("generateAudio", true, "text-to-video");
 
   // Timeout refs for auto-close dropdowns
   const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -2087,44 +2100,42 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Clear all inputs and configurations after successful generation
+  // DISABLED: User wants to preserve all inputs after generation
   const clearInputs = () => {
-    // Clear prompt
-    setPrompt("");
+    // PRESERVE INPUTS: All inputs are now preserved after generation
+    // Users can continue generating with the same settings or modify them as needed
+    // No clearing of prompt, uploaded assets, or configurations
+    return;
     
-    // Clear all uploaded assets
-    setUploadedImages([]);
-    setUploadedVideo("");
-    setUploadedAudio("");
-    setUploadedCharacterImage("");
-    setSourceHistoryEntryId("");
-    setReferences([]);
-    setLastFrameImage("");
-    
-    // Reset generation mode
-    setGenerationMode("text_to_video");
-    
-    // Reset to default configurations
-    setSelectedModel("seedance-1.0-lite-t2v");
-    setFrameSize("16:9");
-    setDuration(6);
-    setSelectedResolution("1080P");
-    setSelectedMiniMaxDuration(6);
-    setSelectedQuality("720p");
-    setKlingMode('standard');
-    setSeedanceResolution("1080p");
-    setPixverseQuality("720p");
-    setWanAnimateResolution("720");
-    setWanAnimateRefertNum(1);
-    setWanAnimateGoFast(true);
-    setWanAnimateMergeAudio(true);
-    setWanAnimateFps(24);
-    setWanAnimateSeed(undefined);
-    setFps(25);
-    setGenerateAudio(true);
-    setSelectedCameraMovements([]);
-    
-    // Clear error
-    setError("");
+    // OLD CODE (disabled):
+    // setPrompt("");
+    // setUploadedImages([]);
+    // setUploadedVideo("");
+    // setUploadedAudio("");
+    // setUploadedCharacterImage("");
+    // setSourceHistoryEntryId("");
+    // setReferences([]);
+    // setLastFrameImage("");
+    // setGenerationMode("text_to_video");
+    // setSelectedModel("seedance-1.0-lite-t2v");
+    // setFrameSize("16:9");
+    // setDuration(6);
+    // setSelectedResolution("1080P");
+    // setSelectedMiniMaxDuration(6);
+    // setSelectedQuality("720p");
+    // setKlingMode('standard');
+    // setSeedanceResolution("1080p");
+    // setPixverseQuality("720p");
+    // setWanAnimateResolution("720");
+    // setWanAnimateRefertNum(1);
+    // setWanAnimateGoFast(true);
+    // setWanAnimateMergeAudio(true);
+    // setWanAnimateFps(24);
+    // setWanAnimateSeed(undefined);
+    // setFps(25);
+    // setGenerateAudio(true);
+    // setSelectedCameraMovements([]);
+    // setError("");
   };
 
   // Handle video generation
@@ -4784,20 +4795,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                       <div
                         className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                         onClick={() => {
-                          const previewEntry: HistoryEntry = {
-                            id: `preview-${index}`,
-                            prompt: "Uploaded Image",
-                            model: "preview",
-                            frameSize: "1:1",
-                            images: [{ id: `img-${index}`, url: image, originalUrl: image, firebaseUrl: image }],
-                            status: "completed",
-                            timestamp: new Date().toISOString(),
-                            createdAt: new Date().toISOString(),
-                            imageCount: 1,
-                            generationType: "text-to-video" as const,
-                            style: undefined
-                          };
-                          setPreview({ entry: previewEntry, video: image });
+                          setAssetViewer({
+                            isOpen: true,
+                            assetUrl: image,
+                            assetType: 'image',
+                            title: `Uploaded Image ${index + 1}`
+                          });
                         }}
                       >
                         <img
@@ -4831,20 +4834,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                   <div
                     className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                     onClick={() => {
-                      const previewEntry: HistoryEntry = {
-                        id: "preview-video",
-                        prompt: "Uploaded Video",
-                        model: "preview",
-                        frameSize: "16:9",
-                        images: [{ id: "video-1", url: uploadedVideo, originalUrl: uploadedVideo, firebaseUrl: uploadedVideo }],
-                        status: "completed",
-                        timestamp: new Date().toISOString(),
-                        createdAt: new Date().toISOString(),
-                        imageCount: 1,
-                        generationType: "text-to-video" as const,
-                        style: undefined
-                      };
-                      setPreview({ entry: previewEntry, video: uploadedVideo });
+                      setAssetViewer({
+                        isOpen: true,
+                        assetUrl: uploadedVideo,
+                        assetType: 'video',
+                        title: 'Uploaded Video'
+                      });
                     }}
                   >
                     <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
@@ -4882,20 +4877,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                   <div
                     className="w-32 h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                     onClick={() => {
-                      const previewEntry: HistoryEntry = {
-                        id: "preview-character",
-                        prompt: "Character Image",
-                        model: "preview",
-                        frameSize: "1:1",
-                        images: [{ id: "char-1", url: uploadedCharacterImage, originalUrl: uploadedCharacterImage, firebaseUrl: uploadedCharacterImage }],
-                        status: "completed",
-                        timestamp: new Date().toISOString(),
-                        createdAt: new Date().toISOString(),
-                        imageCount: 1,
-                        generationType: "text-to-video" as const,
-                        style: undefined
-                      };
-                      setPreview({ entry: previewEntry, video: uploadedCharacterImage });
+                      setAssetViewer({
+                        isOpen: true,
+                        assetUrl: uploadedCharacterImage,
+                        assetType: 'image',
+                        title: 'Character Image'
+                      });
                     }}
                   >
                     <img
@@ -5739,6 +5726,15 @@ const InputBox = (props: InputBoxProps = {}) => {
           onClose={() => setPreview(null)}
         />
       )}
+
+      {/* Asset Viewer Modal for uploaded assets */}
+      <AssetViewerModal
+        isOpen={assetViewer.isOpen}
+        onClose={() => setAssetViewer(prev => ({ ...prev, isOpen: false }))}
+        assetUrl={assetViewer.assetUrl}
+        assetType={assetViewer.assetType}
+        title={assetViewer.title}
+      />
 
       {/* UploadModal for image and reference uploads */}
       {uploadModalType !== 'video' && (() => {

@@ -205,9 +205,7 @@ export default function SignInForm() {
         console.log("✅ Login successful!")
         console.log("👤 User:", user)
 
-        // Show success toast
-        toast.success('Login successful! Welcome back!', { duration: 2500 })
-
+        // Don't show toast here - it will be shown on HomePage after navigation for better UX
         // Optionally store ID token (helps with Bearer-first APIs); safe to proceed without it since cookie is set
         try {
           if (passwordLoginIdToken && typeof passwordLoginIdToken === 'string') {
@@ -217,6 +215,12 @@ export default function SignInForm() {
 
         // Store user profile; rely on httpOnly session cookie for auth
         try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
+
+        // Track that email/password was used (for "Last Used" tag)
+        try {
+          localStorage.setItem('lastAuthMethod', 'email')
+          setLastAuthMethod('email') // Update state immediately
+        } catch {}
 
         // Persist toast flag for next page (faster redirect)
   try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
@@ -483,6 +487,12 @@ export default function SignInForm() {
               const createdUser = response.data?.data?.user || response.data?.user || response.data
               localStorage.setItem("user", JSON.stringify(createdUser))
               try { localStorage.setItem('authToken', actualIdToken) } catch {}
+              
+              // Track that email/password was used (for "Last Used" tag)
+              try {
+                localStorage.setItem('lastAuthMethod', 'email')
+              } catch {}
+              
               toast.success('OTP verified successfully! Please choose a username.', { duration: 3000 })
               setShowUsernameForm(true)
               setOtp("")
@@ -622,10 +632,11 @@ export default function SignInForm() {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
-      // Track that Google was used (for "Last Used" tag)
-      try {
-        localStorage.setItem('lastAuthMethod', 'google')
-      } catch {}
+        // Track that Google was used (for "Last Used" tag)
+        try {
+          localStorage.setItem('lastAuthMethod', 'google')
+          setLastAuthMethod('google') // Update state immediately
+        } catch {}
 
       console.log("✅ Google popup successful!")
       console.log("👤 Google user:", user.email)
@@ -678,9 +689,7 @@ export default function SignInForm() {
 
           console.log("✅ Session created, redirecting...")
           
-          // Show success toast
-          toast.success('Login successful! Welcome back!', { duration: 2500 })
-          
+          // Don't show toast here - it will be shown on HomePage after navigation for better UX
           // Defer toast to Home page: mark a flag so Home shows a success message after redirect
           try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
 
@@ -805,6 +814,12 @@ export default function SignInForm() {
           setShowUsernameForm(false)
           setShowRedeemCodeForm(true)
           setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
+          
+          // Track that email/password was used (for "Last Used" tag) - already set during OTP verification, but ensure it's set here too
+          try {
+            localStorage.setItem('lastAuthMethod', 'email')
+          } catch {}
+          
           toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
         }
 
@@ -1029,14 +1044,30 @@ export default function SignInForm() {
   }
 
 
-  // Check if user has used Google before (for "Last Used" tag)
-  const [hasUsedGoogle, setHasUsedGoogle] = useState(false)
+  // Check which authentication method was last used (for "Last Used" tag)
+  const [lastAuthMethod, setLastAuthMethod] = useState<'google' | 'email' | null>(null)
   useEffect(() => {
-    // Check localStorage for previous Google sign-in
-    try {
-      const lastAuth = localStorage.getItem('lastAuthMethod')
-      setHasUsedGoogle(lastAuth === 'google')
-    } catch {}
+    // Check localStorage for previous authentication method
+    const updateLastAuthMethod = () => {
+      try {
+        const lastAuth = localStorage.getItem('lastAuthMethod')
+        if (lastAuth === 'google' || lastAuth === 'email') {
+          setLastAuthMethod(lastAuth as 'google' | 'email')
+        } else {
+          setLastAuthMethod(null)
+        }
+      } catch {}
+    }
+    
+    // Initial check
+    updateLastAuthMethod()
+    
+    // Listen for storage changes (when user logs in/out in another tab)
+    window.addEventListener('storage', updateLastAuthMethod)
+    
+    return () => {
+      window.removeEventListener('storage', updateLastAuthMethod)
+    }
   }, [])
 
   return (
@@ -1303,7 +1334,7 @@ export default function SignInForm() {
 
               {/* Google Sign-in Button First (Krea Style - Dark) */}
               <div className="relative">
-                {hasUsedGoogle && (
+                {lastAuthMethod === 'google' && (
                   <div className="absolute -top-2 right-0 z-10">
                     <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
                   </div>
@@ -1324,6 +1355,15 @@ export default function SignInForm() {
                 <span className="text-gray-500 text-sm font-medium">OR</span>
                 <div className="flex-grow h-px bg-gray-700"></div>
               </div>
+
+              {/* Email/Password Form - Show "Last Used" badge if email was last used */}
+              {lastAuthMethod === 'email' && (
+                <div className="relative -mb-2">
+                  <div className="absolute -top-2 right-0 z-10">
+                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
+                  </div>
+                </div>
+              )}
 
               {/* Error Message (Dark) */}
               {error && (
@@ -1520,7 +1560,7 @@ export default function SignInForm() {
             <>
               {/* Google Sign-in Button First (Krea Style - Dark) */}
               <div className="relative">
-                {hasUsedGoogle && (
+                {lastAuthMethod === 'google' && (
                   <div className="absolute -top-2 right-0 z-10">
                     <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
                   </div>
@@ -1541,6 +1581,15 @@ export default function SignInForm() {
                 <span className="text-gray-500 text-sm font-medium">OR</span>
                 <div className="flex-grow h-px bg-gray-700"></div>
               </div>
+
+              {/* Email/Password Form - Show "Last Used" badge if email was last used */}
+              {lastAuthMethod === 'email' && (
+                <div className="relative -mb-2">
+                  <div className="absolute -top-2 right-0 z-10">
+                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
+                  </div>
+                </div>
+              )}
 
               {/* Email Form (Krea Style - Dark) */}
               <form onSubmit={handleSendOtp} className="space-y-4">

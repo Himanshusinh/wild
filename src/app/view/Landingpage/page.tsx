@@ -68,7 +68,12 @@ const LandingPage: React.FC = () => {
       const queryFlag = search.get('toast')
       if (!logoutToastShown.current && (flag === 'LOGOUT_SUCCESS' || queryFlag === 'LOGOUT_SUCCESS')) {
         logoutToastShown.current = true
-        import('react-hot-toast').then(m => m.default.success('Logged out'))
+        // Use setTimeout to ensure toast shows after page is fully loaded
+        setTimeout(() => {
+          import('react-hot-toast').then(m => {
+            m.default.success('Logged out successfully', { duration: 2500 })
+          })
+        }, 300)
         try { localStorage.removeItem(key) } catch {}
         // Clean the query param without reload
         if (queryFlag) {

@@ -50,6 +50,7 @@ import FileTypeDropdown from "./FileTypeDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
+import AssetViewerModal from '@/components/AssetViewerModal';
 const UpscalePopup = dynamic(() => import("./UpscalePopup"), { ssr: false });
 const RemoveBgPopup = dynamic(() => import("./RemoveBgPopup"), { ssr: false });
 const EditPopup = dynamic(() => import("./EditPopup"), { ssr: false });
@@ -103,6 +104,17 @@ const InputBox = () => {
     entry: HistoryEntry;
     image: any;
   } | null>(null);
+  const [assetViewer, setAssetViewer] = useState<{
+    isOpen: boolean;
+    assetUrl: string;
+    assetType: 'image' | 'video' | 'audio';
+    title: string;
+  }>({
+    isOpen: false,
+    assetUrl: '',
+    assetType: 'image',
+    title: 'Uploaded Asset'
+  });
   const [isUpscaleOpen, setIsUpscaleOpen] = useState(false);
   const [isRemoveBgOpen, setIsRemoveBgOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -1234,26 +1246,24 @@ const InputBox = () => {
   });
 
   // Function to clear input after successful generation
+  // DISABLED: User wants to preserve all inputs after generation
   // Note: Selected characters and uploaded images are NOT cleared - they remain for easy remixing
   const clearInputs = () => {
-    // Clear prompt
-    dispatch(setPrompt(""));
-
-    // Clear uploaded images
-    dispatch(setUploadedImages([]));
-
-    // Clear selected characters
-    dispatch(clearSelectedCharacters());
-
-    // Reset file input
-    if (inputEl.current) {
-      inputEl.current.value = "";
-    }
-
-    // Clear contentEditable element
-    if (contentEditableRef.current) {
-      contentEditableRef.current.textContent = "";
-    }
+    // PRESERVE INPUTS: All inputs are now preserved after generation
+    // Users can continue generating with the same settings or modify them as needed
+    // No clearing of prompt, uploaded images, or selected characters
+    return;
+    
+    // OLD CODE (disabled):
+    // dispatch(setPrompt(""));
+    // dispatch(setUploadedImages([]));
+    // dispatch(clearSelectedCharacters());
+    // if (inputEl.current) {
+    //   inputEl.current.value = "";
+    // }
+    // if (contentEditableRef.current) {
+    //   contentEditableRef.current.textContent = "";
+    // }
   };
 
   // Function to auto-adjust textarea height
@@ -3641,7 +3651,13 @@ const InputBox = () => {
                   <div className="relative group">
                     <button
                       onClick={() => {
+                        // Clear prompt when user explicitly clicks the clear button
                         dispatch(setPrompt(''));
+                        // Also clear the contentEditable element
+                        if (contentEditableRef.current) {
+                          contentEditableRef.current.textContent = '';
+                        }
+                        // Focus the input after clearing
                         if (inputEl.current) {
                           inputEl.current.focus();
                         }
@@ -3710,7 +3726,15 @@ const InputBox = () => {
                           key={i}
                           data-image-index={i}
                           title={`Image ${i + 1} (index ${i})`}
-                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110`}
+                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: u,
+                              assetType: 'image',
+                              title: `Uploaded Image ${i + 1}`
+                            });
+                          }}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -4070,6 +4094,15 @@ const InputBox = () => {
       {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
       {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
+      
+      {/* Asset Viewer Modal for uploaded assets */}
+      <AssetViewerModal
+        isOpen={assetViewer.isOpen}
+        onClose={() => setAssetViewer(prev => ({ ...prev, isOpen: false }))}
+        assetUrl={assetViewer.assetUrl}
+        assetType={assetViewer.assetType}
+        title={assetViewer.title}
+      />
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isRemoveBgOpen && <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isEditOpen && (
