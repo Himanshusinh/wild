@@ -174,7 +174,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${frameSize !== '1:1'
+        className={`h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${frameSize !== '1:1'
             ? 'bg-transparent text-white/90'
             : 'bg-transparent text-white/90 hover:bg-white/5'
           }`}
@@ -184,7 +184,27 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'frameSize' ? 'rotate-180' : ''}`} />
       </button>
       {activeDropdown === 'frameSize' && (
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 pb-2 pt-2`}>
+        <div
+          className={`
+            md:absolute md:${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} md:left-0 md:w-44 md:bg-black/80 md:backdrop-blur-xl md:rounded-xl md:ring-1 md:ring-white/30 md:pb-2 md:pt-2 md:z-50 z-[70] md:shadow-2xl
+            fixed bg-black/90 backdrop-blur-xl shadow-2xl left-0 right-0 top-0 w-full z-[9999] rounded-b-xl ring-1 ring-white/30 pb-2 pt-2
+          `}
+          style={window.innerWidth <= 768 ? {
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            top: 0,
+            width: '100vw',
+            zIndex: 9999,
+            borderRadius: '0 0 16px 16px',
+            maxHeight: '50vh',
+            minHeight: 120,
+            overflowY: 'auto',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+          } : {}}
+        >
+
+
           {frameSizes.map((size) => (
             <button
               key={size.value}

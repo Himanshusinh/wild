@@ -142,7 +142,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="Z-50 h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
+        className="Z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
       >
         <Cpu className="w-4 h-4 mr-1" />
         {filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}

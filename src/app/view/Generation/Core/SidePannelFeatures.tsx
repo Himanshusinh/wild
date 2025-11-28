@@ -33,6 +33,7 @@ const SidePannelFeatures = ({
   const router = useRouter();
   const [showBrandingDropdown, setShowBrandingDropdown] = React.useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const brandingRef = React.useRef<HTMLDivElement>(null);
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
@@ -143,7 +144,13 @@ const SidePannelFeatures = ({
       console.error('Error in handleGenerationTypeChange:', error);
     }
     setShowBrandingDropdown(false);
+    closeMobileSidebar();
     await navigateForType(type);
+  };
+
+  // Helper to close mobile sidebar
+  const closeMobileSidebar = () => {
+    setIsMobileSidebarOpen(false);
   };
 
   const handleImageGenerationClick = () => {
@@ -193,6 +200,36 @@ const SidePannelFeatures = ({
     }
   }, [isSidebarHovered]);
 
+  // Close mobile sidebar when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isMobileSidebarOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
+        // Check if click is on the hamburger button (it's outside the sidebar)
+        const target = event.target as HTMLElement;
+        if (!target.closest('[data-hamburger-button]')) {
+          setIsMobileSidebarOpen(false);
+        }
+      }
+    };
+
+    if (isMobileSidebarOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Prevent body scroll when sidebar is open on mobile
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = '';
+    };
+  }, [isMobileSidebarOpen]);
+
   const isBrandingActive = pathname?.includes('/logo') ||
     pathname?.includes('/sticker-generation') ||
     pathname?.includes('/mockup-generation') ||
@@ -200,30 +237,66 @@ const SidePannelFeatures = ({
 
   const isVideoEditActive = pathname === '/edit-video' || pathname?.startsWith('/edit-video') || pathname?.includes('/EditVideo') || pathname?.includes('edit-video') || pathname?.includes('/video-edit');
 
-  const labelClasses =
-    'text-white hidden md:inline-block whitespace-nowrap transition-all duration-300 ease-out ' +
-    'md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] ' +
-    'md:group-hover:opacity-100 md:group-hover:translate-x-0';
-  const taglineClasses =
-    'text-white hidden md:inline-block whitespace-nowrap transition-all duration-300 ease-out ' +
-    'md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] ' +
-    'md:group-hover:opacity-100 md:group-hover:translate-x-0';
+  // Labels: visible on mobile when sidebar is open, hidden on desktop until hover
+  const labelClasses = `text-white whitespace-nowrap transition-all duration-300 ease-out ${
+    isMobileSidebarOpen ? 'inline-block' : 'hidden'
+  } md:inline-block md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] md:group-hover:opacity-100 md:group-hover:translate-x-0`;
+  const taglineClasses = `text-white whitespace-nowrap transition-all duration-300 ease-out ${
+    isMobileSidebarOpen ? 'inline-block' : 'hidden'
+  } md:inline-block md:max-w-0 md:opacity-0 md:-translate-x-4 md:group-hover:max-w-[180px] md:group-hover:opacity-100 md:group-hover:translate-x-0`;
 
   return (
-    <div
-      ref={sidebarRef}
-      onMouseEnter={() => setIsSidebarHovered(true)}
-      onMouseLeave={() => setIsSidebarHovered(false)}
-      className='fixed top-0 bottom-0 left-0 flex flex-col gap-1 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-[width] text-white duration-300 md:w-[68px] w-[50px] hover:w-60 z-[50] shadow-2xl'
-      style={{
-        // borderTopLeftRadius: '16px',
-        // borderBottomLeftRadius: '16px',
-        // borderTopRightRadius: '16px',
-        // borderBottomRightRadius: '16px'
-      }}
-    >
+    <>
+      {/* Hamburger Menu Button - Only visible on mobile/tablet */}
+      <button
+        data-hamburger-button
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        className='fixed top-0 left-1 z-[100] md:hidden flex items-center justify-center w-10 h-10   rounded-lg  text-white hover:bg-white/20 transition-colors shadow-xl'
+        aria-label='Toggle menu'
+      >
+        {isMobileSidebarOpen ? (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        )}
+      </button>
+
+      {/* Mobile Overlay - Only visible when sidebar is open on mobile */}
+      {isMobileSidebarOpen && (
+        <div
+          className='fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] md:hidden'
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        ref={sidebarRef}
+        onMouseEnter={() => setIsSidebarHovered(true)}
+        onMouseLeave={() => setIsSidebarHovered(false)}
+        className={`fixed top-0 bottom-0 left-0 flex flex-col gap-1 px-3 md:py-6 py-0 md:px-3 bg-transparent backdrop-blur-3xl group transition-all text-white duration-300 shadow-2xl
+          ${isMobileSidebarOpen 
+            ? 'w-60 translate-x-0 z-[56]' 
+            : '-translate-x-full md:translate-x-0 z-[50]'
+          }
+          md:w-[68px] md:hover:w-60 md:z-[50]
+        `}
+        style={{
+          // borderTopLeftRadius: '16px',
+          // borderBottomLeftRadius: '16px',
+          // borderTopRightRadius: '16px',
+          // borderBottomRightRadius: '16px'
+        }}
+      >
       {/* Logo at the top */}
-      <div className="flex items-center gap-2 md:p-2 px-3 py-1 md:-mt-4 md:mb-4 mb-0 -ml-1">
+      <div className="flex items-center gap-2 md:p-2 px-3 py-1 md:-mt-4 md:mb-0 mb-0 -ml-2 mt-8">
         <div
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
             try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
@@ -233,6 +306,7 @@ const SidePannelFeatures = ({
           })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
               try { dispatch(setCurrentView('landing')); } catch { }
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
@@ -252,6 +326,7 @@ const SidePannelFeatures = ({
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }
               try { dispatch(setCurrentView('landing')); } catch { }
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
@@ -276,6 +351,7 @@ const SidePannelFeatures = ({
             // Handle normal left-click (button 0)
             if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
               e.preventDefault();
+              closeMobileSidebar();
               (async () => {
                 try {
                   await ensureSessionReady(600)
@@ -527,6 +603,7 @@ const SidePannelFeatures = ({
           onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               router.push('/view/ArtStation');
             }
           }}
@@ -550,6 +627,7 @@ const SidePannelFeatures = ({
           onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               router.push(NAV_ROUTES.PRICING);
             }
           }}
@@ -577,6 +655,7 @@ const SidePannelFeatures = ({
           })}
           onClick={(e) => {
             if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
               try {
                 if (onViewChange && typeof onViewChange === 'function') {
                   onViewChange('history');
@@ -627,11 +706,12 @@ const SidePannelFeatures = ({
           
           <div
             onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.ACCOUNT_MANAGEMENT, () => router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT))}
-            onClick={(e) => {
-              if (!e.ctrlKey && !e.metaKey) {
-                router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
-              }
-            }}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
+              router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
+            }
+          }}
             className={`flex items-center gap-2 p-0 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
             role='button'
             aria-label='Profile'
@@ -664,7 +744,8 @@ const SidePannelFeatures = ({
       </div>
 
 
-    </div>
+      </div>
+    </>
   )
 }
 
