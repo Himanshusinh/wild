@@ -586,7 +586,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       }
                     }
                   }}
-                      className="grid grid-cols-3 md:grid-cols-5 md:gap-3 gap-2 md:h-[50vh] h-[40vh] p-0 md:p-2 pt-1 md:pt-0 overflow-y-auto custom-scrollbar pr-1"
+                      className="grid grid-cols-3 md:grid-cols-5 md:gap-3 gap-2 md:h-[50vh] h-[40vh] p-1 md:p-2 pt-1 md:pt-0 overflow-y-auto custom-scrollbar pr-1"
                     >
                       {displayItems.length === 0 ? (
                         <div className="col-span-full flex items-center justify-center md:h-32 h-24 text-white/60">
