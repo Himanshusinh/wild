@@ -106,7 +106,7 @@ const Nav = () => {
   }
 
   return (
-    <div className='fixed md:top-1 md:left-18 left-4 md:right-4 right-0 z-40 -top-1 '>
+    <div className='fixed md:top-1 md:left-18 left-4 md:right-4 right-0 z-40 -top-2 '>
       <div className='flex justify-between items-center m-3'>
         <div className=''>
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
