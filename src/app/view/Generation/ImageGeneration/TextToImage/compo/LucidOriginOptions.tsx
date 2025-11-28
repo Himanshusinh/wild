@@ -117,7 +117,7 @@ const LucidOriginOptions = () => {
         </button>
 
       {activeDropdown === 'lucidOriginOptions' && (
-        <div className="absolute bottom-full mb-2 left-0 w-64 bg-black/70 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 md:z-50 z-[70]">
+        <div className="absolute bottom-full mb-2 left-0 w-64 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar">
           {/* Style Selection */}
           <div className="px-4 py-2">
             {/* <div className="text-xs text-white/70 mb-2">Style</div>

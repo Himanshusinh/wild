@@ -47,6 +47,9 @@ import StyleSelector from "./StyleSelector";
 import LucidOriginOptions from "./LucidOriginOptions";
 import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
+import NanoBananaProResolutionDropdown from "./NanoBananaProResolutionDropdown";
+import SeedreamSizeDropdown from "./SeedreamSizeDropdown";
+import Flux2ProResolutionDropdown from "./Flux2ProResolutionDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -3059,8 +3062,8 @@ const InputBox = () => {
         
         /* Simple fixed-size image containers */
         .image-item {
-          min-width: 170px;
-          min-height: 170px;
+          min-width: 165px;
+          min-height: 165px;
           position: relative;
         }
         
@@ -3086,6 +3089,17 @@ const InputBox = () => {
             gap: 12px;
           }
         }
+        
+        /* Allow dropdowns to overflow scrollable containers */
+        .dropdown-container {
+          overflow: visible !important;
+          position: relative;
+        }
+        
+        .dropdown-container > div[class*="absolute"] {
+          position: absolute !important;
+          z-index: 9999 !important;
+        }
       `}</style>
 
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
@@ -3099,7 +3113,7 @@ const InputBox = () => {
 
             {/* Initial loading overlay - show when loading and no entries */}
             {loading && historyEntries.length === 0 && (
-              <div className="fixed top-[64px] md:left-[4.5rem] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="fixed top-[64px] md:left-[4.5rem] left-0 md:right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
                 <GifLoader size={72} alt="Loading" />
                 <div className="text-white text-lg text-center">Loading generations...</div>
@@ -3112,7 +3126,7 @@ const InputBox = () => {
             {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
             {/* History Entries - Grouped by Date */}
-            <div className=" space-y-8 md:px-0 px-5 ">
+            <div className=" space-y-8 md:px-0 px-2 ">
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-4">
                   {/* Date Header */}
@@ -3499,7 +3513,7 @@ const InputBox = () => {
           </div>
         </div>
       </div>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[90%] md:max-w-[900px] max-w-[95%] z-[50] h-auto">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[95%] md:max-w-[900px] max-w-[95%] z-[50] h-auto">
         <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch gap-3">
@@ -3849,7 +3863,7 @@ const InputBox = () => {
             </div>
 
             {/* Mobile/Tablet: Second row - Other dropdowns */}
-            <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto overflow-y-visible no-scrollbar relative" style={{ zIndex: 70 }}>
+            <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative" style={{ zIndex: 70 }}>
               <ImageCountDropdown />
               <FrameSizeDropdown />
               <StyleSelector />
@@ -3858,89 +3872,26 @@ const InputBox = () => {
               <FileTypeDropdown />
               {selectedModel === 'google/nano-banana-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => dispatch(toggleDropdown('nanoBananaProResolution'))}
-                        className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                      >
-                        {nanoBananaProResolution}
-                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {activeDropdown === 'nanoBananaProResolution' && (
-                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 md:z-50 z-[70]`}>
-                          {['1K', '2K', '4K'].map((opt) => (
-                            <button
-                              key={opt}
-                              onClick={(e) => { e.stopPropagation(); setNanoBananaProResolution(opt as '1K' | '2K' | '4K'); dispatch(toggleDropdown('')); }}
-                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${nanoBananaProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                            >
-                              <span>{opt}</span>
-                              {nanoBananaProResolution === opt && (
-                                <span className="w-2 h-2 bg-black rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <NanoBananaProResolutionDropdown
+                      resolution={nanoBananaProResolution}
+                      onResolutionChange={setNanoBananaProResolution}
+                    />
                   </div>
                 )}
                 {selectedModel === 'flux-2-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => dispatch(toggleDropdown('flux2ProResolution'))}
-                        className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                      >
-                        {flux2ProResolution}
-                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'flux2ProResolution' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {activeDropdown === 'flux2ProResolution' && (
-                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 md:z-50 z-[70]`}>
-                          {['1K', '2K'].map((opt) => (
-                            <button
-                              key={opt}
-                              onClick={(e) => { e.stopPropagation(); setFlux2ProResolution(opt as '1K' | '2K'); dispatch(toggleDropdown('')); }}
-                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${flux2ProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                            >
-                              <span>{opt}</span>
-                              {flux2ProResolution === opt && (
-                                <span className="w-2 h-2 bg-black rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <Flux2ProResolutionDropdown
+                      resolution={flux2ProResolution}
+                      onResolutionChange={setFlux2ProResolution}
+                    />
                   </div>
                 )}
                 {selectedModel === 'seedream-v4' && (
                   <div className="flex items-center gap-2 relative">
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => dispatch(toggleDropdown('seedreamSize'))}
-                        className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                      >
-                        {seedreamSize}
-                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {activeDropdown === 'seedreamSize' && (
-                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 md:z-50 z-[70]`}>
-                          {['1K', '2K', '4K', 'custom'].map((opt) => (
-                            <button
-                              key={opt}
-                              onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
-                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                            >
-                              <span>{opt}</span>
-                              {seedreamSize === opt && (
-                                <span className="w-2 h-2 bg-black rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <SeedreamSizeDropdown
+                      size={seedreamSize}
+                      onSizeChange={setSeedreamSize}
+                    />
                     {seedreamSize === 'custom' && (
                       <>
                         <input
@@ -3979,89 +3930,26 @@ const InputBox = () => {
                 <FileTypeDropdown />
                 {selectedModel === 'google/nano-banana-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => dispatch(toggleDropdown('nanoBananaProResolution'))}
-                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                      >
-                        {nanoBananaProResolution}
-                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {activeDropdown === 'nanoBananaProResolution' && (
-                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                          {['1K', '2K', '4K'].map((opt) => (
-                            <button
-                              key={opt}
-                              onClick={(e) => { e.stopPropagation(); setNanoBananaProResolution(opt as '1K' | '2K' | '4K'); dispatch(toggleDropdown('')); }}
-                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${nanoBananaProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                            >
-                              <span>{opt}</span>
-                              {nanoBananaProResolution === opt && (
-                                <span className="w-2 h-2 bg-black rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <NanoBananaProResolutionDropdown
+                      resolution={nanoBananaProResolution}
+                      onResolutionChange={setNanoBananaProResolution}
+                    />
                   </div>
                 )}
                 {selectedModel === 'flux-2-pro' && (
                   <div className="flex items-center gap-2 relative">
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => dispatch(toggleDropdown('flux2ProResolution'))}
-                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                      >
-                        {flux2ProResolution}
-                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'flux2ProResolution' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {activeDropdown === 'flux2ProResolution' && (
-                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                          {['1K', '2K'].map((opt) => (
-                            <button
-                              key={opt}
-                              onClick={(e) => { e.stopPropagation(); setFlux2ProResolution(opt as '1K' | '2K'); dispatch(toggleDropdown('')); }}
-                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${flux2ProResolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                            >
-                              <span>{opt}</span>
-                              {flux2ProResolution === opt && (
-                                <span className="w-2 h-2 bg-black rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <Flux2ProResolutionDropdown
+                      resolution={flux2ProResolution}
+                      onResolutionChange={setFlux2ProResolution}
+                    />
                   </div>
                 )}
                 {selectedModel === 'seedream-v4' && (
                   <div className="flex items-center gap-2 relative">
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => dispatch(toggleDropdown('seedreamSize'))}
-                        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
-                      >
-                        {seedreamSize}
-                        <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {activeDropdown === 'seedreamSize' && (
-                        <div className={`absolute bottom-full mb-2 left-0 w-18 bg-black/80 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-50`}>
-                          {['1K', '2K', '4K', 'custom'].map((opt) => (
-                            <button
-                              key={opt}
-                              onClick={(e) => { e.stopPropagation(); setSeedreamSize(opt as any); dispatch(toggleDropdown('')); }}
-                              className={`w-18 px-4 py-2 text-left text-[13px] flex items-center justify-between ${seedreamSize === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                            >
-                              <span>{opt}</span>
-                              {seedreamSize === opt && (
-                                <span className="w-2 h-2 bg-black rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <SeedreamSizeDropdown
+                      size={seedreamSize}
+                      onSizeChange={setSeedreamSize}
+                    />
                     {seedreamSize === 'custom' && (
                       <>
                         <input

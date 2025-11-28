@@ -2,39 +2,34 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileImage, ChevronUp } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { setOutputFormat } from '@/store/slices/generationSlice';
 import { toggleDropdown } from '@/store/slices/uiSlice';
 
-type FileTypeDropdownProps = {
+type NanoBananaProResolutionDropdownProps = {
   openDirection?: 'up' | 'down';
+  resolution: '1K' | '2K' | '4K';
+  onResolutionChange: (resolution: '1K' | '2K' | '4K') => void;
 };
 
-const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
+const NanoBananaProResolutionDropdown = ({ 
+  openDirection = 'up',
+  resolution,
+  onResolutionChange
+}: NanoBananaProResolutionDropdownProps) => {
   const dispatch = useAppDispatch();
-  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
-  const outputFormat = useAppSelector((state: any) => state.generation?.outputFormat || 'jpeg');
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; openUp: boolean } | null>(null);
   const [isActiveInstance, setIsActiveInstance] = useState(false);
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
 
-  // Check if current model is an Imagen model
-  const isImagenModel = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
-
-  const fileTypes = [
-    { name: 'JPEG', value: 'jpeg', description: 'Best for photos' },
-    { name: 'PNG', value: 'png', description: 'Best for graphics' },
-    { name: 'WebP', value: 'webp', description: 'Modern format' }
-  ];
+  const options: ('1K' | '2K' | '4K')[] = ['1K', '2K', '4K'];
 
   // Reset active instance when dropdown closes
   useEffect(() => {
-    if (activeDropdown !== 'fileType') {
+    if (activeDropdown !== 'nanoBananaProResolution') {
       setIsActiveInstance(false);
       setDropdownPosition(null);
     }
@@ -44,7 +39,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
   useEffect(() => {
     const updateDropdownPosition = () => {
       // Only render dropdown for the active instance
-      if (activeDropdown === 'fileType' && isActiveInstance && buttonRef.current) {
+      if (activeDropdown === 'nanoBananaProResolution' && isActiveInstance && buttonRef.current) {
         // Check if button is actually visible (not hidden by CSS like display:none or hidden class)
         const computedStyle = window.getComputedStyle(buttonRef.current);
         const isDisplayed = computedStyle.display !== 'none';
@@ -61,7 +56,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
           return;
         }
         
-        const dropdownWidth = 192; // w-48 = 12rem = 192px
+        const dropdownWidth = 72; // w-18 = 4.5rem = 72px
         const spaceAbove = buttonRect.top;
         const spaceBelow = window.innerHeight - buttonRect.bottom;
         
@@ -105,7 +100,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
 
     updateDropdownPosition();
     
-    if (activeDropdown === 'fileType') {
+    if (activeDropdown === 'nanoBananaProResolution') {
       window.addEventListener('scroll', updateDropdownPosition, true);
       window.addEventListener('resize', updateDropdownPosition);
       
@@ -123,7 +118,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
           return;
         }
         // Don't close if clicking inside the dropdown
-        if (target.closest('[data-dropdown="fileType"]')) {
+        if (target.closest('[data-dropdown="nanoBananaProResolution"]')) {
           return;
         }
         // Close the dropdown
@@ -154,7 +149,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
     buttonJustClickedRef.current = true;
     
     // Check current state and toggle accordingly
-    const isCurrentlyOpen = activeDropdown === 'fileType' && isActiveInstance;
+    const isCurrentlyOpen = activeDropdown === 'nanoBananaProResolution' && isActiveInstance;
     
     if (isCurrentlyOpen) {
       // Close the dropdown immediately
@@ -164,7 +159,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
     } else {
       // Open the dropdown
       setIsActiveInstance(true);
-      dispatch(toggleDropdown('fileType'));
+      dispatch(toggleDropdown('nanoBananaProResolution'));
       shouldCloseRef.current = false;
     }
     
@@ -175,75 +170,34 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
     }, 300);
   };
 
-  // Auto-close dropdown after 5 seconds
-  useEffect(() => {
-    if (activeDropdown === 'fileType') {
-      // Clear any existing timeout
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      
-      // Set new timeout for 5 seconds
-      timeoutRef.current = setTimeout(() => {
-        dispatch(toggleDropdown(''));
-      }, 20000);
-    } else {
-      // Clear timeout if dropdown is closed
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [activeDropdown, dispatch]);
-
-  const handleFileTypeSelect = (fileTypeValue: string) => {
-    dispatch(setOutputFormat(fileTypeValue));
+  const handleResolutionSelect = (opt: '1K' | '2K' | '4K') => {
+    onResolutionChange(opt);
     setIsActiveInstance(false);
     dispatch(toggleDropdown(''));
   };
 
-  const selectedFileType = fileTypes.find(ft => ft.value === outputFormat);
-
-  // Don't render if not an Imagen model
-  if (!isImagenModel) {
-    return null;
-  }
-
-  const dropdownContent = activeDropdown === 'fileType' && isActiveInstance && dropdownPosition ? (
+  const dropdownContent = activeDropdown === 'nanoBananaProResolution' && isActiveInstance && dropdownPosition ? (
     <div 
-      data-dropdown="fileType"
-      className="fixed md:w-48 w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999] max-h-150 overflow-y-auto dropdown-scrollbar"
+      data-dropdown="nanoBananaProResolution"
+      className="fixed w-18 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-[9999] max-h-150 overflow-y-auto dropdown-scrollbar"
       style={{
         top: `${dropdownPosition.top}px`,
         left: `${dropdownPosition.left}px`,
         transform: dropdownPosition.openUp ? 'translateY(calc(-100% - 8px))' : 'none',
       }}
     >
-      {fileTypes.map((fileType) => (
+      {options.map((opt) => (
         <button
-          key={fileType.value}
+          key={opt}
           onClick={(e) => {
             e.stopPropagation();
-            handleFileTypeSelect(fileType.value);
+            handleResolutionSelect(opt);
           }}
-          className={`w-full md:px-4 px-2 md:py-2 py-1 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${outputFormat === fileType.value
-            ? 'bg-white text-black'
-            : 'text-white/90 hover:bg-white/10'
-            }`}
+          className={`w-18 md:px-4 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] flex items-center justify-between ${resolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
         >
-          <div className="flex flex-col">
-            <span>{fileType.name}</span>
-            <span className="text-xs opacity-70">{fileType.description}</span>
-          </div>
-          {outputFormat === fileType.value && (
-            <div className="w-2 h-2 bg-black rounded-full"></div>
+          <span>{opt}</span>
+          {resolution === opt && (
+            <span className="w-2 h-2 bg-black rounded-full"></span>
           )}
         </button>
       ))}
@@ -256,11 +210,10 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
         <button
           ref={buttonRef}
           onClick={handleDropdownClick}
-          className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
+          className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
         >
-          <FileImage className="w-4 h-4 mr-1" />
-          {selectedFileType?.name || 'File Type'}
-          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'fileType' ? 'rotate-180' : ''}`} />
+          {resolution}
+          <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'nanoBananaProResolution' ? 'rotate-180' : ''}`} />
         </button>
       </div>
       {typeof window !== 'undefined' && dropdownContent && createPortal(dropdownContent, document.body)}
@@ -268,4 +221,5 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
   );
 };
 
-export default FileTypeDropdown;
+export default NanoBananaProResolutionDropdown;
+
