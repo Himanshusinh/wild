@@ -199,21 +199,16 @@ export default function SignInForm() {
       console.log("📥 Login response data:", response.data)
 
       if (response.data?.data) {
-        // Server sets the session cookie; custom token is optional and not required on client
-        const { user, customToken, passwordLoginIdToken, redirect } = response.data.data
+        // Backend returns user and customToken (not passwordLoginIdToken)
+        const { user, customToken, redirect } = response.data.data
 
         console.log("✅ Login successful!")
         console.log("👤 User:", user)
+        console.log("🔑 customToken exists:", !!customToken)
+        console.log("🔑 customToken type:", typeof customToken)
+        console.log("🔑 customToken length:", customToken?.length)
 
-        // Don't show toast here - it will be shown on HomePage after navigation for better UX
-        // Optionally store ID token (helps with Bearer-first APIs); safe to proceed without it since cookie is set
-        try {
-          if (passwordLoginIdToken && typeof passwordLoginIdToken === 'string') {
-            localStorage.setItem("authToken", passwordLoginIdToken)
-          }
-        } catch {}
-
-        // Store user profile; rely on httpOnly session cookie for auth
+        // Store user profile first
         try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
 
         // Track that email/password was used (for "Last Used" tag)
@@ -222,9 +217,58 @@ export default function SignInForm() {
           setLastAuthMethod('email') // Update state immediately
         } catch {}
 
+        // CRITICAL: Sign into Firebase with customToken, then create session cookie
+        // The login endpoint returns customToken, not passwordLoginIdToken
+        // We must sign into Firebase to get a valid ID token for session creation
+        if (customToken && typeof customToken === 'string') {
+          try {
+            console.log("🔄 Signing into Firebase with customToken...")
+            const userCredential = await signInWithCustomToken(auth, customToken)
+            const idToken = await userCredential.user.getIdToken()
+            
+            console.log("✅ Signed into Firebase successfully")
+            console.log("🔑 ID token obtained, length:", idToken.length)
+            
+            // Store ID token for Bearer token authentication
+            try {
+              localStorage.setItem("authToken", idToken)
+              console.log("💾 ID token stored in localStorage")
+            } catch (err) {
+              console.error("❌ Failed to store token:", err)
+            }
+
+            // Create session cookie with the ID token
+            console.log("🔄 Creating session cookie...")
+            const sessionResponse = await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({ idToken })
+            })
+
+            console.log("🔄 Session response status:", sessionResponse.status)
+            
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json().catch(() => ({}))
+              console.log("✅ Session cookie created successfully", sessionData)
+              console.log("🍪 Cookies after session creation:", document.cookie)
+            } else {
+              const errorText = await sessionResponse.text().catch(() => 'Unknown error')
+              console.error("❌ Failed to create session cookie:", sessionResponse.status, errorText)
+            }
+          } catch (firebaseError) {
+            console.error("❌ Error signing into Firebase or creating session:", firebaseError)
+            // Continue anyway - user can still use the app, but may need to retry
+          }
+        } else {
+          console.warn("⚠️ Skipping Firebase sign-in and session creation - customToken is missing or invalid")
+        }
+
         // Persist toast flag for next page (faster redirect)
-  try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
-  setIsRedirecting(true)
+        try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
+        setIsRedirecting(true)
         setEmail("")
         setPassword("")
 
@@ -1079,8 +1123,8 @@ export default function SignInForm() {
       {/* Form Content - Centered (Krea Style) */}
       <div className="flex-1 flex items-center justify-center overflow-hidden px-6 md:px-12">
         <div className="w-full max-w-md space-y-6">
-          {/* Welcome Section - Only show when not on OTP screen, username screen, or login screen */}
-          {!otpSent && !showUsernameForm && !showLoginForm && (
+          {/* Welcome Section - Only show when not on OTP screen, username screen, login screen, or redeem code screen */}
+          {!otpSent && !showUsernameForm && !showLoginForm && !showRedeemCodeForm && (
             <div className="text-center space-y-4 mb-8">
               {/* Logo - Just above Welcome text */}
               <div className="flex justify-center mb-2">
