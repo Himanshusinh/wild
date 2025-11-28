@@ -146,8 +146,8 @@ const Header = () => {
   return (
     <div className="w-full relative">
       {/* Video wrapper with right padding */}
-      <div className="pr-6 md:pr-12 mt-4 ml-12">
-        <div className="relative overflow-hidden rounded-3xl" style={{ aspectRatio: '16/9', minHeight: '60vh' }}>
+      <div className="px-4 md:pr-0 md:pl-12 md:mt-0 md:ml-12">
+          <div className="relative overflow-hidden rounded-2xl md:rounded-3xl md:mt-0 mt-10 min-h-[20vh] md:min-h-[60vh] max-h-[80vh]" style={{ aspectRatio: '16/9' }}>
           {currentVideo.videoSrc && (
             <video
               ref={videoRef}
@@ -159,12 +159,12 @@ const Header = () => {
               preload="auto"
               // LCP optimization: fetchPriority=high for first video (LCP element)
               {...(currentVideoIndex === 0 ? { fetchPriority: 'high' as any } : {})}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: '200px' }}
               onLoadStart={handleVideoLoadStart}
               onCanPlay={handleVideoCanPlay}
               onPlay={handleVideoPlay}
               onEnded={handleVideoEnded}
-              className={`rounded-3xl transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
+              className={`rounded-2xl md:rounded-3xl md:transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
                 isTransitioning ? '-translate-x-full' : 'translate-x-0'
               }`}
             />
@@ -193,20 +193,20 @@ const Header = () => {
       </div>
 
       {/* Text Overlay - Centered above the video */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 mt-64" style={{ minHeight: '200px' }}>
-        <h1 className={`text-3xl md:text-4xl font-medium mb-2 mt-6 transition-opacity duration-1000 ease-in-out ${
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 md:mt-64 mt-20 px-4 min-h-[150px] md:min-h-[200px]">
+        {/* <h1 className={`text-lg md:text-4xl font-medium md:mb-2 mb-1 md:mt-6 mt-2 transition-opacity duration-1000 ease-in-out min-h-[40px] md:min-h-[48px] max-h-[60px] ${
           isTransitioning ? 'opacity-0' : 'opacity-100'
-        }`} style={{ minHeight: '48px' }}>
+        }`}>
           {currentVideo.title}
         </h1>
-        <p className={`text-lg md:text-xl mb-4 transition-opacity duration-1000 ease-in-out delay-150 ${
+        <p className={`text-[11px] md:text-xl md:mb-4 mb-2 md:px-0 px-2 transition-opacity duration-1000 ease-in-out delay-150 min-h-[40px] md:min-h-[56px] max-h-[80px] leading-[1.4] ${
           isTransitioning ? 'opacity-0' : 'opacity-90'
-        }`} style={{ minHeight: '56px' }}>
+        }`}>
           {currentVideo.description}
-        </p>
+        </p> */}
         <button 
           onClick={handleTryNowClick}
-          className={`bg-[#1C303D] hover:bg-blue-700 text-white px-4 py-2 rounded-full text-md font-medium transition-opacity duration-1000 ease-in-out delay-300 ${
+          className={`bg-white/5 backdrop-blur-xl hover:bg-blue-700 text-white md:px-4 px-2 md:py-2 py-1 rounded-full md:text-md text-xs font-base transition-opacity duration-1000 ease-in-out delay-300 ${
             isTransitioning ? 'opacity-0' : 'opacity-100'
           }`}
         >
@@ -215,12 +215,12 @@ const Header = () => {
       </div>
 
       {/* Dot Navigation */}
-      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
+      <div className="absolute -bottom-3 md:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
         {videoData.map((_, index) => (
           <button
             key={index}
             onClick={() => handleDotClick(index)}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full transition-all duration-300 ${
               index === currentVideoIndex
                 ? 'bg-white scale-125'
                 : 'bg-white/50 hover:bg-white/70'
