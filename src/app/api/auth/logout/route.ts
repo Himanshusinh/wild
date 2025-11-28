@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   try {
-    const apiBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com'
+    const apiBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.wildmindai.com'
     const resp = await fetch(`${apiBase}/api/auth/logout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

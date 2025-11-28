@@ -48,7 +48,7 @@ const getStoredIdToken = (): string | null => {
 // Centralized axios instance configured to send cookies and optional Authorization header
 const resolvedBaseUrl = (() => {
   const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
-  return raw.length > 0 ? raw : 'https://api-gateway-services-wildmind.onrender.com'
+  return raw.length > 0 ? raw : 'https://api.wildmindai.com'
 })()
 
 const axiosInstance = axios.create({
