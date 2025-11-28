@@ -490,6 +490,13 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
 
     if (!freshIdToken) {
       if (isApiDebugEnabled()) console.warn('[API][session-refresh] Failed to get fresh ID token');
+      
+      // CRITICAL FIX: If we can't get a fresh token, it might be a temporary network issue
+      // or the user's refresh token is revoked.
+      // We should NOT logout immediately. The session cookie might still be valid.
+      // We just stop the *refresh* attempt. The next request will try to use the cookie.
+      // If the cookie is valid, it will work. If not, it will 401 again, and we might loop.
+      // To prevent looping, we rely on the `isRefreshing` flag and the cooldown.
       return;
     }
 
