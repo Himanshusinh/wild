@@ -72,10 +72,8 @@ export default function MainLayout({
       const type = pathname.split('/').pop();
       if (type && type !== 'generation') {
         const newType = type as GenerationType;
-        // Only clear generation state if switching to a DIFFERENT generation type
-        if (newType !== currentGenerationType) {
-          dispatch(clearGenerationState());
-        }
+        // PRESERVE STATE: Don't clear generation state when navigating between generation types
+        // This allows users to keep their inputs and configurations when switching pages
         dispatch(setCurrentGenerationType(newType));
       }
     } else {
@@ -92,6 +90,13 @@ export default function MainLayout({
     try {
       if (view === currentView) return; // Prevent unnecessary updates
       
+      // PRESERVE STATE: Only clear generation state when switching to non-generation views (history, landing, etc.)
+      // Don't clear when navigating between generation types
+      // Check this BEFORE early returns so TypeScript doesn't narrow the type
+      if (currentView === 'generation' && (view === 'history' || view === 'bookmarks' || view === 'landing' || view === 'home')) {
+        dispatch(clearGenerationState());
+      }
+      
       // Handle new view types - these should go to the main App component
       if (view === 'landing' || view === 'home') {
         console.log('🔍 MainLayout - Redirecting to main App for view:', view);
@@ -107,11 +112,6 @@ export default function MainLayout({
       // For other views, handle routing and let parent App handle Redux updates
       if (onViewChange && typeof onViewChange === 'function') {
         onViewChange(view);
-      }
-      
-      // Clear generation state when switching away from generation view
-      if (currentView === 'generation') {
-        dispatch(clearGenerationState());
       }
       
       // Handle routing for generation-related views
@@ -139,10 +139,8 @@ export default function MainLayout({
         onGenerationTypeChange(type);
       }
       
-      // Only clear generation state when switching to a DIFFERENT generation type
-      if (type !== currentGenerationType) {
-        dispatch(clearGenerationState());
-      }
+      // PRESERVE STATE: Don't clear generation state when switching between generation types
+      // This preserves all user inputs and configurations across navigation
       
       // Handle routing
       router.push(`/${type}`);
