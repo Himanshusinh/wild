@@ -986,27 +986,27 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-      <div className="flex ml-[68px]">
+      <div className="flex md:ml-[68px] ml-0">
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
-            <div className=" mb-2 md:mb-3">
-              <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+            <div className=" mb-0 md:mb-3">
+              <h3 className="text-white md:text-3xl text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
                 Art Station
               </h3>
-              <p className="text-white/80 text-base sm:text-lg md:text-xl">
+              <p className="text-white/80 md:text-base text-xs sm:text-lg md:text-xl">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
 
             {/* Category Filter Bar */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+            <div className="md:mb-4 md:pb-0 pb-2 md:mt-0 mt-2">
+              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-0 scrollbar-none">
                 {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
+                    className={`inline-flex items-center md:gap-2  md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
                         ? 'bg-white border-white/5 text-black shadow-sm'
                         : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                       }`}
@@ -1016,7 +1016,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                 ))}
 
                 {/* Search Input and Buttons */}
-                <div className="ml-auto flex items-center gap-2 flex-shrink-0 p-1">
+                <div className="ml-auto flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-1 p-0">
                   <div className="relative flex items-center">
                     <input
                       type="text"
@@ -1029,12 +1029,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                         }
                       }}
                       placeholder="Search by prompt..."
-                      className={`px-4 py-2 rounded-lg text-sm bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
+                      className={`md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg  hover:bg-white/20 text-white/80 hover:text-white transition-colors"
                         aria-label="Clear search"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1054,15 +1054,24 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
           {/* Masonry grid with preserved order */}
+          <style dangerouslySetInnerHTML={{__html: `
+            .masonry-grid-custom {
+              grid-auto-rows: 9px;
+            }
+            @media (min-width: 768px) {
+              .masonry-grid-custom {
+                grid-auto-rows: 9.25px;
+              }
+            }
+          `}} />
           <div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
-            style={{ gridAutoRows: '2px' }}
+            className="masonry-grid-custom grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-1 gap-1 [overflow-anchor:none]"
           >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
               const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
-              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3']
+              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3','1/2','2/1','1/3','3/1','1/4','4/1','1/5','5/1','1/6','6/1','1/7','7/1','1/8','8/1','1/9','9/1','1/10','10/1']
               const ratioKey = (media && (media.storagePath || media.url)) || `${item.id}-${idx}`
               const tileRatio = m ? `${m[1]}/${m[2]}` : (measuredRatios[ratioKey] || fallbackRatios[idx % fallbackRatios.length])
 

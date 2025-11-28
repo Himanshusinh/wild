@@ -98,7 +98,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
 
   // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
-  
+
   // Move all hooks to the top before any conditional returns
   const [isPromptExpanded, setIsPromptExpanded] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
@@ -175,9 +175,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       isLoadingMoreRef.current = true;
       try {
         // Only send mode parameter to backend
-        await dispatch(loadMoreHistory({ 
-          filters: { mode: 'image' } as any, 
-          paginationParams: { limit: 30 } 
+        await dispatch(loadMoreHistory({
+          filters: { mode: 'image' } as any,
+          paginationParams: { limit: 30 }
         })).unwrap();
       } catch (error) {
         console.warn('[ImagePreviewModal] Failed to load more history:', error);
@@ -228,7 +228,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
     selectGenerationByIndex(baseIndex + 1);
   }, [showGenerationNav, generationSequence.length, activeEntryIndex, selectGenerationByIndex]);
-  
+
   // Update currentEntry and reset selected state immediately when preview changes
   React.useEffect(() => {
     // Reset local view state synchronously so we don't show stale media
@@ -244,7 +244,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         if (found >= 0) idx = found;
       }
       setSelectedIndex(idx);
-    } catch {}
+    } catch { }
     setObjectUrl('');
     setImageDimensions(null);
   }, [preview?.entry?.id, preview?.image?.id]);
@@ -269,35 +269,35 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       });
       return; // Don't fetch if we have cached data
     }
-    
+
     const currentToken = `entry-${activeEntryId}`;
-    
+
     // Skip if we're already loading the same entry
     if (entryFetchTokenRef.current === currentToken && isEntryLoadingRef.current) {
       return;
     }
-    
+
     // Cancel previous fetch if it's a different entry
     if (entryFetchTokenRef.current && entryFetchTokenRef.current !== currentToken && entryFetchAbortRef.current) {
-      try { entryFetchAbortRef.current.abort(); } catch {}
+      try { entryFetchAbortRef.current.abort(); } catch { }
     }
-    
+
     entryFetchAbortRef.current = new AbortController();
     entryFetchTokenRef.current = currentToken;
     isEntryLoadingRef.current = true;
-    
+
     let cancelled = false;
     const fetchFullEntry = async () => {
       try {
         const res = await axiosInstance.get(`/api/generations/${activeEntryId}`, {
           signal: entryFetchAbortRef.current?.signal
         });
-        
+
         // Check if this request is still relevant
         if (entryFetchTokenRef.current !== currentToken || cancelled || !activeEntryId) {
           return;
         }
-        
+
         // Extract item from response: res.data.data.item or res.data.item or res.data
         const detailedEntry = res?.data?.data?.item || res?.data?.item || res?.data?.data || res?.data;
         if (detailedEntry && activeEntryId) {
@@ -322,12 +322,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       }
     };
     fetchFullEntry();
-    
+
     return () => {
       cancelled = true;
       // Only abort if this is still the current request
       if (entryFetchTokenRef.current === currentToken) {
-        try { entryFetchAbortRef.current?.abort(); } catch {}
+        try { entryFetchAbortRef.current?.abort(); } catch { }
         entryFetchTokenRef.current = null;
         isEntryLoadingRef.current = false;
       }
@@ -345,7 +345,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
-  
+
   // -------- Fullscreen helpers (declared before any early returns) ---------
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
     if (!fsContainerRef.current) return newOffset;
@@ -397,7 +397,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     const onResize = () => computeFit();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-    
+
   }, [isFsOpen, fsNaturalSize]);
 
   // Lock background scroll while fullscreen is open
@@ -420,7 +420,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [currentEntry, preview]);
 
   const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
-    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
+    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch { }
     setSelectedIndex((idx) => {
       const total = (sameDateGallery as any[]).length;
       if (total <= 1) return idx;
@@ -429,13 +429,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const prevPair: any = (sameDateGallery as any[])[prevIdx];
         console.log('[Fullscreen] Prev image clicked', { fromIndex: idx, toIndex: prevIdx, total, url: prevPair?.image?.url || prevPair?.image?.storagePath });
-      } catch {}
+      } catch { }
       return prevIdx;
     });
   }, [sameDateGallery]);
 
   const goNext = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
-    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch {}
+    try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch { }
     setSelectedIndex((idx) => {
       const total = (sameDateGallery as any[]).length;
       if (total <= 1) return idx;
@@ -444,12 +444,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       try {
         const nextPair: any = (sameDateGallery as any[])[nextIdx];
         console.log('[Fullscreen] Next image clicked', { fromIndex: idx, toIndex: nextIdx, total, url: nextPair?.image?.url || nextPair?.image?.storagePath });
-      } catch {}
+      } catch { }
       return nextIdx;
     });
   }, [sameDateGallery]);
 
-const fsOnWheel = React.useCallback((e: WheelEvent) => {
+  const fsOnWheel = React.useCallback((e: WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!fsContainerRef.current) return;
@@ -461,9 +461,9 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
       const dx = e.deltaX || 0;
       const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (sameDateGallery.length > 1) {
-      if (delta > 20) {
+        if (delta > 20) {
           goNext(e as any);
-      } else if (delta < -20) {
+        } else if (delta < -20) {
           goPrev(e as any);
         }
       } else if (showGenerationNav) {
@@ -588,7 +588,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isFsOpen, goPrev, goNext, closeFullscreen, goPrevGeneration, goNextGeneration, sameDateGallery, showGenerationNav]);
-  
+
   // (moved above for navigation callbacks)
 
   // Select clicked image within same-date gallery
@@ -604,7 +604,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
   }, [sameDateGallery, preview]);
 
   React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
-  
+
   // Use refs to avoid dependency issues with keyboard handlers
   const goPrevRef = React.useRef(goPrev);
   const goNextRef = React.useRef(goNext);
@@ -660,7 +660,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
       const selectedImage = selectedPair.image || preview?.image;
       const isPublic = ((selectedImage as any)?.isPublic !== false);
       setIsPublicFlag(isPublic);
-    } catch {}
+    } catch { }
   }, [selectedIndex, sameDateGallery, preview]);
 
   // Only show immediate neighbors (left/right) in the sidebar thumbnails
@@ -744,7 +744,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
   // Preload images from adjacent generations for instant generation navigation
   React.useEffect(() => {
     if (!preview || !showGenerationNav || generationSequence.length <= 1) return;
-    
+
     const currentIdx = generationSequence.findIndex((entry: HistoryEntry) => entry.id === activeEntryId);
     if (currentIdx < 0) return;
 
@@ -888,7 +888,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
 
   const normalizeInputMediaUrl = React.useCallback((item: any): string => {
     if (!item) return '';
-    
+
     // Priority 1: Use storagePath if available (most reliable for input images)
     const storagePath = typeof item === 'string'
       ? (item.startsWith('users/') ? item : '')
@@ -900,13 +900,13 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
       // Fallback: construct Zata URL directly
       return `${ZATA_PREFIX}${cleaned}`;
     }
-    
+
     // Priority 2: Use url (the stored input image URL, not originalUrl)
     // originalUrl might point to a different image (the source before upload)
     if (typeof item === 'string') {
       return toMediaProxy(item) || item;
     }
-    
+
     // Prefer url over originalUrl for input images
     const preferredUrl = item?.url || item?.firebaseUrl;
     if (preferredUrl) {
@@ -914,7 +914,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
       if (proxyUrl) return proxyUrl;
       return preferredUrl;
     }
-    
+
     // Last resort: use originalUrl, thumbnailUrl, or avifUrl
     const fallbackUrl = item?.originalUrl || item?.thumbnailUrl || item?.avifUrl || '';
     if (!fallbackUrl) return '';
@@ -1015,15 +1015,15 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
   const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
   const cleanPrompt = getCleanPrompt(promptToDisplay);
   const isLongPrompt = cleanPrompt.length > 280;
-  
+
   // Check if this is a vectorize generation (should hide certain action buttons)
   const generationType = (selectedEntry as any)?.generationType || '';
   const normalizedGenType = String(generationType).toLowerCase().replace(/[_-]/g, '-');
-  const isVectorizeGeneration = normalizedGenType === 'vectorize' || 
-                                 normalizedGenType === 'image-vectorize' || 
-                                 normalizedGenType === 'image-to-svg' ||
-                                 normalizedGenType === 'image_to_svg' ||
-                                 normalizedGenType.includes('vector');
+  const isVectorizeGeneration = normalizedGenType === 'vectorize' ||
+    normalizedGenType === 'image-vectorize' ||
+    normalizedGenType === 'image-to-svg' ||
+    normalizedGenType === 'image_to_svg' ||
+    normalizedGenType.includes('vector');
   const entryTimestamp = selectedEntry?.timestamp || selectedEntry?.createdAt || selectedEntry?.updatedAt;
   const formattedDateTime = React.useMemo(() => {
     if (!entryTimestamp) return '—';
@@ -1051,9 +1051,9 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
       const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
       const imageToDelete = selectedPair.image || preview?.image;
       const entry = selectedPair.entry || preview?.entry;
-      
+
       if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
-      
+
       // Get the current entry to check how many images it has
       const currentImages = Array.isArray((entry as any)?.images) ? (entry as any).images : [];
       const remainingImages = currentImages.filter((img: any) => {
@@ -1063,11 +1063,11 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
         const matchesStoragePath = (imageToDelete as any)?.storagePath && img.storagePath === (imageToDelete as any).storagePath;
         return !(matchesId || matchesUrl || matchesStoragePath);
       });
-      
+
       // If this is the last image, delete the entire entry
       if (remainingImages.length === 0) {
         await axiosInstance.delete(`/api/generations/${entry.id}`);
-        try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+        try { dispatch(removeHistoryEntry(entry.id)); } catch { }
         // Clear/reset document title when image is deleted
         if (typeof document !== 'undefined') {
           document.title = 'WildMind';
@@ -1081,7 +1081,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
         // Update Redux store with the new images array
         try {
           dispatch(updateHistoryEntry({ id: entry.id, updates: { images: remainingImages } as any }));
-        } catch {}
+        } catch { }
         // Update local entry state so the gallery updates immediately
         setCurrentEntry({ ...entry, images: remainingImages } as any);
         // Adjust the selected index - if we deleted the last image, go to the previous one
@@ -1138,10 +1138,10 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
               return im;
             }) : (selectedEntry as any).images;
             dispatch(updateHistoryEntry({ id: selectedEntry.id, updates: { images } as any }));
-          } catch {}
+          } catch { }
         }
-      } catch {}
-    } catch {}
+      } catch { }
+    } catch { }
   };
 
   const shareImage = async (url: string) => {
@@ -1170,18 +1170,18 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           const parsed = new URL(url);
           fileName = parsed.pathname.split('/').pop() || fileName;
         }
-      } catch {}
+      } catch { }
 
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
-      
+
       // Use Web Share API
       await navigator.share({
         title: 'Wild Mind AI Generated Image',
         text: `Check out this AI-generated image!\n${cleanPrompt.substring(0, 100)}...`,
         files: [file]
       });
-      
+
       console.log('Image shared successfully');
     } catch (error: any) {
       // Handle user cancellation gracefully
@@ -1189,7 +1189,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
         console.log('Share cancelled by user');
         return;
       }
-      
+
       // Fallback to copying URL
       console.error('Share failed:', error);
       try {
@@ -1239,7 +1239,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           const original = selectedImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch {}
+        } catch { }
         return '';
       })();
 
@@ -1253,7 +1253,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
       if (storagePath) qs.set('sp', storagePath);
       router.push(`/edit-image?${qs.toString()}`);
       onClose();
-    } catch {}
+    } catch { }
   };
 
   const handleEditInLiveCanvas = () => {
@@ -1265,7 +1265,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           const original = selectedImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch {}
+        } catch { }
         return '';
       })();
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
@@ -1290,16 +1290,16 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           const original = selectedImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch {}
+        } catch { }
         return '';
       })();
-      
+
       const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-      
+
       // Use direct Zata URL (same as Remix button approach)
       const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
       let imgUrl = '';
-      
+
       if (storagePath) {
         // Construct direct Zata URL from storage path (same as Remix)
         imgUrl = `${ZATA_PREFIX}${storagePath}`;
@@ -1311,20 +1311,20 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           imgUrl = fallbackHttp;
         }
       }
-      
+
       console.log('Create Video - ImagePreviewModal debug:', {
         selectedImage: selectedImage,
         storagePath: storagePath,
         imgUrl: imgUrl
       });
-      
+
       const qs = new URLSearchParams();
       if (imgUrl) qs.set('image', imgUrl);
       if (storagePath) qs.set('sp', storagePath);
-      
+
       const finalUrl = `/text-to-video?${qs.toString()}`;
       console.log('Create Video - Final URL:', finalUrl);
-      
+
       router.push(finalUrl);
       onClose();
     } catch (error) {
@@ -1334,25 +1334,38 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
 
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
-    > 
+    >
 
-    <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
-      <div 
-        className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-xl overflow-hidden shadow-3xl"
+      <button 
+        aria-label="Close" 
+        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-2 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          console.log('[ImagePreviewModal] Close button clicked')
+          onClose()
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation()
+        }}
+      >✕</button>
+      <div
+        className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
-      > 
+      >
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
-          <div className="text-white/80 text-sm"></div>
-          <div className="flex items-center gap-2" />
-        </div>
+
 
         {/* Navigation Buttons - Fixed position at viewport edges (same as fullscreen) */}
         {/* Generation Navigation (Left side) - Only show if not at first generation */}
@@ -1411,10 +1424,10 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
         )}
 
         {/* Content */}
-        <div className=" md:flex md:flex-row md:gap-0">
+        <div className="flex flex-col md:flex md:flex-row h-[90vh] md:h-full   md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center ">
-            { (selectedImage?.avifUrl || selectedImage?.url) && (
+          <div className="relative bg-transparent h-full md:h-[84vh] md:flex-1 group flex items-center justify-center ">
+            {(selectedImage?.avifUrl || selectedImage?.url) && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
                   src={objectUrl || (toMediaProxy((selectedImage as any)?.avifUrl || selectedImage.url) || (selectedImage as any)?.avifUrl || selectedImage.url)}
@@ -1450,7 +1463,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
             </button>
           </div>
           {/* Sidebar */}
-          <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
+          <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent max-h-[18rem] md:max-h-none md:h-[84vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">
@@ -1496,44 +1509,43 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
                   aria-label="Toggle visibility"
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
-                  <Image 
-                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
-                    alt={isPublicFlag ? "Public" : "Private"} 
-                    width={16} 
-                    height={16} 
+                  <Image
+                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"}
+                    alt={isPublicFlag ? "Public" : "Private"}
+                    width={16}
+                    height={16}
                     className="w-5 h-5"
                   />
                 </button>
                 <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
               </div>
 
-              
+
             </div>
 
-             {/* Date */}
-             <div className="mb-1 ">
+            {/* Date */}
+            <div className="mb-1 ">
               <div className="text-white/60 text-sm uppercase tracking-wider mb-0">Date</div>
               <div className="text-white/80 text-sm">{formattedDateTime}</div>
             </div>
 
-            
+
 
             {/* Prompt */}
             <div className="mb-4">
               <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
                 <span>Prompt</span>
-                <button 
+                <button
                   onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${
-                    copiedButtonId === `preview-${preview.entry.id}` 
-                      ? 'bg-green-500/20 text-green-400' 
+                  className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
+                      ? 'bg-green-500/20 text-green-400'
                       : 'bg-white/10 hover:bg-white/20'
-                  }`}
+                    }`}
                 >
                   {copiedButtonId === `preview-${preview.entry.id}` ? (
                     <>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 6L9 17l-5-5"/>
+                        <path d="M20 6L9 17l-5-5" />
                       </svg>
                       Copied!
                     </>
@@ -1559,8 +1571,8 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
                 </button>
               )}
             </div>
-            
-           
+
+
             {/* Details */}
             <div className="mb-4">
               <div className="text-white/80 text-sm uppercase tracking-wider mb-1">Details</div>
@@ -1622,7 +1634,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
                     <button
                       key={pair.image?.id || idx}
                       onClick={() => {
-                        try { setSelectedIndex(idx); } catch {}
+                        try { setSelectedIndex(idx); } catch { }
                       }}
                       className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
@@ -1642,14 +1654,14 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
               <div className="mt-6 space-y-2">
                 <div className="flex gap-2">
 
-                {!isVectorizeGeneration && (
-                  <button
-                    onClick={() => navigateToEdit('upscale')}
-                    className="flex-1 px-3 py-2 items-center justify-center rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
-                  >
-                  Edit Image                   
-                  </button>
-              )}
+                  {!isVectorizeGeneration && (
+                    <button
+                      onClick={() => navigateToEdit('upscale')}
+                      className="flex-1 px-3 py-2 items-center justify-center rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
+                    >
+                      Edit Image
+                    </button>
+                  )}
                   <button
                     onClick={() => navigateToEdit('upscale')}
                     className="flex-1 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
@@ -1666,59 +1678,59 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
                 </div>
 
                 <div className="flex gap-2">
-                <button
+                  <button
                     onClick={handleCreateVideo}
                     className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm ring-1 ring-white/20 transition"
                   >
                     {/* <Video className="h-4 w-4" /> */}
                     Create Video
                   </button>
-                <button
-                  onClick={() => {
-                    try {
-                      const storagePath = (selectedImage as any)?.storagePath || (() => {
-                        try {
-                          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
-                          const original = selectedImage?.url || '';
-                          if (!original) return '';
-                          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-                        } catch {}
-                        return '';
-                      })();
-                      const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-                      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
-                      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
-                      const qs = new URLSearchParams();
-                      // Use userPrompt for remix if available, otherwise use cleanPrompt
-                      const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
-                      qs.set('prompt', remixPrompt);
-                      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
-                      if (storagePath) {
-                        qs.set('sp', storagePath);
-                      } else if (imgUrl) {
-                        // If no storagePath, set image URL directly
-                        qs.set('image', imgUrl);
-                      }
-                      // also pass model, frameSize and style for preselection
-                      console.log('preview.entry', selectedEntry);
-                      if (selectedEntry?.model) {
-                        // Map backend model ids to UI dropdown ids where needed
-                        const m = String(selectedEntry.model);
-                        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
-                        qs.set('model', mapped);
-                      }
-                      if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
-                      const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
-                      if (sty) qs.set('style', String(sty));
-                      // Client-side navigation to avoid full page reload
-                      router.push(`/text-to-image?${qs.toString()}`);
-                      onClose();
-                    } catch {}
-                  }}
-                  className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                >
-                  Regenerate 
-                </button>
+                  <button
+                    onClick={() => {
+                      try {
+                        const storagePath = (selectedImage as any)?.storagePath || (() => {
+                          try {
+                            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+                            const original = selectedImage?.url || '';
+                            if (!original) return '';
+                            if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+                          } catch { }
+                          return '';
+                        })();
+                        const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
+                        // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
+                        const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+                        const qs = new URLSearchParams();
+                        // Use userPrompt for remix if available, otherwise use cleanPrompt
+                        const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
+                        qs.set('prompt', remixPrompt);
+                        // Always set sp if we have storagePath (InputBox prioritizes sp over image)
+                        if (storagePath) {
+                          qs.set('sp', storagePath);
+                        } else if (imgUrl) {
+                          // If no storagePath, set image URL directly
+                          qs.set('image', imgUrl);
+                        }
+                        // also pass model, frameSize and style for preselection
+                        console.log('preview.entry', selectedEntry);
+                        if (selectedEntry?.model) {
+                          // Map backend model ids to UI dropdown ids where needed
+                          const m = String(selectedEntry.model);
+                          const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+                          qs.set('model', mapped);
+                        }
+                        if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
+                        const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
+                        if (sty) qs.set('style', String(sty));
+                        // Client-side navigation to avoid full page reload
+                        router.push(`/text-to-image?${qs.toString()}`);
+                        onClose();
+                      } catch { }
+                    }}
+                    className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  >
+                    Regenerate
+                  </button>
                 </div>
 
                 {/* New buttons row */}
@@ -1737,7 +1749,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
                     Create Video
                   </button>
                 </div> */}
-                
+
               </div>
             )}
           </div>
@@ -1770,10 +1782,10 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           {/* Image Navigation Buttons (Left side, or left if no generation nav) - Only show if not at first image */}
           {(sameDateGallery.length > 1) && !isFirstImage && (
             <button
-            aria-label="Previous image"
-            onClick={(e) => { e.stopPropagation(); goPrev(e); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            type="button"
+              aria-label="Previous image"
+              onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              type="button"
               className={`absolute ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} top-1/2 -translate-y-1/2 z-[90] w-16 h-16 bg-black/80 hover:bg-black/95 text-white flex items-center justify-center ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 pointer-events-auto transition-all`}
               title="Previous image (←)"
             >
@@ -1791,7 +1803,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
               aria-label="Next generation"
               className="absolute right-0 top-1/2 -translate-y-1/2 z-[90] w-16 h-16 rounded-l-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center border-l border-y border-white/30 hover:border-white/50 pointer-events-auto transition-all"
               title="Next generation (Shift + →)"
-          >
+            >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M13 18l6-6-6-6" />
                 <path d="M6 18l6-6-6-6" />
@@ -1801,13 +1813,13 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
           {/* Image Navigation Buttons (Right side, or right if no generation nav) - Only show if not at last image */}
           {(sameDateGallery.length > 1) && !isLastImage && (
             <button
-            aria-label="Next image"
-            onClick={(e) => { e.stopPropagation(); goNext(e); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            type="button"
+              aria-label="Next image"
+              onClick={(e) => { e.stopPropagation(); goNext(e); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              type="button"
               className={`absolute ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'right-16 rounded-none' : 'right-0 rounded-l-full'} top-1/2 -translate-y-1/2 z-[90] w-16 h-16 bg-black/80 hover:bg-black/95 text-white flex items-center justify-center ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'border-y border-l' : 'border-l border-y'} border-white/30 hover:border-white/50 pointer-events-auto transition-all`}
               title="Next image (→)"
-          >
+            >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 18l6-6-6-6" />
               </svg>
@@ -1847,7 +1859,7 @@ const fsOnWheel = React.useCallback((e: WheelEvent) => {
             </div>
           </div>
           {/* Instructions */}
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20 text-center space-y-0.5">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 md:text-xs text-xs bg-white/10 md:px-3 px-2 md:py-1.5 py-1 rounded-md ring-1 ring-white/20 text-center space-y-0.5">
             <div>Scroll to zoom (hold Shift to cycle images; if only one image, Shift scroll jumps between generations).</div>
             {showGenerationNav && <div>Use Shift + Arrow keys for next/prev generation. Ctrl/Cmd + Arrow works in the modal view.</div>}
             <div>Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.</div>
