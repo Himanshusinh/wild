@@ -83,31 +83,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
       </button>
 
       {activeDropdown === 'fileType' && ( 
-        <div
-          className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 md:z-50 z-[70]
-            md:w-48 md:rounded-lg md:static
-            fixed w-[calc(100vw-16px)] left-2 right-2 top-14 z-[9999] rounded-[12px] max-h-[48vh] min-h-[120px] overflow-y-auto shadow-lg
-            md:shadow-2xl
-          `}
-          style={{
-            ...(window.innerWidth <= 768 ? {
-              position: 'fixed',
-              left: 8,
-              right: 8,
-              top: 56,
-              width: 'calc(100vw - 16px)',
-              zIndex: 9999,
-              margin: '0 auto',
-              borderRadius: 12,
-              maxHeight: '48vh',
-              minHeight: 120,
-              overflowY: 'auto',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-            } : {})
-          }}
-        >
-
-
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-48 bg-black/70 backdrop-blur-xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 md:z-50 z-[70]`}>
           {fileTypes.map((fileType) => (
             <button
               key={fileType.value}
