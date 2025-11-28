@@ -22,11 +22,31 @@ export async function GET(req: Request) {
     })
 
     const text = await resp.text()
+    
+    // Forward Set-Cookie headers if present (for session refresh)
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': resp.headers.get('content-type') || 'application/json',
+    }
+    
+    // Forward Set-Cookie header if backend sets a new session cookie (e.g., refresh)
+    const setCookie = resp.headers.get('set-cookie')
+    if (setCookie) {
+      responseHeaders['set-cookie'] = setCookie
+    }
+    
+    // Forward session refresh headers if present
+    const sessionRefreshNeeded = resp.headers.get('x-session-refresh-needed')
+    if (sessionRefreshNeeded) {
+      responseHeaders['x-session-refresh-needed'] = sessionRefreshNeeded
+    }
+    const sessionExpiresIn = resp.headers.get('x-session-expires-in')
+    if (sessionExpiresIn) {
+      responseHeaders['x-session-expires-in'] = sessionExpiresIn
+    }
+    
     return new Response(text, {
       status: resp.status,
-      headers: {
-        'Content-Type': resp.headers.get('content-type') || 'application/json',
-      },
+      headers: responseHeaders,
     })
   } catch (e) {
     return new Response(JSON.stringify({ error: 'Proxy failed' }), { status: 500 })
