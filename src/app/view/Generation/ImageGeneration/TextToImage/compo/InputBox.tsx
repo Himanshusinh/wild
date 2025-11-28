@@ -3278,7 +3278,7 @@ const InputBox = () => {
                               <div
                                 key={uniqueImageKey}
                                 className="image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
-                                style={{ minHeight: localEntry.status === 'generating' ? '300px' : undefined }}
+                                style={{ minHeight: localEntry.status === 'generating' ? '165px' : undefined }}
                               >
                                 <div className="absolute inset-0 group animate-fade-in-up" style={{
                                   animation: 'fadeInUp 0.6s ease-out forwards',
@@ -3516,8 +3516,8 @@ const InputBox = () => {
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[95%] md:max-w-[900px] max-w-[95%] z-[50] h-auto">
         <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
-          <div className="flex items-stretch gap-3">
-            <div className="flex-1 flex items-start gap-3 bg-transparent rounded-lg  w-full relative md:min-h-[120px]">
+          <div className="flex items-stretch md:gap-0 gap-0">
+            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[120px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
                 ref={contentEditableRef}
@@ -3636,7 +3636,7 @@ const InputBox = () => {
                   const inputEvent = new Event('input', { bubbles: true });
                   e.currentTarget.dispatchEvent(inputEvent);
                 }}
-                className={`flex-1 min-w-[200px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
+                className={`flex-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
                   }`}
                 style={{
                   minHeight: '24px',
