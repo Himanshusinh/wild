@@ -452,13 +452,18 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
       if (isApiDebugEnabled()) console.warn('[API][session-refresh] Refresh response indicates failure', refreshResponse.data);
     }
   } catch (error: any) {
-    // Silently fail - non-critical operation
-    if (isApiDebugEnabled()) {
-      console.warn('[API][session-refresh] Failed to refresh session (non-critical):', {
-        message: error?.message,
-        status: error?.response?.status
-      });
-    }
+    // CRITICAL FIX: Log refresh failures for debugging random logouts
+    // Don't silently fail - this could be causing the logout issue
+    console.warn('[API][session-refresh] Failed to refresh session:', {
+      message: error?.message,
+      status: error?.response?.status,
+      hasCurrentUser: !!auth.currentUser,
+      errorCode: error?.code,
+      timestamp: new Date().toISOString()
+    });
+    
+    // If refresh fails, don't clear the session - let the user continue with existing session
+    // The session cookie should still be valid even if refresh fails
   } finally {
     isRefreshingSession = false;
   }
@@ -547,24 +552,48 @@ axiosInstance.interceptors.response.use(
         pendingRequests = []
         return retryResp
       } catch (retryErr: any) {
-        // Only as fallback: create session if we haven't done so recently
-        if (canCreateSession()) {
+        // CRITICAL FIX: Only create session if we haven't done so recently
+        // But also check if the error is truly a session issue vs other 401 errors
+        const isSessionError = retryErr?.response?.status === 401 && 
+                               (retryErr?.response?.data?.message?.includes('session') ||
+                                retryErr?.response?.data?.message?.includes('Unauthorized') ||
+                                retryErr?.response?.data?.message?.includes('token'));
+        
+        if (isSessionError && canCreateSession()) {
           try {
             // Use the same resolved backend base URL as the axios instance
             const backendBase = resolvedBaseUrl
-            await axios.post(
+            const sessionResponse = await axios.post(
               `${backendBase}/api/auth/session`,
               { idToken: freshIdToken },
               { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
             )
-            markSessionCreated()
-            if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
-            return axiosInstance(original)
-          } catch (createErr) {
-            if (isApiDebugEnabled()) console.warn('[API][401][session-create] failed')
+            
+            if (sessionResponse.status === 200) {
+              markSessionCreated()
+              if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
+              // Retry the original request with new session cookie
+              return axiosInstance(original)
+            } else {
+              if (isApiDebugEnabled()) console.warn('[API][401][session-create] failed with status:', sessionResponse.status)
+            }
+          } catch (createErr: any) {
+            // CRITICAL FIX: Log session creation failures for debugging
+            console.error('[API][401][session-create] Failed to create session:', {
+              message: createErr?.message,
+              status: createErr?.response?.status,
+              data: createErr?.response?.data,
+              hasIdToken: !!freshIdToken
+            })
           }
         } else {
-          if (isApiDebugEnabled()) console.log('[API][401][session-create] skipped (cooldown)')
+          if (isApiDebugEnabled()) {
+            if (!isSessionError) {
+              console.log('[API][401][session-create] skipped (not a session error)')
+            } else {
+              console.log('[API][401][session-create] skipped (cooldown)')
+            }
+          }
         }
         throw retryErr
       }

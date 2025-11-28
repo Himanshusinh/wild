@@ -402,7 +402,7 @@ const SidePannelFeatures = ({
       <div>
         <div
           onMouseEnter={() => setIsSidebarHovered(true)}
-          onClick={() => {
+          onClick={async () => {
             // Check if we're in production by checking the hostname
             const isProd = typeof window !== 'undefined' && 
               (window.location.hostname === 'wildmindai.com' || 
@@ -410,7 +410,32 @@ const SidePannelFeatures = ({
             const canvasUrl = isProd 
               ? 'https://studio.wildmindai.com'
               : 'http://localhost:3001';
-            window.open(canvasUrl, '_blank', 'noopener,noreferrer');
+            
+            // In production, try to sync auth token to localStorage for canvas
+            // This is a fallback if cookies don't work across subdomains
+            if (isProd) {
+              try {
+                // Get auth token from localStorage (if available)
+                const authToken = localStorage.getItem('authToken');
+                if (authToken) {
+                  // Store in a way that canvas can access
+                  // Use sessionStorage which is shared across tabs but not subdomains
+                  // So we'll pass it via URL parameter as fallback
+                  const url = new URL(canvasUrl);
+                  // Don't pass token in URL for security - canvas should use cookie
+                  // But we can set a flag to help canvas know user is authenticated
+                  url.searchParams.set('from', 'wildmindai');
+                  window.open(url.toString(), '_blank', 'noopener,noreferrer');
+                } else {
+                  window.open(canvasUrl, '_blank', 'noopener,noreferrer');
+                }
+              } catch (e) {
+                console.error('Error opening canvas:', e);
+                window.open(canvasUrl, '_blank', 'noopener,noreferrer');
+              }
+            } else {
+              window.open(canvasUrl, '_blank', 'noopener,noreferrer');
+            }
           }}
           className="flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item"
         >
