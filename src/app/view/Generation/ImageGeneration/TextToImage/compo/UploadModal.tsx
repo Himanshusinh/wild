@@ -433,11 +433,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
         <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div className="flex items-center justify-between md:px-4 px-3 gap-2 md:py-3 py-2 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <button className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
-              <button className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'uploads' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('uploads')}>Your Uploads</button>
-              <button className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'uploads' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('uploads')}>Your Uploads</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
             </div>
             <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
           </div>
@@ -454,7 +454,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                   </div>
                 ) : (
                   <>
-                    <div className="text-white/70 text-sm mb-3 ">
+                    <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1 ">
                       {tab === 'uploads' 
                         ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
                         : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
@@ -586,10 +586,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       }
                     }
                   }}
-                      className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
+                      className="grid grid-cols-3 md:grid-cols-5 md:gap-3 gap-2 md:h-[50vh] h-[40vh] p-0 md:p-2 pt-1 md:pt-0 overflow-y-auto custom-scrollbar pr-1"
                     >
                       {displayItems.length === 0 ? (
-                        <div className="col-span-full flex items-center justify-center h-32 text-white/60">
+                        <div className="col-span-full flex items-center justify-center md:h-32 h-24 text-white/60">
                           No items found
                         </div>
                       ) : (
@@ -606,7 +606,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                         const next = new Set(selection);
                         if (selected) next.delete(im.url); else next.add(im.url);
                         setSelection(next);
-                      }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
+                      }} className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         {proxiedSrc ? (
                           <img 
                             src={proxiedSrc} 
@@ -628,7 +628,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       )}
                     </div>
                     {hasMore && (
-                      <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
+                      <div className="flex items-center justify-center pt-3 text-white/60 md:text-sm text-[11px]">
                         {loading ? 'Loading more…' : 'Scroll to load more'}
                       </div>
                     )}
@@ -639,15 +639,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                       </div>
                     )}
                     <div className="flex justify-end mt-0 gap-2">
-                      <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                      <button className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                      <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                      <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
                     </div>
                   </>
                 )}
               </div>
             ) : (
               <div>
-                <div className="text-white/70 text-sm mb-3">Choose up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'}</div>
+                <div className="text-white/70 md:text-sm text-[11px] mb-3">Choose up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'}</div>
                 <div
                   ref={dropRef}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -718,8 +718,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                   )}
                 </div>
                 <div className="flex justify-end mt-3 gap-2">
-                  <button className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                  <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                  <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
                 </div>
               </div>
             )}
