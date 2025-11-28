@@ -1887,7 +1887,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     size={30}
                     className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
                   />
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
                     Upload video (mandatory)
                   </div>
                 </div>
@@ -1920,7 +1920,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     size={30}
                     className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110"
                   />
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
                     {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video' 
                       ? 'Upload character video' 
                       : 'Upload character'}

@@ -312,11 +312,11 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-        <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
+          <div className="flex items-center justify-between md:px-4 px-3 md:py-3 py-2 border-b border-white/10 gap-2">
             <div className="flex items-center gap-2">
-              <button className={`px-3 py-1.5 rounded-full text-sm ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
-              <button className={`px-3 py-1.5 rounded-full text-sm ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
             </div>
             <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
           </div>
@@ -324,7 +324,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
           <div className="p-4">
             {tab === 'library' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
+                <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
                 <div
                   ref={listRef}
                   onScroll={async (e) => {
@@ -375,7 +375,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       }
                     }
                   }}
-                  className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
+                  className="grid grid-cols-3 md:grid-cols-5 gap-3 md:h-[50vh] h-[40vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
                   {displayItems.map((item: any, index: number) => {
                     const videoUrl = item.url;
@@ -399,7 +399,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                         const next = new Set(selection);
                         if (selected) next.delete(videoUrl); else next.add(videoUrl);
                         setSelection(next);
-                      }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
+                      }} className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         {vsrc ? (
                           <video
                             src={vsrc}
@@ -441,16 +441,16 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   })}
                 </div>
                 {libraryHasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{libraryLoading ? 'Loading more…' : 'Scroll to load more'}</div>
+                  <div className="flex items-center justify-center pt-3 text-white/60 md:text-sm text-[11px]">{libraryLoading ? 'Loading more…' : 'Scroll to load more'}</div>
                 )}
                 <div className="flex justify-end mt-0 gap-2">
-                  <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
                 </div>
               </div>
             ) : (
               <div>
-                <div className="text-white/70 text-sm mb-3">Choose up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'}</div>
+                <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1">Choose up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'}</div>
                 <div
                   ref={dropRef}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -471,7 +471,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     }
                     if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
                   }}
-                  className={`border-2 border-dashed border-white/30 rounded-xl h-[51.75vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
+                  className={`border-2 border-dashed border-white/30 rounded-xl md:h-[51.75vh] h-[40vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
@@ -481,7 +481,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 50 * 1024 * 1024; // 50MB for videos
+                      const maxSize = 500 * 1024 * 1024; // 500MB for videos
                       const urls: string[] = [];
                       for (const file of files) {
                         if (file.size > maxSize) { continue; }
@@ -499,7 +499,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   {localUploads.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-white/60 select-none">
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                      <div className="mt-2 text-sm">Drop videos here or click to browse</div>
+                      <div className="mt-2 md:text-sm text-[11px]">Drop videos here or click to browse</div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full place-content-start">
@@ -613,9 +613,9 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     </div>
                   )}
                 </div>
-                <div className="flex justify-end mt-3 gap-2">
-                  <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                <div className="flex justify-end md:mt-3 mt-2 gap-2">
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
                 </div>
               </div>
             )}
