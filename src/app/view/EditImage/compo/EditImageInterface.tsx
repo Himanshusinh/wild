@@ -950,7 +950,7 @@ const EditImageInterface: React.FC = () => {
     { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
     { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
     { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
-    { id: 'live-chat', label: 'Live Chat', description: 'Chat-driven edits & regenerations' },
+    { id: 'live-chat', label: 'Chat to Edit', description: 'Chat-driven edits & regenerations' },
   ] as const;
 
   // Feature preview assets and display labels

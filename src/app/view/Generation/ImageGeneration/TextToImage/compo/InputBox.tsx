@@ -446,6 +446,48 @@ const InputBox = () => {
     return "1024:1024";
   };
 
+  // Helper function to convert frameSize and resolution to z-turbo-model dimensions
+  const convertFrameSizeToZTurboDimensions = (frameSize: string, resolution: '1K' | '2K'): { width: number; height: number } => {
+    // Base resolution: 1K = 1024, 2K = 2048
+    const baseSize = resolution === '1K' ? 1024 : 2048;
+    
+    // Aspect ratio mappings - calculate dimensions based on base size
+    // Supports all common aspect ratios: 1:1, 3:4, 2:3, 9:16, 4:3, 3:2, 16:9, 21:9, 4:5, 5:4, 2:1, 1:2, 3:1, 1:3, 10:16, 16:10, 9:21
+    const aspectRatioMap: { [key: string]: { width: number; height: number } } = {
+      "1:1": { width: baseSize, height: baseSize },
+      "4:3": { width: baseSize, height: Math.round(baseSize * 3 / 4) },
+      "3:4": { width: Math.round(baseSize * 3 / 4), height: baseSize },
+      "16:9": { width: baseSize, height: Math.round(baseSize * 9 / 16) },
+      "9:16": { width: Math.round(baseSize * 9 / 16), height: baseSize },
+      "3:2": { width: baseSize, height: Math.round(baseSize * 2 / 3) },
+      "2:3": { width: Math.round(baseSize * 2 / 3), height: baseSize },
+      "21:9": { width: baseSize, height: Math.round(baseSize * 9 / 21) },
+      "4:5": { width: Math.round(baseSize * 4 / 5), height: baseSize },
+      "5:4": { width: baseSize, height: Math.round(baseSize * 4 / 5) },
+      "2:1": { width: baseSize, height: Math.round(baseSize * 1 / 2) },
+      "1:2": { width: Math.round(baseSize * 1 / 2), height: baseSize },
+      "3:1": { width: baseSize, height: Math.round(baseSize * 1 / 3) },
+      "1:3": { width: Math.round(baseSize * 1 / 3), height: baseSize },
+      "10:16": { width: Math.round(baseSize * 10 / 16), height: baseSize },
+      "16:10": { width: baseSize, height: Math.round(baseSize * 10 / 16) },
+      "9:21": { width: Math.round(baseSize * 9 / 21), height: baseSize },
+    };
+
+    // Get dimensions for the aspect ratio, default to square
+    const dimensions = aspectRatioMap[frameSize] || { width: baseSize, height: baseSize };
+    
+    // Ensure dimensions are within API limits (64-2048) and are multiples of 8 for better compatibility
+    const clampToLimits = (value: number): number => {
+      const clamped = Math.max(64, Math.min(2048, Math.round(value / 8) * 8));
+      return clamped;
+    };
+
+    return {
+      width: clampToLimits(dimensions.width),
+      height: clampToLimits(dimensions.height),
+    };
+  };
+
   // Helper function to convert frameSize to flux-pro-1.1 dimensions
   const convertFrameSizeToFluxProDimensions = (frameSize: string): { width: number; height: number } => {
     const dimensionMap: { [key: string]: { width: number; height: number } } = {
@@ -752,6 +794,7 @@ const InputBox = () => {
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
+  const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -2725,6 +2768,96 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Nano Banana Pro');
           return;
         }
+      } else if (selectedModel === 'new-turbo-model') {
+        // New Turbo Model via replicate generate endpoint
+        try {
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          
+          // Calculate width and height from resolution and aspect ratio
+          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1', zTurboResolution);
+          const width = dimensions.width;
+          const height = dimensions.height;
+          
+          // New Turbo Model doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+          
+          const generationPromises = Array.from({ length: totalToGenerate }, async () => {
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'new-turbo-model',
+              width: width,
+              height: height,
+              num_inference_steps: 14, // Default 45
+              guidance_scale: 0, // Default 10
+              output_format: 'jpg', // Default jpg, can be made configurable
+              output_quality: 80, // Default 80, can be made configurable
+            };
+            
+            // Add seed if provided (optional)
+            // if (seed) payload.seed = seed;
+            
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+          
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+          
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
+          };
+          
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (combinedResult.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (combinedResult.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch { }
+          
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+
+          // Handle credit success
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+
+          // Reset local generation state on success
+          setIsGeneratingLocally(false);
+        } catch (error: any) {
+          console.error('New Turbo Model generation error:', error);
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+
+          // Handle credit failure
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+
+          // Show error notification
+          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
+          toast.error(errorMessage);
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
@@ -3511,11 +3644,97 @@ const InputBox = () => {
           </div>
         </div>
       </div>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[95%] md:max-w-[900px] max-w-[95%] z-[50] h-auto">
-        <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-5 p-2 space-y-4">
+      {/* Mobile-only: Selected images/characters grid above input box */}
+      {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+        <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
+          <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
+            {/* Combine characters and images for display */}
+            {[...selectedCharacters.map((char: any, idx: number) => ({ type: 'character', data: char, index: idx })), ...uploadedImages.map((img: string, idx: number) => ({ type: 'image', data: img, index: idx }))].slice(0, 10).map((item: any, idx: number) => {
+              if (item.type === 'character') {
+                return (
+                  <div
+                    key={`char-${item.data.id}`}
+                    className="relative aspect-square rounded-md overflow-hidden ring-1 ring-white/20 group transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                    title={`Character: ${item.data.name}`}
+                  >
+                    <img
+                      src={item.data.frontImageUrl}
+                      alt={item.data.name}
+                      aria-hidden="true"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                    />
+                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                        C
+                      </div>
+                    </div>
+                    <button
+                      aria-label={`Remove character ${item.data.name}`}
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dispatch(removeSelectedCharacter(item.data.id));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              } else {
+                return (
+                  <div
+                    key={`img-${item.index}`}
+                    data-image-index={item.index}
+                    title={`Image ${item.index + 1}`}
+                    className="relative aspect-square rounded-md overflow-hidden ring-1 ring-white/20 group transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer"
+                    onClick={() => {
+                      setAssetViewer({
+                        isOpen: true,
+                        assetUrl: item.data,
+                        assetType: 'image',
+                        title: `Uploaded Image ${item.index + 1}`
+                      });
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.data}
+                      alt=""
+                      aria-hidden="true"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                    />
+                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                        {item.index + 1}
+                      </div>
+                    </div>
+                    <button
+                      aria-label="Remove reference"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = uploadedImages.filter(
+                          (_: string, idx: number) => idx !== item.index
+                        );
+                        dispatch(setUploadedImages(next));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              }
+            })}
+          </div>
+        </div>
+      )}
+      <div className="fixed md:bottom-6 bottom-0 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="rounded-lg md:rounded-b-lg rounded-b-none bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch md:gap-0 gap-0">
-            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[120px]">
+            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
                 ref={contentEditableRef}
@@ -3634,10 +3853,10 @@ const InputBox = () => {
                   const inputEvent = new Event('input', { bubbles: true });
                   e.currentTarget.dispatchEvent(inputEvent);
                 }}
-                className={`flex-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
+                className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
                   }`}
                 style={{
-                  minHeight: '24px',
+                  minHeight: '100px',
                   maxHeight: '96px',
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
@@ -3657,7 +3876,7 @@ const InputBox = () => {
                 </div>
               )}
               {/* Fixed position buttons container */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
                 {prompt.trim() && (
                   <div className="relative group">
@@ -3674,7 +3893,7 @@ const InputBox = () => {
                           inputEl.current.focus();
                         }
                       }}
-                      className="px-1 py-1 -mt-5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
                       aria-label="Clear prompt"
                     >
                       <svg
@@ -3695,9 +3914,9 @@ const InputBox = () => {
                     <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
                   </div>
                 )}
-                {/* Previews just to the left of upload */}
+                {/* Desktop-only: Previews just to the left of upload */}
                 {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
+                  <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
                     {/* Selected Characters Preview */}
                     {selectedCharacters.map((character: any) => (
                       <div
@@ -3780,7 +3999,8 @@ const InputBox = () => {
                     })}
                   </div>
                 )}
-                <div className="relative flex items-center gap-2 self-start pt-1 pb-4 pr-1">
+                {/* Mobile: Single column on right | Desktop: Horizontal row */}
+                <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
                   {/* Enhance prompt button (manual trigger) */}
                   <div className="relative">
                     <button
@@ -3797,7 +4017,6 @@ const InputBox = () => {
                     </button>
                     <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
                   </div>
-
 
                   <div className="relative">
                     <button
@@ -3920,6 +4139,16 @@ const InputBox = () => {
                     )}
                   </div>
                 )}
+                {selectedModel === 'new-turbo-model' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={zTurboResolution}
+                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="zTurboResolution"
+                    />
+                  </div>
+                )}
             </div>
 
             {/* Desktop: All dropdowns in one row */}
@@ -3984,8 +4213,18 @@ const InputBox = () => {
                     )}
                   </div>
                 )}
-              </div>
+                {selectedModel === 'new-turbo-model' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={zTurboResolution}
+                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="zTurboResolution"
+                    />
+                  </div>
+                )}
             </div>
+          </div>
           </div>
         </div>
       </div>

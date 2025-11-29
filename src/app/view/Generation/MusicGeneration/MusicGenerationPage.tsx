@@ -155,22 +155,22 @@ export default function MusicGenerationPage() {
                     {/* Sticky header + filters (pinned under navbar) */}
                     <div className="sticky top-0 z-20 bg-[#07070B] flex-shrink-0 -mb-4">
                         <div className="mb-2 md:mb-3 pt-10">
-                            <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+                            <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0 sm:mb-3">
                                 Music Generation
                             </h3>
-                            <p className="text-white/80 text-base sm:text-lg md:text-xl">
+                            <p className="text-white/80 text-xs md:text-xl ">
                                 Transform your ideas into stunning audio using advanced AI models
                             </p>
                         </div>
 
                         {/* Feature Filter Bar */}
-                        <div className="mb-0">
-                            <div className="flex items-center gap-3 overflow-x-auto pb-0 scrollbar-none">
+                        <div className="mb-0 w-full">
+                            <div className="flex items-center flex-nowrap w-full md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-2 scrollbar-none scroll-smooth">
                                 {(['Music', 'Voice (TTS)',  'Dialogue','SFX', 'Voice Cloning',] as MusicFeature[]).map((feature) => (
                                     <button
                                         key={feature}
                                         onClick={() => handleSetFeature(feature)}
-                                        className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeFeature === feature
+                                        className={`inline-flex flex-shrink-0 whitespace-nowrap items-center gap-2 md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-xs font-medium transition-all border ${activeFeature === feature
                                             ? 'bg-white border-white/5 text-black shadow-sm'
                                             : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                                             }`}
