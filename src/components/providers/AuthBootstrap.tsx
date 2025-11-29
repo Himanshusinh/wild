@@ -45,6 +45,22 @@ export default function AuthBootstrap() {
               hasCookie: typeof document !== 'undefined' ? document.cookie.includes('app_session=') : false
             });
             dispatch(setUser(null))
+            
+            // CRITICAL FIX: Redirect to signup with toast if session is invalid
+            // This ensures the user knows why they were logged out
+            if (typeof window !== 'undefined') {
+              const currentPath = window.location.pathname;
+              // Don't redirect if already on public pages
+              const isPublic = currentPath === '/' || 
+                               currentPath.startsWith('/view/Landingpage') || 
+                               currentPath.startsWith('/view/signup') || 
+                               currentPath.startsWith('/view/signin');
+                               
+              if (!isPublic) {
+                console.warn('[AuthBootstrap] Redirecting to signup due to 401...');
+                window.location.href = `/view/signup?next=${encodeURIComponent(currentPath)}&toast=SESSION_EXPIRED`;
+              }
+            }
           }
         }
         // ignore other errors; anonymous users are valid
