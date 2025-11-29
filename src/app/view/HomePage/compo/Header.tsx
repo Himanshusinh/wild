@@ -193,7 +193,7 @@ const Header = () => {
       </div>
 
       {/* Text Overlay - Centered above the video */}
-      <div className="absolute inset-0 flex flex-col items-center justify-end text-center text-white z-10 md:bottom-10  left-0 right-0 mt-20 px-4 min-h-[140px] md:min-h-[200px]">
+      <div className="absolute inset-0 flex flex-col items-center justify-end text-center text-white z-10 md:bottom-10  left-0 right-0 md:mt-20 px-4 min-h-[140px] md:min-h-[200px]">
         {/* <h1 className={`text-lg md:text-4xl font-medium md:mb-2 mb-1 md:mt-6 mt-2 transition-opacity duration-1000 ease-in-out min-h-[40px] md:min-h-[48px] max-h-[60px] ${
           isTransitioning ? 'opacity-0' : 'opacity-100'
         }`}>
