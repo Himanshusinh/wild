@@ -150,7 +150,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
               // Attempt AVIF thumbnail first, then WEBP, then original
               let avifThumb: string | undefined
               let webpThumb: string | undefined
-              const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
+              const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
               if (src.startsWith(Z)) {
                 try { avifThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'avif' }) || undefined } catch {}
                 if (!avifThumb) { try { webpThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'webp' }) || undefined } catch {} }

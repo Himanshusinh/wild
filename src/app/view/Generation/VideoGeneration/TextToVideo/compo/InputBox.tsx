@@ -80,7 +80,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Helper functions for proxy URLs (same as History.tsx)
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
-    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
     if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // Allow direct storagePath-like values (users/...)
     if (/^users\//.test(urlOrPath)) return urlOrPath;
@@ -128,7 +128,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       
       // Convert proxy URL to full Zata URL if needed
       if (decodedImageUrl.startsWith('/api/proxy/resource/')) {
-        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || 'https://idr01.zata.ai/devstoragev1/';
+        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || '';
         const path = decodedImageUrl.replace('/api/proxy/resource/', '');
         decodedImageUrl = `${ZATA_PREFIX}${decodeURIComponent(path)}`;
         console.log('Video generation - converted proxy URL to full Zata URL:', decodedImageUrl);

@@ -19,7 +19,7 @@ const toProxyPath = (urlOrPath: string | undefined) => {
     decoded = urlOrPath;
   }
   
-  const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+  const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
   if (decoded.startsWith(ZATA_PREFIX)) {
     return decoded.substring(ZATA_PREFIX.length);
   }

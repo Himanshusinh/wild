@@ -46,10 +46,8 @@ const getStoredIdToken = (): string | null => {
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
-const resolvedBaseUrl = (() => {
-  const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
-  return raw.length > 0 ? raw : 'https://api.wildmindai.com'
-})()
+// Uses NEXT_PUBLIC_API_BASE_URL (must be set in environment variables)
+const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
 
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,

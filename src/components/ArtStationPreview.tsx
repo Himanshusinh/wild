@@ -67,7 +67,7 @@ export default function ArtStationPreview({
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
-  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
 
   useEffect(() => {
     setMediaDimensions(null)
@@ -247,7 +247,7 @@ export default function ArtStationPreview({
                   try {
                     let downloadUrl = currentMedia.url
                     if (downloadUrl.startsWith('/api/proxy/resource/')) {
-                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
                       downloadUrl = `${API_BASE}${downloadUrl}`
                     }
                     const fileType = preview.kind as 'image' | 'video' | 'audio'

@@ -63,7 +63,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
   // Use shared helpers `toMediaProxy` and `toResourceProxy` from '@/lib/thumb' for proxying
 
