@@ -345,7 +345,11 @@ export default function SignInForm() {
     console.log("🎯 SignUp Form Component Mounted") 
     console.log("🌐 Current URL:", window.location.href)
     console.log("🔧 Axios configured:", !!axios)
-  }, [])
+
+    console.log("🔧 Axios configured:", !!axios)
+
+    // Toast logic moved to global ToastMount.tsx
+  }, [searchParams])
 
 
   // API handlers for form flow

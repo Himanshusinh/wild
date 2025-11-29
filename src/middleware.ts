@@ -190,7 +190,7 @@ export function middleware(req: NextRequest) {
     if (!hasSession && !hasHint) {
       const url = req.nextUrl.clone();
       url.pathname = '/view/Landingpage';
-      url.searchParams.set('toast', 'UNAUTHORIZED');
+      // url.searchParams.set('toast', 'UNAUTHORIZED'); // Optional: don't show toast for root visit
       return NextResponse.redirect(url);
     }
     return res;
@@ -208,6 +208,7 @@ export function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
+    url.searchParams.set('toast', 'SESSION_EXPIRED'); // Add toast message
     const redirect = NextResponse.redirect(url);
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
     return redirect;
