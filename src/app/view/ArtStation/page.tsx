@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 import Image from 'next/image'
 import { OptimizedImage } from '@/components/media/OptimizedImage'

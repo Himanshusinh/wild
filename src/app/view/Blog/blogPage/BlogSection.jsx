@@ -124,7 +124,8 @@ function BlogSection({ blogPosts, onPostClick }) {
                 {post.image ? (
                   <img 
                     src={post.image} 
-                    alt={post.title}
+                    alt={post.imageAlt || `Preview for ${post.title}`}
+                    title={post.imageAlt || `Preview for ${post.title}`}
                     loading="lazy"
                     onError={(e) => {
                       e.target.style.display = 'none';

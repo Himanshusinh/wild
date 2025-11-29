@@ -27,7 +27,7 @@ export default function HomePage() {
   );
 
   if (selectedPost) {
-    return <BlogPostDetail post={selectedPost} onBack={() => setSelectedPost(null)} />;
+    return <BlogPostDetail post={selectedPost} onBack={() => setSelectedPost(null)} onPostClick={setSelectedPost} />;
   }
 
   return (

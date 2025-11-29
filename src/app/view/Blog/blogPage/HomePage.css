@@ -61,6 +61,8 @@
   text-align: center;
   z-index: 1;
   position: relative;
+  width: 100%;
+  padding: 0 1.5rem;
 }
 
 /* Logo */
@@ -73,51 +75,17 @@
   margin: 0 auto 16px auto;
 }
 
-/* Header Wrapper for Back Button */
-.blog-header-wrapper {
+/* Circular Back Buttons Group - imported from BlogPostDetail.css but override alignment */
+.blog-back-buttons-group {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 20px;
-  margin: 0 0 16px 0;
-  padding: 0;
+  gap: 1rem;
+  margin: 0;
+  margin-bottom: 1rem;
   position: relative;
-}
-
-/* Back Button */
-.blog-back-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #ffffff;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
-  position: absolute;
-  left: 0;
-  white-space: nowrap;
-}
-
-.blog-back-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.blog-back-button:active {
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-.blog-back-button svg {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  z-index: 10;
+  justify-content: flex-start;
+  width: 100%;
 }
 
 /* Main Heading */
@@ -129,7 +97,7 @@
   margin: 0 0 2.5rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0;
   letter-spacing: -0.02em;
 }
 
@@ -138,6 +106,8 @@
 }
 
 .heading-line {
+  font-size: inherit;
+  font-weight: inherit;
   opacity: 0;
   animation: slideUpFade 0.8s ease-out forwards;
 }
@@ -272,20 +242,9 @@
     margin: 0 auto 12px auto;
   }
 
-  .blog-header-wrapper {
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .blog-back-button {
-    padding: 8px 12px;
-    font-size: 13px;
-    gap: 6px;
-  }
-
-  .blog-back-button svg {
-    width: 16px;
-    height: 16px;
+  .blog-back-buttons-group {
+    margin-bottom: 1.5rem;
+    gap: 0.75rem;
   }
 
   .main-heading {

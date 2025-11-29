@@ -37,7 +37,8 @@ function FeaturedBlogs({ featuredPosts, onPostClick }) {
                 {post.image ? (
                   <img
                     src={post.image}
-                    alt={post.title}
+                    alt={post.imageAlt || `Featured visual for ${post.title}`}
+                    title={post.imageAlt || `Featured visual for ${post.title}`}
                     loading="lazy"
                     onError={(e) => {
                       e.target.style.display = 'none'

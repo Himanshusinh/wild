@@ -1,10 +1,227 @@
 'use client';
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { APP_ROUTES } from '@/routes/routes'
+import { blogPosts } from '../data/blogPosts'
 
-function BlogPostDetail({ post, onBack }) {
+function BlogPostDetail({ post, onBack, onPostClick }) {
   const router = useRouter()
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentWordIndex, setCurrentWordIndex] = useState(-1)
+  const speechSynthesisRef = useRef(null)
+  const wordsRef = useRef([])
+
+  // Get 3 random related articles (excluding current post)
+  const relatedArticles = useMemo(() => {
+    const filtered = blogPosts.filter(p => p.id !== post.id)
+    const shuffled = [...filtered].sort(() => 0.5 - Math.random())
+    return shuffled.slice(0, 3)
+  }, [post.id])
+
+  const handleArticleClick = (article) => {
+    // Scroll to top immediately
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    
+    // Then navigate to the new post
+    if (onPostClick) {
+      onPostClick(article)
+    } else {
+      // Fallback: use router if onPostClick not provided
+      router.push(`/blog/${article.id}`)
+    }
+  }
+
+  const handleGoToHome = () => {
+    router.push(APP_ROUTES.HOME)
+  }
+
+  // Extract all text content from the blog post
+  const getBlogTextContent = () => {
+    let text = ''
+    
+    // Add title
+    if (post.title) {
+      text += post.title + '. '
+    }
+    
+    // Extract text from content object recursively
+    const extractText = (obj, depth = 0) => {
+      if (depth > 10) return '' // Prevent infinite recursion
+      
+      if (typeof obj === 'string') {
+        // Remove markdown formatting and clean up
+        return obj.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').trim() + ' '
+      }
+      
+      if (Array.isArray(obj)) {
+        return obj.map(item => extractText(item, depth + 1)).join(' ')
+      }
+      
+      if (obj && typeof obj === 'object') {
+        // Skip certain keys that aren't text content
+        const skipKeys = ['title', 'href', 'text', 'items', 'weeks', 'points', 'dataPoints']
+        return Object.entries(obj)
+          .filter(([key]) => !skipKeys.includes(key) || key === 'text' || key === 'items' || key === 'weeks' || key === 'points' || key === 'dataPoints')
+          .map(([, value]) => extractText(value, depth + 1))
+          .join(' ')
+      }
+      
+      return ''
+    }
+    
+    if (post.content) {
+      text += extractText(post.content)
+    }
+    
+    // Clean up extra whitespace
+    return text.replace(/\s+/g, ' ').trim()
+  }
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      // Stop speech
+      if (speechSynthesisRef.current) {
+        window.speechSynthesis.cancel()
+        speechSynthesisRef.current = null
+      }
+      setIsPlaying(false)
+      setCurrentWordIndex(-1)
+      // Remove all highlights
+      document.querySelectorAll('.speech-highlight').forEach(el => {
+        el.classList.remove('speech-highlight')
+      })
+    } else {
+      // Start speech
+      const text = getBlogTextContent()
+      if (text && 'speechSynthesis' in window) {
+        // Cancel any ongoing speech
+        window.speechSynthesis.cancel()
+        
+        // Split text into words for tracking
+        const words = text.split(/\s+/).filter(w => w.length > 0)
+        wordsRef.current = words
+        
+        // Mark up the DOM with word indices - use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+          markUpTextWithIndices()
+          
+          const utterance = new SpeechSynthesisUtterance(text)
+          utterance.lang = 'en-US'
+          utterance.rate = 1.0
+          utterance.pitch = 1.0
+          utterance.volume = 1.0
+          
+          utterance.onboundary = (event) => {
+            if (event.name === 'word') {
+              // Remove previous highlight
+              document.querySelectorAll('.speech-highlight').forEach(el => {
+                el.classList.remove('speech-highlight')
+              })
+              
+              // Calculate which word we're on based on character position
+              const charIndex = event.charIndex
+              const textBefore = text.substring(0, charIndex)
+              const wordsBefore = textBefore.split(/\s+/).filter(w => w.length > 0)
+              const currentWordIdx = wordsBefore.length
+              
+              if (currentWordIdx < words.length && currentWordIdx >= 0) {
+                setCurrentWordIndex(currentWordIdx)
+                
+                // Highlight the current word
+                const wordElement = document.querySelector(`[data-word-index="${currentWordIdx}"]`)
+                if (wordElement) {
+                  wordElement.classList.add('speech-highlight')
+                  // Scroll into view smoothly
+                  setTimeout(() => {
+                    wordElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }, 100)
+                }
+              }
+            }
+          }
+          
+          utterance.onend = () => {
+            setIsPlaying(false)
+            setCurrentWordIndex(-1)
+            speechSynthesisRef.current = null
+            // Remove all highlights
+            document.querySelectorAll('.speech-highlight').forEach(el => {
+              el.classList.remove('speech-highlight')
+            })
+          }
+          
+          utterance.onerror = () => {
+            setIsPlaying(false)
+            setCurrentWordIndex(-1)
+            speechSynthesisRef.current = null
+            // Remove all highlights
+            document.querySelectorAll('.speech-highlight').forEach(el => {
+              el.classList.remove('speech-highlight')
+            })
+          }
+          
+          speechSynthesisRef.current = utterance
+          window.speechSynthesis.speak(utterance)
+          setIsPlaying(true)
+        }, 100)
+      } else {
+        alert('Text-to-speech is not supported in your browser.')
+      }
+    }
+  }
+
+  // Mark up text content with word indices for highlighting
+  const markUpTextWithIndices = () => {
+    const textContent = getBlogTextContent()
+    const words = textContent.split(/\s+/).filter(w => w.length > 0)
+    let wordIndex = 0
+    
+    // Find all text nodes in the blog content
+    const blogContent = document.querySelector('.blog-post-content')
+    if (!blogContent) return
+    
+    const walker = document.createTreeWalker(
+      blogContent,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    )
+    
+    let node
+    while (node = walker.nextNode()) {
+      const text = node.textContent
+      const wordsInNode = text.split(/(\s+)/)
+      
+      const fragment = document.createDocumentFragment()
+      
+      wordsInNode.forEach((word, idx) => {
+        if (word.trim().length > 0) {
+          const span = document.createElement('span')
+          span.setAttribute('data-word-index', wordIndex.toString())
+          span.textContent = word
+          fragment.appendChild(span)
+          wordIndex++
+        } else if (word.length > 0) {
+          // Preserve whitespace
+          fragment.appendChild(document.createTextNode(word))
+        }
+      })
+      
+      if (fragment.childNodes.length > 0) {
+        node.parentNode.replaceChild(fragment, node)
+      }
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (speechSynthesisRef.current) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [])
 
   // Map blog post topics to specific Edit tools (Upscale, Remove BG, Replace, Resize, etc.)
   const getFeatureLink = (post) => {
@@ -66,6 +283,11 @@ function BlogPostDetail({ post, onBack }) {
   }
 
   const featureLink = getFeatureLink(post)
+  // Scroll to top when post changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [post.id])
+
   // Update page title
   useEffect(() => {
     const originalTitle = document.title
@@ -109,16 +331,66 @@ function BlogPostDetail({ post, onBack }) {
     return (
       <div className="blog-post-page">
         <div className="blog-post-container">
-          <button className="back-button" onClick={onBack}>
+          {/* Circular Back Buttons */}
+          <div className="blog-back-buttons-group">
+            <button 
+              className="blog-back-button-circle" 
+              onClick={onBack}
+              aria-label="Back to Articles"
+              title="Back to Articles"
+            >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Back to Articles
           </button>
+            <button 
+              className="blog-back-button-circle" 
+              onClick={handleGoToHome}
+              aria-label="Go to Home"
+              title="Go to Home"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8.5 15L3.5 10L8.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M16.5 15L11.5 10L16.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
           <h1 className="blog-post-title">{post.title}</h1>
-          <p className="blog-post-meta">
-            <span className="read-time-post">{post.readTime}</span>
-          </p>
+          <div className="blog-post-meta">
+            <div className="blog-post-meta-left">
+              <div className="read-time-post">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                {post.readTime}
+              </div>
+            </div>
+            <div className="blog-post-meta-right">
+              <button 
+                className={`blog-meta-button ${isPlaying ? 'is-playing' : ''}`}
+                onClick={handlePlayPause}
+                aria-label={isPlaying ? "Pause" : "Play"}
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? (
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 4.5H6V13.5H6V4.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 4.5H12V13.5H12V4.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 4.5L13.5 9L6 13.5V4.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+              <button className="blog-share-button" aria-label="Share" title="Share">
+                <svg width="18" height="18" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.0898 5.4995C14.0898 3.65415 15.5858 2.1582 17.4311 2.1582C19.2765 2.1582 20.7724 3.65415 20.7724 5.4995C20.7724 7.34485 19.2765 8.8408 17.4311 8.8408C16.5302 8.8408 15.7125 8.48419 15.1115 7.90442L10.3318 11.0166C10.4627 11.3746 10.5342 11.7612 10.5342 12.1645C10.5342 12.5672 10.4629 12.9531 10.3324 13.3106L15.1059 16.4188C15.7074 15.8359 16.5274 15.4771 17.4311 15.4771C19.2765 15.4771 20.7724 16.973 20.7724 18.8183C20.7724 20.6637 19.2765 22.1596 17.4311 22.1596C15.5858 22.1596 14.0898 20.6637 14.0898 18.8183C14.0898 18.4176 14.1604 18.0334 14.2897 17.6773L9.51422 14.5678C8.91311 15.1485 8.09471 15.5058 7.19286 15.5058C5.34751 15.5058 3.85156 14.0099 3.85156 12.1645C3.85156 10.3192 5.34751 8.82324 7.19286 8.82324C8.094 8.82324 8.91181 9.17997 9.5128 9.75992L14.2924 6.64782C14.1614 6.28974 14.0898 5.90297 14.0898 5.4995Z" fill="currentColor"/>
+                </svg>
+              </button>
+            </div>
+          </div>
           <div className="blog-post-content">
             <p>Content coming soon...</p>
           </div>
@@ -130,30 +402,78 @@ function BlogPostDetail({ post, onBack }) {
   return (
     <div className="blog-post-page">
       <div className="blog-post-container">
-        <button className="back-button" onClick={onBack}>
+        {/* Back Buttons on Left */}
+        <div className="blog-back-buttons-group-left">
+          <button 
+            className="blog-back-button-circle" 
+            onClick={handleGoToHome}
+            aria-label="Go to Home"
+            title="Go to Home"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8.5 15L3.5 10L8.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16.5 15L11.5 10L16.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <button 
+            className="blog-back-button-circle" 
+            onClick={onBack}
+            aria-label="Go back"
+            title="Go back"
+          >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Back to Articles
         </button>
+        </div>
 
         <article className="blog-post-article">
           {/* Hero Image */}
           {post.image && (
             <div className="blog-post-hero-image">
-              <img src={post.image} alt={post.title} />
+              <img
+                src={post.image}
+                alt={post.imageAlt || `Cover illustration for ${post.title}`}
+                title={post.imageAlt || `Cover illustration for ${post.title}`}
+              />
             </div>
           )}
 
           <header className="blog-post-header">
             <h1 className="blog-post-title">{post.title}</h1>
             <div className="blog-post-meta">
-              <div className="read-time-post">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                {post.readTime}
+              <div className="blog-post-meta-left">
+                <div className="read-time-post">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  {post.readTime}
+                </div>
+              </div>
+              <div className="blog-post-meta-right">
+                <button 
+                  className={`blog-meta-button ${isPlaying ? 'is-playing' : ''}`}
+                  onClick={handlePlayPause}
+                  aria-label={isPlaying ? "Pause" : "Play"}
+                  title={isPlaying ? "Pause" : "Play"}
+                >
+                  {isPlaying ? (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6 4.5H6V13.5H6V4.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 4.5H12V13.5H12V4.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6 4.5L13.5 9L6 13.5V4.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+                <button className="blog-share-button" aria-label="Share" title="Share">
+                  <svg width="18" height="18" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14.0898 5.4995C14.0898 3.65415 15.5858 2.1582 17.4311 2.1582C19.2765 2.1582 20.7724 3.65415 20.7724 5.4995C20.7724 7.34485 19.2765 8.8408 17.4311 8.8408C16.5302 8.8408 15.7125 8.48419 15.1115 7.90442L10.3318 11.0166C10.4627 11.3746 10.5342 11.7612 10.5342 12.1645C10.5342 12.5672 10.4629 12.9531 10.3324 13.3106L15.1059 16.4188C15.7074 15.8359 16.5274 15.4771 17.4311 15.4771C19.2765 15.4771 20.7724 16.973 20.7724 18.8183C20.7724 20.6637 19.2765 22.1596 17.4311 22.1596C15.5858 22.1596 14.0898 20.6637 14.0898 18.8183C14.0898 18.4176 14.1604 18.0334 14.2897 17.6773L9.51422 14.5678C8.91311 15.1485 8.09471 15.5058 7.19286 15.5058C5.34751 15.5058 3.85156 14.0099 3.85156 12.1645C3.85156 10.3192 5.34751 8.82324 7.19286 8.82324C8.094 8.82324 8.91181 9.17997 9.5128 9.75992L14.2924 6.64782C14.1614 6.28974 14.0898 5.90297 14.0898 5.4995Z" fill="currentColor"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </header>
@@ -9981,6 +10301,488 @@ function BlogPostDetail({ post, onBack }) {
               </>
             )}
 
+            {/* Global Startups content structure */}
+            {post.content.traditionalDisadvantages && (
+              <>
+                <section className="blog-section-content">
+                  <h2>{post.content.traditionalDisadvantages.title}</h2>
+                  
+                  {post.content.traditionalDisadvantages.capitalBarrier && (
+                    <div>
+                      <h3>{post.content.traditionalDisadvantages.capitalBarrier.title}</h3>
+                      <p><strong>Traditional Reality:</strong> {post.content.traditionalDisadvantages.capitalBarrier.traditionalReality}</p>
+                      {post.content.traditionalDisadvantages.capitalBarrier.traditionalItems && (
+                        <ul className="blog-list">
+                          {post.content.traditionalDisadvantages.capitalBarrier.traditionalItems.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <p><strong>AI Reality:</strong> {post.content.traditionalDisadvantages.capitalBarrier.aiReality}</p>
+                      {post.content.traditionalDisadvantages.capitalBarrier.aiItems && (
+                        <ul className="blog-list">
+                          {post.content.traditionalDisadvantages.capitalBarrier.aiItems.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {post.content.traditionalDisadvantages.capitalBarrier.example && (
+                        <p><em>{post.content.traditionalDisadvantages.capitalBarrier.example}</em></p>
+                      )}
+                    </div>
+                  )}
+
+                  {post.content.traditionalDisadvantages.expertiseGap && (
+                    <div>
+                      <h3>{post.content.traditionalDisadvantages.expertiseGap.title}</h3>
+                      <p>{post.content.traditionalDisadvantages.expertiseGap.traditionalModel}</p>
+                      {post.content.traditionalDisadvantages.expertiseGap.traditionalItems && (
+                        <ul className="blog-list">
+                          {post.content.traditionalDisadvantages.expertiseGap.traditionalItems.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <p>{post.content.traditionalDisadvantages.expertiseGap.aiModel}</p>
+                      {post.content.traditionalDisadvantages.expertiseGap.aiItems && (
+                        <ul className="blog-list">
+                          {post.content.traditionalDisadvantages.expertiseGap.aiItems.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                {post.content.globalAdvantage && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.globalAdvantage.title}</h2>
+                    
+                    {post.content.globalAdvantage.localKnowledge && (
+                      <div>
+                        <h3>{post.content.globalAdvantage.localKnowledge.title}</h3>
+                        <p>{post.content.globalAdvantage.localKnowledge.text}</p>
+                        {post.content.globalAdvantage.localKnowledge.aiAmplification && (
+                          <p>{post.content.globalAdvantage.localKnowledge.aiAmplification}</p>
+                        )}
+                        {post.content.globalAdvantage.localKnowledge.items && (
+                          <ul className="blog-list">
+                            {post.content.globalAdvantage.localKnowledge.items.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {post.content.globalAdvantage.localKnowledge.caseStudy && (
+                          <p><em>{post.content.globalAdvantage.localKnowledge.caseStudy}</em></p>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.globalAdvantage.leapfrogEffect && (
+                      <div>
+                        <h3>{post.content.globalAdvantage.leapfrogEffect.title}</h3>
+                        <p>{post.content.globalAdvantage.leapfrogEffect.text}</p>
+                        {post.content.globalAdvantage.leapfrogEffect.examples && (
+                          <ul className="blog-list">
+                            {post.content.globalAdvantage.leapfrogEffect.examples.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.aiToolkit && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.aiToolkit.title}</h2>
+                    
+                    {post.content.aiToolkit.essentialStack && (
+                      <div>
+                        <h3>{post.content.aiToolkit.essentialStack.title}</h3>
+                        
+                        {post.content.aiToolkit.essentialStack.creativeDesign && (
+                          <div>
+                            <h4>{post.content.aiToolkit.essentialStack.creativeDesign.title}</h4>
+                            {post.content.aiToolkit.essentialStack.creativeDesign.items && (
+                              <ul className="blog-list">
+                                {post.content.aiToolkit.essentialStack.creativeDesign.items.map((item, index) => (
+                                  <li key={index}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {post.content.aiToolkit.essentialStack.creativeDesign.cost && (
+                              <p>{post.content.aiToolkit.essentialStack.creativeDesign.cost}</p>
+                            )}
+                            {post.content.aiToolkit.essentialStack.creativeDesign.wildmindAdvantage && (
+                              <p><em>{post.content.aiToolkit.essentialStack.creativeDesign.wildmindAdvantage}</em></p>
+                            )}
+                          </div>
+                        )}
+
+                        {post.content.aiToolkit.essentialStack.contentMarketing && (
+                          <div>
+                            <h4>{post.content.aiToolkit.essentialStack.contentMarketing.title}</h4>
+                            {post.content.aiToolkit.essentialStack.contentMarketing.items && (
+                              <ul className="blog-list">
+                                {post.content.aiToolkit.essentialStack.contentMarketing.items.map((item, index) => (
+                                  <li key={index}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+
+                        {post.content.aiToolkit.essentialStack.developmentOperations && (
+                          <div>
+                            <h4>{post.content.aiToolkit.essentialStack.developmentOperations.title}</h4>
+                            {post.content.aiToolkit.essentialStack.developmentOperations.items && (
+                              <ul className="blog-list">
+                                {post.content.aiToolkit.essentialStack.developmentOperations.items.map((item, index) => (
+                                  <li key={index}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.successStories && post.content.successStories.caseStudy1 && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.successStories.title}</h2>
+                    
+                    {post.content.successStories.caseStudy1 && (
+                      <div>
+                        <h3>{post.content.successStories.caseStudy1.title}</h3>
+                        <p><strong>Challenge:</strong> {post.content.successStories.caseStudy1.challenge}</p>
+                        <p><strong>AI Solution:</strong> {post.content.successStories.caseStudy1.aiSolution}</p>
+                        {post.content.successStories.caseStudy1.aiSolutionItems && (
+                          <ul className="blog-list">
+                            {post.content.successStories.caseStudy1.aiSolutionItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <p><strong>Results:</strong> {post.content.successStories.caseStudy1.results}</p>
+                        {post.content.successStories.caseStudy1.resultsItems && (
+                          <ul className="blog-list">
+                            {post.content.successStories.caseStudy1.resultsItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.successStories.caseStudy2 && (
+                      <div>
+                        <h3>{post.content.successStories.caseStudy2.title}</h3>
+                        <p><strong>Challenge:</strong> {post.content.successStories.caseStudy2.challenge}</p>
+                        <p><strong>AI Solution:</strong> {post.content.successStories.caseStudy2.aiSolution}</p>
+                        {post.content.successStories.caseStudy2.aiSolutionItems && (
+                          <ul className="blog-list">
+                            {post.content.successStories.caseStudy2.aiSolutionItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <p><strong>Results:</strong> {post.content.successStories.caseStudy2.results}</p>
+                        {post.content.successStories.caseStudy2.resultsItems && (
+                          <ul className="blog-list">
+                            {post.content.successStories.caseStudy2.resultsItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.successStories.caseStudy3 && (
+                      <div>
+                        <h3>{post.content.successStories.caseStudy3.title}</h3>
+                        <p><strong>Challenge:</strong> {post.content.successStories.caseStudy3.challenge}</p>
+                        <p><strong>AI Solution:</strong> {post.content.successStories.caseStudy3.aiSolution}</p>
+                        {post.content.successStories.caseStudy3.aiSolutionItems && (
+                          <ul className="blog-list">
+                            {post.content.successStories.caseStudy3.aiSolutionItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <p><strong>Results:</strong> {post.content.successStories.caseStudy3.results}</p>
+                        {post.content.successStories.caseStudy3.resultsItems && (
+                          <ul className="blog-list">
+                            {post.content.successStories.caseStudy3.resultsItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.strategicPlaybook && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.strategicPlaybook.title}</h2>
+                    
+                    {post.content.strategicPlaybook.phase1 && (
+                      <div>
+                        <h3>{post.content.strategicPlaybook.phase1.title}</h3>
+                        <p>{post.content.strategicPlaybook.phase1.identifyAdvantage}</p>
+                        {post.content.strategicPlaybook.phase1.identifyItems && (
+                          <ul className="blog-list">
+                            {post.content.strategicPlaybook.phase1.identifyItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <p>{post.content.strategicPlaybook.phase1.buildStack}</p>
+                        {post.content.strategicPlaybook.phase1.buildStackItems && (
+                          <ul className="blog-list">
+                            {post.content.strategicPlaybook.phase1.buildStackItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.strategicPlaybook.phase2 && (
+                      <div>
+                        <h3>{post.content.strategicPlaybook.phase2.title}</h3>
+                        <p>{post.content.strategicPlaybook.phase2.rapidPrototyping}</p>
+                        {post.content.strategicPlaybook.phase2.rapidPrototypingItems && (
+                          <ul className="blog-list">
+                            {post.content.strategicPlaybook.phase2.rapidPrototypingItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <p>{post.content.strategicPlaybook.phase2.scaleStrengths}</p>
+                        {post.content.strategicPlaybook.phase2.scaleStrengthsItems && (
+                          <ul className="blog-list">
+                            {post.content.strategicPlaybook.phase2.scaleStrengthsItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.strategicPlaybook.phase3 && (
+                      <div>
+                        <h3>{post.content.strategicPlaybook.phase3.title}</h3>
+                        <p>{post.content.strategicPlaybook.phase3.optimizeExpand}</p>
+                        {post.content.strategicPlaybook.phase3.optimizeExpandItems && (
+                          <ul className="blog-list">
+                            {post.content.strategicPlaybook.phase3.optimizeExpandItems.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.overcomingChallenges && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.overcomingChallenges.title}</h2>
+                    
+                    {post.content.overcomingChallenges.languageLocalization && (
+                      <div>
+                        <h3>{post.content.overcomingChallenges.languageLocalization.title}</h3>
+                        <p><strong>Traditional Challenge:</strong> {post.content.overcomingChallenges.languageLocalization.traditionalChallenge}</p>
+                        <p><strong>AI Solution:</strong> {post.content.overcomingChallenges.languageLocalization.aiSolution}</p>
+                        <p><strong>Implementation:</strong> {post.content.overcomingChallenges.languageLocalization.implementation}</p>
+                      </div>
+                    )}
+
+                    {post.content.overcomingChallenges.marketResearch && (
+                      <div>
+                        <h3>{post.content.overcomingChallenges.marketResearch.title}</h3>
+                        <p><strong>Traditional Challenge:</strong> {post.content.overcomingChallenges.marketResearch.traditionalChallenge}</p>
+                        <p><strong>AI Solution:</strong> {post.content.overcomingChallenges.marketResearch.aiSolution}</p>
+                        <p><strong>Implementation:</strong> {post.content.overcomingChallenges.marketResearch.implementation}</p>
+                      </div>
+                    )}
+
+                    {post.content.overcomingChallenges.talentAccess && (
+                      <div>
+                        <h3>{post.content.overcomingChallenges.talentAccess.title}</h3>
+                        <p><strong>Traditional Challenge:</strong> {post.content.overcomingChallenges.talentAccess.traditionalChallenge}</p>
+                        <p><strong>AI Solution:</strong> {post.content.overcomingChallenges.talentAccess.aiSolution}</p>
+                        <p><strong>Implementation:</strong> {post.content.overcomingChallenges.talentAccess.implementation}</p>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.fundingAdvantage && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.fundingAdvantage.title}</h2>
+                    <p>{post.content.fundingAdvantage.text}</p>
+                    {post.content.fundingAdvantage.dataPoints && (
+                      <ul className="blog-list">
+                        {post.content.fundingAdvantage.dataPoints.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )}
+
+                {post.content.ethicalDimension && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.ethicalDimension.title}</h2>
+                    <p>{post.content.ethicalDimension.text}</p>
+                    
+                    {post.content.ethicalDimension.culturalRespect && (
+                      <div>
+                        <h3>{post.content.ethicalDimension.culturalRespect.title}</h3>
+                        {post.content.ethicalDimension.culturalRespect.items && (
+                          <ul className="blog-list">
+                            {post.content.ethicalDimension.culturalRespect.items.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.ethicalDimension.economicInclusion && (
+                      <div>
+                        <h3>{post.content.ethicalDimension.economicInclusion.title}</h3>
+                        {post.content.ethicalDimension.economicInclusion.items && (
+                          <ul className="blog-list">
+                            {post.content.ethicalDimension.economicInclusion.items.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.ethicalDimension.transparency && (
+                      <div>
+                        <h3>{post.content.ethicalDimension.transparency.title}</h3>
+                        {post.content.ethicalDimension.transparency.items && (
+                          <ul className="blog-list">
+                            {post.content.ethicalDimension.transparency.items.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.future && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.future.title}</h2>
+                    <p>{post.content.future.text}</p>
+                    {post.content.future.points && (
+                      <ul className="blog-list">
+                        {post.content.future.points.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )}
+
+                {post.content.gettingStarted && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.gettingStarted.title}</h2>
+                    
+                    {post.content.gettingStarted.month1 && (
+                      <div>
+                        <h3>{post.content.gettingStarted.month1.title}</h3>
+                        {post.content.gettingStarted.month1.weeks && (
+                          <ul className="blog-list">
+                            {post.content.gettingStarted.month1.weeks.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.gettingStarted.month2 && (
+                      <div>
+                        <h3>{post.content.gettingStarted.month2.title}</h3>
+                        {post.content.gettingStarted.month2.weeks && (
+                          <ul className="blog-list">
+                            {post.content.gettingStarted.month2.weeks.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {post.content.gettingStarted.month3 && (
+                      <div>
+                        <h3>{post.content.gettingStarted.month3.title}</h3>
+                        {post.content.gettingStarted.month3.weeks && (
+                          <ul className="blog-list">
+                            {post.content.gettingStarted.month3.weeks.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {post.content.commonMistakes && (
+                  <section className="blog-section-content">
+                    <h2>{post.content.commonMistakes.title}</h2>
+                    
+                    {post.content.commonMistakes.mistake1 && (
+                      <div>
+                        <h3>{post.content.commonMistakes.mistake1.title}</h3>
+                        <p><strong>Problem:</strong> {post.content.commonMistakes.mistake1.problem}</p>
+                        <p><strong>Solution:</strong> {post.content.commonMistakes.mistake1.solution}</p>
+                      </div>
+                    )}
+
+                    {post.content.commonMistakes.mistake2 && (
+                      <div>
+                        <h3>{post.content.commonMistakes.mistake2.title}</h3>
+                        <p><strong>Problem:</strong> {post.content.commonMistakes.mistake2.problem}</p>
+                        <p><strong>Solution:</strong> {post.content.commonMistakes.mistake2.solution}</p>
+                      </div>
+                    )}
+
+                    {post.content.commonMistakes.mistake3 && (
+                      <div>
+                        <h3>{post.content.commonMistakes.mistake3.title}</h3>
+                        <p><strong>Problem:</strong> {post.content.commonMistakes.mistake3.problem}</p>
+                        <p><strong>Solution:</strong> {post.content.commonMistakes.mistake3.solution}</p>
+                      </div>
+                    )}
+
+                    {post.content.commonMistakes.mistake4 && (
+                      <div>
+                        <h3>{post.content.commonMistakes.mistake4.title}</h3>
+                        <p><strong>Problem:</strong> {post.content.commonMistakes.mistake4.problem}</p>
+                        <p><strong>Solution:</strong> {post.content.commonMistakes.mistake4.solution}</p>
+                      </div>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
+
             {post.content.conclusion && (
               <section className="blog-section-content">
                 <h2>Conclusion</h2>
@@ -10017,6 +10819,43 @@ function BlogPostDetail({ post, onBack }) {
               </div>
             </div>
           )}
+
+          {/* Read More Section */}
+          <div className="read-more-section">
+            <h2 className="read-more-title">Read More</h2>
+            <div className="read-more-grid">
+              {relatedArticles.map((article) => (
+                <div
+                  key={article.id}
+                  className="read-more-card"
+                  onClick={() => handleArticleClick(article)}
+                >
+                  {article.image && (
+                    <div className="read-more-card-image">
+                      <img
+                        src={article.image}
+                        alt={article.title}
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  <div className="read-more-card-content">
+                    <span className={`read-more-category category-${article.categoryColor}`}>
+                      {article.category}
+                    </span>
+                    <h3 className="read-more-card-title">{article.title}</h3>
+                    <p className="read-more-card-description">{article.description}</p>
+                    <div className="read-more-card-footer">
+                      <span className="read-more-read-time">{article.readTime}</span>
+                      <svg className="read-more-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </article>
       </div>
     </div>
