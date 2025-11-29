@@ -4542,7 +4542,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     )}
 
                   {/* References Upload (for video-to-video and S2V-01 character reference) */}
-                  {(currentModelCapabilities.requiresReferenceImage || (currentModelCapabilities.supportsVideoToVideo && uploadedVideo)) && (
+                  {(currentModelCapabilities.requiresReferenceImage) && (
                     <div className="relative">
                       <button
                         className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
@@ -4845,7 +4845,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             {uploadedVideo && (
               <div className="md:mb-3 mb-0">
                 <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
-                <div className="relative group">
+                <div className="relative group w-fit">
                   <div
                     className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                     onClick={() => {
