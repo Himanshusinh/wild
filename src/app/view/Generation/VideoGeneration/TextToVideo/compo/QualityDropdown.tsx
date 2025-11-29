@@ -141,14 +141,14 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
           }
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
       >
-        <Monitor className="w-4 h-4 mr-1" />
+        <Monitor className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedQualityInfo?.label || selectedQuality}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {availableQualities.map((quality) => (
             <button
               key={quality.value}
@@ -156,15 +156,15 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
                 onQualityChange(quality.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-2 text-left transition-all duration-200 flex items-center justify-between ${
+              className={`w-full md:px-4 md:p-2 p-2 text-left transition-all duration-200 flex items-center justify-between ${
                 selectedQuality === quality.value
                   ? 'bg-white'
                   : 'hover:bg-white/10'
               }`}
             >
               <div className="flex flex-col items-start">
-                <span className={`font-medium text-sm ${selectedQuality === quality.value ? 'text-black' : 'text-white/90'}`}>{quality.label}</span>
-                <span className={`text-xs ${selectedQuality === quality.value ? 'text-black/80 ' : 'text-white/60'}`}>{quality.description} </span>
+                <span className={`font-medium md:text-sm text-xs ${selectedQuality === quality.value ? 'text-black' : 'text-white/90'}`}>{quality.label}</span>
+                <span className={`md:text-xs text-xs ${selectedQuality === quality.value ? 'text-black/80 ' : 'text-white/60'}`}>{quality.description} </span>
               </div>
               {selectedQuality === quality.value && (
                 <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>

@@ -7,7 +7,8 @@ import { addNotification } from "@/store/slices/uiSlice";
 import { addAndSaveHistoryEntry } from "@/store/slices/historySlice";
 import { HistoryEntry, GeneratedImage, LiveChatMessage } from "@/types/history";
 import { saveLiveChatSession } from '@/lib/historyService';
-import { ensureSessionReady, clearAuthData, isUserAuthenticated } from '@/lib/axiosInstance';
+import { ensureSessionReady, isUserAuthenticated } from '@/lib/axiosInstance';
+import { clearAuthData } from '@/lib/authUtils';
 import axiosInstance from '@/lib/axiosInstance';
 import { auth } from '@/lib/firebase';
 import Image from "next/image";
@@ -405,8 +406,8 @@ const LiveChatInputBox: React.FC = () => {
                     {currentGeneration.status === 'generating' ? (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                         <div className="flex flex-col items-center gap-2 p-4">
-                          <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
-                          <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                          <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
+                          <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                           <div className="text-xs text-white/60 text-center">Generating...</div>
                           {/* <div className="text-xs text-white/40 text-center max-w-full truncate px-2">
                             "{currentGeneration.prompt}"

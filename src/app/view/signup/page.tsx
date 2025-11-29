@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 
 import SignInForm from "./sign-up-form"
 
@@ -13,11 +13,8 @@ interface ImageData {
 }
 
 export default function SignUp() {
-  const [images, setImages] = useState<ImageData[]>([])
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [image, setImage] = useState<ImageData | null>(null)
   const [isLoadingImage, setIsLoadingImage] = useState(true)
-  const [fadeOut, setFadeOut] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   
   // Proxy function to avoid 429 errors from Google
   const getProxiedImageUrl = (url: string | undefined): string | undefined => {
@@ -30,176 +27,183 @@ export default function SignUp() {
     return url
   }
 
-  // Fetch multiple random high-scored images on mount
+  // Fetch single random high-scored image on mount - ONLY on desktop (not mobile/tablet)
+  // Uses optimized Next.js API route with aggressive caching for instant loading
   useEffect(() => {
-    const fetchRandomImages = async () => {
+    // Check if we're on desktop (width >= 1024px)
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024
+    
+    if (!isDesktop) {
+      setIsLoadingImage(false)
+      return
+    }
+
+    const fetchRandomImage = async () => {
+      const startTime = performance.now()
+      
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
-        const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored?count=20`
-        
-        const response = await fetch(apiUrl, {
+        // Use Next.js API route with caching instead of direct backend call
+        // This route caches responses for 5 minutes and uses in-memory cache for instant responses
+        console.log('[Signup] Fetching from /api/signup-image...');
+        const response = await fetch('/api/signup-image', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-        })
+          // No cache - fetch fresh image on every refresh
+          cache: 'no-store',
+        });
+        console.log('[Signup] Response received:', response.status, response.statusText);
 
         if (response.ok) {
           const data = await response.json()
-          if (data?.responseStatus === 'success' && Array.isArray(data?.data) && data.data.length > 0) {
-            // Start slideshow as soon as first image arrives
-            if (data.data.length > 0) {
-              setImages([data.data[0]]) // Set first image immediately
-              setIsLoadingImage(false) // Stop loading state
-              // Then add remaining images
-              if (data.data.length > 1) {
-                setTimeout(() => {
-                  setImages(data.data)
-                }, 100)
-              }
-            } else {
-              setImages([])
-              setIsLoadingImage(false)
+          console.log('[Signup] API response:', {
+            responseStatus: data?.responseStatus,
+            hasData: !!data?.data,
+            imageUrl: data?.data?.imageUrl ? 'present' : 'missing'
+          })
+          
+          if (data?.responseStatus === 'success' && data?.data) {
+            setImage(data.data)
+            setIsLoadingImage(false)
+            const duration = performance.now() - startTime
+            console.log(`[Signup] ✅ Image loaded in ${duration.toFixed(0)}ms`)
+            
+            // Preload the actual image for instant display
+            if (data.data.imageUrl) {
+              const img = new window.Image()
+              img.src = data.data.imageUrl
             }
           } else {
-            // API returned success but no images - use default
-            setImages([])
+            console.warn('[Signup] ⚠️ Invalid response structure:', data)
+            setImage(null)
             setIsLoadingImage(false)
           }
         } else {
-          // API call failed - use default
-          setImages([])
+          // Get error details from response
+          let errorData: any = null
+          let errorText = ''
+          try {
+            errorText = await response.text()
+            console.log('[Signup] Error response text:', errorText)
+            try {
+              errorData = JSON.parse(errorText)
+            } catch {
+              errorData = { message: errorText }
+            }
+          } catch (e) {
+            console.error('[Signup] Failed to read error response:', e)
+            errorData = { message: 'Unknown error' }
+          }
+          
+          console.error('[Signup] ❌ API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+            errorText: errorText.substring(0, 200),
+            url: response.url,
+            headers: Object.fromEntries(response.headers.entries())
+          })
+          
+          // Log detailed error if available
+          if (errorData?.error) {
+            console.error('[Signup] Detailed error:', errorData.error)
+          }
+          
+          setImage(null)
           setIsLoadingImage(false)
         }
-      } catch (error) {
-        console.error('❌ Failed to fetch random images:', error)
-        // API call failed - use default
-        setImages([])
+      } catch (error: any) {
+        console.error('❌ Failed to fetch random image from Next.js API:', error)
+        
+        // Fallback: Try direct backend call if Next.js route fails
+        try {
+          console.log('[Signup] 🔄 Trying direct backend call as fallback...')
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
+          const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored`
+          
+          const fallbackResponse = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json()
+            if (fallbackData?.responseStatus === 'success' && fallbackData?.data) {
+              console.log('[Signup] ✅ Fallback backend call succeeded')
+              setImage(fallbackData.data)
+              setIsLoadingImage(false)
+              
+              // Preload the actual image
+              if (fallbackData.data.imageUrl) {
+                const img = new window.Image()
+                img.src = fallbackData.data.imageUrl
+              }
+              return
+            }
+          }
+        } catch (fallbackError: any) {
+          console.error('❌ Fallback backend call also failed:', fallbackError)
+        }
+        
+        setImage(null)
         setIsLoadingImage(false)
       }
     }
 
-    fetchRandomImages()
+    fetchRandomImage()
   }, [])
-
-  // Slideshow effect - change image every 7 seconds with smooth fade transition
-  useEffect(() => {
-    if (images.length <= 1) return
-
-    // Clear any existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-    }
-
-    // Set up interval to change images
-    intervalRef.current = setInterval(() => {
-      // Start fade out
-      setFadeOut(true)
-      
-      // After fade out completes, change to next image and fade in
-      setTimeout(() => {
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length)
-        // Small delay before fading in for smoother transition
-        setTimeout(() => {
-          setFadeOut(false)
-        }, 100)
-      }, 600) // Half of transition duration (1200ms / 2)
-    }, 7000) // Change image every 7 seconds
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [images.length])
 
   // Default image URL (fallback)
   const defaultImageUrl = "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsignup%2F3.png?alt=media&token=e67afc08-10e0-4710-b251-d9031ef14026"
   
-  // Get current image data
-  const currentImage = images.length > 0 ? images[currentIndex] : null
-  const imageSrc = currentImage?.imageUrl || defaultImageUrl
-  const creatorInfo = currentImage?.creator || null
+  // Get image data
+  const imageSrc = image?.imageUrl || defaultImageUrl
+  const creatorInfo = image?.creator || null
 
   return (
-    <main className="flex min-h-screen bg-background w-[100%]">
-      {/* Left Side - Form */}
-      <div className="w-full md:w-[60%] min-h-screen relative z-20 bg-[#07070B] flex justify-center items-center">
-
+    <main className="flex min-h-screen bg-gray-900 w-full">
+      {/* Left Side - Form - Full width on mobile/tablet, 50% on desktop */}
+      <div className="w-full lg:w-[50%] min-h-screen relative z-20 bg-gray-900 flex flex-col">
         <SignInForm />
-
       </div>
 
-      {/* Right Side - Image - Hidden on mobile */}
-      <div className="hidden md:flex flex-1 min-h-screen relative bg-gray-900 w-[40%] z-10">
-        <div className="absolute inset-0 rounded-tl-[50px] rounded-bl-[50px] overflow-hidden pointer-events-none">
-          {isLoadingImage ? (
-            // Smooth loading state
-            <div className="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-black flex items-center justify-center">
-              <div className="text-center">
-                <div className="relative w-16 h-16 mx-auto mb-4">
-                  <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
-                  <div className="absolute inset-0 border-4 border-transparent border-t-white rounded-full animate-spin"></div>
-                </div>
-                <p className="text-white text-sm opacity-70 animate-pulse">Loading featured creation...</p>
-              </div>
-            </div>
-          ) : images.length > 0 ? (
+      {/* Right Side - Image - Hidden on mobile and tablet, only show on desktop (lg and above) */}
+      <div className="hidden  lg:flex flex-1 min-h-screen relative bg-transparent w-[50%] z-10">
+        <div className="absolute  inset-0 overflow-hidden m-2 rounded-lg ">
+          {image ? (
             <div className="relative w-full h-full">
-              {images.map((img, index) => {
-                const isActive = index === currentIndex
-                const isVisible = isActive && !fadeOut
-                
-                return (
-                  <Image
-                    key={img.generationId || `img-${index}`}
-                    src={img.imageUrl}
-                    alt={img.prompt || "Featured creation"}
-                    fill
-                  className={`object-cover object-[center_25%] scale-100 transition-opacity duration-[1200ms] ease-in-out absolute inset-0 ${
-                    isVisible
-                      ? 'opacity-100 z-10'
-                      : 'opacity-0 z-0'
-                  }`}
-                    priority={index === 0}
-                    unoptimized
-                    onError={() => {
-                      // Remove failed image from array
-                      setImages(prev => prev.filter((_, i) => i !== index))
-                    }}
-                  />
-                )
-              })}
+              <Image
+                src={imageSrc}
+                alt={image.prompt || "Featured creation"}
+                fill
+                className="object-cover absolute inset-0"
+                priority
+                unoptimized
+                loading="eager"
+                fetchPriority="high"
+                onError={() => {
+                  setImage(null)
+                }}
+              />
             </div>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-              <div className="text-center text-white">
+            <div className="w-full h-full flex items-center justify-center">
+              {/* <div className="text-center text-white">
                 <h2 className="text-2xl font-bold mb-2">Welcome to WildMind AI</h2>
                 <p className="text-lg opacity-80">Create amazing content with AI</p>
-              </div>
+              </div> */}
             </div>
           )}
           
-          {/* Bottom Black Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-          
-          {/* Attribution Text - Bottom Right Corner */}
+          {/* Attribution Text - Bottom Right Corner (Krea Style) */}
           {creatorInfo && (creatorInfo.username || creatorInfo.photoURL) && (
-            <div className="absolute bottom-8 right-8 text-white z-20 pointer-events-auto flex items-center gap-4 transition-opacity duration-1000">
-              {creatorInfo.photoURL && (
-                <Image
-                  src={getProxiedImageUrl(creatorInfo.photoURL) || creatorInfo.photoURL}
-                  alt={creatorInfo.username || 'Creator'}
-                  width={56}
-                  height={56}
-                  className="rounded-full object-cover flex-shrink-0 border-2 border-white/20 shadow-lg"
-                  unoptimized
-                />
-              )}
-              <div className="text-right">
-                <p className="text-sm opacity-90 mb-1">Generated by</p>
-                <p className="text-xl font-bold">{creatorInfo.username || 'WildMind User'}</p>
-              </div>
+            <div className="absolute bottom-6 right-6 text-white-900 z-20 pointer-events-auto">
+              <p className="text-xs font-medium">
+                Created by: <span className="font-bold">@{creatorInfo.username || 'wildminduser'}</span> with WildMind AI
+              </p>
             </div>
           )}
         </div>

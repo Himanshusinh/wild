@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,5 +19,15 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
+
+// CRITICAL FIX: Explicitly set auth persistence to LOCAL (survives page refreshes)
+// This ensures Firebase auth state persists even after browser refresh
+// Without this, auth.currentUser can become null after page refresh, breaking session refresh
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error('[Firebase] Failed to set auth persistence:', error);
+    // Non-fatal - Firebase defaults to local persistence anyway
+  });
+}
 
 export default app;

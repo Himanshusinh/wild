@@ -2,8 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
-import Image from 'next/image'
-import { OptimizedImage } from '@/components/media/OptimizedImage'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
 import { buildFeedRequestUrl } from '@/lib/feedClient'
@@ -11,7 +9,7 @@ import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/C
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 import ArtStationPreview from '@/components/ArtStationPreview'
-import { toMediaProxy, toResourceProxy, toDirectUrl } from '@/lib/thumb'
+import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -92,6 +90,14 @@ const shouldHideGenerationType = (type?: string) => {
   if (disallowedExactTypes.has(normalized)) return true;
   if (normalized.startsWith('image-edit') || normalized.startsWith('edit-image')) return true;
   return disallowedFeatureTokens.some((token) => normalized.includes(token));
+};
+
+const canonicalMediaKey = (url?: string) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const noQuery = trimmed.split('?')[0];
+  return noQuery.endsWith('/') ? noQuery.slice(0, -1) : noQuery;
 };
 
 export default function ArtStationPage() {
@@ -659,14 +665,12 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     return sanitized;
   }, [items, activeCategory, searchQuery]);
 
-  const normalizeMediaUrl = (url?: string): string | undefined => {
+const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!url) return undefined
     const trimmed = url.trim()
     if (!trimmed) return undefined
     if (/^https?:\/\//i.test(trimmed)) return trimmed
     if (trimmed.startsWith('/api/')) return trimmed
-    const proxied = toResourceProxy(trimmed)
-    if (proxied) return proxied
     return toDirectUrl(trimmed)
   }
 
@@ -690,48 +694,36 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     return undefined
   }
 
-  // Resolve image URL with fallback chain: thumbnailUrl → optimized (avif/webp) → url (Zata) → originalUrl
+  // Resolve image URL with fallback chain: avif → optimized → direct Zata/original
   const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
     
-    const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl) || normalizeMediaUrl(m.thumbUrl)
+    const thumbAvif =
+      normalizeMediaUrl(
+        typeof m.thumbnailUrl === 'string' && m.thumbnailUrl.endsWith('.avif')
+          ? m.thumbnailUrl
+          : undefined
+      ) || normalizeMediaUrl(
+        typeof m.thumbUrl === 'string' && m.thumbUrl.endsWith('.avif')
+          ? m.thumbUrl
+          : undefined
+      )
     const avifUrl = normalizeMediaUrl(m.avifUrl)
-    const webpUrl = normalizeMediaUrl(m.webpUrl)
-    const zataUrl = normalizeMediaUrl(m.url) // Zata URL (e.g., https://idr01.zata.ai/devstoragev1/...)
-    const originalUrl = normalizeMediaUrl(m.originalUrl) // Original source URL (e.g., Azure blob)
-    
-    // Priority: thumbnailUrl → avifUrl → webpUrl → url (Zata) → originalUrl
-    if (thumbnailUrl) {
-      return {
-        url: thumbnailUrl,
-        fallbacks: [avifUrl, webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
-    if (avifUrl) {
-      return {
-        url: avifUrl,
-        fallbacks: [webpUrl, zataUrl, originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
-    if (webpUrl) {
-      return {
-        url: webpUrl,
-        fallbacks: [zataUrl, originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
-    if (zataUrl) {
-      return {
-        url: zataUrl,
-        fallbacks: [originalUrl].filter(Boolean) as string[]
-      }
-    }
-    
+    const optimizedUrl =
+      normalizeMediaUrl(m.optimizedUrl) ||
+      normalizeMediaUrl(m.optimized?.url) ||
+      normalizeMediaUrl(m.webpUrl)
+    const storageUrl = m.storagePath ? toDirectUrl(m.storagePath) : undefined
+    const directUrl = normalizeMediaUrl(m.url) || storageUrl
+    const originalUrl = normalizeMediaUrl(m.originalUrl) || storageUrl
+
+    const ordered = [thumbAvif, avifUrl, optimizedUrl, directUrl, originalUrl].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    ) as string[]
+
     return {
-      url: originalUrl || '',
-      fallbacks: []
+      url: ordered[0] || '',
+      fallbacks: ordered.slice(1)
     }
   }
 
@@ -759,7 +751,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
   }) => {
     const { url: primaryUrl, fallbacks } = resolveImageUrl(media);
     const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
-    const allUrls = [primaryUrl, ...fallbacks].filter(Boolean);
+    const allUrls = [primaryUrl, ...fallbacks].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    );
     const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
 
     const markCompleteFallback = () => {
@@ -791,21 +785,23 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       )
     }
 
-    // Use key to force re-render when URL changes
+    // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
     return (
-      <Image
+      <img
         key={`${currentUrl}-${currentUrlIndex}`}
         src={currentUrl}
         alt={alt}
-        fill={fill}
-        sizes={sizes}
-        placeholder="blur"
-        blurDataURL={blurDataURL}
-        className={className}
-        priority={priority}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
         fetchPriority={fetchPriority}
+        className={className}
+        style={fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : {}}
         onError={handleError}
-        onLoadingComplete={onLoadingComplete}
+        onLoad={(e) => {
+          try {
+            onLoadingComplete?.(e.currentTarget as HTMLImageElement);
+          } catch {}
+        }}
       />
     );
   }
@@ -815,6 +811,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
     const seenItem = new Set<string>()
+    const seenMediaUrls = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
     if (process.env.NODE_ENV !== 'production') {
@@ -834,14 +831,32 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       const candidate = (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
       const kind: 'image' | 'video' | 'audio' = (it.videos && it.videos[0]) ? 'video' : (it.images && it.images[0]) ? 'image' : 'audio'
       const candidateUrl = resolveMediaUrl(candidate)
+      const candidateKey = canonicalMediaKey(candidateUrl)
+      if (candidateKey && seenMediaUrls.has(candidateKey)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[ArtStation] Skipping duplicate media URL:', candidateKey, 'from item', it.id)
+        }
+        continue
+      }
 
       // Only skip if there's truly no media at all - try multiple fallbacks
       if (!candidateUrl) {
         // Try to find any media URL from the item
+        const primaryVideo = it.videos?.[0]
+        const primaryImage = it.images?.[0]
+        const primaryAudio = (it as any).audios?.[0]
         const fallbackUrl = 
-          (it.videos && it.videos.length > 0 && (it.videos[0].url || it.videos[0].originalUrl)) ||
-          (it.images && it.images.length > 0 && (it.images[0].url || it.images[0].originalUrl)) ||
-          (it.audios && it.audios.length > 0 && (it.audios[0].url || it.audios[0].originalUrl))
+          primaryVideo?.url || primaryVideo?.originalUrl || primaryVideo?.storagePath ||
+          primaryImage?.url || primaryImage?.originalUrl || primaryImage?.storagePath ||
+          primaryAudio?.url || primaryAudio?.originalUrl || primaryAudio?.storagePath
+        const fallbackKey = canonicalMediaKey(fallbackUrl)
+        
+        if (fallbackKey && seenMediaUrls.has(fallbackKey)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[ArtStation] Skipping duplicate fallback media URL:', fallbackKey, 'from item', it.id)
+          }
+          continue
+        }
         
         if (!fallbackUrl) {
           if (process.env.NODE_ENV !== 'production') {
@@ -855,9 +870,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           }
           continue
         }
-        // Use fallback URL if candidate URL resolution failed
         const fallbackCandidate = candidate || (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
         seenItem.add(it.id)
+        if (fallbackKey) seenMediaUrls.add(fallbackKey)
         out.push({ 
           item: it, 
           media: { 
@@ -872,6 +887,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
       // Add item to seen set and include in output
       seenItem.add(it.id)
+      if (candidateKey) seenMediaUrls.add(candidateKey)
       out.push({ 
         item: it, 
         media: { 
@@ -1029,27 +1045,27 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-      <div className="flex ml-[68px]">
+      <div className="flex md:ml-[68px] ml-0">
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
-            <div className=" mb-2 md:mb-3">
-              <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+            <div className=" mb-0 md:mb-3">
+              <h3 className="text-white md:text-3xl text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
                 Art Station
               </h3>
-              <p className="text-white/80 text-base sm:text-lg md:text-xl">
+              <p className="text-white/80 md:text-base text-xs sm:text-lg md:text-xl">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
 
             {/* Category Filter Bar */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-                {(['All', 'Images', 'Videos', 'Logos', 'Products'] as Category[]).map((category) => (
+            <div className="md:mb-4 md:pb-0 pb-2 md:mt-0 mt-2">
+              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-0 scrollbar-none">
+                {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
+                    className={`inline-flex items-center md:gap-2  md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
                         ? 'bg-white border-white/5 text-black shadow-sm'
                         : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                       }`}
@@ -1059,7 +1075,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
                 ))}
 
                 {/* Search Input and Buttons */}
-                <div className="ml-auto flex items-center gap-2 flex-shrink-0 p-1">
+                <div className="ml-auto flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-1 p-0">
                   <div className="relative flex items-center">
                     <input
                       type="text"
@@ -1072,12 +1088,12 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
                         }
                       }}
                       placeholder="Search by prompt..."
-                      className={`px-4 py-2 rounded-lg text-sm bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
+                      className={`md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg  hover:bg-white/20 text-white/80 hover:text-white transition-colors"
                         aria-label="Clear search"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1097,15 +1113,24 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
           {/* Masonry grid with preserved order */}
+          <style dangerouslySetInnerHTML={{__html: `
+            .masonry-grid-custom {
+              grid-auto-rows: 9px;
+            }
+            @media (min-width: 768px) {
+              .masonry-grid-custom {
+                grid-auto-rows: 9.25px;
+              }
+            }
+          `}} />
           <div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
-            style={{ gridAutoRows: '2px' }}
+            className="masonry-grid-custom grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-1 gap-1 [overflow-anchor:none]"
           >
             {cards.map(({ item, media, kind }, idx) => {
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
               const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
-              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3']
+              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3','1/2','2/1','1/3','3/1','1/4','4/1','1/5','5/1','1/6','6/1','1/7','7/1','1/8','8/1','1/9','9/1','1/10','10/1']
               const ratioKey = (media && (media.storagePath || media.url)) || `${item.id}-${idx}`
               const tileRatio = m ? `${m[1]}/${m[2]}` : (measuredRatios[ratioKey] || fallbackRatios[idx % fallbackRatios.length])
 
@@ -1197,15 +1222,13 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
                         ) : kind === 'audio' ? (
                           <>
                             {/* Use a simple music logo image to avoid prompt alt text showing */}
-                            <Image
+                            <img
                               src="/icons/musicgenerationwhite.svg"
                               alt=""
-                              fill
-                              sizes={sizes}
-                              className="object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                              priority={isPriority}
+                              loading={isPriority ? 'eager' : 'lazy'}
                               fetchPriority={isPriority ? 'high' : 'auto'}
-                              onLoadingComplete={() => { markTileLoaded(cardId) }}
+                              className="absolute inset-0 w-full h-full object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                              onLoad={() => { markTileLoaded(cardId) }}
                             />
                           </>
                         ) : (

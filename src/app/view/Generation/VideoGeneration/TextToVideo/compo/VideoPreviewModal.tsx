@@ -478,7 +478,23 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
-      <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+      <button 
+        aria-label="Close" 
+        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-4 md:right-10 right-10 z-[100] hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          console.log('[VideoPreviewModal] Close button clicked')
+          onClose()
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation()
+        }}
+      >✕</button>
       <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">

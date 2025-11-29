@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+// Import session checker utilities (available in browser console)
+import '@/utils/checkSessionStatus'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Image from 'next/image'
@@ -98,10 +100,11 @@ const HomePage: React.FC = () => {
     try {
       const msg = localStorage.getItem('toastMessage');
       if (msg === 'LOGIN_SUCCESS') {
+        // Clear the flag immediately to prevent duplicate toasts
+        localStorage.removeItem('toastMessage');
         const t = setTimeout(() => {
-          try { toast.success('Logged in successfully') } catch {}
-          try { localStorage.removeItem('toastMessage') } catch {}
-        }, 2000);
+          try { toast.success('Welcome back! You\'re logged in successfully.', { duration: 3000 }) } catch {}
+        }, 500);
         return () => clearTimeout(t);
       }
     } catch {}
@@ -329,49 +332,49 @@ const HomePage: React.FC = () => {
       </div> */}
 
       {/* Main layout - content area (root layout provides Nav + SidePanel) */}
-      <div className="flex pt-[80px] ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
+      <div className="flex md:pt-[40px] md:ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
         <div className="flex-1 min-w-0">
           <Header />
           <Recentcreation />
-          <Second />
+          {/* <Second />
           <main className="min-h-screen bg-[#07070B] text-white pt-10">
             <div className="w-full md:pl-12 mt-10">
               <h2 className="text-white text-4xl md:text-4xl font-medium ml-0 ">Workflow</h2>
               <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
             </div>
-          </main>
+          </main> */}
 
-          <main className="min-h-screen bg-[#07070B] text-white px-4 md:px-8 pt-0 -mt-14">
-            <div className="w-full px-4 pl-4">
+          <main className="min-h-screen bg-[#07070B] text-white md:px-4 md:px-8 pt-4 ">
+            <div className="w-full px-4 md:pl-4">
               <CommunityCreations items={artItems} initialFilter="All" />
             </div>
           </main>
 
           {/* WobbleCard Section */}
-          <main className="bg-[#07070B] text-white px-4 md:px-8 py-6 mb-32 mt-32">
+          <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
             <div className="w-full px-4 md:px-8 lg:px-12">
               <div className="w-full">
                 <WobbleCard
-                  containerClassName="w-full bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]"
+                  containerClassName="w-full bg-[#002933] md:min-h-[400px] h-96 lg:min-h-[500px]"
                   className="!p-0 !py-0 !h-full !min-h-full"
                 >
                   <div
-                    className="flex w-full h-full min-h-full relative"
-                    style={{ height: '100%', minHeight: '500px' }}
+                    className="flex w-full md:h-full h-96 relative"
+                   
                   >
                     {/* Left side content */}
                     <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
                       <div className="w-full">
-                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
                           Plans That Grow With You
                         </h2>
-                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
+                        <p className="mt-2 md:mt-3 lg:mt-4 max-w-[20rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-xs md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
                           Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
                         </p>
                       </div>
 
                       {/* Join Community Button - Bottom Left */}
-                      <button className="font-poppins text-lg bg-white text-[#1C303D] font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
+                      <button className="font-poppins md:text-lg text-xs bg-white text-[#1C303D] font-semibold md:px-6 px-2 md:py-3 py-1 rounded-full transition-all duration-200 shadow-lg w-fit">
                         Pricing Plans
                       </button>
                     </div>

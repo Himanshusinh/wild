@@ -142,7 +142,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="Z-50 h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
+        className="Z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
       >
         <Cpu className="w-4 h-4 mr-1" />
         {filteredModels.find(m => m.value === selectedModel)?.name || 'Models'}
@@ -153,7 +153,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-150 overflow-y-auto dropdown-scrollbar`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-100 md:max-h-150 overflow-y-auto dropdown-scrollbar`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             const leftValues = [
@@ -172,10 +172,48 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               .filter(m => leftSet.has(m.value))
               .sort((a, b) => leftValues.indexOf(a.value) - leftValues.indexOf(b.value));
             const rightModels = filteredModels.filter(m => !leftSet.has(m.value));
+            
+            // On mobile: single column with all models combined
+            // On desktop: two columns
+            const allModels = [...leftModels, ...rightModels];
+            
             return (
-              <div className="grid grid-cols-2 gap-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                {/* Mobile: Single column with all models */}
+                <div className="md:hidden divide-y divide-white/10">
+                  {allModels.map((model) => (
+                    <button
+                      key={`mobile-${model.value}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleModelSelect(model.value);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
+                        ? 'bg-white text-black'
+                        : 'text-white/90 hover:bg-white/10'
+                        }`}
+                    >
+                      <div className="flex flex-col mb-0">
+                        <span className="flex items-center gap-2">
+                          {model.name}
+                          {leftSet.has(model.value) && (
+                            <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
+                          )}
+                        </span>
+                        {model.credits && (
+                          <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.credits} credits</span>
+                        )}
+                      </div>
+                      {selectedModel === model.value && (
+                        <div className="w-2 h-2 bg-black rounded-full"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Desktop: Two columns */}
                 {/* Left column (priority models with crown) */}
-                <div className="divide-y divide-white/10">
+                <div className="hidden md:block divide-y divide-white/10">
                   {leftModels.map((model) => (
                     <button
                       key={`left-${model.value}`}
@@ -183,7 +221,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
                         ? 'bg-white text-black'
                         : 'text-white/90 hover:bg-white/10'
                         }`}
@@ -204,7 +242,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                   ))}
                 </div>
                 {/* Right column (all remaining models) */}
-                <div className="border-l border-white/10 divide-y divide-white/10">
+                <div className="hidden md:block border-l border-white/10 divide-y divide-white/10">
                   {rightModels.map((model) => (
                     <button
                       key={`right-${model.value}`}
@@ -212,7 +250,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${selectedModel === model.value
+                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
                         ? 'bg-white text-black'
                         : 'text-white/90 hover:bg-white/10'
                         }`}

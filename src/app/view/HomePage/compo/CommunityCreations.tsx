@@ -74,10 +74,10 @@ const CHIPS: { key: Category; label: string; icon: React.ReactElement }[] = [
   { key: 'All', label: 'All', icon: Icon.grid },
   { key: 'Images', label: 'Images', icon: Icon.camera },
   { key: 'Videos', label: 'Videos', icon: Icon.video },
-  { key: 'Music', label: 'Music', icon: Icon.grid },
-  { key: 'Logos', label: 'Logos', icon: Icon.grid },
-  { key: 'Stickers', label: 'Stickers', icon: Icon.grid },
-  { key: 'Products', label: 'Products', icon: Icon.grid },
+  // { key: 'Music', label: 'Music', icon: Icon.grid },
+  // { key: 'Logos', label: 'Logos', icon: Icon.grid },
+  // { key: 'Stickers', label: 'Stickers', icon: Icon.grid },
+  // { key: 'Products', label: 'Products', icon: Icon.grid },
 ];
 
 /* ---------- Pill Button ---------- */
@@ -97,7 +97,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
+      className={`inline-flex items-center gap-2 md:px-4 px-2 md:py-2.5 py-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border ${
         active
           ? 'bg-white  text-black shadow-sm'
           : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
@@ -312,13 +312,13 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className="text-4xl md:text-4xl font-medium text-white mb-5">
+      <h2 className="text-xl md:text-4xl font-medium text-white md:mb-5 mb-1">
         Community Creations
       </h2>
 
       {/* Filter bar + Explore link */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+      <div className="md:mb-6 mb-2">
+        <div className="flex items-center md:gap-3 gap-1 overflow-x-auto md:pb-2 scrollbar-none">
           {CHIPS.map((chip, idx) => {
             const isActive = chip.key === active;
             return (
@@ -334,7 +334,7 @@ export default function CommunityCreations({
           <div className="ml-auto">
             <button
               onClick={() => router.push('/view/ArtStation')}
-              className="shrink-0 text-white/80 hover:text-white text-sm font-medium transition-colors"
+              className="shrink-0 text-white/80 w-40 hover:text-white md:text-sm text-xs font-medium transition-colors flex-nowrap"
               title="Explore Art Station"
             >
               Explore Art Station →
@@ -351,7 +351,7 @@ export default function CommunityCreations({
             <p className="text-white/40 text-sm mt-2">Items received: {items.length}</p>
           </div>
         ) : (
-          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
+          <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
             {limited.map((item, idx) => (
               <Card
                 key={item.id}

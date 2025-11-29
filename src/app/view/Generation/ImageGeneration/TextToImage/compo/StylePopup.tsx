@@ -140,14 +140,14 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[9999]"
+        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[100]"
         onClick={onClose}
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       />
 
       {/* Popup */}
       <div
-        className="fixed inset-0 flex items-center justify-center z-[10000] p-4 pointer-events-none"
+        className="fixed inset-0 flex items-center justify-center z-[101] p-4 pointer-events-none"
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       >
         <div
@@ -229,7 +229,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   );
 
   return (
-    <>
+    <>  
       {createPortal(popupContent, document.body)}
     </>
   );

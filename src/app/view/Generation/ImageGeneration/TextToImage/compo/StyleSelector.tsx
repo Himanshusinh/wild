@@ -45,7 +45,7 @@ const StyleSelector = () => {
       <div className="relative dropdown-container">
         <button
           onClick={() => setIsStylePopupOpen(true)}
-          className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex justify-center items-center gap-2 ${style !== 'none'
+          className={`h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex justify-center items-center gap-2 ${style !== 'none'
               ? 'bg-transparent text-white/90'
               : 'bg-transparent text-white/90 hover:bg-white/5'
             }`}
