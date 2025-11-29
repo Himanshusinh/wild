@@ -1,4 +1,4 @@
-export type GenMode = "image_to_video" | "video_to_video";
+export type GenMode = "text_to_video" | "image_to_video" | "video_to_video";
 export type PublicFigureThreshold = "auto" | "low";
 
 export type Gen4TurboRatio = "1280:720" | "720:1280" | "1104:832" | "832:1104" | "960:960" | "1584:672";

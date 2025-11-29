@@ -20,26 +20,27 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   let models = [
+    { name: 'Flux 2 Pro', value: 'flux-2-pro' },
+    { name: 'Seedream v4 4k', value: 'seedream-v4' },
+
     { name: 'Flux Kontext Pro', value: 'flux-kontext-pro' },
     { name: 'Flux Kontext Max', value: 'flux-kontext-max' },
     { name: 'Flux Pro 1.1', value: 'flux-pro-1.1' },
     { name: 'Flux Pro 1.1 Ultra', value: 'flux-pro-1.1-ultra' },
     { name: 'FLUX.1 Pro', value: 'flux-pro' },
-    { name: 'FLUX.1 Dev', value: 'flux-dev' },
+    // { name: 'FLUX.1 Dev', value: 'flux-dev' },
     { name: 'Runway Gen4 Image', value: 'gen4_image' },
     { name: 'Runway Gen4 Image Turbo', value: 'gen4_image_turbo' },
     { name: 'MiniMax Image-01', value: 'minimax-image-01' },
-    { name: 'Google Nano Banana', value: 'gemini-25-flash-image' },
-    { name: 'Google Nano Banana Pro', value: 'google/nano-banana-pro' },
-    { name: 'Seedream v4 4k', value: 'seedream-v4' },
+    { name: ' Nano Banana', value: 'gemini-25-flash-image' },
+    { name: ' Nano Banana Pro', value: 'google/nano-banana-pro' },
     { name: 'Ideogram v3', value: 'ideogram-ai/ideogram-v3' },
     { name: 'Ideogram v3 Quality', value: 'ideogram-ai/ideogram-v3-quality' },
-    { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
-    { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
+    // { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
+    // { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
     { name: 'Imagen 4 Ultra', value: 'imagen-4-ultra' },
     { name: 'Imagen 4', value: 'imagen-4' },
     { name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
-    { name: 'Flux 2 Pro', value: 'flux-2-pro' },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: 'z-image-turbo', value: 'new-turbo-model' },
@@ -160,17 +161,16 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             const leftValues = [
+              'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
-              'imagen-4-ultra',
+              
+              'new-turbo-model',
               'flux-kontext-max',
               'flux-kontext-pro',
               'flux-pro-1.1-ultra',
-              'leonardoai/phoenix-1.0',
-              'seedream-v4',
-              'ideogram-ai/ideogram-v3-quality',
               'imagen-4',
               'imagen-4-fast',
-              'new-turbo-model'
+              'imagen-4-ultra',
             ];
             const leftSet = new Set(leftValues);
             const leftModels = filteredModels
