@@ -22,21 +22,37 @@ export default function App() {
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
-  // Handle root path redirect based on authentication
-  // This runs client-side so Razorpay verification bot gets 200 OK
+  // Handle root path: Render LandingPage immediately for Razorpay verification
+  // Then redirect authenticated users after page loads (but not for bots)
   useEffect(() => {
     if (pathname === '/') {
-      // Check if user is authenticated
-      const hasSession = document.cookie.includes('app_session=') || document.cookie.includes('app_session.sig=');
-      const hasAuthHint = document.cookie.includes('auth_hint=');
+      // Check if this is a bot (Razorpay verification, crawlers, etc.)
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
+      const isBot = /bot|crawler|spider|crawling|razorpay|curl|wget|python|java|php|ruby|go|scrapy|http/i.test(userAgent);
       
-      if (hasSession || hasAuthHint) {
-        // User is authenticated, redirect to home
-        router.replace('/view/HomePage');
-      } else {
-        // User is not authenticated, redirect to landing
-        router.replace('/view/Landingpage');
+      // Don't redirect bots - let them see the full page content
+      if (isBot) {
+        console.log('🔍 App - Bot detected, not redirecting for Razorpay verification');
+        return;
       }
+      
+      // Small delay to ensure page content is rendered first
+      const timer = setTimeout(() => {
+        // Check if user is authenticated
+        const hasSession = document.cookie.includes('app_session=') || document.cookie.includes('app_session.sig=');
+        const hasAuthHint = document.cookie.includes('auth_hint=');
+        
+        if (hasSession || hasAuthHint) {
+          // User is authenticated, redirect to home
+          router.replace('/view/HomePage');
+        } else {
+          // User is not authenticated, stay on root (already showing LandingPage)
+          // Or redirect to /view/Landingpage for consistency
+          router.replace('/view/Landingpage');
+        }
+      }, 500); // Delay ensures HTML is fully rendered for bots
+      
+      return () => clearTimeout(timer);
     }
   }, [pathname, router]);
 
@@ -75,6 +91,12 @@ export default function App() {
   if (pathname?.startsWith('/view/HomePage')) {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
     return <HomePage />;
+  }
+  
+  // Root path: Render LandingPage immediately so Razorpay bot gets full HTML content
+  if (pathname === '/') {
+    console.log('🔍 App - Root path: rendering LandingPage for Razorpay verification');
+    return <LandingPage />;
   }
   // Render different views based on current state
   console.log('🔍 App - Rendering decision for currentView:', currentView);
