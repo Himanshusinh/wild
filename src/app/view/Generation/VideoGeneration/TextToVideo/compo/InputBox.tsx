@@ -151,6 +151,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   // UploadModal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<'image' | 'reference' | 'video'>('image');
+  const [uploadModalTarget, setUploadModalTarget] = useState<'first_frame' | 'last_frame'>('first_frame');
 
   // Local image library state for UploadModal (avoids interfering with global Redux history)
   const [libraryImageEntries, setLibraryImageEntries] = useState<any[]>([]);
@@ -1877,11 +1878,16 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Handle image/video upload from UploadModal
   const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
     if (uploadModalType === 'image') {
-      // For WAN 2.2 Animate Replace, set character image instead of uploaded images
-      if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
-        setUploadedCharacterImage(urls[0] || "");
+      if (uploadModalTarget === 'last_frame') {
+        setLastFrameImage(urls[0] || "");
       } else {
-        setUploadedImages(prev => [...prev, ...urls]);
+        // For WAN 2.2 Animate Replace, set character image instead of uploaded images
+        if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
+          setUploadedCharacterImage(urls[0] || "");
+        } else {
+          // Replace existing images instead of appending
+          setUploadedImages(urls);
+        }
       }
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
@@ -1939,26 +1945,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     event.target.value = '';
   };
 
-  // Handle last frame image upload for MiniMax-Hailuo-02
-  const handleLastFrameImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
 
-    const file = files[0];
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (result) {
-          setLastFrameImage(result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    // Reset input
-    event.target.value = '';
-  };
 
   // Handle video upload
   const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -4036,6 +4023,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
   };
 
+  const newLocal = "pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50";
   // (Removed duplicate hook declaration; initial load handled earlier)
 
   return (
@@ -4623,12 +4611,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                           className="md:p-2  pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
                           onClick={() => {
                             setUploadModalType('image');
+                            setUploadModalTarget('first_frame');
                             setIsUploadModalOpen(true);
                           }}
                         >
                           <div className=" relative ">
-                            <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap"> First Frame </div>
+                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> First Frame </div>
                           </div>
                         </button>
                       </div>
@@ -4642,12 +4631,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                         onClick={() => {
                           setUploadModalType('image');
+                          setUploadModalTarget('first_frame');
                           setIsUploadModalOpen(true);
                         }}
                       >
                         <div className="relative">
-                          <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap"> First Frame </div>
+                          <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
+                          <div className={newLocal}> First Frame </div>
                         </div>
                       </button>
 
@@ -4687,45 +4677,19 @@ const InputBox = (props: InputBoxProps = {}) => {
                    (selectedResolution === "768P" || selectedResolution === "1080P") &&
                    currentModelCapabilities.supportsImageToVideo && (
                     <div className="relative ">
-                      <label
+                      <button
                         className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        onClick={() => {
+                          setUploadModalType('image');
+                          setUploadModalTarget('last_frame');
+                          setIsUploadModalOpen(true);
+                        }}
                       >
                         <div className="relative">
-                          <FilePlus2 size={30} className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110" />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap"> Last Frame (optional)</div>
+                          <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${lastFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> Last Frame (optional)</div>
                         </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleLastFrameImageUpload}
-                        />
-                      </label>
-
-                      {/* Last Frame Image Preview */}
-                      {lastFrameImage && (
-                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
-                          <div className="text-xs text-white/60 mb-2">Last Frame Image</div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                              <img
-                                src={lastFrameImage}
-                                alt="Last Frame"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <span className="text-xs text-white/80 flex-1">Last Frame</span>
-                            <button
-                              onClick={() => setLastFrameImage("")}
-                              className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      </button>
                     </div>
                   )}
 
@@ -4786,10 +4750,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           {/* Uploaded Content Display */}
           <div className="px-3 md:pb-3 pb-0">
             {/* Uploaded Images */}
-            {uploadedImages.length > 0 && (
+            {(uploadedImages.length > 0 || (!!lastFrameImage && selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo)) && (
               <div className="md:mb-3 -mb-6">
-                <div className="text-xs text-white/60 mb-2">Uploaded Images ({uploadedImages.length})</div>
-                <div className="flex gap-0">
+                <div className="text-xs text-white/60 mb-2">Uploaded Images ({uploadedImages.length + (!!lastFrameImage && selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo ? 1 : 0)})</div>
+                <div className="flex gap-2 flex-wrap">
                   {uploadedImages.map((image, index) => (
                     <div key={index} className="relative group">
                       <div
@@ -4810,6 +4774,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           onLoad={() => console.log('Video generation - image loaded successfully:', image)}
                           onError={(e) => console.error('Video generation - image failed to load:', image, e)}
                         />
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                          {index === 0 ? 'First Frame' : `Image ${index + 1}`}
+                        </div>
                       </div>
                       <button
                         aria-label="Remove image"
@@ -4822,6 +4789,39 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </button>
                     </div>
                   ))}
+
+                  {/* Last Frame Image Display */}
+                  {!!lastFrameImage && selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo && (
+                    <div className="relative group">
+                      <div
+                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                        onClick={() => {
+                          setAssetViewer({
+                            isOpen: true,
+                            assetUrl: lastFrameImage,
+                            assetType: 'image',
+                            title: 'Last Frame Image'
+                          });
+                        }}
+                      >
+                        <img
+                          src={lastFrameImage}
+                          alt="Last Frame"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Last Frame</div>
+                      </div>
+                      <button
+                        aria-label="Remove last frame"
+                        className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        onClick={() => {
+                          setLastFrameImage("");
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

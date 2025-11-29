@@ -146,8 +146,8 @@ const Header = () => {
   return (
     <div className="w-full relative">
       {/* Video wrapper with right padding */}
-      <div className="px-4 md:pr-0 md:pl-12 md:mt-0 md:ml-12">
-          <div className="relative overflow-hidden rounded-2xl md:rounded-3xl md:mt-0 mt-10 min-h-[20vh] md:min-h-[60vh] max-h-[80vh]" style={{ aspectRatio: '16/9' }}>
+      <div className="px-4 md:pr-0 md:pl-0 md:mt-0 md:ml-0 md:mt-10">
+          <div className="relative overflow-hidden md:px-4 w-full rounded-2xl md:rounded-3xl md:mt-0 mt-10 min-h-[20vh] md:min-h-[50vh] max-h-[80vh]" style={{ aspectRatio: '16/9' }}>
           {currentVideo.videoSrc && (
             <video
               ref={videoRef}
@@ -193,7 +193,7 @@ const Header = () => {
       </div>
 
       {/* Text Overlay - Centered above the video */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 md:mt-64 mt-20 px-4 min-h-[150px] md:min-h-[200px]">
+      <div className="absolute inset-0 flex flex-col items-center justify-end text-center text-white z-10 md:bottom-10  left-0 right-0 mt-20 px-4 min-h-[140px] md:min-h-[200px]">
         {/* <h1 className={`text-lg md:text-4xl font-medium md:mb-2 mb-1 md:mt-6 mt-2 transition-opacity duration-1000 ease-in-out min-h-[40px] md:min-h-[48px] max-h-[60px] ${
           isTransitioning ? 'opacity-0' : 'opacity-100'
         }`}>
@@ -206,7 +206,7 @@ const Header = () => {
         </p> */}
         <button 
           onClick={handleTryNowClick}
-          className={`bg-white/5 backdrop-blur-xl hover:bg-blue-700 text-white md:px-4 px-2 md:py-2 py-1 rounded-full md:text-md text-xs font-base transition-opacity duration-1000 ease-in-out delay-300 ${
+          className={`bg-white/5 backdrop-blur-xl hover:bg-blue-700 text-white md:px-6 px-2 md:py-3 py-1 rounded-full md:text-xl text-xs font-base transition-opacity duration-1000 ease-in-out delay-300 ${
             isTransitioning ? 'opacity-0' : 'opacity-100'
           }`}
         >

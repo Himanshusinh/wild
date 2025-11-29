@@ -3915,90 +3915,7 @@ const InputBox = () => {
                   </div>
                 )}
                 {/* Desktop-only: Previews just to the left of upload */}
-                {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-                  <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
-                    {/* Selected Characters Preview */}
-                    {selectedCharacters.map((character: any) => (
-                      <div
-                        key={character.id}
-                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
-                        title={`Character: ${character.name}`}
-                      >
-                        <img
-                          src={character.frontImageUrl}
-                          alt={character.name}
-                          aria-hidden="true"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                            C
-                          </div>
-                        </div>
-                        <button
-                          aria-label={`Remove character ${character.name}`}
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            dispatch(removeSelectedCharacter(character.id));
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    {/* Uploaded Images Preview */}
-                    {uploadedImages.map((u: string, i: number) => {
-                      const count = uploadedImages.length;
-                      const sizeClass = count >= 9 ? 'w-8 h-8' : count >= 6 ? 'w-10 h-10' : 'w-12 h-12';
-                      return (
-                        <div
-                          key={i}
-                          data-image-index={i}
-                          title={`Image ${i + 1} (index ${i})`}
-                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: u,
-                              assetType: 'image',
-                              title: `Uploaded Image ${i + 1}`
-                            });
-                          }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={u}
-                            alt=""
-                            aria-hidden="true"
-                            decoding="async"
-                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                          />
-                          {/* Number badge (1-based display, zero-based in payload order) */}
-                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                              {i + 1}
-                            </div>
-                          </div>
-                          <button
-                            aria-label="Remove reference"
-                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const next = uploadedImages.filter(
-                                (_: string, idx: number) => idx !== i
-                              );
-                              dispatch(setUploadedImages(next));
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                
                 {/* Mobile: Single column on right | Desktop: Horizontal row */}
                 <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
                   {/* Enhance prompt button (manual trigger) */}
@@ -4062,8 +3979,93 @@ const InputBox = () => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-1">
+          {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+                  <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[100vw] md:max-w-none pr-1 no-scrollbar mb-1">
+                    {/* Selected Characters Preview */}
+                    {selectedCharacters.map((character: any) => (
+                      <div
+                        key={character.id}
+                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                        title={`Character: ${character.name}`}
+                      >
+                        <img
+                          src={character.frontImageUrl}
+                          alt={character.name}
+                          aria-hidden="true"
+                          decoding="async"
+                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                        />
+                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                            C
+                          </div>
+                        </div>
+                        <button
+                          aria-label={`Remove character ${character.name}`}
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch(removeSelectedCharacter(character.id));
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Uploaded Images Preview */}
+                    {uploadedImages.map((u: string, i: number) => {
+                      const count = uploadedImages.length;
+                      const sizeClass = count >= 9 ? 'w-12 h-12' : count >= 6 ? 'w-12 h-12' : 'w-12 h-12';
+                      return (
+                        <div
+                          key={i}
+                          data-image-index={i}
+                          title={`Image ${i + 1} (index ${i})`}
+                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: u,
+                              assetType: 'image',
+                              title: `Uploaded Image ${i + 1}`
+                            });
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={u}
+                            alt=""
+                            aria-hidden="true"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                          />
+                          {/* Number badge (1-based display, zero-based in payload order) */}
+                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                              {i + 1}
+                            </div>
+                          </div>
+                          <button
+                            aria-label="Remove reference"
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = uploadedImages.filter(
+                                (_: string, idx: number) => idx !== i
+                              );
+                              dispatch(setUploadedImages(next));
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
             {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
+            
             <div className="flex items-center justify-between gap-3 md:hidden w-full">
               <div className="flex-1">
                 <ModelsDropdown />
