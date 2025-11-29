@@ -26,28 +26,32 @@ const LegalLayout: React.FC<LegalLayoutProps> = ({ children, currentPage }) => {
   return (
     <main className="legal-page">
       <div className="legal-layout">
-        {/* Sticky Header Section - Navigation + Content Header */}
-        <div className="legal-sticky-header">
-          <nav className="legal-top-nav">
-            <img 
-              src="/icons/wildmindai logo white.svg" 
-              alt="Wild Mind AI Logo" 
-              className="legal-logo"
-            />
-            <div className="legal-title-wrapper">
-              <button 
-                onClick={() => router.back()}
-                className="legal-back-button"
-                aria-label="Go back"
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Back</span>
-              </button>
-              <h3 className="legal-nav-title">Documentation</h3>
-            </div>
-            <p className="legal-nav-subtitle">Clear, enforceable guidelines governing responsible use of the Wild Mind AI platform.</p>
+        {/* Header Section */}
+        <div className="legal-header-section">
+          <img 
+            src="/icons/wildmindai logo white.svg" 
+            alt="Wild Mind AI Logo" 
+            className="legal-logo"
+          />
+          <div className="legal-title-wrapper">
+            <button 
+              onClick={() => router.back()}
+              className="legal-back-button"
+              aria-label="Go back"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Back</span>
+            </button>
+            <h3 className="legal-nav-title">Documentation</h3>
+          </div>
+        </div>
+
+        {/* Main Content Area with Sidebar */}
+        <div className="legal-main-container">
+          {/* Left Sidebar - Navigation */}
+          <aside className="legal-sidebar">
             <div className="legal-nav-grid">
               {items.map((item) => (
                 <Link
@@ -59,12 +63,13 @@ const LegalLayout: React.FC<LegalLayoutProps> = ({ children, currentPage }) => {
                 </Link>
               ))}
             </div>
-          </nav>
-        </div>
+          </aside>
 
-        <section className="legal-content">
-          {children}
-        </section>
+          {/* Right Content Area */}
+          <section className="legal-content">
+            {children}
+          </section>
+        </div>
       </div>
     </main>
   );

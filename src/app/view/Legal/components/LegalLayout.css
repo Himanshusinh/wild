@@ -1,38 +1,79 @@
 .legal-page {
   max-width: 1500px;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: 0 24px 40px 24px;
   line-height: 1.7;
   text-align: left;
   background: #000000;
   min-height: 100vh;
   color: #ffffff;
+  overflow-x: hidden;
 }
 
 .legal-layout {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  padding-top: 250px;
 }
 
-/* Sticky Header Section */
-.legal-sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #000000;
-  padding-bottom: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Horizontal Navigation at Top */
-.legal-top-nav {
+/* Header Section */
+.legal-header-section {
   width: 100%;
   background: #000000;
-  padding: 16px 0;
+  padding: 16px 0 32px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-width: 1500px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Main Container with Sidebar and Content */
+.legal-main-container {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* Left Sidebar */
+.legal-sidebar {
+  flex-shrink: 0;
+  width: 320px;
+  position: fixed;
+  top: 300px;
+  max-height: calc(100vh - 270px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Custom scrollbar for sidebar */
+.legal-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.legal-sidebar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.legal-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.legal-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .legal-title-wrapper {
@@ -120,8 +161,8 @@
 }
 
 .legal-nav-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   width: 100%;
 }
@@ -139,10 +180,11 @@
   font-family: inherit;
   display: flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
+  justify-content: flex-start;
+  text-align: left;
   word-wrap: break-word;
   min-height: 48px;
+  width: 100%;
 }
 
 .legal-nav-link:hover {
@@ -158,12 +200,37 @@
 }
 
 .legal-content {
+  flex: 1;
   min-width: 0;
   position: relative;
+  margin-left: 352px;
+  padding-top: 0;
+  padding-right: 24px;
+  padding-bottom: 40px;
+  padding-left: 0;
+  text-align: left;
+  margin-top: 0;
+  z-index: 1;
+}
+
+.legal-content > *:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.legal-content p,
+.legal-content h3,
+.legal-content h4,
+.legal-content ul,
+.legal-content ol,
+.legal-content li,
+.legal-content div,
+.legal-content table {
+  text-align: left;
+  margin-left: 0;
 }
 
 .legal-header {
-  position: -webkit-sticky;
   position: sticky;
   /* Top value equals the height of the navigation: logo(3.5rem=56px) + margin(16px) + title(3rem=48px) + margin(16px) + subtitle(1.125rem=18px) + margin(3rem=48px) + grid(3rem=48px) + nav padding(32px) = ~290px */
   top: calc(3.5rem + 16px + 3rem + 16px + 1.125rem + 3rem + 3rem + 32px);
@@ -217,6 +284,12 @@
   margin-bottom: 16px;
   color: #d1d5db;
   line-height: 1.7;
+  margin-top: 0;
+}
+
+.legal-content > p:first-child {
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .legal-content ul,
@@ -238,7 +311,7 @@
 
 .legal-table-container {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   overflow-x: auto;
   margin-top: 8px;
   margin-bottom: 8px;
@@ -284,14 +357,44 @@
   border-top: none;
 }
 
+@media (max-width: 1024px) {
+  .legal-main-container {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .legal-sidebar {
+    width: 100%;
+    position: relative;
+    top: 0;
+    max-height: none;
+  }
+
+  .legal-content {
+    margin-left: 0;
+    max-width: 100%;
+  }
+
+  .legal-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
 @media (max-width: 768px) {
   .legal-page {
     padding: 24px 16px;
   }
 
-  .legal-top-nav {
-    padding: 12px 0;
-    margin-bottom: 0;
+  .legal-layout {
+    padding-top: 180px;
+  }
+
+  .legal-header-section {
+    padding: 12px 0 24px 0;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .legal-title-wrapper {
@@ -329,7 +432,7 @@
   }
 
   .legal-nav-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
@@ -340,8 +443,6 @@
   }
 
   .legal-header {
-    /* Mobile nav height: logo(2rem=32px) + margin(12px) + title(24px) + margin(12px) + subtitle(1rem=16px) + margin(2rem=32px) + grid(88px) + nav padding(24px) = ~240px */
-    top: calc(2rem + 12px + 24px + 12px + 1rem + 2rem + 88px + 24px);
     padding-top: 16px;
     padding-bottom: 16px;
   }
