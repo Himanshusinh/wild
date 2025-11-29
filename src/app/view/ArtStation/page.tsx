@@ -23,6 +23,7 @@ type PublicItem = {
   updatedAt?: string;
   isPublic?: boolean;
   isDeleted?: boolean;
+  aestheticScore?: number; // Added: aesthetic score field
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
   images?: { 
     id: string; 
@@ -34,8 +35,9 @@ type PublicItem = {
     avifUrl?: string;
     blurDataUrl?: string;
     optimized?: boolean;
+    aestheticScore?: number; // Added: image-level score
   }[];
-  videos?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
+  videos?: { id: string; url: string; originalUrl?: string; storagePath?: string; aestheticScore?: number }[];
   audios?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
 };
 
@@ -351,6 +353,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
         aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
         frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
+        aestheticScore: typeof it?.aestheticScore === 'number' ? it.aestheticScore : undefined, // Preserve aestheticScore
       }))
 
       const newCursor = meta?.nextCursor || payload?.nextCursor

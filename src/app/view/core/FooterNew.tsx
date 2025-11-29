@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { getImageUrl } from '@/routes/imageroute'
-import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION, LEGAL_ROUTES } from '@/routes/routes'
+import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION, LEGAL_ROUTES, PRODUCT_ROUTES, COMPANY_ROUTES } from '@/routes/routes'
 // import {
 //   IconBrandYoutube,
 //   IconBrandInstagram,
@@ -153,22 +153,25 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Pricing                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Enterprise
+                      <Link href={PRODUCT_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Pricing
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={PRODUCT_ROUTES.FAQS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       FAQs
                       </Link>
                     </li>
-                    
-                    
-                    
+                    <li>
+                      <Link href={LEGAL_ROUTES.CANCELLATION_REFUNDS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Cancellation & Refunds
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href={LEGAL_ROUTES.SHIPPING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Shipping
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 
@@ -180,36 +183,38 @@ const FooterNew: React.FC = () => {
                   <ul className="space-y-3">
                     <li>
                       <Link
-                        href={NAV_ROUTES.BLOG}
+                        href={COMPANY_ROUTES.BLOG}
                         onClick={handleBlogClick}
                         className="text-gray-400 text-sm hover:text-white transition-colors duration-200 leading-tight"
                       >
                         <span className="block">Blog</span>
                       </Link>
                     </li>
-                   
                     <li>
-                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={COMPANY_ROUTES.ABOUT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        About
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href={COMPANY_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Support
                       </Link>
                     </li>
-                
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Affiliate Program
+                      <Link href={COMPANY_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Contact Us
                       </Link>
                     </li>
-
                     <li>
-                      <Link href={LEGAL_ROUTES.TERMS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Legal Documents
+                      <Link href={LEGAL_ROUTES.TERMS_CONDITIONS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Terms and Conditions
                       </Link>
                     </li>
-                    {/* <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Wild Mind Creator Program
+                    <li>
+                      <Link href={LEGAL_ROUTES.PRIVACY_PAGE} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Privacy
                       </Link>
-                    </li> */}
+                    </li>
                   </ul>
                 </div>
 

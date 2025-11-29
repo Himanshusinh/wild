@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getImageUrl } from '@/routes/imageroute'
-import { NAV_ROUTES, FEATURE_ROUTES } from '@/routes/routes'
+import { NAV_ROUTES, FEATURE_ROUTES, LEGAL_ROUTES, PRODUCT_ROUTES, COMPANY_ROUTES, SOCIAL_LINKS } from '@/routes/routes'
 // import {
 //   IconBrandYoutube,
 //   IconBrandInstagram,
@@ -14,11 +14,11 @@ import Squares from './Squares'
 
 const FooterNew: React.FC = () => {
   const legalLinks = [
-    { name: "Terms of use", href: "" },
-    { name: "Privacy Policy", href: "" },
-    { name: "Cookies", href: "" },
-    { name: "Legal Notice", href: "" },
-    { name: "DMCA", href: "" },
+    { name: "Terms of use", href: LEGAL_ROUTES.TERMS },
+    { name: "Privacy Policy", href: LEGAL_ROUTES.PRIVACY },
+    { name: "Cookies", href: LEGAL_ROUTES.COOKIES },
+    { name: "Legal Notice", href: LEGAL_ROUTES.LEGAL_NOTICE },
+    { name: "DMCA", href: LEGAL_ROUTES.DMCA },
   ];
 
   // const socialLinks = [
@@ -65,7 +65,7 @@ const FooterNew: React.FC = () => {
            <div className="relative z-10">
             {/* Main Footer Content */}
             <div className="py-8 md:py-6 lg:py-8 border-b border-white/10">
-              <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8 lg:gap-0">
+              <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8">
                 {/* Logo and Brand */}
                 <div className="lg:col-span-1 w-[100%] ">
                   <div className="mb-4">
@@ -122,45 +122,24 @@ const FooterNew: React.FC = () => {
                   Product
                   </h3>
                   <ul className="space-y-3">
-                    {/* Product links intentionally reduced to avoid exposing generation pages. */}
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={PRODUCT_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Pricing
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Enterprise
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={PRODUCT_ROUTES.FAQS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       FAQs
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Documentation
+                      <Link href={LEGAL_ROUTES.CANCELLATION_REFUNDS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Cancellation & Refunds
                       </Link>
                     </li>
                     <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Terms for Use
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Privacy Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Cookie Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Cookie Settings
+                      <Link href={LEGAL_ROUTES.SHIPPING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Shipping
                       </Link>
                     </li>
                   </ul>
@@ -173,38 +152,33 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={COMPANY_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Blog
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        Careers
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        Support
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={COMPANY_ROUTES.ABOUT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         About us
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Newsletter
+                      <Link href={COMPANY_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Support
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Affiliate Program
+                      <Link href={COMPANY_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Contact Us
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Wild Mind Creator Program
+                      <Link href={LEGAL_ROUTES.TERMS_CONDITIONS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Terms and Conditions
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href={LEGAL_ROUTES.PRIVACY_PAGE} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Privacy
                       </Link>
                     </li>
                   </ul>
@@ -216,36 +190,35 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Facebook
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.X} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       X
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Instagram
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.YOUTUBE} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       Youtube
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={SOCIAL_LINKS.LINKEDIN} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       LinkedIn
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Help Center
+                      <Link href={SOCIAL_LINKS.THREADS} target="_blank" rel="noopener noreferrer" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Threads
                       </Link>
                     </li>
-                    
                   </ul>
                 </div>
               </div>

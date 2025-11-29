@@ -175,6 +175,12 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
+    // Legal pages
+    pathname.startsWith('/legal/') ||
+    // Product pages
+    pathname.startsWith('/product/') ||
+    // Company pages
+    pathname.startsWith('/company/') ||
     // Allow static assets and Next.js internals
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
