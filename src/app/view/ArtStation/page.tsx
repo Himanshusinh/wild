@@ -994,10 +994,10 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
             <div className=" mb-0 md:mb-3">
-              <h3 className="text-white md:text-3xl text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
+              <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
                 Art Station
               </h3>
-              <p className="text-white/80 md:text-base text-xs sm:text-lg md:text-xl">
+              <p className="text-white/80 text-xs sm:text-lg md:text-xl">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>

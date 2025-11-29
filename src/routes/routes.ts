@@ -89,6 +89,7 @@ export const LEGAL_ROUTES = {
 export const PRODUCT_ROUTES = {
   PRICING: '/view/pricing',
   FAQS: '/product/faqs',
+  DOCUMENTATION: '/view/Landingpage?section=support', // Using support section as documentation
 } as const;
 
 // Company Routes
@@ -98,6 +99,7 @@ export const COMPANY_ROUTES = {
   CONTACT: '/company/contact-us',
   SUPPORT: '/view/Landingpage?section=support',
   NEWSLETTER: '/company/newsletter',
+  CAREERS: '/company/careers', // Careers page route
 } as const;
 
 // Footer Navigation Links
