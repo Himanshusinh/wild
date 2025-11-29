@@ -402,6 +402,24 @@ const SidePannelFeatures = ({
       <div>
         <div
           onMouseEnter={() => setIsSidebarHovered(true)}
+          onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
+          onClick={(e) => {
+            if (!e.ctrlKey && !e.metaKey) {
+              closeMobileSidebar();
+              router.push('/view/ArtStation');
+            }
+          }}
+          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
+            }`}
+        >
+          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+          <span className={labelClasses}>Art Station</span>
+        </div>
+      </div>
+
+      <div>
+        <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
           onClick={async () => {
             // Check if we're in production by checking the hostname
             const isProd = typeof window !== 'undefined' && 
@@ -659,23 +677,7 @@ const SidePannelFeatures = ({
       </div> */}
 
       {/* Art Station */}
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
-              router.push('/view/ArtStation');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>Art Station</span>
-        </div>
-      </div>
+     
 
       {/* <div>
             <div className='flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
