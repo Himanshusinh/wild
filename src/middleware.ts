@@ -183,16 +183,12 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/public/')
   );
 
-  // If root path and unauthenticated, force redirect to landing with toast
+  // Root path: Allow through without redirect for Razorpay verification
+  // The page.tsx will handle client-side redirect based on auth status
+  // This ensures Razorpay's verification bot gets a 200 OK response
   if (pathname === '/') {
-    const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
-    const hasHint = Boolean(req.cookies.get('auth_hint'));
-    if (!hasSession && !hasHint) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/view/Landingpage';
-      // url.searchParams.set('toast', 'UNAUTHORIZED'); // Optional: don't show toast for root visit
-      return NextResponse.redirect(url);
-    }
+    // Don't redirect here - let the page render and handle redirect client-side
+    // This allows Razorpay verification to succeed (they need 200 OK, not 302 redirect)
     return res;
   }
   if (isPublic) return res;

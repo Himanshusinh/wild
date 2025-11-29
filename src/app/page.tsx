@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import LandingPage from './view/Landingpage/page';
 import HomePage from './view/HomePage/page';
 import PricingPage from './view/pricing/page';
@@ -14,6 +14,7 @@ import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice
 
 export default function App() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'landing');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
@@ -21,6 +22,23 @@ export default function App() {
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
+  // Handle root path redirect based on authentication
+  // This runs client-side so Razorpay verification bot gets 200 OK
+  useEffect(() => {
+    if (pathname === '/') {
+      // Check if user is authenticated
+      const hasSession = document.cookie.includes('app_session=') || document.cookie.includes('app_session.sig=');
+      const hasAuthHint = document.cookie.includes('auth_hint=');
+      
+      if (hasSession || hasAuthHint) {
+        // User is authenticated, redirect to home
+        router.replace('/view/HomePage');
+      } else {
+        // User is not authenticated, redirect to landing
+        router.replace('/view/Landingpage');
+      }
+    }
+  }, [pathname, router]);
 
   // Preserve landing when explicitly selected; don't force home on first load
   useEffect(() => {
@@ -58,7 +76,6 @@ export default function App() {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
     return <HomePage />;
   }
-
   // Render different views based on current state
   console.log('🔍 App - Rendering decision for currentView:', currentView);
   console.log('🔍 App - currentView type:', typeof currentView);
