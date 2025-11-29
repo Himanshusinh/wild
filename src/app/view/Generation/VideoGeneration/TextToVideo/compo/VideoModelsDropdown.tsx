@@ -130,6 +130,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
       { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
       { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
+      { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" },
       { value: "MiniMax-Hailuo-02", label: "MiniMax-Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
       { value: "T2V-01-Director", label: "T2V-01-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" },
       { value: "I2V-01-Director", label: "I2V-01-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },
@@ -224,9 +225,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       else if (rLower.includes('720')) r = '720p';
       else if (rLower.includes('1080')) r = '1080p';
       else r = '720p';
-    } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
-      // Gen-4 Turbo and Gen-3a Turbo: only need duration, not resolution
-      d = normalizeDuration(selectedDuration, '5s');
+    } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo' || model.value === 'gen4_aleph') {
+      // Gen-4 Turbo, Gen-3a Turbo, and Gen-4 Aleph: only need duration, not resolution
+      d = normalizeDuration(selectedDuration, '10s'); // Gen-4 Aleph defaults to 10s
       r = undefined; // These models don't use resolution for pricing
     } else {
       // For other models, normalize with defaults
@@ -247,6 +248,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       } else if (model.value === 'gen4_turbo' || model.value === 'gen3a_turbo') {
         // Gen-4 Turbo and Gen-3a Turbo: default to 5s, no resolution needed
         creditInfo = getModelCreditInfo(model.value, '5s');
+      } else if (model.value === 'gen4_aleph') {
+        // Gen-4 Aleph: default to 10s, no resolution needed
+        creditInfo = getModelCreditInfo(model.value, '10s');
       }
     }
     return {
