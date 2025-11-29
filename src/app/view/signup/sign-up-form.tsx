@@ -514,7 +514,7 @@ export default function SignInForm() {
 
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
-            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || ''
             // Create session directly with backend
             const sessionResponse = await fetch(`${backendBaseForSession}/api/auth/session`, {
               method: 'POST',

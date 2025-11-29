@@ -725,7 +725,7 @@ const Recentcreation: React.FC = () => {
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
                     (() => {
-                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
+                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
                       const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
                       const vsrc = proxied || item.src
                       return (
@@ -865,7 +865,7 @@ const Recentcreation: React.FC = () => {
                 {item.isVideo ? (
                   item.src && item.src.trim() !== '' ? (
                     (() => {
-                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
+                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
                       const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
                       const vsrc = proxied || item.src
                       return (

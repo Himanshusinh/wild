@@ -7,7 +7,7 @@ export const revalidate = 0; // No revalidation, always fetch fresh
 async function fetchFromBackend(): Promise<any> {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 
                   process.env.API_BASE_URL || 
-                  'http://localhost:5000';
+                  '';
   // No cache-busting needed - backend now uses a pool system for instant responses
   const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored`;
   

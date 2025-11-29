@@ -21,7 +21,7 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
     const url = new URL(req.url);
     const qs = url.search ? url.search.substring(1) : '';
 
-    const backendBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
+    const backendBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '';
     const targetUrl = `${backendBase}/api/proxy/thumb/${encodedPath}${qs ? `?${qs}` : ''}`;
 
     const forwardHeaders: Record<string, string> = {};

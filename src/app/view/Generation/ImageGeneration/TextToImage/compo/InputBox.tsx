@@ -209,7 +209,7 @@ const InputBox = () => {
       // Handle image upload - prioritize sp (storage path) over image URL
       if (sp) {
         const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
         const directUrl = `${zataBase}${decodedPath}`;
         dispatch(setUploadedImages([directUrl] as any));
       } else if (img) {
@@ -290,7 +290,7 @@ const InputBox = () => {
       // Extract storagePath from image
       const storagePath = (entryImage as any)?.storagePath || (() => {
         try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
           const original = entryImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
@@ -1099,7 +1099,7 @@ const InputBox = () => {
         // Remove _thumb.avif or .avif extension and try common extensions
         let basePath = image.storagePath.replace(/_thumb\.avif$/, '').replace(/\.avif$/, '');
         // Try to get original extension from storagePath or default to .jpg
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
         // Check if storagePath already has an extension
         if (!basePath.match(/\.(jpg|jpeg|png|webp)$/i)) {
           basePath += '.jpg'; // Default to jpg

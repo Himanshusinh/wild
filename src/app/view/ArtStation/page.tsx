@@ -893,8 +893,8 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   useEffect(() => {
     try {
       const head = document.head
-      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '')
-      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '')
+      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
       const hosts = [apiBase, new URL(zata).origin]
       hosts.forEach(href => {
         if (!head.querySelector(`link[data-preconnect='${href}']`)) {
