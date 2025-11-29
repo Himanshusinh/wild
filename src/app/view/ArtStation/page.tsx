@@ -531,7 +531,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         setSelectedImageIndex(0)
         setSelectedVideoIndex(0)
         setSelectedAudioIndex(0)
-        setPreview({ kind, url: media.url, item: found })
+        // Normalize the URL before setting preview to ensure it uses proxy endpoint
+        const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
+        setPreview({ kind, url: normalizedUrl || media.url, item: found })
         setDeepLinkId(null)
       }
     }
@@ -986,10 +988,14 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
   // duplicate removed
 
+  // Determine if user is authenticated to adjust layout
+  const isAuth = !!currentUid
+
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-      <div className="flex md:ml-[68px] ml-0">
+      {/* When authenticated: add margin for sidepanel, when not: full width */}
+      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
@@ -1092,7 +1098,9 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                     setSelectedImageIndex(0)
                     setSelectedVideoIndex(0)
                     setSelectedAudioIndex(0)
-                    setPreview({ kind, url: media.url, item })
+                    // Normalize the URL before setting preview to ensure it uses proxy endpoint
+                    const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
+                    setPreview({ kind, url: normalizedUrl || media.url, item })
                   }}
                   ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
                   style={{
@@ -1103,7 +1111,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                   <div className="masonry-item-inner relative w-full rounded-lg overflow-hidden bg-transparent group" style={{ contain: 'paint' }}>
                     <div
                       style={{ aspectRatio: tileRatio, minHeight: 160 }}
-                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
+                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100 flex items-center justify-center bg-gray-900/20`}
                     >
                       {kind !== 'audio' && !loadedTiles.has(cardId) && (
                         <div className="absolute inset-0 bg-white/5" />
@@ -1120,7 +1128,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             return (
                               <video
                                 src={proxied}
-                                className="absolute inset-0 w-full h-full object-cover"
+                                className="absolute inset-0 w-full h-full object-contain"
                                 muted
                                 playsInline
                                 preload="metadata"
@@ -1182,7 +1190,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             fill={true}
                             sizes={sizes}
                             blurDataURL={media.blurDataUrl || blur}
-                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                            className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             priority={isPriority}
                             fetchPriority={isPriority ? 'high' : 'auto'}
                             onLoadingComplete={(img) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import Nav from './view/Generation/Core/Nav';
@@ -10,10 +10,27 @@ import SidePannelFeatures from './view/Generation/Core/SidePannelFeatures';
  * Conditionally renders the global chrome (navbar + side panel)
  * - Hidden on: root path, landing pages, signup page, public pages (pricing, workflows, legal, product, company)
  * - Visible on: authenticated pages only (home page, generation pages, history, bookmarks, account management)
+ * - For ArtStation: Show chrome only when user is authenticated
  */
 export default function ChromeMount() {
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  // Check authentication status
+  useEffect(() => {
+    try {
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        setIsAuthenticated(!!u?.uid);
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch {
+      setIsAuthenticated(false);
+    }
+  }, [pathname]); // Re-check when pathname changes
 
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
@@ -61,14 +78,26 @@ export default function ChromeMount() {
   const isEditImageRoute = pathnameLower.startsWith('/view/editimage');
   const isEditVideoRoute = pathnameLower.startsWith('/view/editvideo');
   
-  // Hide chrome on all public pages
+  // For ArtStation: hide chrome if not authenticated, show if authenticated
+  if (isArtStationRoute) {
+    if (isAuthenticated) {
+      return (
+        <>
+          <Nav />
+          <SidePannelFeatures />
+        </>
+      );
+    }
+    return null; // Hide chrome when not authenticated
+  }
+  
+  // Hide chrome on all other public pages
   const shouldHide = isRoot ||
                      isLandingRoute || 
                      isSignupRoute ||
                      isForgotPasswordRoute ||
                      isPricingRoute ||
                      isWorkflowsRoute ||
-                     isArtStationRoute ||
                      isLegalRoute ||
                      isProductRoute ||
                      isCompanyRoute ||
