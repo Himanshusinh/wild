@@ -12,7 +12,7 @@ interface VideoModelsDropdownProps {
   selectedResolution?: string;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'UGC';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate';
 }
 
 const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
@@ -86,8 +86,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     // For Animate feature, show WAN 2.2 Animate models and Runway Act-Two (check this FIRST)
     if (activeFeature === 'Animate') {
       return [
-        { value: "wan-2.2-animate-replace", label: "WAN Animate Replace", description: "Replace character in video with uploaded image, 480p/720p, 5-60fps", provider: "replicate" },
-        { value: "wan-2.2-animate-animation", label: "WAN Animate Animation", description: "Animate character image using video motion reference, 480p/720p, 5-60fps", provider: "replicate" },
+        { value: "wan-2.2-animate-replace", label: "WAN  Replace", description: "Replace character in video with uploaded image, 480p/720p, 5-60fps", provider: "replicate" },
+        { value: "wan-2.2-animate-animation", label: "WAN  Animation", description: "Animate character image using video motion reference, 480p/720p, 5-60fps", provider: "replicate" },
         { value: "runway-act-two", label: "Runway Act-Two", description: "Control character expressions and movements using reference video, 1280:720/720:1280/960:960", provider: "runway" }
       ];
     }
@@ -99,7 +99,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 Speak", description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast Speak", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
-        { value: "kling-v2.5-turbo-pro-t2v", label: "Kling Lipsync", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" }
+        // { value: "kling-v2.5-turbo-pro-t2v", label: "Kling Lipsync", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" }
       ];
     }
     
@@ -114,27 +114,30 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     // For text-to-video and image-to-video modes, always return all models
     // This ensures consistent visibility regardless of current mode
     return [
+      { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
+      { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
       { value: "sora2-t2v", label: "Sora 2", description: "OpenAI's Sora 2, 4s/8s/12s, 720p, 16:9/9:16", provider: "fal" },
       { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
       // { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
-      { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
-      { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
+      
       { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
       { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Image→Video only, 5s/10s, 720p/1080p (requires start image)", provider: "replicate" },
       { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Image→Video only, 5s/10s, 1080p (requires start image)", provider: "replicate" },
+      { value: "MiniMax-Hailuo-2.3", label: "Hailuo-2.3", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
+      { value: "MiniMax-Hailuo-2.3-Fast", label: "Hailuo-2.3 Fast", description: "Image→Video only (faster), 6s/10s, 768P/1080P", provider: "minimax" },
+      { value: "MiniMax-Hailuo-02", label: "Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
+      { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video & Image→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
+
       { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video & Image→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
       { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video & Image→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
-      { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video & Image→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
       { value: "ltx2-pro-t2v", label: "LTX V2 Pro", description: "Text→Video & Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
       { value: "ltx2-fast-t2v", label: "LTX V2 Fast", description: "Text→Video & Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
       { value: "wan-2.5-t2v", label: "WAN 2.5", description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
       { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
       { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
-      { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
       { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" },
-      { value: "MiniMax-Hailuo-02", label: "Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
-      { value: "MiniMax-Hailuo-2.3", label: "Hailuo-2.3", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
-      { value: "MiniMax-Hailuo-2.3-Fast", label: "Hailuo-2.3 Fast", description: "Image→Video only (faster), 6s/10s, 768P/1080P", provider: "minimax" },
+      { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
+
       { value: "T2V-01-Director", label: "Hailuo-T2V-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" },
       { value: "I2V-01-Director", label: "Hailuo-I2V-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },
       // { value: "S2V-01", label: "S2V-01", description: "Subject→Video (character reference), 6s, 720P", provider: "minimax" }

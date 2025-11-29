@@ -52,7 +52,7 @@ import AssetViewerModal from '@/components/AssetViewerModal';
 
 interface InputBoxProps {
   placeholder?: string;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'UGC';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' ;
   showHistory?: boolean; // Control whether to show the history section
 }
 
