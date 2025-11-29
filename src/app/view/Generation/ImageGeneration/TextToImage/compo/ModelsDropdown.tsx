@@ -40,6 +40,9 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Imagen 4', value: 'imagen-4' },
     { name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
     { name: 'Flux 2 Pro', value: 'flux-2-pro' },
+    // TODO: Update model name and value with actual model identifier
+    // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
+    { name: 'z-image-turbo', value: 'new-turbo-model' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -166,6 +169,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'seedream-v4',
               'ideogram-ai/ideogram-v3-quality',
               'imagen-4',
+              'imagen-4-fast',
+              'new-turbo-model'
             ];
             const leftSet = new Set(leftValues);
             const leftModels = filteredModels

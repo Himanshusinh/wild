@@ -23,6 +23,8 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'imagen-4-ultra': 'Imagen 4 Ultra',
   'imagen-4': 'Imagen 4',
   'imagen-4-fast': 'Imagen 4 Fast',
+  // TODO: Update model identifier with actual model name
+  'new-turbo-model': 'New Turbo Model',
   
   // Video Generation Models
   'veo3-t2v-8s': 'Veo3',

@@ -153,6 +153,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'image',
     provider: 'replicate'
   },
+  // TODO: Update model identifier and credit model name with actual values
+  {
+    frontendValue: 'new-turbo-model',
+    creditModelName: 'New Turbo Model', // TODO: Update with actual credit model name from creditDistribution.ts
+    generationType: 'image',
+    provider: 'replicate'
+  },
 
   // VIDEO GENERATION MODELS
   {
