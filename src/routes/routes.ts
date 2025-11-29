@@ -1,3 +1,4 @@
+
 // Authentication Routes
 export const AUTH_ROUTES = {
   SIGN_IN: '/view/signin',
@@ -56,7 +57,7 @@ export const NAV_ROUTES = {
   TEMPLATES: '/view/workflows',
   ART_STATION: '/view/ArtStation',
   PRICING: '/view/pricing',
-  BLOG: '/view/Landingpage',
+  BLOG: '/blog',
   CONTACT: '/view/Landingpage?section=contact',
   SUPPORT: '/view/Landingpage?section=support',
   ABOUT: '/view/Landingpage?section=about',
@@ -69,11 +70,15 @@ export const NAV_ROUTES = {
 
 // Legal Routes
 export const LEGAL_ROUTES = {
-  TERMS: '/terms',
-  PRIVACY: '/privacy',
-  COOKIES: '/cookies',
+  TERMS: '/legal/terms',
+  PRIVACY: '/legal/privacy',
+  COOKIES: '/legal/cookie',
   LEGAL_NOTICE: '/legal',
-  DMCA: '/dmca',
+  DMCA: '/legal/dmca',
+  AUP: '/legal/aup',
+  API_TERMS: '/legal/api-terms',
+  RELATIONSHIP: '/legal/relationship',
+  THIRD_PARTY: '/legal/thirdparty',
 } as const;
 
 // Footer Navigation Links

@@ -700,14 +700,6 @@ const InputBox = (props: InputBoxProps = {}) => {
     console.log('🔄 - To:', newModel);
     console.log('🔄 - Generation mode:', generationMode);
 
-    // Handle gen4_aleph: it's a video-to-video model, so switch to video_to_video mode if selected in other modes
-    if (newModel === "gen4_aleph" && (generationMode === "text_to_video" || generationMode === "image_to_video")) {
-      setGenerationMode("video_to_video");
-      setSelectedModel(newModel);
-      setSelectedCameraMovements([]);
-      return;
-    }
-
     // Validate that the selected model is compatible with the current generation mode
     if (generationMode === "text_to_video") {
       // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
@@ -813,13 +805,6 @@ const InputBox = (props: InputBoxProps = {}) => {
         return; // Don't change the model
       }
     } else if (generationMode === "image_to_video") {
-      // Handle gen4_aleph: switch to video_to_video mode
-      if (newModel === "gen4_aleph") {
-        setGenerationMode("video_to_video");
-        setSelectedModel(newModel);
-        setSelectedCameraMovements([]);
-        return;
-      }
       // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, I2V-01-Director, S2V-01, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, Sora 2
       if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
         setSelectedModel(newModel);
@@ -4542,7 +4527,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     )}
 
                   {/* References Upload (for video-to-video and S2V-01 character reference) */}
-                  {(currentModelCapabilities.requiresReferenceImage) && (
+                  {(currentModelCapabilities.requiresReferenceImage || (currentModelCapabilities.supportsVideoToVideo && uploadedVideo)) && (
                     <div className="relative">
                       <button
                         className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
@@ -4845,7 +4830,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             {uploadedVideo && (
               <div className="md:mb-3 mb-0">
                 <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
-                <div className="relative group w-fit">
+                <div className="relative group">
                   <div
                     className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
                     onClick={() => {
@@ -4857,57 +4842,29 @@ const InputBox = (props: InputBoxProps = {}) => {
                       });
                     }}
                   >
-                    {(() => {
-                      // Use proxy URL if it's a storage path, otherwise use the URL directly
-                      const proxied = toFrontendProxyMediaUrl(uploadedVideo);
-                      return (
-                        <video
-                          src={proxied}
-                          className="w-full h-full object-cover"
-                          muted
-                          playsInline
-                          loop
-                          preload="metadata"
-                          onMouseEnter={async (e) => {
-                            const video = e.currentTarget;
-                            try {
-                              // Force video to load if not ready
-                              if (video.readyState < 2) {
-                                video.load();
-                                await new Promise((resolve) => {
-                                  video.addEventListener('loadeddata', resolve, { once: true });
-                                  video.addEventListener('error', resolve, { once: true });
-                                });
-                              }
-                              video.currentTime = 1; // Start from 1 second for preview
-                              await video.play();
-                            } catch (error: any) {
-                              console.error('Video play failed on hover:', error);
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            const video = e.currentTarget;
-                            video.pause();
-                            video.currentTime = 0;
-                          }}
-                        />
-                      );
-                    })()}
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                      Uploaded Video
+                    <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-blue-400"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
                     </div>
+                    <button
+                      aria-label="Remove video"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 text-xl font-extrabold drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedVideo("");
+                        setSourceHistoryEntryId(""); // Clear source history entry when clearing video
+                      }}
+                    >
+                      ×
+                    </button>
                   </div>
-                  <button
-                    aria-label="Remove video"
-                    className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setUploadedVideo("");
-                      setSourceHistoryEntryId(""); // Clear source history entry when clearing video
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
               </div>
             )}
