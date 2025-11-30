@@ -11,7 +11,6 @@ import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 import { Masonry } from '@/components/masonry'
-import { ContentCardSkeletonList } from '@/components/card-skeleton'
 
 type PublicItem = {
   id: string;
@@ -1079,7 +1078,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
               media: [640, 768, 1024, 1280],
             }}
             className="[overflow-anchor:none]"
-            placeholder={loading && cards.length === 0 ? <ContentCardSkeletonList /> : undefined}
+            placeholder={undefined}
             render={(card, idx) => {
               const { item, media, kind } = card
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
