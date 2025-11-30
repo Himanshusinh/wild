@@ -1591,7 +1591,7 @@ const History = () => {
                 if (!hasFilteredItems) return null;
 
                 return (
-                  <div key={dateKey} className="space-y-2">
+                  <div key={dateKey} className="space-y-2 md:mb-6 mb-3">
                     {/* Date Header */}
                     <div className="flex items-center md:gap-3 gap-1 md:mx-9 mx-4 ">
                       <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
