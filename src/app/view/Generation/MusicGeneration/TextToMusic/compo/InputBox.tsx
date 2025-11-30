@@ -2,46 +2,31 @@
 
 import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { addHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store/slices/historySlice';
-import { addNotification } from '@/store/slices/uiSlice';
-import { uploadGeneratedAudio } from '@/lib/audioUpload';
-import { minimaxMusic } from '@/store/slices/generationsApi';
-import { requestCreditsRefresh } from '@/lib/creditsBus';
+import { store } from '@/store';
+import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store/slices/historySlice';
+import { minimaxMusic, falElevenTts } from '@/store/slices/generationsApi';
 import { useGenerationCredits } from '@/hooks/useCredits';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
 import MusicInputBox from './MusicInputBox';
+import { toast } from 'react-hot-toast';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
+import MusicHistory from "./MusicHistory";
 
-const InputBox = () => {
+const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
   const dispatch = useAppDispatch();
   // Self-manage history loads for music to avoid central duplicate requests
   const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-music' });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  // Use global history pagination/loading state
-  const storeHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
-  const storeLoading = useAppSelector((s: any) => s.history?.loading || false);
-  const [page, setPage] = useState(1);
-  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
-  const loadingMoreRef = React.useRef(false);
-  const hasUserScrolledRef = React.useRef(false);
-  const didAutoFillRef = React.useRef(false);
-  const [selectedAudio, setSelectedAudio] = useState<{
-    entry: any;
-    audio: any;
-  } | null>(null);
 
   // Local preview state for immediate UI feedback
   const [localMusicPreview, setLocalMusicPreview] = useState<any>(null);
-  const todayKey = new Date().toDateString();
-
 
   // Auto-clear local preview after completion/failure
   useEffect(() => {
@@ -52,81 +37,32 @@ const InputBox = () => {
     }
   }, [localMusicPreview]);
 
-  // Get user ID from Redux state (adjust based on your auth setup)
-  const userId = useAppSelector((state: any) => state.auth?.user?.uid || 'anonymous');
-
   // Credits management
   const {
     validateAndReserveCredits,
     handleGenerationSuccess,
     handleGenerationFailure,
-    creditBalance,
     clearCreditsError,
-  } = useGenerationCredits('music', 'music-1.5', {
+  } = useGenerationCredits('music', 'minimax-music-2', {
     duration: 90, // Default duration for music
   });
 
-  // Get history entries for music generation
-  const historyEntries = useAppSelector((state: any) => {
-    const allEntries = state.history.entries || [];
-    return allEntries.filter((entry: any) => 
-      entry.generationType === 'text-to-music' || 
-      entry.generationType === 'text_to_music'
-    );
-  });
-
-  // Group entries by date
-  const groupedByDate = historyEntries.reduce((groups: { [key: string]: any[] }, entry: any) => {
-    const date = new Date(entry.timestamp).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(entry);
-    return groups;
-  }, {});
-
-  // Sort dates in descending order (newest first)
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
-    new Date(b).getTime() - new Date(a).getTime()
-  );
-
-  // Removed legacy auto-fill viewport logic to ensure pagination only occurs
-  // via explicit user-driven IntersectionObserver triggers. If initial content
-  // is shorter than viewport the sentinel will intersect once and load more.
-
-  // Remove unused local loader; rely on Redux loadMoreHistory
-
-  // Mark user scroll
-  useEffect(() => {
-    const onScroll = () => { hasUserScrolledRef.current = true; };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll as any);
-  }, []);
-
-  // Standardized intersection observer for music history
-  useBottomScrollPagination({
-    containerRef: undefined,
-    hasMore: storeHasMore,
-    loading: storeLoading,
-    requireUserScroll: true,
-    bottomOffset: 800,
-    throttleMs: 200,
-    loadMore: async () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      try {
-        await (dispatch as any)(loadMoreHistory({
-          filters: { generationType: 'text-to-music' },
-          paginationParams: { limit: 10 }
-        } as any)).unwrap();
-      } catch {/* swallow */}
-    }
-  });
-
   const handleGenerate = async (payload: any) => {
-    if (!payload.lyrics.trim()) {
-      setErrorMessage('Please provide lyrics');
+    const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
+    const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.prompt || '';
+    if (!primaryText.trim()) {
+      setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics');
       return;
+    }
+    const normalizedText = primaryText.trim();
+    if (isTtsModel) {
+      payload.text = normalizedText;
+      payload.prompt = payload.prompt || normalizedText;
+      payload.lyrics = normalizedText;
+      payload.generationType = payload.generationType || 'text-to-music';
+    } else {
+      payload.lyrics = normalizedText;
+      payload.prompt = payload.prompt || normalizedText;
     }
 
     // Check authentication before allowing generation
@@ -162,7 +98,7 @@ const InputBox = () => {
     // Create local preview immediately for UI feedback
     setLocalMusicPreview({
       id: `music-loading-${Date.now()}`,
-      prompt: payload.prompt,
+      prompt: normalizedText,
       model: payload.model,
       generationType: 'text-to-music',
       images: [{ id: 'music-loading', url: '', originalUrl: '' }],
@@ -172,110 +108,222 @@ const InputBox = () => {
       status: 'generating'
     });
 
-    // Create loading history entry for Redux (with temporary ID)
-    const tempId = Date.now().toString();
-    const loadingEntry = {
-      id: tempId,
-      prompt: payload.prompt, // This will be the formatted prompt from style/instruments
-      model: payload.model,
-      lyrics: payload.lyrics,
-      generationType: 'text-to-music' as const,
-      images: [], // Will store audio data in this field
-      status: "generating" as const,
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      imageCount: 1 // For music, this represents audio count
-    };
+    // For MiniMax Music 2, the backend creates the history entry, so we'll use that historyId
+    // For other models, we create a loading entry first
+    const isMiniMaxMusic2 = payload.model === 'minimax-music-2';
+    let tempId: string | null = null;
+    let backendHistoryId: string | null = null;
 
-    // Add to Redux with temporary ID
-    dispatch(addHistoryEntry(loadingEntry));
+    if (!isMiniMaxMusic2) {
+      // Create loading history entry for Redux (with temporary ID) - only for non-MiniMax Music 2
+      tempId = Date.now().toString();
+      const loadingEntry = {
+        id: tempId,
+        prompt: normalizedText,
+        model: payload.model,
+        lyrics: normalizedText,
+        generationType: 'text-to-music' as const,
+        images: [{ id: 'loading', url: '', originalUrl: '', type: 'audio' }], // Placeholder for generating state - ensures tile renders
+        audios: [], // Will store audio data when completed
+        status: "generating" as const,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 1 // For music, this represents audio count
+      };
+      
+      // Force immediate refresh to show loading animation
+      console.log('🎵 Adding loading entry to Redux:', loadingEntry);
 
-    let firebaseHistoryId: string | null = null;
+      // Add to Redux with temporary ID
+      dispatch(addHistoryEntry(loadingEntry));
+      
+      // Force immediate UI update to show loading animation
+      // Use requestAnimationFrame to ensure the entry is visible
+      requestAnimationFrame(() => {
+        // Entry is already in Redux, just ensure UI updates
+      });
 
-    try {
       // Save to Firebase first (without ID field)
       try {
         const { id, ...loadingEntryWithoutId } = loadingEntry;
-        firebaseHistoryId = await saveHistoryEntry(loadingEntryWithoutId);
+        const firebaseHistoryId = await saveHistoryEntry(loadingEntryWithoutId);
         console.log('✅ Firebase history entry created with ID:', firebaseHistoryId);
-        console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
 
         // Update Redux entry with Firebase ID (replace tempId with firebaseHistoryId)
         dispatch(updateHistoryEntry({
           id: tempId,
           updates: { id: firebaseHistoryId }
         }));
-
-        // Don't modify the loadingEntry object - use firebaseHistoryId directly
-        console.log('Using Firebase ID for all operations:', firebaseHistoryId);
+        tempId = firebaseHistoryId;
       } catch (firebaseError) {
         console.error('❌ Firebase save failed:', firebaseError);
         try { const toast = (await import('react-hot-toast')).default; toast.error('Failed to save generation to history'); } catch {}
-        // Continue with generation even if Firebase save fails
       }
+    } else {
+      // For MiniMax Music 2, create a temporary loading entry that will be replaced by backend entry
+      // DO NOT refresh here - it will load backend entries and cause duplicates
+      tempId = `loading-${Date.now()}`;
+      const loadingEntry = {
+        id: tempId,
+        prompt: normalizedText,
+        model: payload.model,
+        lyrics: payload.lyrics_prompt || payload.lyrics || normalizedText,
+        generationType: 'text-to-music' as const,
+        images: [{ id: 'loading', url: '', originalUrl: '', type: 'audio' }],
+        audios: [],
+        status: "generating" as const,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 1
+      };
+      
+      console.log('🎵 Adding loading entry for MiniMax Music 2:', loadingEntry);
+      dispatch(addHistoryEntry(loadingEntry));
+      // Force UI update without refreshing from backend
+      requestAnimationFrame(() => {
+        // Just trigger a re-render, don't fetch from backend
+      });
+    }
 
+    try {
       // Add isPublic from backend policy
       const { getIsPublic } = await import('@/lib/publicFlag');
       const isPublic = await getIsPublic();
-      console.log('🎵 Calling MiniMax music API with payload via thunk:', { ...payload, isPublic });
-      const result = await dispatch(minimaxMusic({ ...payload, isPublic })).unwrap();
-      console.log('🎵 MiniMax music thunk result:', result);
+      console.log('🎵 Calling music API with payload via thunk:', { ...payload, isPublic });
+      const requestPayload = { ...payload, isPublic, prompt: payload.prompt || normalizedText };
+      
+      // Use MiniMax API for MiniMax Music 2, otherwise use existing endpoints
+      let result: any;
+      if (requestPayload.model === 'minimax-music-2') {
+        // Transform payload for MiniMax API: lyrics_prompt -> lyrics
+        const minimaxPayload = {
+          ...requestPayload,
+          model: 'music-2.0',
+          lyrics: requestPayload.lyrics_prompt || requestPayload.lyrics || normalizedText,
+          lyrics_prompt: undefined, // Remove lyrics_prompt, use lyrics instead
+        };
+        result = await dispatch(minimaxMusic(minimaxPayload)).unwrap();
+        console.log('🎵 Music generation thunk result:', result);
+        if (!result || result.status !== 'completed') {
+          throw new Error(result?.error || 'Generation failed');
+        }
+        // Use backend's historyId for MiniMax Music 2
+        backendHistoryId = result.historyId;
+        if (backendHistoryId && tempId) {
+          // Remove the temporary loading entry
+          dispatch(removeHistoryEntry(tempId));
+          tempId = null;
+        }
+      } else {
+        result = isTtsModel
+          ? await dispatch(falElevenTts(requestPayload)).unwrap()
+          : await dispatch(minimaxMusic(requestPayload)).unwrap();
+        console.log('🎵 Music generation thunk result:', result);
 
-      // Backend returns: { historyId, audios: [audioItem], status: 'completed', debitedCredits }
-      if (!result || result.status !== 'completed') {
-        throw new Error(result?.error || 'Music generation failed');
+        if (!result || result.status !== 'completed') {
+          throw new Error(result?.error || 'Generation failed');
+        }
       }
 
-      const audios = result.audios || [];
-      if (audios.length === 0) {
-        throw new Error('No audio data received from MiniMax');
+      // Extract audio data - prefer audios array from backend, fallback to audio object
+      let audioItem: any;
+      let audiosArray: any[] = [];
+      
+      if (isTtsModel) {
+        if (Array.isArray(result.audios) && result.audios.length > 0) {
+          audiosArray = result.audios;
+          audioItem = result.audios[0];
+        } else if (result.audio) {
+          audiosArray = [result.audio];
+          audioItem = result.audio;
+        }
+      } else {
+        audiosArray = Array.isArray(result.audios) ? result.audios : [];
+        audioItem = audiosArray[0];
       }
 
-      const audioItem = audios[0]; // Get the first audio item
-      const audioUrl = audioItem.url || audioItem.firebaseUrl;
+      if (!audioItem) {
+        console.error('❌ No audio data in response:', result);
+        throw new Error('No audio data received from generator');
+      }
 
+      const audioUrl = audioItem.url || audioItem.firebaseUrl || audioItem.originalUrl;
       if (!audioUrl) {
-        throw new Error('No audio URL received from MiniMax');
+        console.error('❌ No audio URL in audioItem:', audioItem);
+        throw new Error('No audio URL received from generator');
       }
 
+      // Use audios array from backend if available, otherwise create from audioItem
+      const finalAudios = audiosArray.length > 0 ? audiosArray : [{
+        id: audioItem.id || 'music-1',
+        url: audioUrl,
+        firebaseUrl: audioUrl,
+        originalUrl: audioItem.originalUrl || audioUrl,
+        storagePath: audioItem.storagePath || ''
+      }];
+
+      // Use backend's historyId if available, otherwise use frontend-created one
+      const historyIdToUpdate = backendHistoryId || tempId;
+      
       // Update the history entry with the audio URL from backend
       // Store in both audios and images fields for compatibility
       const updateData = {
         status: 'completed' as const,
-        audios: [{
-          id: audioItem.id || 'music-1',
-          url: audioUrl,
-          firebaseUrl: audioUrl,
-          originalUrl: audioItem.originalUrl || audioUrl,
-          storagePath: audioItem.storagePath
-        }],
-        images: [{
-          id: audioItem.id || 'music-1',
-          url: audioUrl,
-          firebaseUrl: audioUrl,
-          originalUrl: audioItem.originalUrl || audioUrl,
-          storagePath: audioItem.storagePath,
-          type: 'audio' // Mark this as audio type
-        }],
-        lyrics: payload.lyrics
+        audios: finalAudios,
+        images: finalAudios.map(a => ({ ...a, type: 'audio' })),
+        lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt
       };
 
       console.log('🎵 Final audio data for history:', updateData);
       console.log('🎵 Audio URL:', audioUrl);
-      console.log('🎵 History ID being updated:', firebaseHistoryId || tempId);
+      console.log('🎵 History ID being updated:', historyIdToUpdate);
+      console.log('🎵 Backend result:', result);
 
-      // Update Redux entry with completion data
-      console.log('🎵 Updating Redux history entry with ID:', firebaseHistoryId || tempId);
-      dispatch(updateHistoryEntry({
-        id: firebaseHistoryId || tempId,
-        updates: updateData
-      }));
-      console.log('🎵 Redux history entry updated');
+      if (backendHistoryId) {
+        // Backend already created the entry, so remove temp entry and add the completed entry
+        if (tempId) {
+          console.log('🗑️ Removing temp loading entry:', tempId);
+          dispatch(removeHistoryEntry(tempId));
+        }
+        // Get fresh history entries to check for duplicates
+        const currentState = store.getState();
+        const currentEntries = currentState.history?.entries || [];
+        // Check if backend entry already exists in Redux (shouldn't happen, but check anyway)
+        const existingEntry = currentEntries.find((e: any) => e.id === backendHistoryId);
+        if (!existingEntry) {
+          // Add the completed entry from backend to Redux immediately
+          const completedEntry = {
+            id: backendHistoryId,
+            prompt: normalizedText,
+            model: payload.model,
+            generationType: 'text-to-music' as const,
+            ...updateData, // updateData already contains lyrics
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount: 1
+          };
+          console.log('✅ Adding backend entry to Redux:', backendHistoryId, completedEntry);
+          dispatch(addHistoryEntry(completedEntry));
+        } else {
+          // Update existing entry with completed data (shouldn't happen, but handle it)
+          console.log('⚠️ Backend entry already exists, updating:', backendHistoryId);
+          dispatch(updateHistoryEntry({
+            id: backendHistoryId,
+            updates: updateData
+          }));
+        }
+      } else if (tempId) {
+        // Update Redux entry with completion data (for non-MiniMax Music 2)
+        console.log('🎵 Updating Redux history entry with ID:', tempId);
+        dispatch(updateHistoryEntry({
+          id: tempId,
+          updates: updateData
+        }));
+        console.log('🎵 Redux history entry updated with audios:', updateData.audios.length, 'items');
 
-      // Update Firebase
-      if (firebaseHistoryId) {
+        // Update Firebase
         try {
-          await updateFirebaseHistory(firebaseHistoryId, updateData);
+          await updateFirebaseHistory(tempId, updateData);
           console.log('✅ Firebase history updated successfully');
         } catch (firebaseError) {
           console.error('❌ Firebase update failed:', firebaseError);
@@ -300,24 +348,60 @@ const InputBox = () => {
         await handleGenerationSuccess(transactionId);
       }
 
-      // Refresh history immediately to show the new music
-      refreshMusicHistoryImmediate();
+      // Refresh history after a short delay to ensure backend has updated
+      // For MiniMax Music 2, we already added the entry, so skip refresh to avoid duplicates
+      // For others, refresh to sync with backend
+      if (!backendHistoryId) {
+        setTimeout(() => {
+          console.log('🔄 Refreshing music history...');
+          refreshMusicHistoryImmediate();
+        }, 500);
+      } else {
+        console.log('✅ Skipping refresh for MiniMax Music 2 (entry already added)');
+      }
 
       console.log('✅ Music generation completed successfully');
 
     } catch (error: any) {
       console.error('❌ Music generation failed:', error);
       
-      // Update history entry with failed status
-      if (firebaseHistoryId) {
+      const historyIdToUpdate = backendHistoryId || tempId;
+      
+      // For MiniMax Music 2, backend creates the entry, so we update it via refresh
+      // For others, update the frontend-created entry
+      if (backendHistoryId) {
+        // Backend will handle the failed status, remove temp entry and refresh to show backend entry
+        if (tempId) {
+          dispatch(removeHistoryEntry(tempId));
+        }
+        // Refresh to load the backend's failed entry
+        setTimeout(() => {
+          refreshMusicHistoryImmediate();
+        }, 100);
+      } else if (tempId) {
+        // Update Firebase for non-MiniMax Music 2
         try {
-          await updateFirebaseHistory(firebaseHistoryId, {
+          await updateFirebaseHistory(tempId, {
             status: 'failed',
             error: error.message
           });
         } catch (firebaseError) {
           console.error('❌ Firebase error update failed:', firebaseError);
         }
+
+        // Update Redux entry with failed status - but keep it visible
+        // Ensure images array exists so the tile still renders
+        dispatch(updateHistoryEntry({
+          id: tempId,
+          updates: {
+            status: 'failed',
+            error: error.message,
+            // Keep images array so the tile still renders - use the same structure as loading
+            images: [{ id: 'failed', url: '', originalUrl: '', type: 'audio', error: error.message }] as any,
+            // Also ensure audios array exists
+            audios: []
+          }
+        }));
       }
 
       // Update local preview to failed
@@ -325,15 +409,11 @@ const InputBox = () => {
         ...prev,
         status: 'failed'
       }) : prev);
-
-      // Update Redux entry with failed status
-      dispatch(updateHistoryEntry({
-        id: firebaseHistoryId || tempId,
-        updates: {
-          status: 'failed',
-          error: error.message
-        }
-      }));
+      
+      // Force refresh to show failed state
+      setTimeout(() => {
+        refreshMusicHistoryImmediate();
+      }, 100);
 
       setErrorMessage(error.message || 'Music generation failed');
       try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch {}
@@ -347,222 +427,47 @@ const InputBox = () => {
     }
   };
 
+  const [selectedAudio, setSelectedAudio] = useState<{
+    entry: any;
+    audio: any;
+  } | null>(null);
+
+  const showHistoryOnly = props?.showHistoryOnly || false;
+
   return (
     <>
-      {/* History Section - Fixed overlay like image/video generation */}
-      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 scrollbar-hide">
-          <div className="py-6 pl-4 "> 
-          {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
-            <h2 className="text-xl font-semibold text-white pl-0 ">Music Generation </h2>
+      {showHistoryOnly ? (
+        <MusicHistory
+          generationType="text-to-music"
+          allowedTypes={['text-to-music', 'text_to_music']}
+          onAudioSelect={setSelectedAudio}
+          selectedAudio={selectedAudio}
+          localPreview={localMusicPreview}
+        />
+      ) : (
+        <>
+          {/* Error Message Display */}
+          {errorMessage && (
+            <div className="mb-4 z-[60]">
+              <div className="rounded-2xl bg-red-500/15 ring-1 ring-red-500/30 p-3">
+                <div className="text-red-300 text-sm">{errorMessage}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Music Input Box */}
+          <div className="w-full -mt-6 bg-white/5 backdrop-blur-3xl  rounded-2xl">
+            <MusicInputBox
+              onGenerate={handleGenerate}
+              isGenerating={isGenerating}
+              resultUrl={resultUrl}
+              errorMessage={errorMessage}
+            />
           </div>
-          {/* Spacer to keep content below fixed header */}
-          <div className="h-0"></div>
-
-          {/* Main Loader */}
-          {storeLoading && historyEntries.length === 0 && (
-              <div className="flex items-center justify-center h-screen">
-                <div className="flex flex-col items-center gap-4">
-                  <WildMindLogoGenerating 
-                    running={true}
-                    size="lg"
-                    speedMs={1600}
-                    className="mx-auto"
-                  />
-                  <div className="text-white text-lg text-center">Loading your generation history...</div>
-                </div>
-              </div>
-            )}
-
-          {/* No History State */}
-          {!storeLoading && historyEntries.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Music4 className="w-8 h-8 text-white/60" />
-                </div>
-                <div className="text-white text-lg">No music generations yet</div>
-                <div className="text-white/60 text-sm max-w-md">
-                  Create your first piece of AI-generated music using the interface below
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* If no row for today yet, render one with preview */}
-          {localMusicPreview && !groupedByDate[todayKey] && (
-            <div className="space-y-4">
-              {/* Date Header */}
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="text-white/60"
-                  >
-                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                  </svg>
-                </div>
-                <h3 className="text-sm font-medium text-white/70">
-                  {new Date(todayKey).toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </h3>
-              </div>
-
-              {/* All Music Tracks for this Date - Horizontal Layout */}
-              <div className="flex flex-wrap gap-3 ml-9">
-                <MusicTileFromPreview preview={localMusicPreview} />
-              </div>
-            </div>
-          )}
-
-          {/* History Entries - Grouped by Date */}
-          {historyEntries.length > 0 && (
-            <div className="space-y-8">
-              {sortedDates.map((date) => (
-                <div key={date} className="space-y-4">
-                  {/* Date Header */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="text-white/60"
-                      >
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {new Date(date).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </h3>
-                  </div>
-
-                  {/* All Music Tracks for this Date - Horizontal Layout */}
-                  <div className="flex flex-wrap gap-3 ml-9">
-                    {/* Prepend local preview to today's row to push items right */}
-                    {date === todayKey && localMusicPreview && <MusicTileFromPreview preview={localMusicPreview} />}
-                    {groupedByDate[date].map((entry: any) => 
-                      (entry.audios || entry.images || []).map((audio: any) => (
-                        <div
-                          key={`${entry.id}-${audio.id}`}
-                          onClick={() => setSelectedAudio({ entry, audio })}
-                          className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                        >
-                          {entry.status === "generating" ? (
-                            // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-black/90">
-                              <div className="flex flex-col items-center gap-2">
-                                <WildMindLogoGenerating 
-                                  running={entry.status === 'generating'}
-                                  size="md"
-                                  speedMs={1600}
-                                  className="mx-auto"
-                                />
-                                <div className="text-xs text-white/60 text-center">
-                                  Composing...
-                                </div>
-                              </div>
-                            </div>
-                          ) : entry.status === "failed" ? (
-                            // Error frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                              <div className="flex flex-col items-center gap-2">
-                                <svg
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="text-red-400"
-                                >
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                </svg>
-                                <div className="text-xs text-red-400">Failed</div>
-                              </div>
-                            </div>
-                          ) : (
-                            // Completed music track
-                            <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center relative">
-                              {/* Song Logo/Icon */}
-                              <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                <Music4 className="w-8 h-8 text-white/80" />
-                              </div>
-                              
-                              {/* Play button overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                    <path d="M8 5v14l11-7z" />
-                                  </svg>
-                                </div>
-                              </div>
-                              
-                          {/* Music track label */}
-                          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                            {/* <span className="text-xs text-white">Audio</span> */}
-                          </div>
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {/* Scroll Loading Indicator - Same as image/video generation */}
-              {storeHasMore && storeLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="flex flex-col items-center gap-3">
-                    <WildMindLogoGenerating 
-                      running={storeLoading}
-                      size="md"
-                      speedMs={1600}
-                      className="mx-auto"
-                    />
-                    <div className="text-sm text-white/60">Loading more generations...</div>
-                  </div>
-                </div>
-              )}
-              <div ref={sentinelRef} style={{ height: 1 }} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Error Message Display */}
-      {errorMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
-          <div className="rounded-2xl bg-red-500/15 ring-1 ring-red-500/30 p-3">
-            <div className="text-red-300 text-sm">{errorMessage}</div>
-          </div>
-        </div>
+        </>
       )}
 
-      {/* Music Input Box - Fixed position with proper z-index */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[60]">
-        <MusicInputBox
-          onGenerate={handleGenerate}
-          isGenerating={isGenerating}
-          resultUrl={resultUrl}
-          errorMessage={errorMessage}
-        />
-      </div>
-
-      {/* Audio Player Modal */}
+      {/* Audio Player Modal - Rendered for both history and input views */}
       {selectedAudio && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
           <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
@@ -578,7 +483,7 @@ const InputBox = () => {
               </button>
             </div>
             <CustomAudioPlayer 
-              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl}
+              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
@@ -591,49 +496,4 @@ const InputBox = () => {
   );
 };
 
-export default InputBox;
-
-// Helper component for music preview tile
-const MusicTileFromPreview = ({ preview }: { preview: any }) => (
-  <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 flex-shrink-0">
-    {preview.status === 'generating' ? (
-      <div className="w-full h-full flex items-center justify-center bg-black/90">
-        <div className="flex flex-col items-center gap-2">
-          <WildMindLogoGenerating 
-            running={preview.status === 'generating'}
-            size="md"
-            speedMs={1600}
-            className="mx-auto"
-          />
-          <div className="text-xs text-white/60 text-center">Composing...</div>
-        </div>
-      </div>
-    ) : preview.status === 'failed' ? (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-        <div className="flex flex-col items-center gap-2">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-          </svg>
-          <div className="text-xs text-red-400">Failed</div>
-        </div>
-      </div>
-    ) : (
-      <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center relative">
-        {/* Song Logo/Icon */}
-        <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-          <Music4 className="w-8 h-8 text-white/80" />
-        </div>
-        
-        {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
-    )}
-    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Music</div>
-  </div>
-);
+export default MusicGenerationInputBox;

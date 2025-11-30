@@ -451,7 +451,7 @@ const EditVideoInterface: React.FC = () => {
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
       if (!url) return url as any;
       if (url.startsWith('data:')) return url as any;
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
       const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
       // For Replicate, we must provide a publicly reachable URL. Use Zata public URL instead of localhost proxy.
       try {
@@ -497,7 +497,7 @@ const EditVideoInterface: React.FC = () => {
       // is not accessible from the production server.
       try {
         const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
         if (String(src).startsWith(ZATA_PREFIX)) {
           const path = src.substring(ZATA_PREFIX.length);
           const proxyUrl = `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}`;
@@ -701,7 +701,7 @@ const EditVideoInterface: React.FC = () => {
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
@@ -827,19 +827,7 @@ const EditVideoInterface: React.FC = () => {
       <VideoUploadModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        historyEntries={historyEntries as any}
         remainingSlots={1}
-        hasMore={historyHasMore}
-        loading={historyLoading}
-        onLoadMore={async () => {
-          try {
-            if (!historyHasMore || historyLoading) return;
-            await (dispatch as any)(loadMoreHistory({
-              filters: { generationType: 'text-to-video' },
-              paginationParams: { limit: 20 }
-            })).unwrap();
-          } catch { }
-        }}
         onAdd={(urls: string[]) => {
           const first = urls[0];
           if (first) {

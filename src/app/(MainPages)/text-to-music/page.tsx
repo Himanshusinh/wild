@@ -9,9 +9,9 @@ import { ViewType, GenerationType } from '@/types/generation';
 const TextToMusicPage = () => {
   const dispatch = useAppDispatch();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'generation');
-  const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
+  const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-music');
 
-  // Ensure Redux reflects this route on first mount/navigation
+  // Keep Redux in sync on navigation
   useEffect(() => {
     dispatch(setCurrentView('generation'));
     dispatch(setCurrentGenerationType('text-to-music'));

@@ -443,7 +443,7 @@ const InputBox = () => {
                   const file = e.target.files?.[0];
                   if (file) {
                     // Check file size (2MB limit)
-                    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+                    const maxSize = 20 * 1024 * 1024; // 2MB in bytes
                     if (file.size > maxSize) {
                       dispatch(addNotification({
                         type: "error",

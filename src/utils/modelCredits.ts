@@ -13,6 +13,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gen4_image_turbo': 44,       // Runway Gen 4 Image Turbo
   'minimax-image-01': 24,       // Minimax Image-01
   'gemini-25-flash-image': 98,  // Google nano banana (T2I)
+  'google/nano-banana-pro': 300, // Google nano banana pro (default 1K/2K - 300 credits, 4K - 500 credits)
   'seedream-v4': 80,
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
@@ -20,8 +21,11 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'imagen-4-ultra': 140,
   'imagen-4': 100,
   'imagen-4-fast': 44,
+  'flux-2-pro': 80, // Default to 1K (60 credits), will be resolved based on resolution
   'leonardoai/lucid-origin': 173,
   'leonardoai/phoenix-1.0': 170,
+  // TODO: Update model identifier and credits with actual values
+  'new-turbo-model': 120, // Placeholder - update with actual credits from creditDistribution.ts
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]
   'flux-kontext-dev': 90,       // Similar to FLUX.1 [dev]
@@ -36,7 +40,12 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'S2V-01': 1420,               // S2V-01
 
   // Music Generation Models
-  'music-1.5': 90,              // Music 1.5 (Up to 90s)
+  'minimax-music-2': 60,        // MiniMax Music 2 ($0.03 = 60 credits)
+  'elevenlabs-tts': 98,         // ElevenLabs TTS v3
+  'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS
+  'maya-tts': 98,                // Maya TTS
+  'elevenlabs-dialogue': 98,     // ElevenLabs Dialogue
+  'elevenlabs-sfx': 98,          // ElevenLabs Sound Effects
 
   // Ad Generation Models (same as image generation)
   'flux-kontext-pro-ad': 110,
@@ -404,6 +413,17 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       const key = `sora2-${modelType}-${durForPricing}s`;
       return MODEL_CREDITS_MAPPING[key] || null;
     }
+  }
+
+  // Handle Flux 2 Pro with resolution
+  if (modelValue === 'flux-2-pro') {
+    if (resolution === '2K') {
+      return 160; // Flux 2 Pro 2K: $0.07 = 140 credits
+    } else if (resolution === '1K') {
+      return 80; // Flux 2 Pro 1K: $0.03 = 60 credits
+    }
+    // Default to 1K if no resolution specified (will be overridden by buildCreditModelName for 9:16)
+    return 80;
   }
 
   // Default lookup

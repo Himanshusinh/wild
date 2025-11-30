@@ -11,6 +11,7 @@ import { signOut } from 'firebase/auth'
 import { auth } from '../../../../lib/firebase'
 import { imageRoutes } from '../routes'
 import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy'
+import toast from 'react-hot-toast'
 
 interface UserData {
   uid: string
@@ -160,8 +161,15 @@ const Nav = () => {
         } catch {}
         window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
       }
-    } catch (_err) {
-      if (typeof window !== 'undefined') window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED')
+    } catch (err) {
+      console.error('Logout error:', err)
+      toast.error('Failed to logout. Please try again.', { duration: 4000 })
+      if (typeof window !== 'undefined') {
+        // Still redirect even on error to prevent user from being stuck
+        setTimeout(() => {
+          window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED')
+        }, 2000)
+      }
     }
   }
 

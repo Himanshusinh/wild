@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { auth } from './firebase'
 import { showFalErrorToast } from './falToast'
+import { clearAuthData } from './authUtils'
 
 // Try to extract an ID token from localStorage in a tolerant way
 const getStoredIdToken = (): string | null => {
@@ -45,10 +46,8 @@ const getStoredIdToken = (): string | null => {
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
-const resolvedBaseUrl = (() => {
-  const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
-  return raw.length > 0 ? raw : 'https://api-gateway-services-wildmind.onrender.com'
-})()
+// Uses NEXT_PUBLIC_API_BASE_URL (must be set in environment variables)
+const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
 
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,
@@ -248,18 +247,6 @@ export default axiosInstance
 
 
 // Utility: ensure session cookie is present before navigating protected UI
-// Helper function to clear all authentication data
-export function clearAuthData() {
-  try {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
-    localStorage.removeItem('auth_hint')
-    console.log('[clearAuthData] Cleared all authentication data')
-  } catch (error) {
-    console.error('[clearAuthData] Error clearing auth data:', error)
-  }
-}
-
 // Simplified function that just checks if user is authenticated
 export function isUserAuthenticated(): boolean {
   try {
@@ -405,13 +392,174 @@ const markSessionCreated = () => {
   try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch {}
 }
 
+// Session refresh state management
+let isRefreshingSession = false;
+let lastSessionRefreshAt = 0;
+const SESSION_REFRESH_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
+
+const refreshSessionIfNeeded = async (): Promise<void> => {
+  // Prevent concurrent refresh attempts
+  if (isRefreshingSession) {
+    if (isApiDebugEnabled()) console.log('[API][session-refresh] Already refreshing, skipping');
+    return;
+  }
+
+  // Throttle refresh attempts (5-minute cooldown)
+  const now = Date.now();
+  if (now - lastSessionRefreshAt < SESSION_REFRESH_COOLDOWN_MS) {
+    if (isApiDebugEnabled()) console.log('[API][session-refresh] Cooldown active, skipping');
+    return;
+  }
+
+  try {
+    isRefreshingSession = true;
+    lastSessionRefreshAt = now;
+
+    if (isApiDebugEnabled()) console.log('[API][session-refresh] Starting automatic session refresh');
+
+    // CRITICAL FIX: Wait for Firebase auth state to initialize
+    // Firebase auth state might not be ready immediately after page load
+    // Wait up to 2 seconds for auth state to restore from persistence
+    let currentUser = auth.currentUser;
+    if (!currentUser) {
+      // Wait for auth state to restore (Firebase persists auth state)
+      const authStateReady = new Promise<void>((resolve) => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          unsubscribe();
+          resolve();
+        });
+        // Timeout after 2 seconds
+        setTimeout(() => {
+          unsubscribe();
+          resolve();
+        }, 2000);
+      });
+      await authStateReady;
+      currentUser = auth.currentUser;
+    }
+
+    // CRITICAL FIX: If Firebase user is still null, try to recover from stored token
+    // This handles cases where Firebase auth state is lost but session cookie exists
+    if (!currentUser) {
+      const storedToken = getStoredIdToken();
+      if (storedToken) {
+        // We have a stored token but no Firebase user
+        // This means Firebase auth state was lost but we have a valid session cookie
+        // Don't fail - the session cookie should still work
+        console.warn('[API][session-refresh] Firebase user is null but stored token exists. Session cookie should still be valid.');
+        if (isApiDebugEnabled()) {
+          console.log('[API][session-refresh] Skipping refresh - session cookie should still work without Firebase user');
+        }
+        return;
+      } else {
+        // No Firebase user and no stored token - user is truly logged out
+        if (isApiDebugEnabled()) {
+          console.warn('[API][session-refresh] No current user and no stored token, cannot refresh');
+        }
+        return;
+      }
+    }
+
+    // Get fresh ID token
+    let freshIdToken: string | null = null;
+    try {
+      freshIdToken = await currentUser.getIdToken(true);
+    } catch (tokenError: any) {
+      // CRITICAL FIX: If getting ID token fails, don't fail the refresh
+      // The session cookie might still be valid
+      console.warn('[API][session-refresh] Failed to get fresh ID token, but session cookie may still be valid:', {
+        error: tokenError?.message,
+        uid: currentUser?.uid
+      });
+      
+      // Try to use stored token as fallback
+      const storedToken = getStoredIdToken();
+      if (storedToken) {
+        freshIdToken = storedToken;
+        console.log('[API][session-refresh] Using stored token as fallback');
+      } else {
+        // No fallback available
+        if (isApiDebugEnabled()) {
+          console.warn('[API][session-refresh] No ID token and no stored token, cannot refresh');
+        }
+        return;
+      }
+    }
+
+    if (!freshIdToken) {
+      if (isApiDebugEnabled()) console.warn('[API][session-refresh] Failed to get fresh ID token');
+      
+      // CRITICAL FIX: If we can't get a fresh token, it might be a temporary network issue
+      // or the user's refresh token is revoked.
+      // We should NOT logout immediately. The session cookie might still be valid.
+      // We just stop the *refresh* attempt. The next request will try to use the cookie.
+      // If the cookie is valid, it will work. If not, it will 401 again, and we might loop.
+      // To prevent looping, we rely on the `isRefreshing` flag and the cooldown.
+      return;
+    }
+
+    // Call refresh endpoint
+    const backendBase = resolvedBaseUrl;
+    const refreshResponse = await axios.post(
+      `${backendBase}/api/auth/session/refresh`,
+      { idToken: freshIdToken },
+      { 
+        withCredentials: true, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+
+    if (refreshResponse.data?.responseStatus === 'success') {
+      if (isApiDebugEnabled()) console.log('[API][session-refresh] Session refreshed successfully', {
+        expiresIn: refreshResponse.data?.data?.expiresIn
+      });
+    } else {
+      if (isApiDebugEnabled()) console.warn('[API][session-refresh] Refresh response indicates failure', refreshResponse.data);
+    }
+  } catch (error: any) {
+    // CRITICAL FIX: Log refresh failures for debugging random logouts
+    // Don't silently fail - this could be causing the logout issue
+    console.warn('[API][session-refresh] Failed to refresh session (CRITICAL - potential logout cause):', {
+      message: error?.message,
+      status: error?.response?.status,
+      data: error?.response?.data,
+      hasCurrentUser: !!auth.currentUser,
+      errorCode: error?.code,
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      note: 'Session cookie may still be valid even if refresh fails'
+    });
+    
+    // CRITICAL FIX: If refresh fails, don't clear the session - let the user continue with existing session
+    // The session cookie should still be valid even if refresh fails
+    // Only clear session if we get a 401 from the refresh endpoint itself
+    if (error?.response?.status === 401) {
+      console.error('[API][session-refresh] CRITICAL: Refresh endpoint returned 401 - session may be invalid');
+    }
+  } finally {
+    isRefreshingSession = false;
+  }
+};
+
 axiosInstance.interceptors.response.use(
-  (response) => {
+  async (response) => {
     try {
       if (isApiDebugEnabled()) console.log('[API][response]', { url: response?.config?.url, status: response?.status })
       const urlStr = String(response?.config?.url || '')
       if (urlStr.includes('/api/auth/logout')) {
         console.log('[API][logout][response]', { status: response?.status, url: response?.config?.url })
+      }
+
+      // Check for session refresh header (automatic refresh when session expires within 3 days)
+      // Axios normalizes headers to lowercase, but check both cases for safety
+      const refreshHeader = response.headers['x-session-refresh-needed'] || 
+                           response.headers['X-Session-Refresh-Needed'];
+      const refreshNeeded = refreshHeader === 'true';
+      if (refreshNeeded && typeof window !== 'undefined') {
+        // Refresh session in background (non-blocking)
+        refreshSessionIfNeeded().catch(() => {
+          // Silently fail - non-critical
+        });
       }
     } catch {}
     return response
@@ -459,14 +607,73 @@ axiosInstance.interceptors.response.use(
     try {
       isRefreshing = true
       if (isApiDebugEnabled()) console.log('[API][401][refresh] starting')
-      const currentUser = auth.currentUser
+      
+      // CRITICAL FIX: Wait for Firebase auth state to initialize
+      // Firebase auth state might not be ready immediately after page load
+      let currentUser = auth.currentUser
       if (!currentUser) {
-        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser - retry once without session create')
+        // Wait for auth state to restore (Firebase persists auth state)
+        const authStateReady = new Promise<void>((resolve) => {
+          const unsubscribe = auth.onAuthStateChanged((user) => {
+            unsubscribe();
+            resolve();
+          });
+          // Timeout after 1 second
+          setTimeout(() => {
+            unsubscribe();
+            resolve();
+          }, 1000);
+        });
+        await authStateReady;
+        currentUser = auth.currentUser;
+      }
+      
+      if (!currentUser) {
+        // CRITICAL FIX: If Firebase user is null, try stored token as fallback
+        const storedToken = getStoredIdToken();
+        if (storedToken) {
+          console.log('[API][401][refresh] No Firebase user, but stored token exists - using stored token');
+          original.headers = original.headers || {}
+          original.headers['Authorization'] = `Bearer ${storedToken}`
+          try {
+            const retryResp = await axiosInstance(original)
+            pendingRequests.forEach((resolve) => resolve())
+            pendingRequests = []
+            return retryResp
+          } catch (retryErr: any) {
+            // Fall through to session creation
+          }
+        }
+        
+        // If no stored token either, try retry once (session cookie might still work)
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser and no stored token - retry once without session create')
         await new Promise((r) => setTimeout(r, 200))
         return axiosInstance(original)
       }
+      
       // Refresh ID token and retry WITHOUT creating a session
-      const freshIdToken = await currentUser.getIdToken(true)
+      let freshIdToken: string | null = null;
+      try {
+        freshIdToken = await currentUser.getIdToken(true);
+      } catch (tokenError: any) {
+        // CRITICAL FIX: If getting ID token fails, try stored token
+        console.warn('[API][401][refresh] Failed to get fresh ID token, trying stored token:', tokenError?.message);
+        const storedToken = getStoredIdToken();
+        if (storedToken) {
+          freshIdToken = storedToken;
+        } else {
+          // No token available, retry once
+          await new Promise((r) => setTimeout(r, 200));
+          return axiosInstance(original);
+        }
+      }
+      
+      if (!freshIdToken) {
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] No ID token available - retry once');
+        await new Promise((r) => setTimeout(r, 200));
+        return axiosInstance(original);
+      }
+      
       original.headers = original.headers || {}
       original.headers['Authorization'] = `Bearer ${freshIdToken}`
       try {
@@ -476,24 +683,48 @@ axiosInstance.interceptors.response.use(
         pendingRequests = []
         return retryResp
       } catch (retryErr: any) {
-        // Only as fallback: create session if we haven't done so recently
-        if (canCreateSession()) {
+        // CRITICAL FIX: Only create session if we haven't done so recently
+        // But also check if the error is truly a session issue vs other 401 errors
+        const isSessionError = retryErr?.response?.status === 401 && 
+                               (retryErr?.response?.data?.message?.includes('session') ||
+                                retryErr?.response?.data?.message?.includes('Unauthorized') ||
+                                retryErr?.response?.data?.message?.includes('token'));
+        
+        if (isSessionError && canCreateSession()) {
           try {
             // Use the same resolved backend base URL as the axios instance
             const backendBase = resolvedBaseUrl
-            await axios.post(
+            const sessionResponse = await axios.post(
               `${backendBase}/api/auth/session`,
               { idToken: freshIdToken },
               { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
             )
-            markSessionCreated()
-            if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
-            return axiosInstance(original)
-          } catch (createErr) {
-            if (isApiDebugEnabled()) console.warn('[API][401][session-create] failed')
+            
+            if (sessionResponse.status === 200) {
+              markSessionCreated()
+              if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
+              // Retry the original request with new session cookie
+              return axiosInstance(original)
+            } else {
+              if (isApiDebugEnabled()) console.warn('[API][401][session-create] failed with status:', sessionResponse.status)
+            }
+          } catch (createErr: any) {
+            // CRITICAL FIX: Log session creation failures for debugging
+            console.error('[API][401][session-create] Failed to create session:', {
+              message: createErr?.message,
+              status: createErr?.response?.status,
+              data: createErr?.response?.data,
+              hasIdToken: !!freshIdToken
+            })
           }
         } else {
-          if (isApiDebugEnabled()) console.log('[API][401][session-create] skipped (cooldown)')
+          if (isApiDebugEnabled()) {
+            if (!isSessionError) {
+              console.log('[API][401][session-create] skipped (not a session error)')
+            } else {
+              console.log('[API][401][session-create] skipped (cooldown)')
+            }
+          }
         }
         throw retryErr
       }

@@ -3,8 +3,9 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { getImageUrl } from '@/routes/imageroute'
-import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION } from '@/routes/routes'
+import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION, LEGAL_ROUTES, PRODUCT_ROUTES, COMPANY_ROUTES } from '@/routes/routes'
 // import {
 //   IconBrandYoutube,
 //   IconBrandInstagram,
@@ -13,12 +14,17 @@ import { NAV_ROUTES, FEATURE_ROUTES, SOCIAL_LINKS, MUSICGENERATION } from '@/rou
 import Squares from './Squares'
 
 const FooterNew: React.FC = () => {
+  const router = useRouter()
+  const handleBlogClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    router.push(NAV_ROUTES.BLOG)
+  }
   const legalLinks = [
-    { name: "Terms of use", href: "" },
-    { name: "Privacy Policy", href: "" },
-    { name: "Cookies", href: "" },
-    { name: "Legal Notice", href: "" },
-    { name: "DMCA", href: "" },
+    { name: "Terms of use", href: LEGAL_ROUTES.TERMS },
+    { name: "Privacy Policy", href: LEGAL_ROUTES.PRIVACY },
+    { name: "Cookies", href: LEGAL_ROUTES.COOKIES },
+    { name: "Legal Notice", href: LEGAL_ROUTES.LEGAL_NOTICE },
+    { name: "DMCA", href: LEGAL_ROUTES.DMCA },
   ];
 
   // const socialLinks = [
@@ -78,7 +84,7 @@ const FooterNew: React.FC = () => {
                     />
                   </div>
                   <p className="text-gray-400 text-sm leading-relaxed max-w-xs md:max-w-sm">
-                    WildMind uses advanced AI to turn imagination into high-quality, creative visuals.
+                    Imagination to Creation
                   </p>
                   
                   {/* Social Media Icons */}
@@ -102,34 +108,39 @@ const FooterNew: React.FC = () => {
                   Solutions
                   </h3>
                   <ul className="space-y-3">
-                    <li>
+                    {/* <li>
                       <Link href={NAV_ROUTES.WORKFLOWS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Wild Magic (Coming Soon)
                       </Link>
-                    </li>
+                    </li> */}
                     <li>
                       <Link href={FEATURE_ROUTES.IMAGE_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Image Generation
+                      Image Generation
                       </Link>
                     </li>
                     <li>
                       <Link href={FEATURE_ROUTES.VIDEO_GENERATION} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Video Generation
+                      Video Generation
                       </Link>
                     </li>
                     <li>
                       <Link href={MUSICGENERATION.TEXT_TO_MUSIC} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Audio Generation
-                      </Link>                      </li>
-                      <li>
-
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI Filming tools
-                      </Link>                      </li>
-                      <li>
-
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      AI 3D Generation
+                      Audio Generation
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/edit-image?feature=upscale" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Upscale
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/edit-image?feature=vectorize" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Vectorize
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/edit-image?feature=reimagine" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Enhance
                       </Link>
                     </li>
                   </ul>
@@ -142,42 +153,23 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Pricing                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Enterprise
+                      <Link href={PRODUCT_ROUTES.PRICING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Pricing
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={PRODUCT_ROUTES.FAQS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                       FAQs
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Documentation
+                      <Link href={LEGAL_ROUTES.CANCELLATION_REFUNDS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Cancellation & Refunds
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Terms for Use
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Privacy Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Cookie Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Cookie Settings
+                      <Link href={LEGAL_ROUTES.SHIPPING} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      Shipping
                       </Link>
                     </li>
                   </ul>
@@ -190,38 +182,37 @@ const FooterNew: React.FC = () => {
                   </h3>
                   <ul className="space-y-3">
                     <li>
-                      <Link href={NAV_ROUTES.BLOG} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        Blog
+                      <Link
+                        href={COMPANY_ROUTES.BLOG}
+                        onClick={handleBlogClick}
+                        className="text-gray-400 text-sm hover:text-white transition-colors duration-200 leading-tight"
+                      >
+                        <span className="block">Blog</span>
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        Careers
+                      <Link href={COMPANY_ROUTES.ABOUT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        About
                       </Link>
                     </li>
                     <li>
-                      <Link href={NAV_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                      <Link href={COMPANY_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Support
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        About us
+                      <Link href={COMPANY_ROUTES.CONTACT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Contact Us
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Newsletter
+                      <Link href={LEGAL_ROUTES.TERMS_CONDITIONS} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Terms and Conditions
                       </Link>
                     </li>
                     <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Affiliate Program
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="" className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                      Wild Mind Creator Program
+                      <Link href={LEGAL_ROUTES.PRIVACY_PAGE} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
+                        Privacy
                       </Link>
                     </li>
                   </ul>
@@ -271,7 +262,7 @@ const FooterNew: React.FC = () => {
             {/* Bottom Section */}
             <div className="py-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
               <div className="text-gray-400 text-sm mb:text-xs text-center">
-                Copyright © 2025 WildMind Pvt Ltd. All rights reserved.
+                Copyright © 2025 WildMind AI Pvt Ltd. All rights reserved.
               </div>
               
               {/* Legal Links */}

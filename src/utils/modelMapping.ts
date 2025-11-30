@@ -6,7 +6,7 @@
 export interface ModelMapping {
   frontendValue: string;
   creditModelName: string;
-  generationType: 'image' | 'video' | 'music';
+  generationType: 'image' | 'video' | 'music' | 'sfx' | 'text-to-dialogue' ;
   provider: string;
   options?: {
     resolution?: string[];
@@ -88,6 +88,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'google/nano-banana-pro',
+    creditModelName: 'Google nano banana pro 2K', // Default to 2K, will be resolved based on resolution
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      resolution: ['1K', '2K', '4K']
+    }
+  },
+  {
     frontendValue: 'imagen-4-ultra',
     creditModelName: 'Imagen 4 Ultra',
     generationType: 'image',
@@ -104,6 +113,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'Imagen 4 Fast',
     generationType: 'image',
     provider: 'fal'
+  },
+  {
+    frontendValue: 'flux-2-pro',
+    creditModelName: 'Flux 2 Pro 1K', // Default to 1K, will be resolved based on resolution
+    generationType: 'image',
+    provider: 'fal',
+    options: {
+      resolution: ['1K', '2K']
+    }
   },
   {
     frontendValue: 'seedream-v4',
@@ -131,7 +149,14 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'leonardoai/phoenix-1.0',
-    creditModelName: 'replicate/leonardoai/phoenix-1.0',
+    creditModelName: 'Phoenix 1.0',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  // TODO: Update model identifier and credit model name with actual values
+  {
+    frontendValue: 'new-turbo-model',
+    creditModelName: 'New Turbo Model', // TODO: Update with actual credit model name from creditDistribution.ts
     generationType: 'image',
     provider: 'replicate'
   },
@@ -576,10 +601,40 @@ export const MODEL_MAPPING: ModelMapping[] = [
 
   // MUSIC GENERATION MODELS
   {
-    frontendValue: 'music-1.5',
-    creditModelName: 'Music 1.5 (Up to 90s)',
+    frontendValue: 'minimax-music-2',
+    creditModelName: 'MiniMax Music 2',
     generationType: 'music',
-    provider: 'minimax'
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-tts',
+    creditModelName: 'ElevenLabs TTS v3',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'chatterbox-multilingual',
+    creditModelName: 'Chatterbox Multilingual TTS',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'maya-tts',
+    creditModelName: 'Maya TTS',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue',
+    creditModelName: 'ElevenLabs Dialogue',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-sfx',
+    creditModelName: 'ElevenLabs Sound Effects',
+    generationType: 'sfx',
+    provider: 'fal'
   },
 
   // PROMPT ENHANCER MODELS
@@ -734,6 +789,24 @@ export const buildCreditModelName = (
       }
     }
     // If T2V/I2V without duration, return base name (shouldn't happen normally)
+  }
+  // Handle Google nano banana pro with resolution
+  else if (mapping.frontendValue === 'google/nano-banana-pro' && options?.resolution) {
+    const res = String(options.resolution).toUpperCase();
+    modelName = `Google nano banana pro ${res}`;
+  }
+  // Handle Flux 2 Pro with resolution
+  else if (mapping.frontendValue === 'flux-2-pro') {
+    // Special case: 9:16 portrait defaults to 1024x2048 (costs $0.05) unless 2K is explicitly selected
+    if (options?.frameSize === '9:16' && options?.resolution !== '2K') {
+      modelName = 'Flux 2 Pro 1024x2048';
+    } else if (options?.resolution) {
+      const res = String(options.resolution).toUpperCase();
+      modelName = `Flux 2 Pro ${res}`;
+    } else {
+      // Default to 1K if no resolution specified
+      modelName = 'Flux 2 Pro 1K';
+    }
   }
 
   return modelName;

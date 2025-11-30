@@ -133,9 +133,27 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     const rawUrl = generatedCharacterImage?.url || generatedCharacterImage?.originalUrl;
     const blurDataUrl = generatedCharacterImage?.blurDataUrl;
 
-    // Choose the best available preview source. This is what SmartImage will fall back to
-    // if thumbnail/avif are not provided.
-    const frontImageUrl = thumbnailUrl || avifUrl || firebaseUrl || rawUrl || '/styles/Logo.gif';
+    // For generation purposes, prefer original JPG/PNG URL over AVIF thumbnails
+    // AVIF thumbnails should only be used for display, not for generation
+    // Priority: rawUrl (original) > firebaseUrl > thumbnailUrl > avifUrl (fallback for display only)
+    let frontImageUrl = rawUrl || firebaseUrl || thumbnailUrl || avifUrl || '/styles/Logo.gif';
+    
+    // If the URL contains _thumb.avif, try to convert it back to the original JPG/PNG format
+    // This handles cases where the backend stored AVIF thumbnails instead of originals
+    if (frontImageUrl && frontImageUrl.includes('_thumb.avif')) {
+      // Try to get the original URL by removing _thumb.avif and trying common extensions
+      const baseUrl = frontImageUrl.replace('_thumb.avif', '');
+      // Prefer the original URL if available, otherwise try to construct it
+      if (rawUrl && !rawUrl.includes('_thumb.avif')) {
+        frontImageUrl = rawUrl;
+      } else if (firebaseUrl && !firebaseUrl.includes('_thumb.avif')) {
+        frontImageUrl = firebaseUrl;
+      } else {
+        // Try common extensions (jpg, png, jpeg)
+        // Note: We can't know the exact extension, so we'll use the first available non-AVIF URL
+        frontImageUrl = baseUrl + '.jpg'; // Default to jpg, backend should handle if it's actually png
+      }
+    }
     
     // Debug: log the URLs being used
     if (process.env.NODE_ENV === 'development') {
@@ -149,6 +167,12 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
       thumbnailUrl,
       avifUrl,
       blurDataUrl,
+      // Store original URL fields for use in generation (avoid AVIF thumbnails)
+      url: rawUrl && !rawUrl.includes('_thumb.avif') && !rawUrl.endsWith('.avif') ? rawUrl : undefined,
+      originalUrl: rawUrl && !rawUrl.includes('_thumb.avif') && !rawUrl.endsWith('.avif') ? rawUrl : undefined,
+      firebaseUrl: firebaseUrl && !firebaseUrl.includes('_thumb.avif') && !firebaseUrl.endsWith('.avif') ? firebaseUrl : undefined,
+      // Also store the full entry structure for better URL resolution
+      images: entry.images,
       createdAt: entry.createdAt?.toDate?.()?.toISOString() || entry.createdAt || entry.timestamp || new Date().toISOString(),
     };
   });
@@ -292,10 +316,10 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
           <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <div className="flex items-center justify-between md:px-4 px-3 gap-2 md:py-3 py-2 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <button 
-                  className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
+                  className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
                   onClick={() => {
                     setTab('library');
                     // Trigger refresh when switching to library tab
@@ -307,13 +331,13 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                   Upload from Library
                 </button>
                 <button 
-                  className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'device' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
+                  className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'device' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
                   onClick={() => setTab('device')}
                 >
                   Choose from Device
                 </button>
                 <button 
-                  className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'create' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
+                  className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'create' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} 
                   onClick={handleCreateNew}
                 >
                   Create New Character
@@ -322,27 +346,27 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
               <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
             </div>
 
-            <div className="p-4">
+            <div className="px-2 md:p-4 py-1 md:pt-0">
               {tab === 'library' ? (
                 <div>
                   {loading ? (
-                    <div className="flex flex-col items-center justify-center h-[50vh] text-white/60">
-                      <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
-                      <div className="text-lg">Loading characters...</div>
+                    <div className="flex flex-col items-center justify-center md:h-[50vh] h-[30vh] text-white/60">
+                      <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 md:mb-4 mb-2" />
+                      <div className="md:text-lg text-[11px]">Loading characters...</div>
                     </div>
                   ) : characters.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[50vh] text-white/60">
-                      <div className="text-lg mb-4">No characters generated yet</div>
+                    <div className="flex flex-col items-center justify-center md:h-[50vh] h-[30vh] text-white/60">
+                      <div className="md:text-lg text-[11px] md:mb-4 mb-2">No characters generated yet</div>
                       <button
                         onClick={handleCreateNew}
-                        className="px-6 py-3 rounded-lg bg-white text-black hover:bg-gray-200 font-medium transition-colors"
+                        className="md:px-6 px-4 md:py-3 py-2 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 font-medium transition-colors"
                       >
                         Create New One
                       </button>
                     </div>
                   ) : (
                     <>
-                      <div className="text-white/70 text-sm mb-3">
+                      <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1">
                         Choose up to {maxCharacters} characters from your library
                       </div>
                       <div
@@ -378,7 +402,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                                 />
                                 {/* Checkbox indicator for selected characters */}
                                 {isAlreadySelected && (
-                                  <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded flex items-center justify-center z-10">
+                                  <div className="absolute top-2 right-2 md:w-5 md:h-5 w-4 h-4 bg-white rounded flex items-center justify-center z-10">
                                     <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                     </svg>
@@ -386,11 +410,11 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                                 )}
                                 {/* Temporary selection indicator */}
                                 {selected && !isAlreadySelected && (
-                                  <div className="absolute top-2 right-2 w-5 h-5 bg-white/50 rounded border-2 border-white z-10" />
+                                  <div className="absolute top-2 right-2 md:w-5 md:h-5 w-4 h-4 bg-white/50 rounded md:border-2 border-white z-10" />
                                 )}
                                 <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 z-10">
-                                  <div className="text-white text-xs font-medium truncate">{character.name}</div>
+                                  <div className="text-white md:text-xs text-[11px] font-medium truncate">{character.name}</div>
                                 </div>
                               </button>
                             </div>
@@ -398,12 +422,12 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                         })}
                       </div>
                       {hasMore && characters.length > 0 && (
-                        <div className="flex items-center justify-center pt-3 text-white/60 text-xs">
+                        <div className="flex items-center justify-center pt-3 text-white/60 md:text-xs text-[11px]">
                           {loadingMore ? 'Loading more…' : 'Scroll to load more'}
                         </div>
                       )}
                       <div className="flex justify-between items-center mt-4">
-                        <div className="text-white/60 text-xs">
+                        <div className="text-white/60 md:text-xs text-[11px]">
                           {selectedCharacters.length > 0 && (
                             <span>{selectedCharacters.length} character{selectedCharacters.length !== 1 ? 's' : ''} selected</span>
                           )}
@@ -413,13 +437,13 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                         </div>
                         <div className="flex gap-2">
                           <button 
-                            className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" 
+                            className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" 
                             onClick={onClose}
                           >
                             Done
                           </button>
                           <button 
-                            className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                            className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" 
                             onClick={handleAdd}
                             disabled={(() => {
                               if (tab === 'library') {
@@ -440,7 +464,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                 </div>
               ) : tab === 'device' ? (
                 <div>
-                  <div className="text-white/70 text-sm mb-3">Choose an image from your device</div>
+                  <div className="text-white/70 md:text-sm text-[11px] mb-3">Choose an image from your device</div>
                   <div
                     ref={dropRef}
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -449,7 +473,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                       const files = Array.from(e.dataTransfer.files || []);
                       if (files.length === 0) return;
                       const file = files[0];
-                      const maxSize = 2 * 1024 * 1024;
+                      const maxSize = 20 * 1024 * 1024;
                       if (file.size > maxSize) {
                         alert('File size must be less than 2MB');
                         return;
@@ -460,7 +484,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                       };
                       reader.readAsDataURL(file);
                     }}
-                    className={`border-2 border-dashed border-white/30 rounded-lg h-[51.75vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${
+                    className={`border-2 border-dashed border-white/30 rounded-lg md:h-[51.75vh] h-[30vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${
                       localUpload ? 'items-start justify-start p-3' : 'items-center justify-center'
                     }`}
                     onClick={() => {
@@ -471,7 +495,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                         const files = Array.from(input.files || []);
                         if (files.length === 0) return;
                         const file = files[0];
-                        const maxSize = 2 * 1024 * 1024;
+                        const maxSize = 20 * 1024 * 1024;
                         if (file.size > maxSize) {
                           alert('File size must be less than 2MB');
                           return;
@@ -491,7 +515,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                           <path d="M12 5v14"/>
                           <path d="M5 12h14"/>
                         </svg>
-                        <div className="mt-2 text-sm">Drop image here or click to browse</div>
+                        <div className="mt-2 md:text-sm text-[11px]">Drop image here or click to browse</div>
                       </div>
                     ) : (
                       <div className="relative w-full max-w-xs aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
@@ -516,15 +540,15 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-end mt-3 gap-2">
+                  <div className="flex justify-end mt-0 gap-2">
                     <button 
-                      className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20" 
+                      className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" 
                       onClick={onClose}
                     >
                       Cancel
                     </button>
                     <button 
-                      className="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                      className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" 
                       onClick={handleAdd}
                       disabled={!localUpload}
                     >
@@ -563,11 +587,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
           setIsUploadModalOpen(false);
           setIsCreateModalOpen(true);
         }}
-        historyEntries={characterEntries}
         remainingSlots={3}
-        onLoadMore={() => handleLoadMore()}
-        hasMore={hasMore}
-        loading={loadingMore}
       />
       
     </>

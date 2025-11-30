@@ -950,7 +950,7 @@
       return (
         <div className="flex items-center justify-center h-screen">
           <div className="flex flex-col items-center gap-4">
-            <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" />
+            <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" unoptimized />
             <div className="text-white text-lg text-center">Loading your generation history...</div>
           </div>
         </div>
@@ -1470,7 +1470,7 @@
                           {entry.status === 'generating' ? (
                             <div className="w-full h-full flex items-center justify-center bg-black/90">
                               <div className="flex flex-col items-center gap-2">
-                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                                 <div className="text-xs text-white/60">Generating...</div>
                               </div>
                             </div>
@@ -1672,11 +1672,12 @@
                                     );
                                   }
                                   return (
-                                    <Image
+                                    <img
                                       src={(media as any).thumbnailUrl || (media as any).avifUrl || mediaUrl}
                                       alt={entry.prompt}
-                                      fill
-                                      className="object-cover group-hover:scale-105 transition-transform duration-200"
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                       sizes="192px"
                                       onLoad={() => {
                                         try {

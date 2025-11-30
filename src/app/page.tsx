@@ -21,7 +21,6 @@ export default function App() {
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
-
   // Preserve landing when explicitly selected; don't force home on first load
   useEffect(() => {
     if (!isFirstLoad.current) return;
@@ -58,7 +57,12 @@ export default function App() {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
     return <HomePage />;
   }
-
+  
+  // Root path: Publicly accessible - always render LandingPage
+  // This ensures Razorpay verification works and the site is publicly accessible
+  if (pathname === '/') {
+    return <LandingPage />;
+  }
   // Render different views based on current state
   console.log('🔍 App - Rendering decision for currentView:', currentView);
   console.log('🔍 App - currentView type:', typeof currentView);

@@ -88,13 +88,13 @@ const DurationDropdown: React.FC<DurationDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white ${
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-black text-white ${
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         }`}
       >
         <div className="flex flex-col items-start">
           <span className="text-white font-medium">Duration</span>
-          <span className="text-xs text-white/60 mt-0.5">{selectedDuration}s</span>
+          <span className="md:text-xs text-xs text-white/60 mt-0.5">{selectedDuration}s</span>
         </div>
         <ChevronUp
           className={`w-4 h-4 text-white/60 transition-transform duration-200 ${
@@ -104,18 +104,18 @@ const DurationDropdown: React.FC<DurationDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
+        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-32 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2">
           <div className="p-2">
             {availableDurations.map((duration) => (
               <button
                 key={duration}
                 onClick={() => handleDurationSelect(duration)}
-                className={`w-full text-left p-3 rounded-lg transition-all duration-200 hover:bg-white/10 ${
+                className={`w-full text-left md:p-3 p-2 rounded-lg transition-all duration-200 hover:bg-white/10 ${
                   selectedDuration === duration ? "bg-white/20" : ""
                 }`}
               >
-                <span className="text-white font-medium text-sm">{duration}s</span>
-                <div className="text-xs text-white/60 mt-1">
+                <span className="text-white font-medium md:text-sm text-xs">{duration}s</span>
+                <div className="md:text-xs text-xs text-white/60 mt-1">
                   {duration === 6 && 'Standard duration (6 seconds)'}
                   {duration === 10 && 'Extended duration (10 seconds)'}
                 </div>

@@ -1,10 +1,9 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react'
-import Image from 'next/image'
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
-import { toDirectUrl } from '@/lib/thumb'
+import { toDirectUrl, toMediaProxy } from '@/lib/thumb'
 import { downloadFileWithNaming } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
@@ -68,6 +67,7 @@ export default function ArtStationPreview({
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
 
   useEffect(() => {
     setMediaDimensions(null)
@@ -76,6 +76,73 @@ export default function ArtStationPreview({
     setSelectedVideoIndex(0)
     setSelectedAudioIndex(0)
   }, [preview?.item?.id, preview?.kind])
+
+  // Prevent background scrolling when preview is open
+  useEffect(() => {
+    if (preview) {
+      // Save the current scroll position
+      const scrollY = window.scrollY
+      // Apply overflow hidden to body
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      
+      return () => {
+        // Restore scrolling when preview closes
+        document.body.style.overflow = ''
+        document.body.style.position = ''
+        document.body.style.top = ''
+        document.body.style.width = ''
+        // Restore scroll position
+        window.scrollTo(0, scrollY)
+      }
+    }
+  }, [preview])
+
+  useEffect(() => {
+    if (!preview || preview.kind !== 'image') return
+    const images = (preview.item.images || []) as any[]
+    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+    const measurementSource =
+      img?.storagePath ||
+      img?.originalUrl ||
+      img?.url ||
+      ''
+
+    if (!measurementSource) return
+
+    const proxiedMeasurementUrl =
+      toMediaProxy(measurementSource) ||
+      (String(measurementSource).startsWith('http')
+        ? measurementSource
+        : `${ZATA_PREFIX}${String(measurementSource).replace(/^\/+/, '')}`)
+
+    if (!proxiedMeasurementUrl) return
+    if (typeof window === 'undefined' || typeof window.Image === 'undefined') return
+
+    let cancelled = false
+    const imgEl = new window.Image()
+    imgEl.decoding = 'async'
+    imgEl.onload = () => {
+      if (cancelled) return
+      if (imgEl.naturalWidth && imgEl.naturalHeight) {
+        setMediaDimensions({ width: imgEl.naturalWidth, height: imgEl.naturalHeight })
+      }
+    }
+    imgEl.onerror = (err: Event | string | null) => {
+      if (!cancelled) {
+        console.warn('[ArtStationPreview] Failed to measure image dimensions from source:', measurementSource, err)
+      }
+    }
+    imgEl.src = proxiedMeasurementUrl
+
+    return () => {
+      cancelled = true
+      imgEl.onload = null
+      imgEl.onerror = null
+    }
+  }, [preview?.item?.id, preview?.kind, selectedImageIndex])
 
   const formatDate = (input?: string) => {
     if (!input) return ''
@@ -131,20 +198,35 @@ export default function ArtStationPreview({
 
   if (!preview) return null
 
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20" onClick={onClose}>
-                  <button aria-label="Close" className="text-white hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+      e.preventDefault()
+    }
+    console.log('[ArtStationPreview] Close button clicked')
+    onClose()
+  }
 
-      <div className="relative  h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-3xl overflow-hidden shadow-3xl"
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20" onClick={handleClose}>
+      <button 
+        aria-label="Close" 
+        className="text-white hover:text-white text-lg absolute md:top-8 top-2 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+        onClick={handleClose}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation()
+        }}
+      >✕</button>
+
+      <div className="relative  md:h-full h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 md:rounded-lg rounded-3xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}>
-          
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
-          <div className="text-white/70 text-sm"></div>
-        </div>
 
         {/* Action buttons */}
-        <div className="absolute top-6 right-8 z-20">
+        <div className="absolute md:top-6 top-2 md:right-8 md:ml-0 ml-3  z-20">
           <div className="grid grid-cols-4 gap-2">
             <div className="relative group">
               <button
@@ -165,7 +247,7 @@ export default function ArtStationPreview({
                   try {
                     let downloadUrl = currentMedia.url
                     if (downloadUrl.startsWith('/api/proxy/resource/')) {
-                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
                       downloadUrl = `${API_BASE}${downloadUrl}`
                     }
                     const fileType = preview.kind as 'image' | 'video' | 'audio'
@@ -175,7 +257,7 @@ export default function ArtStationPreview({
                     console.error('Download failed:', e)
                   }
                 }}
-                className="w-20 h-10 flex  items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors "
+                className="md:w-20 w-16 h-8 md:h-10 flex  items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors "
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                   <path d="M12 3v12" />
@@ -201,7 +283,7 @@ export default function ArtStationPreview({
                     alert('Link copied to clipboard!')
                   }
                 }}
-                className="w-20 h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+                className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -218,10 +300,10 @@ export default function ArtStationPreview({
                 return (
                   <button
                     onClick={() => { if (previewCardId) toggleLike(previewCardId) }}
-                    className="w-20 h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+                    className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={isLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
                     </svg>
                   </button>
                 )
@@ -234,7 +316,7 @@ export default function ArtStationPreview({
               <div className="relative group">
                 <button
                   title="Delete"
-                  className="w-20 h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+                  className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
                   onClick={() => onConfirmDelete(preview.item)}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -248,26 +330,37 @@ export default function ArtStationPreview({
         </div>
 
         {/* Content */}
-        <div className="pt-0 h-full mr-4 w-auto md:flex md:flex-row md:gap-0">
+        <div className="pt-0 md:h-full h-full md:mr-4 md:mt-0 mt-0  md:w-auto w-full flex flex-col md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-black/20 h-full md:h-full md:flex-1">
+          <div className="relative   h-full pt-12 md:pt-0 md:flex-1">
             {(() => {
               const images = (preview.item.images || []) as any[]
               const videos = (preview.item.videos || []) as any[]
               const audios = (preview.item as any).audios || []
               if (preview.kind === 'image') {
                 const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                const best = (img as any).avifUrl || img.url
-                const src = toDirectUrl(best) || best
+                // Always prefer the original Zata asset for preview to avoid duplicate-looking thumbnails
+                const originalSource =
+                  img?.storagePath ||
+                  img?.url ||
+                  img?.originalUrl ||
+                  img?.avifUrl ||
+                  preview.url
+                // Use proxy endpoint for storage paths, direct URL for full URLs
+                const src = originalSource 
+                  ? (originalSource.startsWith('http') 
+                      ? originalSource 
+                      : (toMediaProxy(originalSource) || toDirectUrl(originalSource) || originalSource))
+                  : preview.url
                 return (
                   <div className="relative w-full h-full">
-                    <Image
+                    <img
                       src={src}
                       alt={preview.item.prompt || ''}
-                      fill
-                      className="object-contain"
-                      priority
+                      loading="eager"
+                      decoding="async"
                       fetchPriority="high"
+                      className="absolute inset-0 w-full h-full object-contain"
                       onLoad={(e) => {
                         const el = e.currentTarget
                         if (el.naturalWidth && el.naturalHeight) {
@@ -311,11 +404,11 @@ export default function ArtStationPreview({
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white bg-transparent  h-[52vh] md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
+          <div className="p-4 md:p-5 text-white bg-transparent  h-full md:h-full md:w-[34%] overflow-y-auto custom-scrollbar">
             {/* Creator */}
             <div className="mb-4">
-              <div className="text-white/60 text-xs uppercase tracking-wider mt-18 mb-2">Creator</div>
-              <div className="flex items-center gap-2">
+              <div className="text-white/60 md:text-xs text-xs uppercase tracking-wider md:mt-18 mt-0 mb-2">Creator</div>
+              <div className="flex items-center md:gap-2 gap-1">
                 {(() => {
                   const cb = preview.item.createdBy || ({} as any)
                   const isSelf = (cb?.uid && currentUid && cb.uid === currentUid) || (!cb?.uid && currentUser?.username && cb?.username === currentUser.username)
@@ -323,7 +416,7 @@ export default function ArtStationPreview({
                   if (photo) return <img src={`/api/proxy/external?url=${encodeURIComponent(photo)}`} alt={cb?.username || currentUser?.username || ''} className="w-6 h-6 rounded-full" />
                   return <div className="w-6 h-6 rounded-full bg-white/20" />
                 })()}
-                <span className="text-white text-sm font-medium">{(preview.item.createdBy?.username) || (isNaN(0 as any) && preview.item.createdBy?.displayName) || (currentUser?.username) || 'User'}</span>
+                <span className="text-white md:text-sm text-xs font-medium">{(preview.item.createdBy?.username) || (isNaN(0 as any) && preview.item.createdBy?.displayName) || (currentUser?.username) || 'User'}</span>
               </div>
             </div>
 
@@ -390,7 +483,15 @@ export default function ArtStationPreview({
                       onClick={() => setSelectedImageIndex(idx)}
                       className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                     >
-                      <img src={im.thumbnailUrl || im.avifUrl || im.url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                      {(() => {
+                        const thumbUrl = im.thumbnailUrl || im.avifUrl || im.url
+                        const normalizedThumb = thumbUrl 
+                          ? (thumbUrl.startsWith('http') || thumbUrl.startsWith('/api/')
+                              ? thumbUrl 
+                              : (toMediaProxy(thumbUrl) || toDirectUrl(thumbUrl) || thumbUrl))
+                          : ''
+                        return <img src={normalizedThumb} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                      })()}
                     </button>
                   ))}
                 </div>
@@ -443,18 +544,18 @@ export default function ArtStationPreview({
 
             {/* Details */}
             <div className="mb-4">
-              <div className="text-white/80 text-sm uppercase tracking-wider mb-1">Details</div>
+              <div className="text-white/80 md:text-sm text-xs uppercase tracking-wider mb-1">Details</div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Type:</span>
-                  <span className="text-white/80 text-sm">{preview.item.generationType}</span>
+                  <span className="text-white/60 md:text-sm text-xs">Type:</span>
+                  <span className="text-white/80 md:text-sm text-xs">{preview.item.generationType}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Model:</span>
-                  <span className="text-white/80 text-sm">{getModelDisplayName(preview.item.model)}</span>
+                  <span className="text-white/60 md:text-sm text-xs">Model:</span>
+                  <span className="text-white/80 md:text-sm text-xs">{getModelDisplayName(preview.item.model)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Aspect ratio:</span>
+                  <span className="text-white/60 md:text-sm text-xs">Aspect ratio:</span>
                   <span className="text-white/80 text-sm">{(() => {
                     const ar = preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio
                     if (ar && typeof ar === 'string') return ar
@@ -469,13 +570,13 @@ export default function ArtStationPreview({
                   })()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/60 text-sm">Format:</span>
-                  <span className="text-white/80 text-sm">{preview.kind}</span>
+                  <span className="text-white/60 md:text-sm text-xs">Format:</span>
+                  <span className="text-white/80 md:text-sm text-xs">{preview.kind}</span>
                 </div>
                 {mediaDimensions && (
                   <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Resolution:</span>
-                    <span className="text-white/80 text-sm">{mediaDimensions.width} × {mediaDimensions.height}</span>
+                    <span className="text-white/60 md:text-sm text-xs">Resolution:</span>
+                    <span className="text-white/80 md:text-sm text-xs">{mediaDimensions.width} × {mediaDimensions.height}</span>
                   </div>
                 )}
               </div>
@@ -486,15 +587,15 @@ export default function ArtStationPreview({
               // Check if this is a vectorize generation (should hide Remix button)
               const generationType = preview.item.generationType || ''
               const normalizedGenType = String(generationType).toLowerCase().replace(/[_-]/g, '-')
-              const isVectorizeGeneration = normalizedGenType === 'vectorize' || 
-                                           normalizedGenType === 'image-vectorize' || 
-                                           normalizedGenType === 'image-to-svg' ||
-                                           normalizedGenType === 'image_to_svg' ||
-                                           normalizedGenType.includes('vector')
-              
+              const isVectorizeGeneration = normalizedGenType === 'vectorize' ||
+                normalizedGenType === 'image-vectorize' ||
+                normalizedGenType === 'image-to-svg' ||
+                normalizedGenType === 'image_to_svg' ||
+                normalizedGenType.includes('vector')
+
               // Hide Remix button for vectorize generations
               if (isVectorizeGeneration) return null
-              
+
               return (
                 <div className="mt-6">
                   <button

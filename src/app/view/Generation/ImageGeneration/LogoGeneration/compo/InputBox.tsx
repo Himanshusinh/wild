@@ -6,7 +6,9 @@ import { usePathname } from 'next/navigation';
 import { HistoryEntry } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { 
-  setPrompt
+  setPrompt,
+  setSelectedModel,
+  setImageCount
  } from '@/store/slices/generationSlice';
 import { bflGenerate, falGenerate } from '@/store/slices/generationsApi';
 import { 
@@ -416,8 +418,10 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       // Update local preview to completed
       setLocalGeneratingEntries([completedEntry]);
 
-      // Clear the prompt
+      // Clear all inputs and reset to defaults
       dispatch(setPrompt(""));
+      dispatch(setSelectedModel("gemini-25-flash-image"));
+      dispatch(setImageCount(1));
 
       // Show success notification
       try { const toast = (await import('react-hot-toast')).default; toast.success(`Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`); } catch {}
@@ -546,7 +550,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           {(initialLoading || (loading && logoHistoryEntries.length === 0)) && (
             <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                  <Image src="/styles/Logo.gif" alt="Generating" width={88} height={88} className="mx-auto" />
+                  <Image src="/styles/Logo.gif" alt="Generating" width={88} height={88} className="mx-auto" unoptimized />
                   <div className="text-white text-lg text-center">Loading generations...</div>
                 </div>
               </div>
@@ -570,7 +574,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                         {localGeneratingEntries[0].status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
-                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                              <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
             </div>
           </div>
@@ -583,12 +587,12 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
           </div>
         ) : (
                           <div className="relative w-full h-full group">
-                            <Image 
+                            <img 
                               src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'} 
                               alt={localGeneratingEntries[0].prompt} 
-                              fill 
-                              className="object-cover" 
-                              sizes="192px" 
+                              loading="lazy"
+                              decoding="async"
+                              className="absolute inset-0 w-full h-full object-cover" 
                             />
                             <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                             {/* Hover buttons overlay */}
@@ -680,7 +684,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                                 {localEntry.status === "generating" ? (
                                   <div className="w-full h-full flex items-center justify-center bg-black/90">
                                     <div className="flex flex-col items-center gap-2">
-                                      <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                      <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
                                       <div className="text-xs text-white/60 text-center">
                                         Generating...
                                       </div>
@@ -705,17 +709,16 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                                   </div>
                                 ) : (
                                   <div className="relative w-full h-full group">
-                                    <Image
+                                    <img
                                       src={
                                         image.thumbnailUrl || image.avifUrl || image.url ||
                                         image.originalUrl ||
                                         "/placeholder-logo.png"
                                       }
                                       alt={localEntry.prompt}
-                                      fill
                                       loading="lazy"
-                                      className="object-cover"
-                                      sizes="192px"
+                                      decoding="async"
+                                      className="absolute inset-0 w-full h-full object-cover"
                                       onLoad={() => {
                                         setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
                                       }}
@@ -779,7 +782,7 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                               {entry.status === "generating" ? (
                                 <div className="w-full h-full flex items-center justify-center bg-black/90">
                                   <div className="flex flex-col items-center gap-2">
-                                    <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" />
+                                    <Image src="/styles/Logo.gif" alt="Generating" width={64} height={64} className="mx-auto" unoptimized />
                                     <div className="text-xs text-white/60 text-center">
                                       Generating...
                                     </div>
@@ -802,12 +805,12 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                                 </div>
                               ) : (
                                 <div className="relative w-full h-full group">
-                                  <Image
+                                  <img
                                     src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl || '/placeholder-logo.png'}
                                     alt={entry.prompt}
-                                    fill
-                                    className="object-cover transition-transform group-hover:scale-105"
-                                    sizes="192px"
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
                                     onLoad={() => {
                                       setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
                                     }}

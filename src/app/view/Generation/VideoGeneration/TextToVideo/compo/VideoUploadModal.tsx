@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import { toMediaProxy, toThumbUrl } from '@/lib/thumb';
+import { toThumbUrl, toDirectUrl } from '@/lib/thumb';
 
 // Helper functions for proxy URLs (same as InputBox.tsx and History.tsx)
 const toProxyPath = (urlOrPath: string | undefined) => {
@@ -20,7 +19,7 @@ const toProxyPath = (urlOrPath: string | undefined) => {
     decoded = urlOrPath;
   }
   
-  const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+  const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
   if (decoded.startsWith(ZATA_PREFIX)) {
     return decoded.substring(ZATA_PREFIX.length);
   }
@@ -72,23 +71,30 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
+import { saveUpload, getLibraryPage, LibraryItem } from '@/lib/libraryApi';
+import { toMediaProxy } from '@/lib/thumb';
+
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
-  historyEntries: any[];
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  loading?: boolean;
 };
 
-const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, historyEntries, remainingSlots, onLoadMore, hasMore, loading }) => {
+const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots }) => {
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  
+  // State for library items
+  const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
+  const [libraryNextCursor, setLibraryNextCursor] = React.useState<string | number | undefined>();
+  const [libraryHasMore, setLibraryHasMore] = React.useState(false);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const isLoadingMoreRef = React.useRef(false);
+  const hasLoadedLibraryRef = React.useRef(false);
 
   // Remember scroll positions so switching tabs preserves where user was
   const scrollPositionsRef = React.useRef<{ [k in 'library' | 'computer']?: number }>({});
@@ -158,11 +164,57 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     prevTabRef.current = tab;
   }, [tab, isOpen]);
 
+  // Fetch library items when modal opens or tab changes to library
+  React.useEffect(() => {
+    if (!isOpen || tab !== 'library') {
+      if (!isOpen) hasLoadedLibraryRef.current = false; // Reset when modal closes
+      return;
+    }
+    
+    const loadLibrary = async () => {
+      // Only load if we haven't loaded yet or if we have a cursor (pagination)
+      if (hasLoadedLibraryRef.current && !libraryNextCursor) return; // Already loaded all
+      setLibraryLoading(true);
+      try {
+        const result = await getLibraryPage(50, libraryNextCursor, 'video');
+        console.log('[VideoUploadModal] Loaded library:', {
+          itemsCount: result.items.length,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          sampleItem: result.items[0]
+        });
+        // Deduplicate items by id to prevent duplicates
+        setLibraryItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = result.items.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setLibraryNextCursor(result.nextCursor);
+        setLibraryHasMore(result.hasMore);
+        hasLoadedLibraryRef.current = true;
+      } catch (error) {
+        console.error('[VideoUploadModal] Error loading library:', error);
+      } finally {
+        setLibraryLoading(false);
+      }
+    };
+    
+    loadLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab]);
+
   React.useEffect(() => {
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
       setTab('library');
+      // Reset library data when modal closes
+      setLibraryItems([]);
+      setLibraryNextCursor(undefined);
+      setLibraryHasMore(false);
+      isLoadingMoreRef.current = false;
+      // Reset load flag so data reloads when modal opens again
+      hasLoadedLibraryRef.current = false;
     }
   }, [isOpen]);
 
@@ -190,63 +242,81 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) {
-        // Find the entries corresponding to the selected URLs (use Set to ensure uniqueness)
-        const entryMap = new Map<string, any>(); // Map entry ID to entry
-        videoEntries.forEach((entry: any) => {
-          const videos = entry.videos || [];
-          const fallbackVideos = (entry.images || []).filter((img: any) => {
-            const url = img.firebaseUrl || img.url || img.originalUrl;
-            return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-          });
-          const allVideos = videos.length > 0 ? videos : fallbackVideos;
-          allVideos.forEach((video: any) => {
-            const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
-            if (chosen.includes(videoUrl) && entry.id) {
-              entryMap.set(entry.id, entry); // Use entry ID as key to ensure uniqueness
-            }
-          });
-        });
-        const selectedEntries = Array.from(entryMap.values());
-        onAdd(chosen, selectedEntries);
+        // Find the library items corresponding to the selected URLs
+        const selectedItems = libraryItems.filter(item => chosen.includes(item.url));
+        // Pass selected items as entries (library items have the same structure)
+        onAdd(chosen, selectedItems);
       }
       setSelection(new Set());
-    } else {
-      const chosen = localUploads.slice(0, remainingSlots);
-      if (chosen.length) onAdd(chosen, []); // No entries for local uploads
-      setLocalUploads([]);
+      onClose();
+      return;
     }
+
+    // tab === 'computer' – persist uploaded videos as reusable uploads in Zata.
+    const chosen = localUploads.slice(0, remainingSlots);
+    if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    const savedUrls: string[] = [];
+    for (const url of chosen) {
+      try {
+        const resp = await saveUpload({ url, type: 'video' });
+        console.log('[VideoUploadModal] Save upload response:', {
+          responseStatus: resp.responseStatus,
+          hasData: !!resp.data,
+          url: resp.data?.url,
+          storagePath: resp.data?.storagePath,
+          historyId: resp.data?.historyId
+        });
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          // Use the URL from the response (Zata public URL)
+          savedUrls.push(resp.data.url);
+        } else {
+          console.warn('[VideoUploadModal] Save upload failed:', resp);
+          savedUrls.push(url);
+        }
+      } catch (error) {
+        console.error('[VideoUploadModal] Error saving upload:', error);
+        savedUrls.push(url);
+      }
+    }
+
+    if (savedUrls.length) onAdd(savedUrls, []);
+    setLocalUploads([]);
     onClose();
   };
 
-  // Filter history entries to only show videos
-  const videoEntries = historyEntries.filter((entry: any) => {
-    // Check if entry has videos
-    if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-      return true;
+  // Get display items from library
+  const displayItems = libraryItems.map(item => {
+    // Convert storagePath to full Zata URL if available (e.g., users/rajdeop/input/... -> https://idr01.zata.ai/devstoragev1/users/rajdeop/input/...)
+    let displayUrl = item.url;
+    if (item.storagePath && !item.url?.startsWith('http')) {
+      displayUrl = toDirectUrl(item.storagePath) || item.url;
     }
-    // Check if entry has video URLs in images array (fallback)
-    if (entry.images && Array.isArray(entry.images)) {
-      return entry.images.some((img: any) => {
-        const url = img.url || img.firebaseUrl || img.originalUrl;
-        return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-      });
-    }
-    return false;
+    return {
+      id: item.id,
+      url: displayUrl, // Full Zata URL: https://idr01.zata.ai/devstoragev1/users/username/input/historyId/filename.mp4
+      thumbnailUrl: item.thumbnail || displayUrl,
+      storagePath: item.storagePath, // Keep original storagePath: users/username/input/historyId/filename.mp4
+      mediaId: item.mediaId,
+    };
   });
 
   return (
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-        <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
+          <div className="flex items-center justify-between md:px-4 px-3 md:py-3 py-2 border-b border-white/10 gap-2">
             <div className="flex items-center gap-2">
-              <button className={`px-3 py-1.5 rounded-full text-sm ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
-              <button className={`px-3 py-1.5 rounded-full text-sm ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
             </div>
             <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
           </div>
@@ -254,87 +324,82 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
           <div className="p-4">
             {tab === 'library' ? (
               <div>
-                <div className="text-white/70 text-sm mb-3">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
+                <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1">Select up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'} from your previously generated results</div>
                 <div
                   ref={listRef}
-                  onScroll={(e) => {
+                  onScroll={async (e) => {
                     const el = e.currentTarget as HTMLDivElement;
                     try { 
                       scrollPositionsRef.current[tab] = el.scrollTop; 
                       try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
                     } catch {}
-                    if (!onLoadMore || loading) return;
+                    
+                    if (libraryLoading || isLoadingMoreRef.current || !libraryHasMore) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-                    if (nearBottom && hasMore && !loading) onLoadMore();
+                    
+                    if (nearBottom) {
+                      const scrollTopBefore = el.scrollTop;
+                      const scrollHeightBefore = el.scrollHeight;
+                      isLoadingMoreRef.current = true;
+                      
+                      try {
+                        setLibraryLoading(true);
+                        const result = await getLibraryPage(50, libraryNextCursor, 'video');
+                        // Deduplicate items by id
+                        setLibraryItems(prev => {
+                          const existingIds = new Set(prev.map(item => item.id));
+                          const newItems = result.items.filter(item => !existingIds.has(item.id));
+                          return [...prev, ...newItems];
+                        });
+                        setLibraryNextCursor(result.nextCursor);
+                        setLibraryHasMore(result.hasMore);
+                        setLibraryLoading(false);
+                        
+                        // Maintain scroll position
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => {
+                            if (el) {
+                              const scrollHeightAfter = el.scrollHeight;
+                              const heightDiff = scrollHeightAfter - scrollHeightBefore;
+                              if (heightDiff > 0) {
+                                el.scrollTop = scrollTopBefore;
+                              }
+                            }
+                            isLoadingMoreRef.current = false;
+                          });
+                        });
+                      } catch (error) {
+                        console.error('[VideoUploadModal] Error loading more:', error);
+                        isLoadingMoreRef.current = false;
+                        setLibraryLoading(false);
+                      }
+                    }
                   }}
-                  className="grid grid-cols-3 md:grid-cols-5 gap-3 h-[50vh] p-2 overflow-y-auto custom-scrollbar pr-1"
+                  className="grid grid-cols-3 md:grid-cols-5 gap-3 md:h-[50vh] h-[40vh] p-2 overflow-y-auto custom-scrollbar pr-1"
                 >
-                  {videoEntries.flatMap((entry: any) => {
-                    // Get videos from entry.videos or from entry.images (fallback)
-                    const videos = entry.videos || [];
-                    const fallbackVideos = (entry.images || []).filter((img: any) => {
-                      const url = img.firebaseUrl || img.url || img.originalUrl;
-                      return url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-                    });
-                    const allVideos = videos.length > 0 ? videos : fallbackVideos;
-                    
-                    return allVideos.map((video: any) => ({ entry, video }));
-                  }).filter(({ video }: any) => {
-                    // Filter out videos without valid URLs
-                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
-                    return !!videoUrl;
-                  }).map(({ entry, video }: any) => {
-                    // Get video URL - prioritize firebaseUrl, then url, then originalUrl (same as InputBox.tsx)
-                    const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                  {displayItems.map((item: any, index: number) => {
+                    const videoUrl = item.url;
                     const selected = selection.has(videoUrl);
-                    const key = `${entry.id}-${video.id || videoUrl}`;
+                    // Create unique key using id, url, and index to prevent duplicates
+                    const key = `video-${item.id || videoUrl || index}-${index}`;
                     
-                    // Get thumbnail URL - prioritize thumbnailUrl/avifUrl from video object, fallback to toThumbUrl
-                    const thumbnailUrl = (video as any).thumbnailUrl || (video as any).avifUrl;
+                    // Get thumbnail URL with proxy for caching
+                    const thumbnailUrl = item.thumbnailUrl;
                     const posterUrl = thumbnailUrl 
-                      ? (toFrontendProxyMediaUrl(thumbnailUrl) || thumbnailUrl)
+                      ? (toMediaProxy(thumbnailUrl) || thumbnailUrl)
                       : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
                     
-                    // Get video source URL with proxy support (exact same logic as InputBox.tsx)
-                    // Prioritize storagePath, then firebaseUrl, then url, then originalUrl
-                    const mediaUrl = (video as any)?.storagePath 
-                      || video.firebaseUrl 
-                      || video.url 
-                      || video.originalUrl;
+                    // Get video source URL with proxy support for caching
+                    const mediaUrl = item.storagePath || item.url;
                     const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                    // If proxy URL is available, use it; otherwise fall back to original URL
-                    // But if original URL is a storage path (starts with users/), we must use proxy
-                    // Only use direct URL if it's a full HTTP/HTTPS URL
                     const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
-                    
-                    // Debug logging for troubleshooting
-                    if (!vsrc && mediaUrl) {
-                      console.warn('[VideoUploadModal] No valid video source URL:', {
-                        mediaUrl,
-                        proxied,
-                        video: { firebaseUrl: video.firebaseUrl, url: video.url, originalUrl: video.originalUrl },
-                        entryId: entry.id,
-                        videoId: video.id
-                      });
-                    }
-                    
-                    // Additional debug logging for thumbnail
-                    if (!posterUrl && videoUrl) {
-                      console.warn('[VideoUploadModal] No valid poster URL:', {
-                        videoUrl,
-                        thumbnailUrl: (video as any).thumbnailUrl,
-                        avifUrl: (video as any).avifUrl,
-                        entryId: entry.id,
-                        videoId: video.id
-                      });
-                    }
                     
                     return (
                       <button key={key} onClick={() => {
                         const next = new Set(selection);
                         if (selected) next.delete(videoUrl); else next.add(videoUrl);
                         setSelection(next);
-                      }} className={`relative w-full h-32 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
+                      }} className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         {vsrc ? (
                           <video
                             src={vsrc}
@@ -375,17 +440,17 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     );
                   })}
                 </div>
-                {hasMore && (
-                  <div className="flex items-center justify-center pt-3 text-white/60 text-xs">{loading ? 'Loading more…' : 'Scroll to load more'}</div>
+                {libraryHasMore && (
+                  <div className="flex items-center justify-center pt-3 text-white/60 md:text-sm text-[11px]">{libraryLoading ? 'Loading more…' : 'Scroll to load more'}</div>
                 )}
                 <div className="flex justify-end mt-0 gap-2">
-                  <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
                 </div>
               </div>
             ) : (
               <div>
-                <div className="text-white/70 text-sm mb-3">Choose up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'}</div>
+                <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1">Choose up to {remainingSlots} video{remainingSlots === 1 ? '' : 's'}</div>
                 <div
                   ref={dropRef}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -406,7 +471,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     }
                     if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
                   }}
-                  className={`border-2 border-dashed border-white/30 rounded-xl h-[51.75vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
+                  className={`border-2 border-dashed border-white/30 rounded-xl md:h-[51.75vh] h-[40vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
@@ -416,7 +481,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 50 * 1024 * 1024; // 50MB for videos
+                      const maxSize = 500 * 1024 * 1024; // 500MB for videos
                       const urls: string[] = [];
                       for (const file of files) {
                         if (file.size > maxSize) { continue; }
@@ -434,7 +499,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   {localUploads.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-white/60 select-none">
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                      <div className="mt-2 text-sm">Drop videos here or click to browse</div>
+                      <div className="mt-2 md:text-sm text-[11px]">Drop videos here or click to browse</div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full place-content-start">
@@ -548,9 +613,9 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     </div>
                   )}
                 </div>
-                <div className="flex justify-end mt-3 gap-2">
-                  <button className="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                <div className="flex justify-end md:mt-3 mt-2 gap-2">
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
                 </div>
               </div>
             )}

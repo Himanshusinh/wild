@@ -26,6 +26,9 @@ import {
 } from '@/utils/creditValidation';
 import { useEffect } from 'react';
 
+let creditsBootstrapInFlight: Promise<any> | null = null;
+let creditsBootstrapCompleted = false;
+
 export const useCredits = () => {
   const dispatch = useDispatch<AppDispatch>();
   const credits = useSelector(selectCredits);
@@ -37,11 +40,19 @@ export const useCredits = () => {
 
   // Fetch credits on mount
   useEffect(() => {
-    console.log('useCredits: Fetching credits, current state:', { credits, creditBalance, loading });
-    if (!credits) {
-      console.log('useCredits: Dispatching fetchUserCredits');
-      dispatch(fetchUserCredits());
+    if (credits || creditsBootstrapCompleted) {
+      return;
     }
+    if (creditsBootstrapInFlight) {
+      return;
+    }
+    creditsBootstrapInFlight = dispatch(fetchUserCredits());
+    creditsBootstrapInFlight
+      .catch(() => {})
+      .finally(() => {
+        creditsBootstrapCompleted = true;
+        creditsBootstrapInFlight = null;
+      });
   }, [dispatch, credits]);
 
   const validateVideoCredits = async (
@@ -72,9 +83,10 @@ export const useCredits = () => {
     model: string,
     count: number = 1,
     frameSize?: string,
-    style?: string
+    style?: string,
+    resolution?: string
   ) => {
-    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style);
+    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution);
     
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
@@ -231,7 +243,7 @@ export const useGenerationCredits = (
           break;
         
         case 'image':
-          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style);
+          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution);
           requiredCredits = imageResult.requiredCredits;
           validation = imageResult.validation;
           break;

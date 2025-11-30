@@ -198,6 +198,18 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         return [
           { value: "720P", label: "720P", description: "1280×720 HD", icon: "landscape" }
         ];
+      } else if (selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") {
+        // MiniMax-Hailuo-2.3 supports 768P and 1080P only (no 512P)
+        let options = [
+          { value: "768P", label: "768P", description: "768×768 square", icon: "square" },
+          { value: "1080P", label: "1080P", description: "1080×1080 square", icon: "square" }
+        ];
+        // Backend rules:
+        // - 10s duration does not support 1080P (only 6s supports 1080P)
+        if (miniMaxDuration === 10) {
+          options = options.filter(o => o.value !== "1080P");
+        }
+        return options;
       } else {
         // MiniMax-Hailuo-02 supports multiple resolutions
         let options = [
@@ -251,14 +263,14 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
       >
         <Crop className="w-4 h-4 mr-1" />
         {selectedFrameSizeInfo?.label || selectedFrameSize}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {availableFrameSizes.map((size) => (
             <button
               key={size.value}
@@ -266,7 +278,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
                 onFrameSizeChange(size.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-3 py-2 text-left transition text-[13px] flex items-center justify-between gap-3 ${
+              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between gap-3 ${
                 selectedFrameSize === size.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
@@ -294,7 +306,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
                     selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
                   }`}></span>
                 )}
-                <span>{size.label}</span>
+                <span className="md:text-sm text-xs">{size.label}</span>
               </span>
               {selectedFrameSize === size.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>

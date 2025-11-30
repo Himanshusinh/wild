@@ -3,7 +3,104 @@ import type { NextRequest } from 'next/server';
 
 // Protect routes by requiring the backend session cookie (app_session) and add security headers
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const url = req.nextUrl.clone();
+  const headerHost = req.headers.get('host') || url.host;
+  const forwardedHost = req.headers.get('x-forwarded-host') || headerHost;
+  const forwardedProto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  const isLocalHost =
+    forwardedHost?.startsWith('localhost') ||
+    forwardedHost?.startsWith('127.0.0.1') ||
+    forwardedHost?.endsWith('.local');
+  const { pathname } = url;
+  const trimmedPath = pathname.replace(/\/+$/, '') || '/';
+  const normalizedPath = trimmedPath.toLowerCase();
+  const pathnameLower = trimmedPath.toLowerCase();
+  const blockPrefixes = [
+    '/view/home',
+    '/dashboard',
+    '/account',
+    '/profile',
+    '/settings',
+    '/auth',
+    '/login',
+    '/signup',
+  ];
+
+  const legacyRedirects: Record<string, string> = {
+    '/view/video-generation': '/text-to-video',
+    '/view/imagegeneration': '/text-to-image',
+    '/view/templates': '/view/workflows',
+    '/view/contactus': '/view/Landingpage?section=contact',
+    '/view/blogger': '/view/Landingpage',
+    '/view/x': 'https://x.com/WildMind_AI',
+    '/view/youtube': 'https://www.youtube.com/@Wild-Mind-2025',
+    '/view/$': '/view/Landingpage',
+    '/view/&': '/view/Landingpage',
+    '/view/blog': '/view/Landingpage',
+    '/templates': '/view/workflows',
+    '/contactus': '/view/Landingpage?section=contact',
+    '/blogger': '/view/Landingpage',
+    '/blog': '/view/Landingpage',
+    '/$': '/view/Landingpage',
+    '/&': '/view/Landingpage',
+  };
+
+  if (!isLocalHost && forwardedProto === 'http') {
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, { status: 308 });
+  }
+
+  // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
+  // forwards all traffic to Next.js using the www.* host which causes an infinite
+  // redirect loop if we try to rewrite it at the edge. Canonical host enforcement
+  // is handled via DNS + <link rel="canonical"> tags instead.
+
+  const redirectTarget = legacyRedirects[normalizedPath];
+  if (redirectTarget) {
+    if (redirectTarget.startsWith('http')) {
+      return NextResponse.redirect(redirectTarget, { status: 308 });
+    }
+    const url = req.nextUrl.clone();
+    const [targetPath, targetQuery] = redirectTarget.split('?');
+    url.pathname = targetPath;
+    url.search = targetQuery ? `?${targetQuery}` : req.nextUrl.search;
+    return NextResponse.redirect(url, { status: 308 });
+  }
+
+  const trackingParams = new Set([
+    'next',
+    'toast',
+    'ref',
+    'redirect',
+    'utm',
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+  ]);
+
+  const hasStrippableParams =
+    pathnameLower.startsWith('/view') &&
+    Array.from(req.nextUrl.searchParams.keys()).some(
+      (key) => trackingParams.has(key.toLowerCase()) || key.toLowerCase().startsWith('utm_')
+    );
+
+  if (hasStrippableParams) {
+    const cleanUrl = req.nextUrl.clone();
+    cleanUrl.search = '';
+    return NextResponse.redirect(cleanUrl, { status: 308 });
+  }
+
+  // Skip middleware for static files in /public (images, fonts, etc.)
+  // This prevents Next.js from treating static files as routes
+  if (
+    pathname.startsWith('/core/') ||
+    pathname.startsWith('/styles/') ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i)
+  ) {
+    return NextResponse.next();
+  }
 
   // Base response with security headers
   const res = NextResponse.next();
@@ -43,6 +140,24 @@ export function middleware(req: NextRequest) {
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
 
+  // Only block indexing for internal/admin paths, not public pages
+  const shouldNoIndex =
+    blockPrefixes.some((prefix) => pathnameLower.startsWith(prefix)) ||
+    pathnameLower.startsWith('/_next') ||
+    pathnameLower.startsWith('/api') ||
+    pathnameLower.startsWith('/view/Generation') ||
+    pathnameLower.startsWith('/view/EditImage') ||
+    pathnameLower.startsWith('/view/EditVideo') ||
+    pathnameLower.endsWith('.woff2');
+
+  if (shouldNoIndex) {
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  } else {
+    // Allow indexing for public pages (HomePage, ArtStation, etc.)
+    // Remove any existing noindex header to ensure pages are crawlable
+    res.headers.delete('X-Robots-Tag');
+  }
+
   // Enforce auth for protected routes in all environments
 
   // Allow public pages
@@ -60,6 +175,12 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
+    // Legal pages
+    pathname.startsWith('/legal/') ||
+    // Product pages
+    pathname.startsWith('/product/') ||
+    // Company pages
+    pathname.startsWith('/company/') ||
     // Allow static assets and Next.js internals
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -68,36 +189,12 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/public/')
   );
 
-  // Explicitly make some legacy/unrendered routes return the 404 page
-  // (these routes are known to exist in sitemap/history but do not have
-  // a proper UI implementation and should not be discoverable).
-  const blocked404 = [
-    '/view/video-generation',
-    '/view/imagegeneration',
-    '/view/Blogger',
-    '/view/home', // we'll treat any /view/home/* as blocked
-    '/$'
-  ];
-  // If request matches a blocked path, rewrite to the app's `/404` route
-  // so Next.js renders its default 404 handling (do not return custom HTML).
-  if (
-    blocked404.some((p) => {
-      if (p === '/view/home') return pathname.startsWith('/view/home');
-      return pathname === p;
-    })
-  ) {
-    return NextResponse.rewrite(new URL('/404', req.url));
-  }
-  // If root path and unauthenticated, force redirect to landing with toast
+  // Root path: Allow through without redirect for Razorpay verification
+  // The page.tsx will handle client-side redirect based on auth status
+  // This ensures Razorpay's verification bot gets a 200 OK response
   if (pathname === '/') {
-    const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
-    const hasHint = Boolean(req.cookies.get('auth_hint'));
-    if (!hasSession && !hasHint) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/view/Landingpage';
-      url.searchParams.set('toast', 'UNAUTHORIZED');
-      return NextResponse.redirect(url);
-    }
+    // Don't redirect here - let the page render and handle redirect client-side
+    // This allows Razorpay verification to succeed (they need 200 OK, not 302 redirect)
     return res;
   }
   if (isPublic) return res;
@@ -113,6 +210,7 @@ export function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
+    url.searchParams.set('toast', 'SESSION_EXPIRED'); // Add toast message
     const redirect = NextResponse.redirect(url);
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
     return redirect;
@@ -124,7 +222,7 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Protect everything except Next internals, public assets, and api routes you want open
-  matcher: ['/((?!_next|api|public|favicon.ico).*)'],
+  matcher: ['/((?!favicon\\.ico|robots\\.txt|sitemap\\.xml).*)'],
 };
 
 

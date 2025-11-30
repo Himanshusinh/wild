@@ -74,10 +74,10 @@ const CHIPS: { key: Category; label: string; icon: React.ReactElement }[] = [
   { key: 'All', label: 'All', icon: Icon.grid },
   { key: 'Images', label: 'Images', icon: Icon.camera },
   { key: 'Videos', label: 'Videos', icon: Icon.video },
-  { key: 'Music', label: 'Music', icon: Icon.grid },
-  { key: 'Logos', label: 'Logos', icon: Icon.grid },
-  { key: 'Stickers', label: 'Stickers', icon: Icon.grid },
-  { key: 'Products', label: 'Products', icon: Icon.grid },
+  // { key: 'Music', label: 'Music', icon: Icon.grid },
+  // { key: 'Logos', label: 'Logos', icon: Icon.grid },
+  // { key: 'Stickers', label: 'Stickers', icon: Icon.grid },
+  // { key: 'Products', label: 'Products', icon: Icon.grid },
 ];
 
 /* ---------- Pill Button ---------- */
@@ -97,7 +97,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
+      className={`inline-flex items-center gap-2 md:px-4 px-2 md:py-2.5 py-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border ${
         active
           ? 'bg-white  text-black shadow-sm'
           : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
@@ -150,7 +150,7 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
               // Attempt AVIF thumbnail first, then WEBP, then original
               let avifThumb: string | undefined
               let webpThumb: string | undefined
-              const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/'
+              const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
               if (src.startsWith(Z)) {
                 try { avifThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'avif' }) || undefined } catch {}
                 if (!avifThumb) { try { webpThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'webp' }) || undefined } catch {} }
@@ -201,6 +201,8 @@ export default function CommunityCreations({
   const [active, setActive] = useState<Category>(initialFilter);
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // Removed debug log for production performance
   const [preview, setPreview] = useState<Creation | null>(null)
   const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
   const [currentUid, setCurrentUid] = useState<string | null>(null)
@@ -310,13 +312,13 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className="text-4xl md:text-4xl font-medium text-white mb-5">
+      <h2 className="text-xl md:text-4xl font-medium text-white md:mb-5 mb-1">
         Community Creations
       </h2>
 
       {/* Filter bar + Explore link */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+      <div className="md:mb-6 mb-2">
+        <div className="flex items-center md:gap-3 gap-1 overflow-x-auto md:pb-2 scrollbar-none">
           {CHIPS.map((chip, idx) => {
             const isActive = chip.key === active;
             return (
@@ -332,7 +334,7 @@ export default function CommunityCreations({
           <div className="ml-auto">
             <button
               onClick={() => router.push('/view/ArtStation')}
-              className="shrink-0 text-white/80 hover:text-white text-sm font-medium transition-colors"
+              className="shrink-0 text-white/80 w-40 hover:text-white md:text-sm text-xs font-medium transition-colors flex-nowrap"
               title="Explore Art Station"
             >
               Explore Art Station →
@@ -343,17 +345,24 @@ export default function CommunityCreations({
 
       {/* Masonry grid with conditional overlay */}
       <div className="relative">
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
-          {limited.map((item, idx) => (
-            <Card
-              key={item.id}
-              item={item}
-              isVisible={visibleTiles.has(item.id)}
-              setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
-              onClick={() => setPreview(item)}
-            />
-          ))}
-        </div>
+        {limited.length === 0 && !loading ? (
+          <div className="text-center py-12">
+            <p className="text-white/60 text-lg">No community creations to display</p>
+            <p className="text-white/40 text-sm mt-2">Items received: {items.length}</p>
+          </div>
+        ) : (
+          <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
+            {limited.map((item, idx) => (
+              <Card
+                key={item.id}
+                item={item}
+                isVisible={visibleTiles.has(item.id)}
+                setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
+                onClick={() => setPreview(item)}
+              />
+            ))}
+          </div>
+        )}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center py-8">
