@@ -12,7 +12,7 @@ export async function enhancePromptAPI(prompt: string, model?: string): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, model }),
   });
-
+ 
   if (!res.ok) {
     let body: any;
     try { body = await res.json(); } catch { body = { error: res.statusText }; }
