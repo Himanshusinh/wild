@@ -411,7 +411,7 @@ const InputBox = () => {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="">
       {/* Progress Indicator */}
       {isGenerating && generationProgress.total > 0 && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[70]">
