@@ -863,10 +863,23 @@ const InputBox = () => {
     return groups;
   }, [historyEntries]);
 
+  // Calculate today key - recalculate on every render to handle day changes
+  // This ensures localGeneratingEntries show correctly when generating on a new day
+  const todayKey = new Date().toDateString();
+
   // Sort dates in descending order (newest first)
-  const sortedDates = useMemo(() => Object.keys(groupedByDate).sort((a: string, b: string) =>
-    new Date(b).getTime() - new Date(a).getTime()
-  ), [groupedByDate]);
+  // Include today's date if we have localGeneratingEntries (for first generation of new day)
+  const sortedDates = useMemo(() => {
+    const dates = new Set(Object.keys(groupedByDate));
+    // If we have localGeneratingEntries and today is not in the dates, add it
+    // This ensures the loading animation shows on the first generation of a new day
+    if (localGeneratingEntries.length > 0 && !dates.has(todayKey)) {
+      dates.add(todayKey);
+    }
+    return Array.from(dates).sort((a: string, b: string) =>
+      new Date(b).getTime() - new Date(a).getTime()
+    );
+  }, [groupedByDate, localGeneratingEntries, todayKey]);
 
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
@@ -875,9 +888,6 @@ const InputBox = () => {
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
   }, [historyEntries]);
-
-  // Memoize today key to avoid recreating on every render
-  const todayKey = useMemo(() => new Date().toDateString(), []);
 
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
@@ -2769,7 +2779,7 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'new-turbo-model') {
-        // New Turbo Model via replicate generate endpoint
+        // New Turbo Model via replicate generate endpoint - single request with num_images
         try {
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           
@@ -2778,56 +2788,82 @@ const InputBox = () => {
           const width = dimensions.width;
           const height = dimensions.height;
           
-          // New Turbo Model doesn't support multiple images in single request, so we make parallel requests
-          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
-          
-          const generationPromises = Array.from({ length: totalToGenerate }, async () => {
-            const payload: any = {
-              prompt: `${promptAdjusted} [Style: ${style}]`,
-              model: 'new-turbo-model',
-              width: width,
-              height: height,
-              num_inference_steps: 14, // Default 45
-              guidance_scale: 0, // Default 10
-              output_format: 'jpg', // Default jpg, can be made configurable
-              output_quality: 80, // Default 80, can be made configurable
-            };
-            
-            // Add seed if provided (optional)
-            // if (seed) payload.seed = seed;
-            
-            const result = await dispatch(replicateGenerate(payload)).unwrap();
-            return result;
-          });
-          
-          // Wait for all generations to complete
-          const results = await Promise.all(generationPromises);
-          
-          // Combine all images from all results
-          const allImages = results.flatMap(result => result.images || []);
-          const combinedResult = {
-            ...results[0], // Use first result as base
-            images: allImages
+          // Send single request with num_images parameter (backend handles multiple calls internally)
+          const payload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            model: 'new-turbo-model',
+            width: width,
+            height: height,
+            num_inference_steps: 14,
+            guidance_scale: 0,
+            output_format: 'jpg',
+            output_quality: 80,
+            num_images: Math.min(imageCount, 4), // Cap at 4 like other models
           };
           
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+          
+          // All images should be in the result.images array from single request
+          const allImages = result.images || [];
+          
+          // Keep status as 'generating' until images are loaded and visible
+          // This ensures the loading animation stays until images are actually displayed
           try {
-            const completedEntry: HistoryEntry = {
+            const entryWithImages: HistoryEntry = {
               ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
-              images: (combinedResult.images || []),
-              status: 'completed',
+              id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+              images: allImages,
+              status: 'generating', // Keep as 'generating' to show loading animation
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
-              imageCount: (combinedResult.images?.length || imageCount),
+              imageCount: allImages.length,
+            } as any;
+            setLocalGeneratingEntries([entryWithImages]);
+            
+            // Wait for images to load before marking as completed
+            // This ensures the loading animation stays visible until images are rendered
+            if (allImages.length > 0) {
+              // Wait a bit for React to render the images
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Wait for all images to actually load in the browser
+              const imageLoadPromises = allImages.map((img: any) => {
+                return new Promise<void>((resolve: () => void) => {
+                  const imageUrl = img?.thumbnailUrl || img?.avifUrl || img?.url || img?.originalUrl;
+                  if (!imageUrl) {
+                    resolve();
+                    return;
+                  }
+                  
+                  const imgElement = document.createElement('img');
+                  imgElement.onload = () => resolve();
+                  imgElement.onerror = () => resolve(); // Resolve even on error to not block
+                  imgElement.src = imageUrl;
+                  
+                  // Timeout after 5 seconds to prevent infinite waiting
+                  setTimeout(() => resolve(), 5000);
+                });
+              });
+              
+              await Promise.all(imageLoadPromises);
+              
+              // Additional small delay to ensure images are rendered in DOM
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            // Now mark as completed after images are loaded
+            const completedEntry: HistoryEntry = {
+              ...entryWithImages,
+              status: 'completed',
             } as any;
             setLocalGeneratingEntries([completedEntry]);
           } catch { }
           
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          toast.success(`Generated ${allImages.length || 1} image(s) successfully!`);
           clearInputs();
 
-          // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          // Refresh the history entry that contains all images
+          const resultHistoryId = (result as any)?.historyId;
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {

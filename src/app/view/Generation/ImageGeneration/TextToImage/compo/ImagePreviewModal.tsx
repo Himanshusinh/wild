@@ -1335,7 +1335,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20  lg:py-20"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -1410,7 +1410,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           </button>
         )}
         {/* Image Navigation (Right side, or right if no generation nav) - Only show if not at last image */}
-        {sameDateGallery.length > 1 && !isLastImage && (
+        {/* {sameDateGallery.length > 1 && !isLastImage && (
           <button
             aria-label="Next image"
             onClick={(e) => { e.stopPropagation(); goNext(e); }}
@@ -1421,7 +1421,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
-        )}
+        )} */}
 
         {/* Content */}
         <div className="flex flex-col md:flex md:flex-row h-[90vh] md:h-full   md:gap-0">
