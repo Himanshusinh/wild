@@ -1,3 +1,7 @@
+'use client';
+
+import React from 'react';
+
 interface Plan {
   name: string;
   subtitle?: string;
@@ -75,48 +79,83 @@ interface PlansProps {
 }
 
 function Plans({ isAnnual }: PlansProps) {
+  const [currentPlanIndex, setCurrentPlanIndex] = React.useState(0);
+  const plansScrollRef = React.useRef<HTMLDivElement>(null);
+  const nonEnterprise = plans.filter((p) => p.name !== 'Enterprise');
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (!plansScrollRef.current) return;
+      const scrollLeft = plansScrollRef.current.scrollLeft;
+      // On mobile, each card is 85vw + gap (1rem = 16px)
+      const cardWidth = window.innerWidth * 0.85 + 16; // 85vw + gap
+      const newIndex = Math.round(scrollLeft / cardWidth);
+      setCurrentPlanIndex(Math.min(newIndex, nonEnterprise.length - 1));
+    };
+
+    const scrollContainer = plansScrollRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  const scrollToPlan = (index: number) => {
+    if (!plansScrollRef.current) return;
+    // On mobile, each card is 85vw + gap
+    const cardWidth = window.innerWidth * 0.85 + 16; // 85vw + gap
+    plansScrollRef.current.scrollTo({
+      left: index * cardWidth,
+      behavior: 'smooth'
+    });
+  };
+
   return (  
     <div className="py-2 w-full">
       <div className="w-full">
-        <h1 className="text-white text-4xl font-semibold text-left mb-6">Plans</h1>
+        <h1 className="text-white md:text-3xl text-2xl font-semibold text-left md:mb-4 mb-0">Plans</h1>
         {(() => {
-          const nonEnterprise = plans.filter((p) => p.name !== 'Enterprise');
           const enterprise = plans.find((p) => p.name === 'Enterprise');
 
           return (
             <>
-              {/* Single row: all non-enterprise plans */}
-              <div className="grid gap-4 grid-cols-5">
+              {/* Desktop: grid, Mobile: horizontal scroll */}
+              <div className="relative">
+                <div 
+                  ref={plansScrollRef}
+                  className="md:grid md:grid-cols-5 md:gap-4 flex overflow-x-auto md:overflow-visible md:gap-4 gap-2 snap-x snap-mandatory scrollbar-hide"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
                 {nonEnterprise.map((plan) => (
                   <div 
-                    key={plan.name} 
+                    key={plan.name}
                     className={`relative text-white rounded-lg
                     bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
                     border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]
                     ring-1 ring-white/10
-                    p-5 py-6
-                    w-full overflow-hidden isolate flex flex-col
+                    md:p-2 p-0 py-3
+                    md:w-full w-[70vw] flex-shrink-0 snap-center overflow-hidden isolate flex flex-col
                     transition-all duration-300 hover:bg-white/10 hover:backdrop-saturate-200 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] hover:border-white/15`}
                   >
                     {/* Glass highlight and edge lighting */}
                     <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
                     <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
-                    <div className={`min-h-[120px]`}>
-                      <h2 className={`text-3xl font-medium leading-tight mx-4 mt-3 mb-1`}>{plan.name}</h2>
-                      <div className={`mx-4 ${typeof plan.monthlyPrice !== 'undefined' ? 'min-h-[70px]' : 'min-h-0'}`}>
+                    <div className={`md:min-h-[120px] min-h-[80px]`}>
+                      <h2 className={`md:text-3xl text-xl font-medium leading-tight md:mx-4 mx-2 mt-0 mb-0`}>{plan.name}</h2>
+                      <div className={`mx-4 ${typeof plan.monthlyPrice !== 'undefined' ? 'min-h-[20px]' : 'min-h-0'}`}>
                         {typeof plan.monthlyPrice !== 'undefined' && (
                           <div>
-                            <div className={`flex items-baseline gap-2 mt-4`}>
-                              <div className={`text-2xl md:text-3xl font-bold tracking-tight`}>
+                            <div className={`flex items-baseline md:gap-2 gap-1 md:mt-4 mt-2`}>
+                              <div className={`text-xl md:text-2xl font-bold tracking-tight`}>
                                 {typeof plan.monthlyPrice === 'string' ? plan.monthlyPrice : 
                                   `$${isAnnual && typeof plan.annualPrice !== 'undefined' ? plan.annualPrice : plan.monthlyPrice}`}
                               </div>
-                              <div className={`text-sm md:text-base text-white/80`}>
+                              <div className={`text-xs md:text-sm text-white/80`}>
                                 / month
                               </div>
                             </div>
                             {isAnnual && typeof plan.monthlyPrice === 'number' && typeof plan.annualPrice === 'number' && (
-                              <span className={`block text-[#ADD8E6] text-xs mt-1`}>
+                              <span className={`block text-[#ADD8E6] md:text-xs text-[8px] mt-0`}>
                                 Save ${(plan.monthlyPrice - plan.annualPrice).toFixed(2)}/month
                               </span>
                             )}
@@ -125,26 +164,40 @@ function Plans({ isAnnual }: PlansProps) {
                       </div>
 
                       {plan.subtitle && (
-                        <p className={`text-sm text-white/70 mx-3 leading-snug break-words text-center`}>{plan.subtitle}</p>
+                        <p className={`md:text-xs text-[10px] text-white/90 leading-snug break-words pl-4`}>{plan.subtitle}</p>
                       )}
                     </div>
 
-                    <div className={`mt-4 mb-3 mx-3`}>
-                      <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-5 py-2 text-sm font-medium ring-1 ring-white/15 transition-colors w-full`}>
+                    <div className={`mt-1 md:mb-3 mb-2 md:mx-3 mx-2`}>
+                      <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-lg md:px-5 px-2 md:py-2 py-1 md:text-medium text-sm font-medium ring-1 ring-white/15 transition-colors w-full`}>
                         {plan.buttonText}
                       </button>
                     </div>
 
-                    <ul className={`mt-2.5 space-y-2 mx-3 text-white/90`}>
+                    <ul className={`mt-1 md:space-y-1 space-y-0.5 md:mx-3 mx-2 text-white/90`}>
                       {plan.features.map((f, i) => (
                         <li key={i} className="flex items-start gap-3">
-                          <span className={`mt-1.5 h-1.5 w-1.5 rounded-full bg-white/70 flex-shrink-0`} />
-                          <span className={`text-sm leading-snug break-words`}>{f}</span>
+                          <span className={`mt-1.5 h-1.5 w-1.5 rounded-lg bg-white/80 flex-shrink-0`} />
+                          <span className={`md:text-sm text-[10px] font-thin leading-snug break-words`}>{f}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 ))}
+                </div>
+                {/* Navigation dots for mobile */}
+                <div className="md:hidden flex justify-center gap-2 mt-4">
+                  {nonEnterprise.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => scrollToPlan(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        currentPlanIndex === index ? 'bg-white w-6' : 'bg-white/40'
+                      }`}
+                      aria-label={`Go to plan ${index + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* Enterprise row: single, full-width card */}
@@ -155,34 +208,34 @@ function Plans({ isAnnual }: PlansProps) {
                     bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
                     border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]
                     ring-1 ring-white/10
-                    px-4 pt-6 pb-6 w-full overflow-hidden isolate flex flex-col
+                    md:px-4 px-2 md:pt-6 pt-3 md:pb-6 pb-2 w-full overflow-hidden isolate flex flex-col
                     transition-all duration-300 hover:bg-white/10 hover:backdrop-saturate-200 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] hover:border-white/15`}
                   >
                     {/* Glass highlight and edge lighting */}
                     <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
                     <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
-                    <div className={`min-h-[60px] ml-2`}>
-                      <div className="flex items-center justify-between gap-3 mx-3 mt-2 mb-0.5">
-                        <h3 className={`text-3xl font-medium leading-tight`}>{enterprise.name}</h3>
-                        <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-6 py-2.5 text-sm font-medium ring-1 ring-white/15 transition-colors min-w-[180px]`}>
+                    <div className={`md:min-h-[40px] min-h-[20px] md:ml-2 ml-1 mt-0`}>
+                      <div className="flex items-center justify-between md:gap-3 gap-2 md:mx-3 mx-2 mt-0 mb-0">
+                        <h3 className={`md:text-3xl text-xl font-medium leading-tight`}>{enterprise.name}</h3>
+                        <button className={`bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-lg md:px-6 px-4 md:py-2.5 py-1.5 md:text-sm text-xs font-medium ring-1 ring-white/15 transition-colors min-w-[180px]`}>
                           {enterprise.buttonText}
                         </button>
                       </div>
-                      <div className={`mx-4 min-h-0`}>
+                      <div className={`md:mx-4 mx-2 min-h-0 mt-0`}>
                         {/* Enterprise has no fixed price */}
                       </div>
                       {enterprise.subtitle && (
-                        <p className={`text-sm text-white/70 mt-2 mx-3 leading-snug break-words`}>{enterprise.subtitle}</p>
+                        <p className={`md:text-xs text-[10px] text-white/90 mt-2 md:mx-3 mx-2 leading-snug break-words`}>{enterprise.subtitle}</p>
                       )}
                     </div>
 
-                    <div className={`mt-4 mx-3 text-white/90 grid grid-cols-1 sm:grid-cols-2 gap-x-6 pb-4`}>
+                    <div className={`mt-1 md:mx-3 mx-2 text-white/90 grid grid-cols-1 sm:grid-cols-2 md:gap-x-6 gap-x-2 pb-4`}>
                       {[enterprise.features.slice(0, 3), enterprise.features.slice(3, 6)].map((col, colIdx) => (
                         <ul key={colIdx} className={`space-y-2`}>
                           {col.map((f, i) => (
                             <li key={`${colIdx}-${i}`} className="flex items-start gap-3">
-                              <span className={`mt-4 h-1.5 w-1.5 rounded-full bg-white/70 flex-shrink-0`} />
-                              <span className={`text-sm mt-2.5 leading-snug break-words`}>{f}</span>
+                              <span className={`mt-2 h-1.5 w-1.5 rounded-lg bg-white/80 flex-shrink-0`} />
+                              <span className={`md:text-xs text-[10px] font-thin mt-1 leading-snug break-words`}>{f}</span>
                             </li>
                           ))}
                         </ul>

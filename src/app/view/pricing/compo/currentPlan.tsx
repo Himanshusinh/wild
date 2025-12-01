@@ -65,27 +65,27 @@ function CurrentPlan() {
     <div className="relative text-white rounded-lg
       bg-white/5 backdrop-blur-2xl backdrop-saturate-150 bg-clip-padding
       border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-1 ring-white/10
-      p-5 py-6 w-full md:w-[60%] lg:w-[60%] max-w-7xl min-h-[260px] isolate">
+      md:p-5 p-0 py-2 w-full md:w-[60%] max-h-[300px] isolate md:flex-shrink-0">
       {/* Glass highlight */}
       <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
       <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
 
-      <div className="min-h-[92px]">
-        <h1 className="text-2xl font-semibold mx-2">Current Plan</h1>
-        <p className="text-medium text-white/80 mt-1 mx-2">{loading ? '...' : (plan || 'Free')}</p>
+      <div className="md:min-h-[92px] min-h-[60px]">
+        <h1 className="md:text-2xl text-xl font-semibold mx-2">Current Plan</h1>
+        <p className="md:text-medium text-sm text-white/80 mt-1 mx-2">{loading ? '...' : (plan || 'Free')}</p>
       </div>
 
-      <div className="absolute top-6 right-6 text-right">
-        <p className="text-3xl font-semibold leading-none">{loading ? '...' : (credits ?? 0)}</p>
-        <p className="text-medium text-white/70 mt-1">Credits</p>
+      <div className="absolute md:top-6 top-4 md:right-6 right-4 text-right">
+        <p className="md:text-3xl text-xl font-semibold leading-none">{loading ? '...' : (credits ?? 0)}</p>
+        <p className="md:text-medium text-xs text-white/70 mt-1">Credits</p>
       </div>
 
-      <div className="mt-4 mx-2">
+      <div className="mt-0 mx-2">
         {activeSince && (
-          <div className="text-sm text-white/70 mt-16 mb-2 ml-2">Active since: {activeSince}</div>
+          <div className="md:text-sm text-xs text-white/70  md:mb-2 mb-1 ml-0">Active since: {activeSince}</div>
         )}
         <div className="flex items-center">
-          <button className="mt-0 bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-full px-5 py-2 text-medium font-regular ring-1 ring-white/15 transition-colors">
+          <button className="mt-0 bg-[#1C303D] hover:bg-[#1c3c52] text-white rounded-lg md:px-5 px-3 md:py-2 py-1 md:text-medium text-sm font-regular ring-1 ring-white/15 transition-colors">
             Change Plan
           </button>
         </div>
