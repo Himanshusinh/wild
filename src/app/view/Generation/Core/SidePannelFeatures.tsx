@@ -37,6 +37,7 @@ const SidePannelFeatures = ({
   const brandingRef = React.useRef<HTMLDivElement>(null);
   const brandingDropdownRef = React.useRef<HTMLDivElement>(null);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const touchStartXRef = React.useRef<number | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const [avatarFailed, setAvatarFailed] = React.useState(false);
 
@@ -257,29 +258,28 @@ const SidePannelFeatures = ({
 
   return (
     <>
-      {/* Hamburger Menu Button - Mobile/Tablet Only */}
-      <button
-        data-hamburger-button
-        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-        className="fixed top-0 left-1 z-[60] md:hidden p-2 text-white  rounded-lg transition"
-        aria-label="Toggle menu"
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+      {/* Hamburger Menu Button - Mobile/Tablet Only.
+          Hidden while the sidebar is open so the user closes it via swipe or tapping outside. */}
+      {!isMobileSidebarOpen && (
+        <button
+          data-hamburger-button
+          onClick={() => setIsMobileSidebarOpen(true)}
+          className="fixed top-0 left-1 z-[60] md:hidden p-2 text-white rounded-lg transition"
+          aria-label="Toggle menu"
         >
-          {isMobileSidebarOpen ? (
-            <path d="M6 18L18 6M6 6l12 12" />
-          ) : (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
             <path d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
-      </button>
+          </svg>
+        </button>
+      )}
 
       {/* Mobile Overlay - Dark blurred background when sidebar is open */}
       {isMobileSidebarOpen && (
@@ -292,7 +292,7 @@ const SidePannelFeatures = ({
       {/* Original sidebar - keeps original CSS styling */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-all text-white duration-300 border-r border-white/10 ${isMobileSidebarOpen
+        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-transform duration-300 ease-in-out text-white border-r border-white/10 ${isMobileSidebarOpen
           ? 'w-60 translate-x-0 z-[56]'
           : '-translate-x-full md:translate-x-0 z-[50]'
           } ${isSidebarHovered ? 'md:w-60' : 'md:w-[68px]'
@@ -315,9 +315,24 @@ const SidePannelFeatures = ({
           // Collapse when mouse leaves the entire sidebar
           setIsSidebarHovered(false);
         }}
+        onTouchStart={(e) => {
+          if (!isMobileSidebarOpen) return;
+          const touch = e.touches[0];
+          touchStartXRef.current = touch.clientX;
+        }}
+        onTouchEnd={(e) => {
+          if (!isMobileSidebarOpen || touchStartXRef.current === null) return;
+          const touch = e.changedTouches[0];
+          const deltaX = touch.clientX - touchStartXRef.current;
+          // Detect a left-swipe with a small threshold
+          if (deltaX < -50) {
+            closeMobileSidebar();
+          }
+          touchStartXRef.current = null;
+        }}
       >
         {/* Logo at the top */}
-        <div className="flex items-center gap-2 md:p-2 px-3 py-0 mt-8 md:-mt-4 md:mb-0 mb-0 -ml-2 overflow-hidden">
+        <div className="flex items-center gap-2 md:p-2 px-3 py-0 mt-4 md:-mt-4 md:mb-0 mb-0 -ml-2 overflow-hidden">
           <div
             onMouseEnter={() => setIsSidebarHovered(true)}
             onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
