@@ -123,7 +123,7 @@
 
   function CompareTable() {
   return (
-    <div className="py-10 w-full">
+    <div className="hidden md:block py-10 w-full">
       <div className="w-full">
         <div className="text-left">
           <h1 className="text-white text-4xl font-semibold mb-7 mt-5">Compare Plans</h1>
