@@ -22,6 +22,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const [isActiveInstance, setIsActiveInstance] = useState(false);
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
+  const selectingRef = useRef(false);
 
   // Reset active instance when dropdown closes
   useEffect(() => {
@@ -103,8 +104,8 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       // Close dropdown when clicking outside
       // Use bubble phase so React's onClick runs first
       const handleClickOutside = (event: MouseEvent) => {
-        // Don't close if button was just clicked or we're in the process of closing
-        if (buttonJustClickedRef.current || shouldCloseRef.current) {
+        // Don't close if button was just clicked, we're in the process of closing, or selecting
+        if (buttonJustClickedRef.current || shouldCloseRef.current || selectingRef.current) {
           return;
         }
         
@@ -202,6 +203,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image';
   const isFlux2Pro = selectedModel === 'flux-2-pro';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
+  const isZTurbo = selectedModel === 'new-turbo-model';
 
   const frameSizes = (() => {
     if (isFlux2Pro) {
@@ -263,6 +265,12 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       const allowed = new Set(['1:1', '3:4', '4:3', '16:9', '9:16', '3:2', '2:3', '21:9', '9:21', '16:10', '10:16']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
+    if (isZTurbo) {
+      // z-image-turbo: accepts width/height directly, so supports all common aspect ratios
+      // Supported ratios: 1:1, 3:4, 2:3, 9:16, 4:3, 3:2, 16:9, 21:9, 4:5, 5:4, 2:1, 1:2, 3:1, 1:3, 10:16, 16:10, 9:21
+      const allowed = new Set(['1:1', '3:4', '2:3', '9:16', '4:3', '3:2', '16:9', '21:9', '4:5', '5:4', '2:1', '1:2', '3:1', '1:3', '10:16', '16:10', '9:21']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isRunway) {
       // Runway: we map to pixel ratios later; keep a rich but safe set
       return baseSizes;
@@ -311,8 +319,17 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   };
 
   const handleFrameSizeSelect = (sizeValue: string) => {
+    // Mark that we're selecting to prevent click outside handler from interfering
+    selectingRef.current = true;
+    
     dispatch(setFrameSize(sizeValue));
+    setIsActiveInstance(false);
     dispatch(toggleDropdown(''));
+    
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      selectingRef.current = false;
+    }, 100);
   };
 
   const dropdownContent = activeDropdown === 'frameSize' && isActiveInstance && dropdownPosition ? (
@@ -324,11 +341,24 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         left: `${dropdownPosition.left}px`,
         transform: dropdownPosition.openUp ? 'translateY(calc(-100% - 8px))' : 'none',
       }}
+      onMouseDown={(e) => {
+        // Prevent mousedown from triggering click outside handler
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        // Prevent clicks inside dropdown from bubbling to document
+        e.stopPropagation();
+      }}
     >
       {frameSizes.map((size) => (
         <button
           key={size.value}
+          onMouseDown={(e) => {
+            // Prevent mousedown from triggering click outside handler
+            e.stopPropagation();
+          }}
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             handleFrameSizeSelect(size.value);
           }}

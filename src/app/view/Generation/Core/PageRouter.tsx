@@ -255,7 +255,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   // Handle different views
   if (currentView === 'history') {
     return (
-      <div className="min-h-screen p-6">
+      <div className="min-h-screen md:p-6 p-0">
         <History />
       </div>
     );
@@ -263,7 +263,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
 
   if (currentView === 'bookmarks') {
     return (
-      <div className="min-h-screen p-6">
+      <div className="min-h-screen md:p-6 p-0">
         <Bookmarks />
       </div>
     );

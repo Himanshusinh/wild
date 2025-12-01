@@ -23,7 +23,6 @@ export default function App() {
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
-
   // Preserve landing when explicitly selected; don't force home on first load
   useEffect(() => {
     if (!isFirstLoad.current) return;
@@ -61,17 +60,6 @@ export default function App() {
   if (pathname?.startsWith('/view/HomePage')) {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
     return <HomePage />;
-  }
-  if (pathname && (pathname.toLowerCase().startsWith('/view/blog') || pathname.startsWith('/view/Blog') || pathname.startsWith('/blog'))) {
-    console.log('🔍 App - Route override: rendering BlogPage for', pathname);
-    return <BlogPage />;
-  }
-  
-  // For root path only, handle Redux state-based rendering
-  // Other routes like /view/pricing, /view/workflows are handled by their own page files via Next.js file-based routing
-  if (pathname !== '/') {
-    // This should not be reached for routes with their own page files, but return null just in case
-    return null;
   }
 
   // Render different views based on current state

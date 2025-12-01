@@ -2,7 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { getImageUrl } from '@/routes/imageroute';
 import './LegalLayout.css';
 
 interface LegalLayoutProps {
@@ -28,11 +30,24 @@ const LegalLayout: React.FC<LegalLayoutProps> = ({ children, currentPage }) => {
       <div className="legal-layout">
         {/* Header Section */}
         <div className="legal-header-section">
-          <img 
-            src="/icons/wildmindai logo white.svg" 
-            alt="Wild Mind AI Logo" 
-            className="legal-logo"
-          />
+          <div className="legal-logo-container">
+            <Image
+              src={getImageUrl("core", "logo") || "/placeholder.svg"}
+              alt="Wild Mind AI Logo"
+              width={80}
+              height={36}
+              className="legal-logo"
+              unoptimized
+            />
+            <Image
+              src="/icons/wildmind_text_whitebg (2).svg"
+              alt="Wild Mind AI Text"
+              width={120}
+              height={24}
+              className="legal-logo-text"
+              unoptimized
+            />
+          </div>
           <div className="legal-title-wrapper">
             <button 
               onClick={() => router.back()}
@@ -66,9 +81,9 @@ const LegalLayout: React.FC<LegalLayoutProps> = ({ children, currentPage }) => {
           </aside>
 
           {/* Right Content Area */}
-          <section className="legal-content">
+          <div className="legal-content">
             {children}
-          </section>
+          </div>
         </div>
       </div>
     </main>

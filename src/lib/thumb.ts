@@ -1,7 +1,7 @@
 
 export function toZataPath(urlOrPath: string): string {
   if (!urlOrPath) return ''
-  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
   // If the URL starts with the known Zata bucket prefix, strip it
   if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length)
   // If it's an absolute URL but not Zata, do not attempt to treat it as a path
@@ -52,7 +52,7 @@ export function toResourceProxy(urlOrPath: string): string {
  */
 export function toDirectUrl(urlOrPath: string): string {
   if (!urlOrPath) return ''
-  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
   try {
     const u = new URL(urlOrPath)
     // If it's already our Zata CDN, just return it

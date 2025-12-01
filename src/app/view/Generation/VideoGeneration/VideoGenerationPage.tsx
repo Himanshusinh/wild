@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import InputBox from './TextToVideo/compo/InputBox';
 import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 
-type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'UGC';
+type VideoFeature = 'Video' | 'Lipsync' | 'Animate';
 
 export default function VideoGenerationPage() {
     const [activeFeature, setActiveFeature] = useState<VideoFeature>('Video');
@@ -28,7 +28,7 @@ export default function VideoGenerationPage() {
                         {/* Feature Filter Bar */}
                         <div className="mb-4">
                             <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-1 scrollbar-none">
-                                {(['Video', 'Lipsync', 'Animate', 'UGC'] as VideoFeature[]).map((feature) => (
+                                {(['Video', 'Lipsync', 'Animate'] as VideoFeature[]).map((feature) => (
                                     <button
                                         key={feature}
                                         onClick={() => setActiveFeature(feature)}

@@ -61,26 +61,16 @@ const LandingPage: React.FC = () => {
   // Show logout toast on entry and prevent navigating back into protected routes after logout
   React.useEffect(() => {
     if (typeof window === 'undefined') return
+    // Toast logic moved to global ToastMount.tsx to prevent race conditions
+    // Only keeping popstate handling here
+    if (typeof window === 'undefined') return
     try {
+      // Clean up any stale local storage flags if they exist
       const key = 'toastMessage'
       const flag = localStorage.getItem(key)
-      const search = new URLSearchParams(window.location.search)
-      const queryFlag = search.get('toast')
-      if (!logoutToastShown.current && (flag === 'LOGOUT_SUCCESS' || queryFlag === 'LOGOUT_SUCCESS')) {
-        logoutToastShown.current = true
-        // Use setTimeout to ensure toast shows after page is fully loaded
-        setTimeout(() => {
-          import('react-hot-toast').then(m => {
-            m.default.success('Logged out successfully', { duration: 2500 })
-          })
-        }, 300)
-        try { localStorage.removeItem(key) } catch {}
-        // Clean the query param without reload
-        if (queryFlag) {
-          const url = new URL(window.location.href)
-          url.searchParams.delete('toast')
-          window.history.replaceState({}, '', url.toString())
-        }
+      if (flag === 'LOGOUT_SUCCESS') {
+        // Let ToastMount handle it, but if we are here, we might want to ensure it's not double handled
+        // Actually ToastMount handles it globally, so we just ignore it here
       }
     } catch {}
     const handlePop = () => {

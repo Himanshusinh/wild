@@ -21,7 +21,7 @@
 .legal-header-section {
   width: 100%;
   background: #000000;
-  padding: 16px 0 32px 0;
+  padding: 10px 0 0px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 0;
   position: fixed;
@@ -36,12 +36,13 @@
   padding-right: 24px;
   box-sizing: border-box;
   overflow: hidden;
+  padding-top: 36px;
 }
 
 /* Main Container with Sidebar and Content */
 .legal-main-container {
   display: flex;
-  gap: 32px;
+  gap: 0px;
   align-items: flex-start;
   position: relative;
 }
@@ -51,10 +52,10 @@
   flex-shrink: 0;
   width: 320px;
   position: fixed;
-  top: 300px;
+  top: 210px;
   max-height: calc(100vh - 270px);
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 0px;
 }
 
 /* Custom scrollbar for sidebar */
@@ -121,13 +122,30 @@
   height: 20px;
 }
 
+.legal-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 0 auto 16px auto;
+  flex-shrink: 0;
+}
+
 .legal-logo {
-  height: 3.5rem;
+  height: 2.5rem;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
   display: block;
-  margin: 0 auto 16px auto;
+}
+
+.legal-logo-text {
+  height: 1.5rem;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+  opacity: 0.9;
 }
 
 .legal-nav-title {
@@ -420,7 +438,7 @@
   }
 
   .legal-nav-title {
-    font-size: 24px;
+    font-size: 10px;
     margin: 0;
   }
 

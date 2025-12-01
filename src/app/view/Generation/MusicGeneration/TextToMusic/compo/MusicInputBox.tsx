@@ -250,7 +250,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     
     // If we have a storagePath, construct Zata URL from it
     if (audioFile.storagePath) {
-      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/';
+      const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
       // Remove leading slash from storagePath if present
       const cleanPath = audioFile.storagePath.startsWith('/') ? audioFile.storagePath.slice(1) : audioFile.storagePath;
       return `${ZATA_PREFIX.replace(/\/$/, '')}/${cleanPath}`;

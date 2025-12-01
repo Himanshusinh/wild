@@ -8,7 +8,7 @@ export async function enhancePromptAPI(
   mediaType?: 'image' | 'video' | 'music'
 ): Promise<{ ok: boolean; enhancedPrompt?: string; error?: string } > {
   if (!prompt || typeof prompt !== 'string') throw new Error('prompt is required');
-  const base = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000').replace(/\/$/, '');
+  const base = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || '').replace(/\/$/, '');
   const url = `${base}/api/prompt-enhancer/enhance`;
 
   const res = await fetch(url, {
@@ -19,7 +19,7 @@ export async function enhancePromptAPI(
       media_type: mediaType || 'image', // Default to image for backward compatibility
     }),
   });
-
+ 
   if (!res.ok) {
     let body: any;
     try { body = await res.json(); } catch { body = { error: res.statusText }; }

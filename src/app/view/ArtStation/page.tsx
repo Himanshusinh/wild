@@ -12,6 +12,7 @@ import ArtStationPreview from '@/components/ArtStationPreview'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
+import { Masonry } from '@/components/masonry'
 
 type PublicItem = {
   id: string;
@@ -25,6 +26,7 @@ type PublicItem = {
   updatedAt?: string;
   isPublic?: boolean;
   isDeleted?: boolean;
+  aestheticScore?: number; // Added: aesthetic score field
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
   images?: { 
     id: string; 
@@ -36,8 +38,9 @@ type PublicItem = {
     avifUrl?: string;
     blurDataUrl?: string;
     optimized?: boolean;
+    aestheticScore?: number; // Added: image-level score
   }[];
-  videos?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
+  videos?: { id: string; url: string; originalUrl?: string; storagePath?: string; aestheticScore?: number }[];
   audios?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
 };
 
@@ -401,6 +404,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
         aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
         frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
+        aestheticScore: typeof it?.aestheticScore === 'number' ? it.aestheticScore : undefined, // Preserve aestheticScore
       }))
 
       const newCursor = meta?.nextCursor || payload?.nextCursor
@@ -587,7 +591,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         setSelectedImageIndex(0)
         setSelectedVideoIndex(0)
         setSelectedAudioIndex(0)
-        setPreview({ kind, url: media.url, item: found })
+        // Normalize the URL before setting preview to ensure it uses proxy endpoint
+        const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
+        setPreview({ kind, url: normalizedUrl || media.url, item: found })
         setDeepLinkId(null)
       }
     }
@@ -671,6 +677,8 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!trimmed) return undefined
     if (/^https?:\/\//i.test(trimmed)) return trimmed
     if (trimmed.startsWith('/api/')) return trimmed
+    // If it's a relative path (not starting with / or http), assume it's a Zata path and proxy it
+    if (!trimmed.startsWith('/')) return toMediaProxy(trimmed)
     return toDirectUrl(trimmed)
   }
 
@@ -713,7 +721,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       normalizeMediaUrl(m.optimizedUrl) ||
       normalizeMediaUrl(m.optimized?.url) ||
       normalizeMediaUrl(m.webpUrl)
-    const storageUrl = m.storagePath ? toDirectUrl(m.storagePath) : undefined
+    const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
     const directUrl = normalizeMediaUrl(m.url) || storageUrl
     const originalUrl = normalizeMediaUrl(m.originalUrl) || storageUrl
 
@@ -795,7 +803,11 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         decoding="async"
         fetchPriority={fetchPriority}
         className={className}
-        style={fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : {}}
+        style={{
+          ...(fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : {}),
+          outline: 'none',
+          border: 'none',
+        }}
         onError={handleError}
         onLoad={(e) => {
           try {
@@ -952,8 +964,8 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   useEffect(() => {
     try {
       const head = document.head
-      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '')
-      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '')
+      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
       const hosts = [apiBase, new URL(zata).origin]
       hosts.forEach(href => {
         if (!head.querySelector(`link[data-preconnect='${href}']`)) {
@@ -1042,18 +1054,22 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
   // duplicate removed
 
+  // Determine if user is authenticated to adjust layout
+  const isAuth = !!currentUid
+
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-      <div className="flex md:ml-[68px] ml-0">
+      {/* When authenticated: add margin for sidepanel, when not: full width */}
+      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
             <div className=" mb-0 md:mb-3">
-              <h3 className="text-white md:text-3xl text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
+              <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
                 Art Station
               </h3>
-              <p className="text-white/80 md:text-base text-xs sm:text-lg md:text-xl">
+              <p className="text-white/80 text-xs sm:text-lg md:text-xl">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
@@ -1112,21 +1128,18 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
-          {/* Masonry grid with preserved order */}
-          <style dangerouslySetInnerHTML={{__html: `
-            .masonry-grid-custom {
-              grid-auto-rows: 9px;
-            }
-            @media (min-width: 768px) {
-              .masonry-grid-custom {
-                grid-auto-rows: 9.25px;
-              }
-            }
-          `}} />
-          <div
-            className="masonry-grid-custom grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-1 gap-1 [overflow-anchor:none]"
-          >
-            {cards.map(({ item, media, kind }, idx) => {
+          {/* Masonry grid */}
+          <Masonry
+            items={cards}
+            config={{
+              columns: [2, 3, 4, 5],
+              gap: [2, 2, 2, 2], // uniform 2px spacing
+              media: [640, 768, 1024, 1280],
+            }}
+            className="[overflow-anchor:none]"
+            placeholder={undefined}
+            render={(card, idx) => {
+              const { item, media, kind } = card
               // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
               const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
@@ -1141,25 +1154,26 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
               return (
                 <div
                   key={cardId}
-                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => {
                     setSelectedImageIndex(0)
                     setSelectedVideoIndex(0)
                     setSelectedAudioIndex(0)
-                    setPreview({ kind, url: media.url, item })
+                    // Normalize the URL before setting preview to ensure it uses proxy endpoint
+                    const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
+                    setPreview({ kind, url: normalizedUrl || media.url, item })
                   }}
                   ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
                   style={{
                     transitionDelay: `${(idx % 12) * 35}ms`,
-                    gridRowEnd: `span ${tileSpans[cardId] || 30}`,
                   }}
+                  tabIndex={-1}
                 >
-                  <div className="masonry-item-inner relative w-full rounded-lg overflow-hidden bg-transparent group" style={{ contain: 'paint' }}>
+                  <div className="masonry-item-inner relative w-full overflow-visible bg-transparent group" style={{ contain: 'paint' }}>
                     <div
-                      style={{ aspectRatio: tileRatio, minHeight: 160 }}
-                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
+                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100 flex items-center justify-center bg-gray-900/20 overflow-hidden mb-0 w-full`}
                     >
                       {kind !== 'audio' && !loadedTiles.has(cardId) && (
                         <div className="absolute inset-0 bg-white/5" />
@@ -1176,7 +1190,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             return (
                               <video
                                 src={proxied}
-                                className="absolute inset-0 w-full h-full object-cover"
+                                className="w-full h-auto object-contain"
                                 muted
                                 playsInline
                                 preload="metadata"
@@ -1227,7 +1241,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                               alt=""
                               loading={isPriority ? 'eager' : 'lazy'}
                               fetchPriority={isPriority ? 'high' : 'auto'}
-                              className="absolute inset-0 w-full h-full object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                              className="w-full h-auto object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                               onLoad={() => { markTileLoaded(cardId) }}
                             />
                           </>
@@ -1235,10 +1249,10 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                           <ImageWithFallback
                             media={media}
                             alt={item.prompt || ''}
-                            fill={true}
+                            fill={false}
                             sizes={sizes}
                             blurDataURL={media.blurDataUrl || blur}
-                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                            className="w-full h-auto object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             priority={isPriority}
                             fetchPriority={isPriority ? 'high' : 'auto'}
                             onLoadingComplete={(img) => {
@@ -1272,63 +1286,76 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                         </div>
                       )}
                     </div>
+                    {/* Dark gradient overlay from bottom */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10" />
+                    
                     {/* Hover overlay: user profile + actions */}
-                    <div className="absolute inset-x-0 bottom-0 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                      <div className="rounded-lg px-2 py-2 md:px-3 md:py-2 flex items-center justify-between gap-2 pointer-events-auto">
-                        {/* User */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          {(() => {
-                            const cb = item.createdBy || ({} as any)
-                            console.log('cb', cb)
-                            const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
-                            if (photo) {
-                              const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
-                              return <img src={proxied} alt={cb.username || cb.displayName || ''} className="w-7 h-7 rounded-full object-cover" />
-                            }
-                            return (
-                              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[11px] text-white/90">
-                                {(cb.username || cb.displayName || 'U').slice(0,1).toUpperCase()}
+                    <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
+                      <div className="px-2.5 py-2.5 md:px-3 md:py-3">
+                        <div className="rounded-lg px-3 py-2.5 md:px-4 md:py-3 flex items-center justify-between gap-3 pointer-events-auto">
+                          {/* User Section */}
+                          <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+                            {(() => {
+                              const cb = item.createdBy || ({} as any)
+                              console.log('cb', cb)
+                              const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
+                              if (photo) {
+                                const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
+                                return (
+                                  <div className="flex-shrink-0">
+                                    <img 
+                                      src={proxied} 
+                                      alt={cb.username || cb.displayName || ''} 
+                                      className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover border border-white/10" 
+                                    />
+                                  </div>
+                                )
+                              }
+                              return (
+                                <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 flex items-center justify-center text-xs md:text-sm font-medium text-white/90 flex-shrink-0 border border-white/10">
+                                  {(cb.username || cb.displayName || 'U').slice(0,1).toUpperCase()}
+                                </div>
+                              )
+                            })()}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-white text-sm md:text-base font-medium truncate leading-tight">
+                                {item.createdBy?.username || item.createdBy?.displayName || 'User'}
                               </div>
-                            )
-                          })()}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-white/90 text-[12px] truncate">
-                              {item.createdBy?.username || item.createdBy?.displayName || 'User'}
                             </div>
                           </div>
-                        </div>
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleLike(cardId) }}
-                            className={`p-1.5 rounded-md transition-colors ${isLiked ? 'bg-white text-black' : 'bg-white/5 backdrop-blur-3xl hover:bg-white/20 text-white'}`}
-                            aria-label={isLiked ? 'Unlike' : 'Like'}
-                            title={isLiked ? 'Unlike' : 'Like'}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={ isLiked ?"red":"currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
-                            </svg>
-                          </button>
-                          {currentUid && item.createdBy?.uid === currentUid && (
+                          {/* Actions Section */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <button
-                              onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
-                              className="p-1.5 rounded-md bg-white/5 backdrop-blur-3xl hover:bg-white/20 text-red transition-colors"
-                              aria-label="Delete"
-                              title="Delete"
+                              onClick={(e) => { e.stopPropagation(); toggleLike(cardId) }}
+                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center ${isLiked ? 'bg-white text-red-500 hover:bg-white/90' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                              aria-label={isLiked ? 'Unlike' : 'Like'}
+                              title={isLiked ? 'Unlike' : 'Like'}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                              </svg>
                             </button>
-                          )}
+                            {currentUid && item.createdBy?.uid === currentUid && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
+                                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all duration-200 flex-shrink-0 flex items-center justify-center focus:outline-none"
+                                aria-label="Delete"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5 flex-shrink-0" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
+                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 pointer-events-none transition focus:outline-none" />
                   </div>
                 </div>
               )
-            })}
-          </div>
+            }}
+          />
 
           {/* Loading indicator for pagination */}
           {loading && items.length > 0 && (

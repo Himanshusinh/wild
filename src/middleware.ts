@@ -176,6 +176,12 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/view/workflows') ||
     pathnameLower.startsWith('/view/blog') ||
     pathnameLower.startsWith('/blog') ||
+    // Legal pages
+    pathname.startsWith('/legal/') ||
+    // Product pages
+    pathname.startsWith('/product/') ||
+    // Company pages
+    pathname.startsWith('/company/') ||
     // Allow static assets and Next.js internals
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -184,16 +190,12 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/public/')
   );
 
-  // If root path and unauthenticated, force redirect to landing with toast
+  // Root path: Allow through without redirect for Razorpay verification
+  // The page.tsx will handle client-side redirect based on auth status
+  // This ensures Razorpay's verification bot gets a 200 OK response
   if (pathname === '/') {
-    const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
-    const hasHint = Boolean(req.cookies.get('auth_hint'));
-    if (!hasSession && !hasHint) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/view/Landingpage';
-      url.searchParams.set('toast', 'UNAUTHORIZED');
-      return NextResponse.redirect(url);
-    }
+    // Don't redirect here - let the page render and handle redirect client-side
+    // This allows Razorpay verification to succeed (they need 200 OK, not 302 redirect)
     return res;
   }
   if (isPublic) return res;
@@ -209,6 +211,7 @@ export function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
     url.searchParams.set('next', pathname);
+    url.searchParams.set('toast', 'SESSION_EXPIRED'); // Add toast message
     const redirect = NextResponse.redirect(url);
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
     return redirect;

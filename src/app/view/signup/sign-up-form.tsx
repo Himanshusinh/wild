@@ -2,13 +2,14 @@
 
 import { useState, type FormEvent, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
 import { useUsernameAvailability } from "./useUsernameAvailability"
 import { getImageUrl } from "@/routes/imageroute"
 import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
-import { APP_ROUTES } from '../../../routes/routes'
+import { APP_ROUTES, LEGAL_ROUTES } from '../../../routes/routes'
 import toast from 'react-hot-toast'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 
@@ -344,7 +345,9 @@ export default function SignInForm() {
     console.log("🎯 SignUp Form Component Mounted") 
     console.log("🌐 Current URL:", window.location.href)
     console.log("🔧 Axios configured:", !!axiosInstance)
-  }, [])
+
+    // Toast logic moved to global ToastMount.tsx
+  }, [searchParams])
 
 
   // API handlers for form flow
@@ -513,7 +516,7 @@ export default function SignInForm() {
 
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
-            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || ''
             // Create session directly with backend
             const sessionResponse = await fetch(`${backendBaseForSession}/api/auth/session`, {
               method: 'POST',
@@ -1805,8 +1808,23 @@ export default function SignInForm() {
                 {/* Terms Text (Dark) - Checkbox removed, text only */}
                 <div className="text-xs text-center text-gray-400 leading-relaxed">
                   By signing up, you agree to our{" "}
-                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
-                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
+                  <Link 
+                    href={LEGAL_ROUTES.TERMS_CONDITIONS}
+                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Terms and Conditions
+                  </Link>{" "}
+                  &{" "}
+                  <Link 
+                    href={LEGAL_ROUTES.PRIVACY_PAGE}
+                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Privacy Policy
+                  </Link>.
                 </div>
 
                 {/* Error Message (Dark) - Only show server/API errors */}

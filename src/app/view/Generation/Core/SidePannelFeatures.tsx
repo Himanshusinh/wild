@@ -239,24 +239,20 @@ const SidePannelFeatures = ({
 
   // Label classes - smooth slide animation (no pop effect)
   const labelClasses =
-    `text-white whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
-      isMobileSidebarOpen 
-        ? 'inline-block' 
-        : 'hidden'
-    } md:inline-block ${
-      isSidebarHovered 
-        ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
-        : 'md:max-w-0 md:opacity-0 md:-translate-x-full'
+    `text-white whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isMobileSidebarOpen
+      ? 'inline-block'
+      : 'hidden'
+    } md:inline-block ${isSidebarHovered
+      ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0'
+      : 'md:max-w-0 md:opacity-0 md:-translate-x-full'
     }`;
   const taglineClasses =
-    `text-white whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
-      isMobileSidebarOpen 
-        ? 'inline-block' 
-        : 'hidden'
-    } md:inline-block ${
-      isSidebarHovered 
-        ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0' 
-        : 'md:max-w-0 md:opacity-0 md:-translate-x-full'
+    `text-white whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isMobileSidebarOpen
+      ? 'inline-block'
+      : 'hidden'
+    } md:inline-block ${isSidebarHovered
+      ? 'md:max-w-[180px] md:opacity-100 md:translate-x-0'
+      : 'md:max-w-0 md:opacity-0 md:-translate-x-full'
     }`;
 
   return (
@@ -296,13 +292,11 @@ const SidePannelFeatures = ({
       {/* Original sidebar - keeps original CSS styling */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-all text-white duration-300 border-r border-white/10 ${
-          isMobileSidebarOpen 
-            ? 'w-60 translate-x-0 z-[56]' 
-            : '-translate-x-full md:translate-x-0 z-[50]'
-        } ${
-          isSidebarHovered ? 'md:w-60' : 'md:w-[68px]'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-all text-white duration-300 border-r border-white/10 ${isMobileSidebarOpen
+          ? 'w-60 translate-x-0 z-[56]'
+          : '-translate-x-full md:translate-x-0 z-[50]'
+          } ${isSidebarHovered ? 'md:w-60' : 'md:w-[68px]'
+          }`}
         style={{
           // borderTopLeftRadius: '16px',
           // borderBottomLeftRadius: '16px',
@@ -322,215 +316,206 @@ const SidePannelFeatures = ({
           setIsSidebarHovered(false);
         }}
       >
-      {/* Logo at the top */}
-      <div className="flex items-center gap-2 md:p-2 px-3 py-0 mt-8 md:-mt-4 md:mb-0 mb-0 -ml-2 overflow-hidden">
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
-            try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
-            try { dispatch(setCurrentView('landing')); } catch { }
-            // Force hard navigation to avoid race conditions
-            try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
-          })}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
+        {/* Logo at the top */}
+        <div className="flex items-center gap-2 md:p-2 px-3 py-0 mt-8 md:-mt-4 md:mb-0 mb-0 -ml-2 overflow-hidden">
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => {
               try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
               try { dispatch(setCurrentView('landing')); } catch { }
+              // Force hard navigation to avoid race conditions
               try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
-            }
-          }}
-          className="md:w-[48px] md:h-[48px] w-[36px] h-[36px] flex-none cursor-pointer shrink-0">
-          <Image
-            src="/core/logosquare.png"
-            alt="WildMind Icon"
-            width={48}
-            height={48}
-            className="h-full w-full object-contain"
-            unoptimized
-          />
-        </div>
-        <span
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } })}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
-              try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }
-              try { dispatch(setCurrentView('landing')); } catch { }
-              try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
-            }
-          }}
-          className={`${taglineClasses} mt-1 cursor-pointer shrink-0`}>
-          <Image src="/icons/wildmind_text_whitebg (2).svg" alt="WildMind Logo" width={400} height={200} className="h-6 w-32" unoptimized />
-        </span>
-      </div>
-
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, APP_ROUTES.HOME, async () => {
-            try {
-              await ensureSessionReady(600)
-            } catch (error) {
-              // Silent fail
-            }
-            router.push(APP_ROUTES.HOME)
-          })}
-          onClick={(e) => {
-            // Handle normal left-click (button 0)
-            if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              closeMobileSidebar();
-              (async () => {
-                try {
-                  await ensureSessionReady(600)
-                } catch (error) {
-                  // Silent fail
-                }
-                router.push(APP_ROUTES.HOME)
-              })();
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
-        >
-          <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="flex-none shrink-0 w-[24px] h-[24px]" priority unoptimized />
-          <span className={labelClasses}>Home</span>
-        </div>
-      </div>
-
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onClick={async () => {
-            // Check if we're in production by checking the hostname
-            const isProd = typeof window !== 'undefined' && 
-              (window.location.hostname === 'wildmindai.com' || 
-               window.location.hostname === 'www.wildmindai.com');
-            const canvasUrl = isProd 
-              ? 'https://studio.wildmindai.com'
-              : 'http://localhost:3001';
-            
-            // In production, try to sync auth token to localStorage for canvas
-            // This is a fallback if cookies don't work across subdomains
-            if (isProd) {
-              try {
-                // Get auth token from localStorage (if available)
-                const authToken = localStorage.getItem('authToken');
-                if (authToken) {
-                  // Store in a way that canvas can access
-                  // Use sessionStorage which is shared across tabs but not subdomains
-                  // So we'll pass it via URL parameter as fallback
-                  const url = new URL(canvasUrl);
-                  // Don't pass token in URL for security - canvas should use cookie
-                  // But we can set a flag to help canvas know user is authenticated
-                  url.searchParams.set('from', 'wildmindai');
-                  window.open(url.toString(), '_blank', 'noopener,noreferrer');
-                } else {
-                  window.open(canvasUrl, '_blank', 'noopener,noreferrer');
-                }
-              } catch (e) {
-                console.error('Error opening canvas:', e);
-                window.open(canvasUrl, '_blank', 'noopener,noreferrer');
+            })}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                try { console.log('[SidePanel] logo clicked -> /view/Landingpage') } catch { }
+                try { dispatch(setCurrentView('landing')); } catch { }
+                try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
               }
-            } else {
-              window.open(canvasUrl, '_blank', 'noopener,noreferrer');
-            }
-          }}
-          className="flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item"
-        >
-          <Image src={imageRoutes.icons.canvas} alt="WildCanvas" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>WildCanvas</span>
+            }}
+            className="md:w-[48px] md:h-[48px] w-[36px] h-[36px] flex-none cursor-pointer shrink-0">
+            <Image
+              src="/core/logosquare.png"
+              alt="WildMind Icon"
+              width={48}
+              height={48}
+              className="h-full w-full object-contain"
+              unoptimized
+            />
+          </div>
+          <span
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/view/Landingpage', () => { try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }; try { dispatch(setCurrentView('landing')); } catch { }; try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); } })}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                try { console.log('[SidePanel] brand clicked -> /view/Landingpage') } catch { }
+                try { dispatch(setCurrentView('landing')); } catch { }
+                try { window.location.assign('/view/Landingpage'); } catch { router.push('/view/Landingpage'); }
+              }
+            }}
+            className={`${taglineClasses} mt-1 cursor-pointer shrink-0`}>
+            <Image src="/icons/wildmind_text_whitebg (2).svg" alt="WildMind Logo" width={400} height={200} className="h-6 w-32" unoptimized />
+          </span>
         </div>
-      </div>
 
-      <div className="relative">
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleImageGenerationClick();
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
-          <span className={labelClasses}>Image Generation</span>
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, APP_ROUTES.HOME, async () => {
+              try {
+                await ensureSessionReady(600)
+              } catch (error) {
+                // Silent fail
+              }
+              router.push(APP_ROUTES.HOME)
+            })}
+            onClick={(e) => {
+              // Handle normal left-click (button 0)
+              if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                closeMobileSidebar();
+                (async () => {
+                  try {
+                    await ensureSessionReady(600)
+                  } catch (error) {
+                    // Silent fail
+                  }
+                  router.push(APP_ROUTES.HOME)
+                })();
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
+          >
+            <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="flex-none shrink-0 w-[24px] h-[24px]" priority unoptimized />
+            <span className={labelClasses}>Home</span>
+          </div>
         </div>
-      </div>
 
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('edit-image');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>Image Edit</span>
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                router.push('/view/ArtStation');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <span className={labelClasses}>Art Station</span>
+          </div>
         </div>
-      </div>
 
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('text-to-video');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
-          <span className={labelClasses}>Video Generation</span>
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/canvas-projects', () => router.push('/canvas-projects'))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                router.push('/canvas-projects');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/canvas-projects')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src={imageRoutes.icons.canvas} alt="WildCanvas" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <span className={labelClasses}>WildCanvas</span>
+          </div>
         </div>
-      </div>
 
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('edit-video');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src="/icons/gear-play.svg" alt="Video Edit" width={36} height={36} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>Video Edit</span>
+        <div className="relative">
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                handleImageGenerationClick();
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
+            <span className={labelClasses}>Image Generation</span>
+          </div>
         </div>
-      </div>
 
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              handleGenerationTypeChange('text-to-music');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
-          <span className={labelClasses}>Audio Generation</span>
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                handleGenerationTypeChange('edit-image');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <span className={labelClasses}>Image Edit</span>
+          </div>
         </div>
-      </div>
 
-      
-{/* 
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                handleGenerationTypeChange('text-to-video');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
+            <span className={labelClasses}>Video Generation</span>
+          </div>
+        </div>
+
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                handleGenerationTypeChange('edit-video');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src="/icons/gear-play.svg" alt="Video Edit" width={36} height={36} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <span className={labelClasses}>Video Edit</span>
+          </div>
+        </div>
+
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                handleGenerationTypeChange('text-to-music');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
+            <span className={labelClasses}>Audio Generation</span>
+          </div>
+        </div>
+
+
+        {/* 
       <div>
         <div
           onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.LIVE_CHAT, () => router.push(NAV_ROUTES.LIVE_CHAT))}
@@ -549,8 +534,8 @@ const SidePannelFeatures = ({
 
 
 
-      {/* Wildmind Skit */}
-      {/* <div>
+        {/* Wildmind Skit */}
+        {/* <div>
         <div
           onClick={() => {
             try {
@@ -571,7 +556,7 @@ const SidePannelFeatures = ({
       </div> */}
 
 
-      {/* <div className="relative">
+        {/* <div className="relative">
         <div
           ref={brandingRef}
           onMouseDown={(e) => {
@@ -633,7 +618,7 @@ const SidePannelFeatures = ({
               <span className='text-sm text-white'>Sticker Generation</span>
             </div> */}
 
-            {/* <div
+        {/* <div
                         onClick={() => handleGenerationTypeChange('mockup-generation')}
                         className={`flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl ${
                             currentGenerationType === 'mockup-generation' ? 'bg-white/15' : ''
@@ -642,7 +627,7 @@ const SidePannelFeatures = ({
                         <span className='text-sm text-white'>Mockup Generation</span>
                     </div> */}
 
-            {/* <div
+        {/* <div
               onMouseDown={(e) => handleClickWithNewTab(e, '/product-generation', () => router.push('/product-generation'))}
               onClick={(e) => {
                 if (!e.ctrlKey && !e.metaKey) {
@@ -658,68 +643,40 @@ const SidePannelFeatures = ({
 
       </div> */}
 
-      {/* Art Station */}
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
-              router.push('/view/ArtStation');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>Art Station</span>
-        </div>
-      </div>
+        {/* Art Station */}
 
-      {/* <div>
+
+        {/* <div>
             <div className='flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item'>
                 <Image src="/icons/templateswhite.svg" alt="Templates" width={30} height={30} />
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Templates</span>
             </div>
         </div>  */}
 
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
-              router.push(NAV_ROUTES.PRICING);
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
-            }`}
-        >
-          <Image src="/icons/shield-dollar.svg" alt="Pricing" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>Pricing</span>
-        </div>
-      </div>
-
-
-
-      <div>
-        <div
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseDown={(e) => handleClickWithNewTab(e, '/history', () => {
-            try {
-              if (onViewChange && typeof onViewChange === 'function') {
-                onViewChange('history');
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                router.push(NAV_ROUTES.PRICING);
               }
-            } catch (error) {
-              console.error('Error in history click handler:', error);
-            }
-            router.push('/history');
-          })}
-          onClick={(e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-              closeMobileSidebar();
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
+              }`}
+          >
+            <Image src="/icons/shield-dollar.svg" alt="Pricing" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <span className={labelClasses}>Pricing</span>
+          </div>
+        </div>
+
+
+
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) => handleClickWithNewTab(e, '/history', () => {
               try {
                 if (onViewChange && typeof onViewChange === 'function') {
                   onViewChange('history');
@@ -728,20 +685,32 @@ const SidePannelFeatures = ({
                 console.error('Error in history click handler:', error);
               }
               router.push('/history');
-            }
-          }}
-          className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
-        >
-          <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-          <span className={labelClasses}>History</span>
+            })}
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                try {
+                  if (onViewChange && typeof onViewChange === 'function') {
+                    onViewChange('history');
+                  }
+                } catch (error) {
+                  console.error('Error in history click handler:', error);
+                }
+                router.push('/history');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
+          >
+            <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <span className={labelClasses}>History</span>
+          </div>
         </div>
-      </div>
 
 
-      
 
-      {/* Bookmarks - Commented out for now */}
-      {/* <div>
+
+        {/* Bookmarks - Commented out for now */}
+        {/* <div>
             <div
                 onClick={() => {
                   try {
@@ -764,9 +733,10 @@ const SidePannelFeatures = ({
             </div>
         </div> */}
 
-      {/* Bottom: credits + profile */}
-   
-    </div>
+        {/* Bottom: credits + profile */}
+
+      </div>
+
     </>
   )
 }

@@ -453,7 +453,7 @@ const EditImageInterface: React.FC = () => {
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
           const decodedPath = decodeURIComponent(storagePathParam).replace(/^\/+/, '');
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
           const directUrl = decodedPath ? `${ZATA_PREFIX}${decodedPath}` : '';
           // Apply to all features so switching tabs preserves the same input
           setInputs({
@@ -950,7 +950,7 @@ const EditImageInterface: React.FC = () => {
     { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
     { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
     { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
-    { id: 'live-chat', label: 'Live Chat', description: 'Chat-driven edits & regenerations' },
+    { id: 'live-chat', label: 'Chat to Edit', description: 'Chat-driven edits & regenerations' },
   ] as const;
 
   // Feature preview assets and display labels
@@ -1648,7 +1648,7 @@ const EditImageInterface: React.FC = () => {
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
       if (!url) return url as any;
       if (url.startsWith('data:')) return url as any;
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
       const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
       // For Replicate, we must provide a publicly reachable URL. Use Zata public URL instead of localhost proxy.
       try {
@@ -1692,7 +1692,7 @@ const EditImageInterface: React.FC = () => {
       // so we avoid cross-origin/read restrictions, then convert to data URI.
       try {
         const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
         if (String(src).startsWith(ZATA_PREFIX)) {
           const path = src.substring(ZATA_PREFIX.length);
           const proxyUrl = `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}`;
@@ -2789,7 +2789,7 @@ const EditImageInterface: React.FC = () => {
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
     return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
   };
 
@@ -3366,10 +3366,10 @@ const EditImageInterface: React.FC = () => {
                                     onClick={handleLiveGenerate}
                                     disabled={processing['live-chat'] || !livePrompt.trim()}
                                     aria-label="Generate"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-blue-500  text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                      <circle cx="12" cy="12" r="9" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                      {/* <circle cx="12" cy="12" r="9" /> */}
                                       <path d="M10 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                   </button>

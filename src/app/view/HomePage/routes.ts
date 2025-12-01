@@ -116,4 +116,4 @@ export const getImageUrl = (folder: string, imageName: string): string => {
     return url;
 };
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';

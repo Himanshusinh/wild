@@ -12,17 +12,27 @@ export default function ToastMount() {
       setTimeout(() => {
         const search = new URLSearchParams(window.location.search)
         const q = search.get('toast')
-        if (q === 'LOGOUT_SUCCESS') {
-          toast.success('Logged out successfully', { duration: 2500 })
-          const url = new URL(window.location.href)
-          url.searchParams.delete('toast')
-          window.history.replaceState({}, '', url.toString())
-        } else if (q === 'LOGOUT_FAILED') {
-          toast.error('Logout failed. Please try again.', { duration: 4000 })
+        
+        if (q) {
+          // Handle all toast types here
+          if (q === 'LOGOUT_SUCCESS') {
+            toast.success('Logged out successfully', { duration: 2500 })
+          } else if (q === 'LOGOUT_FAILED') {
+            toast.error('Logout failed. Please try again.', { duration: 4000 })
+          } else if (q === 'SESSION_EXPIRED') {
+            toast.error('Session expired. Please log in again.', { duration: 5000 })
+          } else if (q === 'UNAUTHORIZED') {
+            toast.error('Please log in to access that page.', { duration: 5000 })
+          } else if (q === 'LOGIN_REQUIRED') {
+            toast('Please log in to continue.', { icon: '🔒', duration: 4000 })
+          }
+
+          // Clear the param from URL without reloading
           const url = new URL(window.location.href)
           url.searchParams.delete('toast')
           window.history.replaceState({}, '', url.toString())
         }
+
         const key = 'toastMessage'
         const flag = localStorage.getItem(key)
         if (flag) {
@@ -35,7 +45,7 @@ export default function ToastMount() {
           }
           localStorage.removeItem(key)
         }
-      }, 300)
+      }, 500) // Increased delay to 500ms to ensure Toaster is ready
     } catch {}
   }, [])
   return null

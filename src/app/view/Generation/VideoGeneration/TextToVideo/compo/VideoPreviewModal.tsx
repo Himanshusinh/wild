@@ -63,7 +63,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
   // Use shared helpers `toMediaProxy` and `toResourceProxy` from '@/lib/thumb' for proxying
 
@@ -775,9 +775,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       </div>
       {isFsOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <div className="absolute top-3 right-4 z-[90]">
-            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
-          </div>
+          {/* <div className="absolute top-3 right-4 z-[90]">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg hover:bg-white/20 text-white text-sm ">✕</button>
+          </div> */}
           <div
             ref={fsContainerRef}
             className="relative w-full h-full cursor-zoom-in"

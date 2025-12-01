@@ -67,7 +67,7 @@ const LiveChatPage = () => {
         } else if (decodedImageUrl) {
           // Convert relative URL to absolute URL for FAL service compatibility
           const absoluteUrl = decodedImageUrl.startsWith('/api/proxy/resource/') 
-            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}${decodedImageUrl}`
+            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}${decodedImageUrl}`
             : decodedImageUrl;
           dispatch(setUploadedImages([absoluteUrl]));
         }

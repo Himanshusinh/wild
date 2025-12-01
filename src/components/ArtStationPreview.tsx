@@ -67,7 +67,7 @@ export default function ArtStationPreview({
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
-  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
 
   useEffect(() => {
     setMediaDimensions(null)
@@ -247,7 +247,7 @@ export default function ArtStationPreview({
                   try {
                     let downloadUrl = currentMedia.url
                     if (downloadUrl.startsWith('/api/proxy/resource/')) {
-                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+                      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
                       downloadUrl = `${API_BASE}${downloadUrl}`
                     }
                     const fileType = preview.kind as 'image' | 'video' | 'audio'
@@ -346,7 +346,12 @@ export default function ArtStationPreview({
                   img?.originalUrl ||
                   img?.avifUrl ||
                   preview.url
-                const src = originalSource ? (toDirectUrl(originalSource) || originalSource) : preview.url
+                // Use proxy endpoint for storage paths, direct URL for full URLs
+                const src = originalSource 
+                  ? (originalSource.startsWith('http') 
+                      ? originalSource 
+                      : (toMediaProxy(originalSource) || toDirectUrl(originalSource) || originalSource))
+                  : preview.url
                 return (
                   <div className="relative w-full h-full">
                     <img
@@ -478,7 +483,15 @@ export default function ArtStationPreview({
                       onClick={() => setSelectedImageIndex(idx)}
                       className={`relative aspect-square rounded-md overflow-hidden border ${selectedImageIndex === idx ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/20 hover:border-white/40'}`}
                     >
-                      <img src={im.thumbnailUrl || im.avifUrl || im.url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                      {(() => {
+                        const thumbUrl = im.thumbnailUrl || im.avifUrl || im.url
+                        const normalizedThumb = thumbUrl 
+                          ? (thumbUrl.startsWith('http') || thumbUrl.startsWith('/api/')
+                              ? thumbUrl 
+                              : (toMediaProxy(thumbUrl) || toDirectUrl(thumbUrl) || thumbUrl))
+                          : ''
+                        return <img src={normalizedThumb} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                      })()}
                     </button>
                   ))}
                 </div>

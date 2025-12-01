@@ -94,8 +94,8 @@ interface ImagePreviewModalProps {
 const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
-  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
 
   // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
 
@@ -1235,7 +1235,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     try {
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
           const original = selectedImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
@@ -1261,7 +1261,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       // Navigate to Live Canvas with the current image
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
           const original = selectedImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
@@ -1286,7 +1286,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       // Use the same approach as Remix button - use storagePath to construct direct Zata URL
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
           const original = selectedImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
@@ -1335,7 +1335,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20  lg:py-20"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -1345,7 +1345,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
       <button 
         aria-label="Close" 
-        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-2 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
         onClick={(e) => {
           e.stopPropagation()
           e.preventDefault()
@@ -1361,7 +1361,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         }}
       >✕</button>
       <div
-        className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 rounded-xl overflow-hidden shadow-3xl"
+        className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  md:border md:border-white/10 rounded-xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1373,7 +1373,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Previous generation"
             onClick={(e) => { e.stopPropagation(); goPrevGeneration(e); }}
-            className="fixed left-0 top-1/2 -translate-y-1/2 z-[75] w-16 h-16 rounded-r-full bg-black/80 hover:bg-black/95 text-white transition-all backdrop-blur-sm border-r border-y border-white/30 hover:border-white/50 flex items-center justify-center"
+            className="fixed left-0 md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10 rounded-r-full   hover:bg-black/95 text-white transition-all backdrop-blur-sm border-r border-y border-white/30 hover:border-white/50 flex items-center justify-center"
             title="Previous generation (Ctrl/Cmd + ←)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -1387,7 +1387,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Previous image"
             onClick={(e) => { e.stopPropagation(); goPrev(e); }}
-            className={`fixed ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} top-1/2 -translate-y-1/2 z-[75] w-16 h-16 bg-black/80 hover:bg-black/95 text-white transition-all backdrop-blur-sm ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 flex items-center justify-center`}
+            className={`fixed ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10  hover:bg-black/95 text-white transition-all backdrop-blur-sm ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 flex items-center justify-center`}
             title="Previous image (←)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -1400,7 +1400,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Next generation"
             onClick={(e) => { e.stopPropagation(); goNextGeneration(e); }}
-            className="fixed right-0 top-1/2 -translate-y-1/2 z-[75] w-16 h-16 rounded-l-full bg-black/80 hover:bg-black/95 text-white transition-all backdrop-blur-sm border-l border-y border-white/30 hover:border-white/50 flex items-center justify-center"
+            className="fixed right-0 md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10 rounded-l-full   hover:bg-black/95 text-white transition-all backdrop-blur-sm border-l border-y border-white/30 hover:border-white/50 flex items-center justify-center"
             title="Next generation (Ctrl/Cmd + →)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -1410,7 +1410,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           </button>
         )}
         {/* Image Navigation (Right side, or right if no generation nav) - Only show if not at last image */}
-        {sameDateGallery.length > 1 && !isLastImage && (
+        {/* {sameDateGallery.length > 1 && !isLastImage && (
           <button
             aria-label="Next image"
             onClick={(e) => { e.stopPropagation(); goNext(e); }}
@@ -1421,7 +1421,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
-        )}
+        )} */}
 
         {/* Content */}
         <div className="flex flex-col md:flex md:flex-row h-[90vh] md:h-full   md:gap-0">
@@ -1451,7 +1451,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             <button
               aria-label="Fullscreen"
               title="Fullscreen"
-              className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
+              className="absolute md:top-3 top-0 md:left-3 left-0 z-30 p-2 rounded-full md:bg-white/10 hover:bg-white/20 text-white transition-opacity"
               onClick={openFullscreen}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -1690,7 +1690,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       try {
                         const storagePath = (selectedImage as any)?.storagePath || (() => {
                           try {
-                            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+                            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
                             const original = selectedImage?.url || '';
                             if (!original) return '';
                             if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
@@ -1759,9 +1759,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       {isFsOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
           <div className="absolute top-3 right-4 z-[90]">
-            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
+            {/* <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
               ✕
-            </button>
+            </button> */}
           </div>
           {/* Generation Navigation Buttons (Left side - outside image) - Only show if not at first generation */}
           {showGenerationNav && !isFirstGeneration && (

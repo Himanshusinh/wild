@@ -209,7 +209,7 @@ const InputBox = () => {
       // Handle image upload - prioritize sp (storage path) over image URL
       if (sp) {
         const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
         const directUrl = `${zataBase}${decodedPath}`;
         dispatch(setUploadedImages([directUrl] as any));
       } else if (img) {
@@ -290,7 +290,7 @@ const InputBox = () => {
       // Extract storagePath from image
       const storagePath = (entryImage as any)?.storagePath || (() => {
         try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
           const original = entryImage?.url || '';
           if (!original) return '';
           if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
@@ -444,6 +444,48 @@ const InputBox = () => {
     if (aspectOk && allowed.has(ratio)) return ratio;
     // Fallback to safe square
     return "1024:1024";
+  };
+
+  // Helper function to convert frameSize and resolution to z-turbo-model dimensions
+  const convertFrameSizeToZTurboDimensions = (frameSize: string, resolution: '1K' | '2K'): { width: number; height: number } => {
+    // Base resolution: 1K = 1024, 2K = 2048
+    const baseSize = resolution === '1K' ? 1024 : 2048;
+    
+    // Aspect ratio mappings - calculate dimensions based on base size
+    // Supports all common aspect ratios: 1:1, 3:4, 2:3, 9:16, 4:3, 3:2, 16:9, 21:9, 4:5, 5:4, 2:1, 1:2, 3:1, 1:3, 10:16, 16:10, 9:21
+    const aspectRatioMap: { [key: string]: { width: number; height: number } } = {
+      "1:1": { width: baseSize, height: baseSize },
+      "4:3": { width: baseSize, height: Math.round(baseSize * 3 / 4) },
+      "3:4": { width: Math.round(baseSize * 3 / 4), height: baseSize },
+      "16:9": { width: baseSize, height: Math.round(baseSize * 9 / 16) },
+      "9:16": { width: Math.round(baseSize * 9 / 16), height: baseSize },
+      "3:2": { width: baseSize, height: Math.round(baseSize * 2 / 3) },
+      "2:3": { width: Math.round(baseSize * 2 / 3), height: baseSize },
+      "21:9": { width: baseSize, height: Math.round(baseSize * 9 / 21) },
+      "4:5": { width: Math.round(baseSize * 4 / 5), height: baseSize },
+      "5:4": { width: baseSize, height: Math.round(baseSize * 4 / 5) },
+      "2:1": { width: baseSize, height: Math.round(baseSize * 1 / 2) },
+      "1:2": { width: Math.round(baseSize * 1 / 2), height: baseSize },
+      "3:1": { width: baseSize, height: Math.round(baseSize * 1 / 3) },
+      "1:3": { width: Math.round(baseSize * 1 / 3), height: baseSize },
+      "10:16": { width: Math.round(baseSize * 10 / 16), height: baseSize },
+      "16:10": { width: baseSize, height: Math.round(baseSize * 10 / 16) },
+      "9:21": { width: Math.round(baseSize * 9 / 21), height: baseSize },
+    };
+
+    // Get dimensions for the aspect ratio, default to square
+    const dimensions = aspectRatioMap[frameSize] || { width: baseSize, height: baseSize };
+    
+    // Ensure dimensions are within API limits (64-2048) and are multiples of 8 for better compatibility
+    const clampToLimits = (value: number): number => {
+      const clamped = Math.max(64, Math.min(2048, Math.round(value / 8) * 8));
+      return clamped;
+    };
+
+    return {
+      width: clampToLimits(dimensions.width),
+      height: clampToLimits(dimensions.height),
+    };
   };
 
   // Helper function to convert frameSize to flux-pro-1.1 dimensions
@@ -752,6 +794,7 @@ const InputBox = () => {
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
+  const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -820,10 +863,23 @@ const InputBox = () => {
     return groups;
   }, [historyEntries]);
 
+  // Calculate today key - recalculate on every render to handle day changes
+  // This ensures localGeneratingEntries show correctly when generating on a new day
+  const todayKey = new Date().toDateString();
+
   // Sort dates in descending order (newest first)
-  const sortedDates = useMemo(() => Object.keys(groupedByDate).sort((a: string, b: string) =>
-    new Date(b).getTime() - new Date(a).getTime()
-  ), [groupedByDate]);
+  // Include today's date if we have localGeneratingEntries (for first generation of new day)
+  const sortedDates = useMemo(() => {
+    const dates = new Set(Object.keys(groupedByDate));
+    // If we have localGeneratingEntries and today is not in the dates, add it
+    // This ensures the loading animation shows on the first generation of a new day
+    if (localGeneratingEntries.length > 0 && !dates.has(todayKey)) {
+      dates.add(todayKey);
+    }
+    return Array.from(dates).sort((a: string, b: string) =>
+      new Date(b).getTime() - new Date(a).getTime()
+    );
+  }, [groupedByDate, localGeneratingEntries, todayKey]);
 
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
@@ -832,9 +888,6 @@ const InputBox = () => {
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
   }, [historyEntries]);
-
-  // Memoize today key to avoid recreating on every render
-  const todayKey = useMemo(() => new Date().toDateString(), []);
 
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
@@ -1056,7 +1109,7 @@ const InputBox = () => {
         // Remove _thumb.avif or .avif extension and try common extensions
         let basePath = image.storagePath.replace(/_thumb\.avif$/, '').replace(/\.avif$/, '');
         // Try to get original extension from storagePath or default to .jpg
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
         // Check if storagePath already has an extension
         if (!basePath.match(/\.(jpg|jpeg|png|webp)$/i)) {
           basePath += '.jpg'; // Default to jpg
@@ -2725,6 +2778,122 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Nano Banana Pro');
           return;
         }
+      } else if (selectedModel === 'new-turbo-model') {
+        // New Turbo Model via replicate generate endpoint - single request with num_images
+        try {
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          
+          // Calculate width and height from resolution and aspect ratio
+          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1', zTurboResolution);
+          const width = dimensions.width;
+          const height = dimensions.height;
+          
+          // Send single request with num_images parameter (backend handles multiple calls internally)
+          const payload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            model: 'new-turbo-model',
+            width: width,
+            height: height,
+            num_inference_steps: 14,
+            guidance_scale: 0,
+            output_format: 'jpg',
+            output_quality: 80,
+            num_images: Math.min(imageCount, 4), // Cap at 4 like other models
+          };
+          
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+          
+          // All images should be in the result.images array from single request
+          const allImages = result.images || [];
+          
+          // Keep status as 'generating' until images are loaded and visible
+          // This ensures the loading animation stays until images are actually displayed
+          try {
+            const entryWithImages: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+              images: allImages,
+              status: 'generating', // Keep as 'generating' to show loading animation
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: allImages.length,
+            } as any;
+            setLocalGeneratingEntries([entryWithImages]);
+            
+            // Wait for images to load before marking as completed
+            // This ensures the loading animation stays visible until images are rendered
+            if (allImages.length > 0) {
+              // Wait a bit for React to render the images
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Wait for all images to actually load in the browser
+              const imageLoadPromises = allImages.map((img: any) => {
+                return new Promise<void>((resolve: () => void) => {
+                  const imageUrl = img?.thumbnailUrl || img?.avifUrl || img?.url || img?.originalUrl;
+                  if (!imageUrl) {
+                    resolve();
+                    return;
+                  }
+                  
+                  const imgElement = document.createElement('img');
+                  imgElement.onload = () => resolve();
+                  imgElement.onerror = () => resolve(); // Resolve even on error to not block
+                  imgElement.src = imageUrl;
+                  
+                  // Timeout after 5 seconds to prevent infinite waiting
+                  setTimeout(() => resolve(), 5000);
+                });
+              });
+              
+              await Promise.all(imageLoadPromises);
+              
+              // Additional small delay to ensure images are rendered in DOM
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            // Now mark as completed after images are loaded
+            const completedEntry: HistoryEntry = {
+              ...entryWithImages,
+              status: 'completed',
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch { }
+          
+          toast.success(`Generated ${allImages.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Refresh the history entry that contains all images
+          const resultHistoryId = (result as any)?.historyId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+
+          // Handle credit success
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+
+          // Reset local generation state on success
+          setIsGeneratingLocally(false);
+        } catch (error: any) {
+          console.error('New Turbo Model generation error:', error);
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+
+          // Handle credit failure
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+
+          // Show error notification
+          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
+          toast.error(errorMessage);
+          return;
+        }
       } else {
         // Use regular BFL generation OR local models
         const localModels = [
@@ -3511,11 +3680,97 @@ const InputBox = () => {
           </div>
         </div>
       </div>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:w-[90%] w-[95%] md:max-w-[900px] max-w-[95%] z-[50] h-auto">
-        <div className="rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-5 p-2 space-y-4">
+      {/* Mobile-only: Selected images/characters grid above input box */}
+      {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+        <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
+          <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
+            {/* Combine characters and images for display */}
+            {[...selectedCharacters.map((char: any, idx: number) => ({ type: 'character', data: char, index: idx })), ...uploadedImages.map((img: string, idx: number) => ({ type: 'image', data: img, index: idx }))].slice(0, 10).map((item: any, idx: number) => {
+              if (item.type === 'character') {
+                return (
+                  <div
+                    key={`char-${item.data.id}`}
+                    className="relative aspect-square rounded-md overflow-hidden ring-1 ring-white/20 group transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                    title={`Character: ${item.data.name}`}
+                  >
+                    <img
+                      src={item.data.frontImageUrl}
+                      alt={item.data.name}
+                      aria-hidden="true"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                    />
+                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                        C
+                      </div>
+                    </div>
+                    <button
+                      aria-label={`Remove character ${item.data.name}`}
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dispatch(removeSelectedCharacter(item.data.id));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              } else {
+                return (
+                  <div
+                    key={`img-${item.index}`}
+                    data-image-index={item.index}
+                    title={`Image ${item.index + 1}`}
+                    className="relative aspect-square rounded-md overflow-hidden ring-1 ring-white/20 group transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer"
+                    onClick={() => {
+                      setAssetViewer({
+                        isOpen: true,
+                        assetUrl: item.data,
+                        assetType: 'image',
+                        title: `Uploaded Image ${item.index + 1}`
+                      });
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.data}
+                      alt=""
+                      aria-hidden="true"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                    />
+                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                        {item.index + 1}
+                      </div>
+                    </div>
+                    <button
+                      aria-label="Remove reference"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = uploadedImages.filter(
+                          (_: string, idx: number) => idx !== item.index
+                        );
+                        dispatch(setUploadedImages(next));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              }
+            })}
+          </div>
+        </div>
+      )}
+      <div className="fixed md:bottom-6 bottom-0 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="rounded-lg md:rounded-b-lg rounded-b-none bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch md:gap-0 gap-0">
-            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[120px]">
+            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
                 ref={contentEditableRef}
@@ -3634,10 +3889,10 @@ const InputBox = () => {
                   const inputEvent = new Event('input', { bubbles: true });
                   e.currentTarget.dispatchEvent(inputEvent);
                 }}
-                className={`flex-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none text-[15px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
+                className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
                   }`}
                 style={{
-                  minHeight: '24px',
+                  minHeight: '100px',
                   maxHeight: '96px',
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
@@ -3657,7 +3912,7 @@ const InputBox = () => {
                 </div>
               )}
               {/* Fixed position buttons container */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
                 {prompt.trim() && (
                   <div className="relative group">
@@ -3674,7 +3929,7 @@ const InputBox = () => {
                           inputEl.current.focus();
                         }
                       }}
-                      className="px-1 py-1 -mt-5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
                       aria-label="Clear prompt"
                     >
                       <svg
@@ -3695,9 +3950,73 @@ const InputBox = () => {
                     <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
                   </div>
                 )}
-                {/* Previews just to the left of upload */}
-                {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[55vw] md:max-w-none pr-1 no-scrollbar">
+                {/* Desktop-only: Previews just to the left of upload */}
+                
+                {/* Mobile: Single column on right | Desktop: Horizontal row */}
+                <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
+                  {/* Enhance prompt button (manual trigger) */}
+                  <div className="relative">
+                    <button
+                      onClick={handleEnhancePrompt}
+                      disabled={isEnhancing || !prompt.trim()}
+                      type="button"
+                      className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      aria-pressed={isEnhancing}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                        <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
+                        <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
+                      </svg>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
+                  </div>
+
+                  <div className="relative">
+                    <button
+                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      onClick={() => setIsCharacterModalOpen(true)}
+                      type="button"
+                      aria-label="Upload character"
+                    >
+                      <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                      <span className="text-white text-sm"> </span>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                  </div>
+
+                  <div className="relative">
+                    <button
+                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                      onClick={() => setIsUploadOpen(true)}
+                      type="button"
+                      aria-label="Upload image"
+                    >
+                      <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                      <span className="text-white text-sm"> </span>
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed position Generate button - Desktop only */}
+            <div className="absolute bottom-3 right-5 hidden md:flex flex-col items-end gap-3">
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              <button
+                onClick={handleGenerate}
+                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                aria-busy={isEnhancing}
+              >
+                {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom row: pill options */}
+          {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+                  <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[100vw] md:max-w-none pr-1 no-scrollbar mb-1">
                     {/* Selected Characters Preview */}
                     {selectedCharacters.map((character: any) => (
                       <div
@@ -3732,7 +4051,7 @@ const InputBox = () => {
                     {/* Uploaded Images Preview */}
                     {uploadedImages.map((u: string, i: number) => {
                       const count = uploadedImages.length;
-                      const sizeClass = count >= 9 ? 'w-8 h-8' : count >= 6 ? 'w-10 h-10' : 'w-12 h-12';
+                      const sizeClass = count >= 9 ? 'w-12 h-12' : count >= 6 ? 'w-12 h-12' : 'w-12 h-12';
                       return (
                         <div
                           key={i}
@@ -3780,71 +4099,9 @@ const InputBox = () => {
                     })}
                   </div>
                 )}
-                <div className="relative flex items-center gap-2 self-start pt-1 pb-4 pr-1">
-                  {/* Enhance prompt button (manual trigger) */}
-                  <div className="relative">
-                    <button
-                      onClick={handleEnhancePrompt}
-                      disabled={isEnhancing || !prompt.trim()}
-                      type="button"
-                      className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      aria-pressed={isEnhancing}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-                        <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
-                        <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
-                  </div>
-
-
-                  <div className="relative">
-                    <button
-                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsCharacterModalOpen(true)}
-                      type="button"
-                      aria-label="Upload character"
-                    >
-                      <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
-                      <span className="text-white text-sm"> </span>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsUploadOpen(true)}
-                      type="button"
-                      aria-label="Upload image"
-                    >
-                      <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
-                      <span className="text-white text-sm"> </span>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-3 right-5 hidden md:flex flex-col items-end gap-3">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
-              <button
-                onClick={handleGenerate}
-                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                aria-busy={isEnhancing}
-              >
-                {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom row: pill options */}
-          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-1">
+          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
             {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
+            
             <div className="flex items-center justify-between gap-3 md:hidden w-full">
               <div className="flex-1">
                 <ModelsDropdown />
@@ -3920,6 +4177,16 @@ const InputBox = () => {
                     )}
                   </div>
                 )}
+                {selectedModel === 'new-turbo-model' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={zTurboResolution}
+                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="zTurboResolution"
+                    />
+                  </div>
+                )}
             </div>
 
             {/* Desktop: All dropdowns in one row */}
@@ -3984,8 +4251,18 @@ const InputBox = () => {
                     )}
                   </div>
                 )}
-              </div>
+                {selectedModel === 'new-turbo-model' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={zTurboResolution}
+                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="zTurboResolution"
+                    />
+                  </div>
+                )}
             </div>
+          </div>
           </div>
         </div>
       </div>

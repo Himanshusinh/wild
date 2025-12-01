@@ -198,6 +198,18 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         return [
           { value: "720P", label: "720P", description: "1280×720 HD", icon: "landscape" }
         ];
+      } else if (selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") {
+        // MiniMax-Hailuo-2.3 supports 768P and 1080P only (no 512P)
+        let options = [
+          { value: "768P", label: "768P", description: "768×768 square", icon: "square" },
+          { value: "1080P", label: "1080P", description: "1080×1080 square", icon: "square" }
+        ];
+        // Backend rules:
+        // - 10s duration does not support 1080P (only 6s supports 1080P)
+        if (miniMaxDuration === 10) {
+          options = options.filter(o => o.value !== "1080P");
+        }
+        return options;
       } else {
         // MiniMax-Hailuo-02 supports multiple resolutions
         let options = [
