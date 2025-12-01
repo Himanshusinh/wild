@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { loadMoreHistory, removeHistoryEntry } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
 import { Music4, Trash2 } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import axiosInstance from '@/lib/axiosInstance';
@@ -89,6 +89,32 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
 
   const hasMore = useAppSelector((s: any) => s.history?.hasMore || false);
   const loading = useAppSelector((s: any) => s.history?.loading || false);
+  // Initial fetch on mount with correct filters - always fetch when component mounts
+  // Also refetch when component remounts (e.g., when switching tabs)
+  React.useEffect(() => {
+    const fetchTTSHistory = async () => {
+      try {
+        const genFilter = { generationType: ['text-to-speech', 'text_to_speech', 'tts'] };
+        setPage(1);
+        // Set filters first (for client-side filtering)
+        (dispatch as any)(setFilters(genFilter));
+        // Load history with generationType filter - backend should support it
+        await (dispatch as any)(loadHistory({
+          filters: genFilter,
+          backendFilters: genFilter, // Ensure backend receives the filter
+          paginationParams: { limit: 50 },
+          requestOrigin: 'page',
+          expectedType: 'text-to-speech',
+          debugTag: `tts-history:init:${Date.now()}`,
+        })).unwrap();
+        console.log('[TTSHistory] Loaded history with filter:', genFilter);
+      } catch (err) {
+        console.error('[TTSHistory] Failed to load history:', err);
+      }
+    };
+    fetchTTSHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const grouped = historyEntries.reduce((groups: any, e: any) => {
     const key = new Date(e.timestamp || e.createdAt || e.updatedAt).toDateString();
@@ -107,8 +133,10 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
     throttleMs: 200,
     loadMore: async () => {
       const next = page + 1; setPage(next);
+      const genFilter = { generationType: ['text-to-speech', 'text_to_speech', 'tts'] };
       await (dispatch as any)(loadMoreHistory({
-        filters: { generationType: ['text-to-speech', 'text_to_speech', 'tts'] },
+        filters: genFilter,
+        backendFilters: genFilter, // Ensure backend receives the filter
         paginationParams: { limit: 10 }
       } as any)).unwrap().catch(() => {});
     }

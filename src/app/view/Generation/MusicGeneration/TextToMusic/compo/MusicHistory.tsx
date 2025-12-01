@@ -59,6 +59,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [page, setPage] = React.useState(1);
   const initialFetchDoneRef = React.useRef(false);
+  const lastGenTypeKeyRef = React.useRef<string>('');
 
   // Delete handler - same logic as ImagePreviewModal
   const handleDeleteAudio = async (e: React.MouseEvent, entry: any) => {
@@ -292,13 +293,22 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
       // Reset local page state when filters change
       setPage(1);
 
-      // Avoid duplicate initial fetches for the same mount unless store is empty or filters changed
+      // Always refetch when generationType changes (e.g., when switching tabs)
+      // Reset the initial fetch flag when generationType changes to force a refetch
+      const currentGenTypeKey = normalizedGenerationTypes.join(',') + '|' + normalizedAllowedTypes.join(',');
+      if (initialFetchDoneRef.current && lastGenTypeKeyRef.current !== currentGenTypeKey) {
+        // Generation type has changed, reset the fetch flag to force a refetch
+        initialFetchDoneRef.current = false;
+      }
+      
       const shouldFetch = !initialFetchDoneRef.current || historyEntries.length === 0;
       if (shouldFetch) {
         initialFetchDoneRef.current = true;
+        lastGenTypeKeyRef.current = currentGenTypeKey;
         (dispatch as any)(setFilters(genFilter));
         (dispatch as any)(loadHistory({
           filters: genFilter,
+          backendFilters: genFilter, // Ensure backend receives the filter
           paginationParams: { limit: 50 },
           requestOrigin: 'page',
           expectedType: Array.isArray(genFilter.generationType) ? genFilter.generationType[0] : genFilter.generationType,
@@ -348,6 +358,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
             : { generationType: generationTypeFilter[0] || generationType };
         await (dispatch as any)(loadMoreHistory({
           filters: genFilter,
+          backendFilters: genFilter, // Ensure backend receives the filter
           paginationParams: { limit: 10 }
         } as any)).unwrap();
       } catch {/* swallow */}
@@ -529,6 +540,12 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
                               <Music4 className="w-10 h-10 text-white drop-shadow-md relative z-10" />
                             </div>
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
+                            {/* File name display */}
+                            {entry.fileName && (
+                              <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10 max-w-[calc(100%-4rem)] truncate">
+                                {entry.fileName}
+                              </div>
+                            )}
                             {/* Delete button on hover */}
                             <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                               <button
@@ -613,7 +630,14 @@ const MusicTileFromPreview = ({ preview }: { preview: any }) => {
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
         </div>
       )}
-      <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
+      {/* File name display */}
+      {preview.fileName ? (
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10 max-w-[calc(100%-4rem)] truncate">
+          {preview.fileName}
+        </div>
+      ) : (
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
+      )}
     </div>
   );
 };

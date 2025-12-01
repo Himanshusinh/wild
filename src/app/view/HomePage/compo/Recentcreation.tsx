@@ -1062,7 +1062,8 @@ const Recentcreation: React.FC = () => {
               audioUrl={audioPreview.audioUrl}
               prompt={audioPreview.entry.prompt}
               model={audioPreview.entry.model}
-              lyrics={audioPreview.entry.prompt}
+              lyrics={audioPreview.entry.lyrics || audioPreview.entry.prompt}
+              generationType={audioPreview.entry.generationType}
               autoPlay={true}
             />
             {/* Debug info */}

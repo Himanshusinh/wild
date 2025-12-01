@@ -2068,6 +2068,7 @@ const History = () => {
               prompt={(audioPreview.entry as any).prompt}
               model={audioPreview.entry.model}
               lyrics={(audioPreview.entry as any).lyrics}
+              generationType={(audioPreview.entry as any).generationType}
               autoPlay
             />
           </div>

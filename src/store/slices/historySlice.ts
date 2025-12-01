@@ -166,13 +166,30 @@ export const loadHistory = createAsyncThunk(
         if (!incoming) return incoming;
         const arr = Array.isArray(incoming) ? incoming : [incoming];
         const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
-        // Backend does NOT accept these audio feature generationType filters yet; skip sending and filter client-side.
-        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
-        return mapGenerationTypeForBackend(incoming as any);
+        // Backend now accepts audio generationType values, so we can send them directly
+        // But still normalize them to canonical forms
+        const normalized = arr.map(t => {
+          const n = norm(t);
+          // Map common variations to canonical forms
+          if (n === 'tts' || n === 'text_to_speech') return 'text-to-speech';
+          if (n === 'sound_effect' || n === 'sound-effects' || n === 'sound_effects') return 'sfx';
+          if (n === 'dialogue' || n === 'text_to_dialogue') return 'text-to-dialogue';
+          if (n === 'voice-cloning') return 'voicecloning';
+          return t;
+        });
+        return normalized.length === 1 ? normalized[0] : normalized;
       };
       if (filtersForBackend?.generationType) {
-        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-        if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
+        // If backendFilters is explicitly provided, send generationType directly to backend
+        // Backend validation now accepts audio types, so we can send them
+        if (backendFilters && !skipBackendGenerationFilter) {
+          // Normalize audio types to canonical forms before sending
+          const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+          params.generationType = normalized;
+        } else {
+          const mapped = canonicalAudioType(filtersForBackend.generationType as any);
+          if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
+        }
       }
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
@@ -417,17 +434,35 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
   const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
+      
+      // Normalize audio types to canonical forms
       const canonicalAudioType = (incoming: string | string[] | undefined): string | string[] | undefined => {
         if (!incoming) return incoming;
         const arr = Array.isArray(incoming) ? incoming : [incoming];
         const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
-        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
-        return mapGenerationTypeForBackend(incoming as any);
+        // Map common variations to canonical forms
+        const normalized = arr.map(t => {
+          const n = norm(t);
+          if (n === 'tts' || n === 'text_to_speech') return 'text-to-speech';
+          if (n === 'sound_effect' || n === 'sound-effects' || n === 'sound_effects') return 'sfx';
+          if (n === 'dialogue' || n === 'text_to_dialogue') return 'text-to-dialogue';
+          if (n === 'voice-cloning') return 'voicecloning';
+          return t;
+        });
+        return normalized.length === 1 ? normalized[0] : normalized;
       };
+      
       const filtersForBackend = backendFilters || filters;
+      
       if (filtersForBackend?.generationType) {
-        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-        if (mapped) params.generationType = mapped;
+        // Backend validation now accepts audio types, so normalize and send them
+        if (backendFilters) {
+          const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+          params.generationType = normalized;
+        } else {
+          const mapped = canonicalAudioType(filtersForBackend.generationType as any);
+          if (mapped) params.generationType = mapped;
+        }
       }
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);

@@ -397,7 +397,14 @@ export default function ArtStationPreview({
               const audioUrl = toDirectUrl(au.url) || au.url
               return (
                 <div className="p-6">
-                  <CustomAudioPlayer audioUrl={audioUrl} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
+                  <CustomAudioPlayer 
+                    audioUrl={audioUrl} 
+                    prompt={preview.item.prompt || ''} 
+                    model={preview.item.model || ''} 
+                    lyrics={preview.item.lyrics || ''} 
+                    generationType={preview.item.generationType} 
+                    autoPlay={true} 
+                  />
                 </div>
               )
             })()}

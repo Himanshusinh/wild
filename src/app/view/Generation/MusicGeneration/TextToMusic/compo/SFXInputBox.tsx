@@ -83,6 +83,7 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     const modelName = payload.model || 'elevenlabs-sfx';
     const sfxText = payload.text.trim();
+    const fileName = payload.fileName || '';
     
     setLocalMusicPreview({
       id: `sfx-loading-${Date.now()}`,
@@ -93,7 +94,8 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
-      status: 'generating'
+      status: 'generating',
+      fileName: fileName
     });
 
     try {
@@ -128,7 +130,8 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
           images: result.images || [audioObj],
           model: modelName, // Use frontend model name (elevenlabs-sfx)
           backendModel: result.model, // Store backend endpoint name separately (fal-ai/elevenlabs/sound-effects/v2)
-          generationType: 'sfx'
+          generationType: 'sfx',
+          fileName: fileName
         };
 
         console.log('[SFXInputBox] Updating history entry:', {
@@ -222,6 +225,7 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType}
               autoPlay={true}
             />
           </div>
