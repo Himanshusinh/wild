@@ -106,7 +106,6 @@ export default function ArtStationPreview({
     const img = images[selectedImageIndex] || images[0] || { url: preview.url }
     const measurementSource =
       img?.storagePath ||
-      img?.originalUrl ||
       img?.url ||
       ''
 
@@ -339,18 +338,14 @@ export default function ArtStationPreview({
               const audios = (preview.item as any).audios || []
               if (preview.kind === 'image') {
                 const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                // Always prefer the original Zata asset for preview to avoid duplicate-looking thumbnails
-                const originalSource =
-                  img?.storagePath ||
-                  img?.url ||
-                  img?.originalUrl ||
-                  img?.avifUrl ||
-                  preview.url
+                // Use full image URL for popup: url -> storagePath (NO originalUrl to avoid 404s)
+                // Don't use thumbnailUrl in popup - use full resolution
+                const fullImageUrl = img?.url || (img?.storagePath ? toMediaProxy(img.storagePath) : null) || preview.url
                 // Use proxy endpoint for storage paths, direct URL for full URLs
-                const src = originalSource 
-                  ? (originalSource.startsWith('http') 
-                      ? originalSource 
-                      : (toMediaProxy(originalSource) || toDirectUrl(originalSource) || originalSource))
+                const src = fullImageUrl 
+                  ? (fullImageUrl.startsWith('http') 
+                      ? fullImageUrl 
+                      : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
                   : preview.url
                 return (
                   <div className="relative w-full h-full">
