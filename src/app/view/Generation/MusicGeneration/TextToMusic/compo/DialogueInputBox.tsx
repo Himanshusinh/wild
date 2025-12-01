@@ -89,6 +89,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     const modelName = payload.model || 'elevenlabs-dialogue';
     const dialogueText = validInputs.map((input: any) => input.text).join(' | ');
+    const fileName = payload.fileName || '';
     
     setLocalMusicPreview({
       id: `dialogue-loading-${Date.now()}`,
@@ -99,7 +100,8 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
-      status: 'generating'
+      status: 'generating',
+      fileName: fileName
     });
 
     try {
@@ -135,7 +137,8 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
           images: result.images || [audioObj],
           model: finalModelName,
           backendModel: result.model, // Store backend endpoint name separately
-          generationType: 'text-to-dialogue'
+          generationType: 'text-to-dialogue',
+          fileName: fileName
         };
 
         console.log('[DialogueInputBox] Updating history entry:', {
@@ -229,6 +232,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType}
               autoPlay={true}
             />
           </div>

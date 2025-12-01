@@ -10,6 +10,9 @@ import { getModelDisplayName } from '@/utils/modelDisplayNames'
 export type PublicItem = {
   id: string;
   prompt?: string;
+  // Optional rich text fields for audio/music generations
+  lyrics?: string;
+  fileName?: string;
   generationType?: string;
   model?: string;
   aspectRatio?: string;
@@ -428,7 +431,14 @@ export default function ArtStationPreview({
               const audioUrl = toDirectUrl(au.url) || au.url
               return (
                 <div className="p-6">
-                  <CustomAudioPlayer audioUrl={audioUrl} prompt={preview.item.prompt || ''} model={preview.item.model || ''} lyrics={''} autoPlay={true} />
+                  <CustomAudioPlayer 
+                    audioUrl={audioUrl} 
+                    prompt={preview.item.prompt || ''} 
+                    model={preview.item.model || ''} 
+                    lyrics={preview.item.lyrics || ''} 
+                    generationType={preview.item.generationType} 
+                    autoPlay={true} 
+                  />
                 </div>
               )
             })()}

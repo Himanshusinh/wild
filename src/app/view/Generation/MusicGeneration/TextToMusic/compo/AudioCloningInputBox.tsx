@@ -318,13 +318,14 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
                   </svg>
                 </button>
               </div>
-              <CustomAudioPlayer 
-                audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-                prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-                model={selectedAudio.entry.model}
-                lyrics={selectedAudio.entry.lyrics}
-                autoPlay={true}
-              />
+            <CustomAudioPlayer 
+              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
+              prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
+              model={selectedAudio.entry.model}
+              lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType}
+              autoPlay={true}
+            />
             </div>
           </div>
         )}

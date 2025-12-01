@@ -95,18 +95,22 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     setErrorMessage(undefined);
     setResultUrl(undefined);
 
-    // Create local preview immediately for UI feedback
-    setLocalMusicPreview({
-      id: `music-loading-${Date.now()}`,
-      prompt: normalizedText,
-      model: payload.model,
-      generationType: 'text-to-music',
-      images: [{ id: 'music-loading', url: '', originalUrl: '' }],
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      imageCount: 1,
-      status: 'generating'
-    });
+      // Get file name from payload or use default
+      const fileName = payload.fileName || '';
+      
+      // Create local preview immediately for UI feedback
+      setLocalMusicPreview({
+        id: `music-loading-${Date.now()}`,
+        prompt: normalizedText,
+        model: payload.model,
+        generationType: 'text-to-music',
+        images: [{ id: 'music-loading', url: '', originalUrl: '' }],
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 1,
+        status: 'generating',
+        fileName: fileName
+      });
 
     // For MiniMax Music 2, the backend creates the history entry, so we'll use that historyId
     // For other models, we create a loading entry first
@@ -114,9 +118,10 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     let tempId: string | null = null;
     let backendHistoryId: string | null = null;
 
-    if (!isMiniMaxMusic2) {
+      if (!isMiniMaxMusic2) {
       // Create loading history entry for Redux (with temporary ID) - only for non-MiniMax Music 2
       tempId = Date.now().toString();
+      const fileName = payload.fileName || '';
       const loadingEntry = {
         id: tempId,
         prompt: normalizedText,
@@ -128,7 +133,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         status: "generating" as const,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        imageCount: 1 // For music, this represents audio count
+        imageCount: 1, // For music, this represents audio count
+        fileName: fileName
       };
       
       // Force immediate refresh to show loading animation
@@ -163,6 +169,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       // For MiniMax Music 2, create a temporary loading entry that will be replaced by backend entry
       // DO NOT refresh here - it will load backend entries and cause duplicates
       tempId = `loading-${Date.now()}`;
+      const fileName = payload.fileName || '';
       const loadingEntry = {
         id: tempId,
         prompt: normalizedText,
@@ -174,7 +181,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         status: "generating" as const,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        imageCount: 1
+        imageCount: 1,
+        fileName: fileName
       };
       
       console.log('🎵 Adding loading entry for MiniMax Music 2:', loadingEntry);
@@ -267,11 +275,13 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       
       // Update the history entry with the audio URL from backend
       // Store in both audios and images fields for compatibility
+      const fileName = payload.fileName || '';
       const updateData = {
         status: 'completed' as const,
         audios: finalAudios,
         images: finalAudios.map(a => ({ ...a, type: 'audio' })),
-        lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt
+        lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt,
+        fileName: fileName
       };
 
       console.log('🎵 Final audio data for history:', updateData);
@@ -297,7 +307,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             prompt: normalizedText,
             model: payload.model,
             generationType: 'text-to-music' as const,
-            ...updateData, // updateData already contains lyrics
+            ...updateData, // updateData already contains lyrics and fileName
             timestamp: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             imageCount: 1
@@ -470,7 +480,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       {/* Audio Player Modal - Rendered for both history and input views */}
       {selectedAudio && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
+          <div className="bg-white/5 backdrop-blur-3xl rounded-2xl p-6 max-w-4xl w-full ring-1 ring-white/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white text-lg font-semibold">Music Track</h3>
               <button
@@ -484,9 +494,10 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             </div>
             <CustomAudioPlayer 
               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-              prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
+              prompt={selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType || 'text-to-music'}
               autoPlay={true}
             />
           </div>

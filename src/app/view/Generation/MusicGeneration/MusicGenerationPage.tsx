@@ -220,19 +220,19 @@ export default function MusicGenerationPage() {
                         {/* Right Column: History */}
                         <div className="flex-1 min-w-0 h-full overflow-y-auto history-scrollbar">
                             {activeFeature === 'Music' && (
-                                <MusicGenerationInputBox showHistoryOnly={true} />
+                                <MusicGenerationInputBox key={`music-history-${activeFeature}`} showHistoryOnly={true} />
                             )}
                             {activeFeature === 'Voice (TTS)' && (
-                                <TextToSpeechInputBox showHistoryOnly={true} />
+                                <TextToSpeechInputBox key={`tts-history-${activeFeature}`} showHistoryOnly={true} />
                             )}
                             {activeFeature === 'Dialogue' && (
-                                <DialogueInputBox showHistoryOnly={true} />
+                                <DialogueInputBox key={`dialogue-history-${activeFeature}`} showHistoryOnly={true} />
                             )}
                             {activeFeature === 'SFX' && (
-                                <SFXInputBox showHistoryOnly={true} />
+                                <SFXInputBox key={`sfx-history-${activeFeature}`} showHistoryOnly={true} />
                             )}
                             {activeFeature === 'Voice Cloning' && (
-                                <AudioCloningInputBox showHistoryOnly={true} />
+                                <AudioCloningInputBox key={`voice-cloning-history-${activeFeature}`} showHistoryOnly={true} />
                             )}
                         </div>
                     </div>
