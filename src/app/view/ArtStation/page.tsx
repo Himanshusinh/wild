@@ -442,6 +442,15 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         aestheticScore: typeof it?.aestheticScore === 'number' ? it.aestheticScore : undefined, // Preserve aestheticScore
       }))
 
+      // Shuffle only the newly fetched page so overall order feels organic,
+      // without reordering items that were already rendered.
+      for (let i = newItems.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const tmp = newItems[i]
+        newItems[i] = newItems[j]!
+        newItems[j] = tmp!
+      }
+
       const newCursor = meta?.nextCursor || payload?.nextCursor
       console.log('[ArtStation] Parsed feed response:', {
         itemsCount: newItems.length,
@@ -602,6 +611,46 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       requireUserScrollRef: initialLoadDoneRef 
     }
   )
+
+  // OPTIMIZATION: Prefetch next page when user scrolls past 50% of the page
+  useEffect(() => {
+    const handleScroll = () => {
+      // Don't prefetch if already loading, no more items, or initial load not done
+      if (loading || !hasMore || !initialLoadDoneRef.current || inFlightRef.current) return
+
+      const scrollY = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+
+      // Calculate scroll percentage
+      const scrollPercentage = (scrollY + windowHeight) / documentHeight
+
+      // Trigger fetch if scrolled past 25%
+      if (scrollPercentage > 0.25) {
+        // Debounce/Throttle check is implicitly handled by `loading` state in fetchFeed
+        // but we add a small check here to avoid spamming the function call
+        if (!loadingMoreRef.current) {
+          console.log('[ArtStation] Prefetching next page at 25% scroll')
+          fetchFeed(false)
+        }
+      }
+    }
+
+    // Throttled scroll listener
+    let ticking = false
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll()
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [loading, hasMore])
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
@@ -803,18 +852,31 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     return undefined
   }
 
-  // Resolve image URL with fallback chain: avif → optimized → direct Zata/original
-  // Resolve thumbnail URL with fallback: thumbnailUrl -> avifUrl -> url
+  // Resolve thumbnail URL with fallback: thumbnailUrl -> optimized formats -> proxied/original (never raw original first)
   const resolveThumbnailUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
     
     const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl)
+    const webpUrl = normalizeMediaUrl(m.webpUrl)
     const avifUrl = normalizeMediaUrl(m.avifUrl)
+    const firebaseUrl = normalizeMediaUrl((m.firebaseUrl as string | undefined))
     const directUrl = normalizeMediaUrl(m.url)
     const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
 
-    // Fallback chain: thumbnailUrl -> avifUrl -> url -> storagePath
-    const ordered = [thumbnailUrl, avifUrl, directUrl, storageUrl].filter(
+    // For thumbnails, prefer optimized/thumbnail URLs. If we only have a directUrl,
+    // try to route it through our proxy; as a last resort, keep the direct URL so
+    // the tile still renders (avoids blank/black gaps in masonry).
+    let safeDirect: string | undefined
+    if (directUrl) {
+      if (directUrl.startsWith('/api/')) {
+        safeDirect = directUrl
+      } else {
+        safeDirect = toMediaProxy(directUrl) || directUrl
+      }
+    }
+
+    // Fallback chain: avifUrl -> webpUrl -> thumbnailUrl -> firebaseUrl -> safeDirect -> storagePath
+    const ordered = [avifUrl, webpUrl, thumbnailUrl, firebaseUrl, safeDirect, storageUrl].filter(
       (u, idx, arr) => !!u && arr.indexOf(u) === idx
     ) as string[]
 
@@ -842,95 +904,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     }
   }
 
-  // Component to handle image fallback chain: thumbnail → optimized → original
-  const ImageWithFallback = ({ 
-    media, 
-    alt, 
-    fill, 
-    sizes, 
-    blurDataURL, 
-    className, 
-    priority, 
-    fetchPriority, 
-    onLoadingComplete,
-    useThumbnail = false
-  }: {
-    media: any;
-    alt: string;
-    fill: boolean;
-    sizes: string;
-    blurDataURL?: string;
-    className: string;
-    priority: boolean;
-    fetchPriority: 'high' | 'low' | 'auto';
-    onLoadingComplete: (img: any) => void;
-    useThumbnail?: boolean;
-  }) => {
-    const { url: primaryUrl, fallbacks } = useThumbnail 
-      ? resolveThumbnailUrl(media)
-      : resolveFullImageUrl(media);
-    const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
-    const allUrls = [primaryUrl, ...fallbacks].filter(
-      (u, idx, arr) => !!u && arr.indexOf(u) === idx
-    );
-    const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
 
-    const markCompleteFallback = () => {
-      try {
-        onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
-      } catch {}
-    }
-
-    const handleError = () => {
-      if (currentUrlIndex < allUrls.length - 1) {
-        // Try next fallback URL
-        setCurrentUrlIndex(prev => prev + 1);
-      } else {
-        markCompleteFallback()
-      }
-    };
-
-    useEffect(() => {
-      if (!currentUrl) {
-        markCompleteFallback()
-      }
-    }, [currentUrl])
-
-    if (!currentUrl) {
-      // If we couldn't resolve a valid URL (e.g. only replicate URLs), don't render anything
-      return null
-    }
-
-    // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
-    return (
-      <div className="relative w-full" style={{ backgroundImage: blurDataURL ? `url(${blurDataURL})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: 'auto' }}>
-        <img
-          key={`${currentUrl}-${currentUrlIndex}`}
-          src={currentUrl}
-          alt={alt}
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
-          fetchPriority={fetchPriority}
-          className={className}
-          style={{
-            width: '100%',
-            height: 'auto',
-            position: 'relative',
-            zIndex: 1,
-            outline: 'none',
-            border: 'none',
-            display: 'block',
-          }}
-          onError={handleError}
-          onLoad={(e) => {
-            try {
-              onLoadingComplete?.(e.currentTarget as HTMLImageElement);
-            } catch {}
-          }}
-        />
-      </div>
-    );
-  }
 
 
 
@@ -1073,6 +1047,103 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     })
     // Recompute span on load complete for accurate height
     requestAnimationFrame(() => measureTileSpan(tileId))
+  }
+
+  // Track tiles that failed to load media so we can hide them to prevent gaps
+  const [failedTiles, setFailedTiles] = useState<Set<string>>(new Set())
+
+  // Component to handle image fallback chain: thumbnail → optimized → original
+  const ImageWithFallback = ({ 
+    media, 
+    alt, 
+    fill, 
+    sizes, 
+    blurDataURL, 
+    className, 
+    priority, 
+    fetchPriority, 
+    onLoadingComplete,
+    useThumbnail = false,
+    onFailure
+  }: {
+    media: any;
+    alt: string;
+    fill: boolean;
+    sizes: string;
+    blurDataURL?: string;
+    className: string;
+    priority: boolean;
+    fetchPriority: 'high' | 'low' | 'auto';
+    onLoadingComplete: (img: any) => void;
+    useThumbnail?: boolean;
+    onFailure?: () => void;
+  }) => {
+    const { url: primaryUrl, fallbacks } = useThumbnail 
+      ? resolveThumbnailUrl(media)
+      : resolveFullImageUrl(media);
+    const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
+    const allUrls = [primaryUrl, ...fallbacks].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    );
+    const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
+
+    const markCompleteFallback = () => {
+      try {
+        onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
+      } catch {}
+    }
+
+    const handleError = () => {
+      if (currentUrlIndex < allUrls.length - 1) {
+        // Try next fallback URL
+        setCurrentUrlIndex(prev => prev + 1);
+      } else {
+        markCompleteFallback()
+        onFailure?.()
+      }
+    };
+
+    useEffect(() => {
+      if (!currentUrl) {
+        markCompleteFallback()
+        onFailure?.()
+      }
+    }, [currentUrl])
+
+    if (!currentUrl) {
+      // If we couldn't resolve a valid URL (e.g. only replicate URLs), don't render anything
+      return null
+    }
+
+    // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
+    return (
+      <div className="relative w-full" style={{ backgroundImage: blurDataURL ? `url(${blurDataURL})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: 'auto' }}>
+        <img
+          key={`${currentUrl}-${currentUrlIndex}`}
+          src={currentUrl}
+          alt={alt}
+          loading="eager"
+          decoding="sync"
+          fetchPriority="high"
+          className={className}
+          style={{
+            width: '100%',
+            height: 'auto',
+            position: 'relative',
+            zIndex: 1,
+            outline: 'none',
+            border: 'none',
+            display: 'block',
+          }}
+          onError={handleError}
+          onLoad={(e) => {
+            try {
+              onLoadingComplete?.(e.currentTarget as HTMLImageElement);
+            } catch {}
+          }}
+        />
+      </div>
+    );
   }
 
   const noteMeasuredRatio = (key: string, width: number, height: number) => {
@@ -1288,6 +1359,10 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
             render={(card: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }, idx: number) => {
               const { item, media, kind } = card
               const cardId = `${item.id}-${media.id}-${idx}`
+              
+              // Skip rendering if this tile has failed to load media
+              if (failedTiles.has(cardId)) return null
+
               const isHovered = hoveredCard === cardId
               const engagementState = engagement[item.id] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
               const isLiked = engagementState.likedByMe
@@ -1305,7 +1380,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
               return (
                 <div
                   key={cardId}
-                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none opacity-100 translate-y-0 blur-0`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={(e) => {
@@ -1334,8 +1409,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                     <div 
                       className="relative w-full bg-gray-900/20 overflow-hidden flex items-center justify-center"
                     >
-                      {kind !== 'audio' && !loadedTiles.has(cardId) && (
-                        <div className="absolute inset-0 bg-white/5 z-0" />
+                      {kind !== 'audio' && (
+                        <div
+                          className={`absolute inset-0 z-0 bg-white/5 transition-opacity duration-500 ease-out pointer-events-none ${
+                            loadedTiles.has(cardId) ? 'opacity-0' : 'opacity-100'
+                          }`}
+                        />
                       )}
                       {(() => {
                         const isPriority = idx < 4
@@ -1388,6 +1467,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                                     v.load()
                                   } else {
                                     markTileLoaded(cardId)
+                                    // Hide video tile on error if fallback also fails
+                                    setFailedTiles(prev => {
+                                      const next = new Set(prev)
+                                      next.add(cardId)
+                                      return next
+                                    })
                                   }
                                 }}
                               />
@@ -1404,6 +1489,13 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                               fetchPriority={isPriority ? 'high' : 'auto'}
                               className="w-full h-auto object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                               onLoad={() => { markTileLoaded(cardId) }}
+                              onError={() => {
+                                setFailedTiles(prev => {
+                                  const next = new Set(prev)
+                                  next.add(cardId)
+                                  return next
+                                })
+                              }}
                             />
                           </>
                         ) : (
@@ -1417,13 +1509,20 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             className="w-full h-auto object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             priority={isPriority}
                             fetchPriority={isPriority ? 'high' : 'auto'}
-                            useThumbnail={false}
+                            useThumbnail={true}
                             onLoadingComplete={(img) => {
                               try {
                                 const el = img as unknown as HTMLImageElement
                                 if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
                               } catch { }
                               markTileLoaded(cardId)
+                            }}
+                            onFailure={() => {
+                              setFailedTiles(prev => {
+                                const next = new Set(prev)
+                                next.add(cardId)
+                                return next
+                              })
                             }}
                           />
                         )
@@ -1489,7 +1588,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleLike(item.id) }}
-                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center ${isLiked ? 'bg-white text-red-500 hover:bg-white/90' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${isLiked ? 'text-red-500' : 'text-white'}`}
                               aria-label={isLiked ? 'Unlike' : 'Like'}
                               title={isLiked ? 'Unlike' : 'Like'}
                             >
@@ -1503,7 +1602,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             {/* Bookmark button */}
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleBookmark(item.id) }}
-                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center ${engagementState.bookmarkedByMe ? 'bg-white text-blue-500 hover:bg-white/90' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${engagementState.bookmarkedByMe ? 'text-blue-500' : 'text-white'}`}
                               aria-label={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
                               title={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
                             >
