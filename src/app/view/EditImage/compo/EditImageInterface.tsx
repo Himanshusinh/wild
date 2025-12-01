@@ -4350,6 +4350,7 @@ const EditImageInterface: React.FC = () => {
                               src={inputs[selectedFeature] as string}
                               alt="Original"
                               fill
+                              unoptimized
                               className="object-contain object-center"
                             />
                           </div>
@@ -4363,6 +4364,7 @@ const EditImageInterface: React.FC = () => {
                               src={outputs[selectedFeature] as string}
                               alt="Generated"
                               fill
+                              unoptimized
                               className="object-contain object-center"
                               style={{ objectPosition: 'center 55%' }}
                               onError={(e) => {
@@ -4417,6 +4419,7 @@ const EditImageInterface: React.FC = () => {
                             src={outputs[selectedFeature] as string}
                             alt="Output"
                             fill
+                            unoptimized
                             className="object-contain object-center"
                             style={{
                               transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
