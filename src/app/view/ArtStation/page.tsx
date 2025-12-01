@@ -813,6 +813,8 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       });
     }
 
+
+    
     const sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
     
     return sanitized;
