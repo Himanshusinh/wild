@@ -7,6 +7,7 @@ import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/C
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 import ArtStationPreview from '@/components/ArtStationPreview'
+import axiosInstance from '@/lib/axiosInstance'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
@@ -127,7 +128,13 @@ export default function ArtStationPage() {
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
-  const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
+  // Per-generation engagement state: likes/bookmarks + current user flags
+  const [engagement, setEngagement] = useState<Record<string, {
+    likesCount: number
+    bookmarksCount: number
+    likedByMe: boolean
+    bookmarkedByMe: boolean
+  }>>({})
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
@@ -218,16 +225,91 @@ export default function ArtStationPage() {
     }
   }
 
-  const toggleLike = (cardId: string) => {
-    setLikedCards(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(cardId)) {
-        newSet.delete(cardId)
-      } else {
-        newSet.add(cardId)
+  const toggleLike = async (generationId: string) => {
+    // Determine previous state once so we can use it for optimistic update + API action
+    const prevState = engagement[generationId] || {
+      likesCount: 0,
+      bookmarksCount: 0,
+      likedByMe: false,
+      bookmarkedByMe: false,
+    }
+    const wasLiked = !!prevState.likedByMe
+    const willLike = !wasLiked
+
+    // Optimistic update
+    setEngagement(prev => {
+      const current = prev[generationId] || prevState
+      return {
+        ...prev,
+        [generationId]: {
+          ...current,
+          likedByMe: willLike,
+          likesCount: Math.max(0, current.likesCount + (willLike ? 1 : -1)),
+        },
       }
-      return newSet
     })
+
+    const action = willLike ? 'like' : 'unlike'
+
+    try {
+      await axiosInstance.post('/api/engagement/like', { generationId, action })
+    } catch (error) {
+      console.error('[ArtStation] toggleLike failed, reverting', error)
+      // Revert on failure
+      setEngagement(prev => {
+        const current = prev[generationId] || prevState
+        return {
+          ...prev,
+          [generationId]: {
+            ...current,
+            likedByMe: wasLiked,
+            likesCount: Math.max(0, current.likesCount + (wasLiked ? 1 : -1) - (willLike ? 1 : -1)),
+          },
+        }
+      })
+    }
+  }
+
+  const toggleBookmark = async (generationId: string) => {
+    const prevState = engagement[generationId] || {
+      likesCount: 0,
+      bookmarksCount: 0,
+      likedByMe: false,
+      bookmarkedByMe: false,
+    }
+    const wasBookmarked = !!prevState.bookmarkedByMe
+    const willBookmark = !wasBookmarked
+
+    setEngagement(prev => {
+      const current = prev[generationId] || prevState
+      return {
+        ...prev,
+        [generationId]: {
+          ...current,
+          bookmarkedByMe: willBookmark,
+          bookmarksCount: Math.max(0, current.bookmarksCount + (willBookmark ? 1 : -1)),
+        },
+      }
+    })
+
+    const action = willBookmark ? 'save' : 'unsave'
+
+    try {
+      await axiosInstance.post('/api/engagement/bookmark', { generationId, action })
+    } catch (error) {
+      console.error('[ArtStation] toggleBookmark failed, reverting', error)
+      setEngagement(prev => {
+        const current = prev[generationId] || prevState
+        return {
+          ...prev,
+          [generationId]: {
+            ...current,
+            bookmarkedByMe: wasBookmarked,
+            bookmarksCount: Math.max(0, current.bookmarksCount + (wasBookmarked ? 1 : -1) - (willBookmark ? 1 : -1)),
+          },
+        }
+      })
+    }
   }
 
 
@@ -520,24 +602,96 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
-  // Resolve deep link after data loads; do not recursively fetch
+  // Resolve deep link: try current feed items first, then fall back to direct fetch by id
   useEffect(() => {
     if (!deepLinkId) return
-    // try to find in current items
-    const found = items.find(i => i.id === deepLinkId)
-    if (found) {
-      const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
-      const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
-      if (media?.url) {
-        setSelectedImageIndex(0)
-        setSelectedVideoIndex(0)
-        setSelectedAudioIndex(0)
-        // Normalize the URL before setting preview to ensure it uses proxy endpoint
-        const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
-        setPreview({ kind, url: normalizedUrl || media.url, item: found })
-        setDeepLinkId(null)
-      }
+
+    const openPreviewForItem = (item: PublicItem) => {
+      const media =
+        (item.videos && item.videos[0]) ||
+        (item.images && item.images[0]) ||
+        (item.audios && item.audios[0])
+      const kind: any =
+        (item.videos && item.videos[0])
+          ? 'video'
+          : (item.images && item.images[0])
+            ? 'image'
+            : 'audio'
+
+      if (!media || !media.url) return
+
+      setSelectedImageIndex(0)
+      setSelectedVideoIndex(0)
+      setSelectedAudioIndex(0)
+
+      const maybeStorage: any = (media as any).storagePath
+      const normalizedUrl =
+        normalizeMediaUrl(media.url) ||
+        (maybeStorage ? normalizeMediaUrl(maybeStorage) : null) ||
+        media.url
+
+      setPreview({ kind, url: normalizedUrl || media.url, item })
+      setDeepLinkId(null)
     }
+
+    // 1) Try to find the item in the already-loaded feed
+    const inFeed = items.find((i) => i.id === deepLinkId)
+    if (inFeed) {
+      openPreviewForItem(inFeed)
+      return
+    }
+
+    // 2) Fallback: fetch that single public generation by id so deep links
+    // from Bookmarks / Likes always work even if it's not on the first page
+    ;(async () => {
+      try {
+        const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '')
+        if (!apiBase) {
+          console.warn('[ArtStation] Missing NEXT_PUBLIC_API_BASE_URL; cannot resolve deep link by id')
+          return
+        }
+
+        const res = await fetch(`${apiBase}/api/feed/${encodeURIComponent(deepLinkId)}`)
+        if (!res.ok) {
+          console.warn('[ArtStation] Failed to fetch deep-linked generation by id', deepLinkId, res.status)
+          return
+        }
+
+        const json = await res.json()
+        const payload = json?.data || json || {}
+        const rawItem = payload.item || payload
+        if (!rawItem) {
+          console.warn('[ArtStation] Deep link fetch returned no item for id', deepLinkId)
+          return
+        }
+
+        const normalizeDate = (d: any) =>
+          typeof d === 'string'
+            ? d
+            : d && typeof d === 'object' && typeof d._seconds === 'number'
+              ? new Date(d._seconds * 1000).toISOString()
+              : undefined
+
+        const normalizedItem: PublicItem = {
+          ...rawItem,
+          id: String(rawItem.id || deepLinkId),
+          createdAt: normalizeDate(rawItem.createdAt) || rawItem.createdAt,
+          updatedAt: normalizeDate(rawItem.updatedAt) || rawItem.updatedAt,
+          aspectRatio: rawItem.aspect_ratio || rawItem.aspectRatio || rawItem.frameSize,
+          frameSize: rawItem.frameSize || rawItem.aspect_ratio || rawItem.aspectRatio,
+        }
+
+        // Optionally merge into items so navigation still works
+        setItems((prev) => {
+          if (prev.some((it) => it.id === normalizedItem.id)) return prev
+          return [normalizedItem, ...prev]
+        })
+
+        openPreviewForItem(normalizedItem)
+      } catch (err) {
+        console.error('[ArtStation] Error resolving deep link by id', deepLinkId, err)
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, deepLinkId])
 
@@ -875,6 +1029,38 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     return out
   }, [filteredItems])
 
+  // Fetch engagement status for the current cards (batched, after cards change)
+  useEffect(() => {
+    const fetchEngagement = async () => {
+      try {
+        if (!currentUid || cards.length === 0) return
+        const generationIds = Array.from(new Set(cards.map(c => c.item.id))).slice(0, 100)
+        const res = await axiosInstance.post('/api/engagement/bulk-status', { generationIds })
+        const data = res.data
+        const items = data?.data?.items || data?.items || []
+        setEngagement(prev => {
+          const next = { ...prev }
+          for (const it of items) {
+            if (!it?.id) continue
+            const genId = String(it.id)
+            const current = next[genId] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
+            next[genId] = {
+              likesCount: typeof it.likesCount === 'number' ? it.likesCount : current.likesCount,
+              bookmarksCount: typeof it.bookmarksCount === 'number' ? it.bookmarksCount : current.bookmarksCount,
+              likedByMe: !!it.likedByCurrentUser,
+              bookmarkedByMe: !!it.bookmarkedByCurrentUser,
+            }
+          }
+          return next
+        })
+      } catch (e) {
+        // Non-fatal
+        console.warn('[ArtStation] Failed to fetch engagement status', e)
+      }
+    }
+    fetchEngagement()
+  }, [cards, currentUid])
+
   const markTileLoaded = (tileId: string) => {
     setLoadedTiles(prev => {
       if (prev.has(tileId)) return prev
@@ -1100,7 +1286,8 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
               const { item, media, kind } = card
               const cardId = `${item.id}-${media.id}-${idx}`
               const isHovered = hoveredCard === cardId
-              const isLiked = likedCards.has(cardId)
+              const engagementState = engagement[item.id] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
+              const isLiked = engagementState.likedByMe
 
               // Use stable keys to prevent re-renders
               const ratioKey = `${item.id}-${media.id || media.url || idx}`
@@ -1298,7 +1485,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                           {/* Actions Section */}
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button
-                              onClick={(e) => { e.stopPropagation(); toggleLike(cardId) }}
+                              onClick={(e) => { e.stopPropagation(); toggleLike(item.id) }}
                               className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center ${isLiked ? 'bg-white text-red-500 hover:bg-white/90' : 'bg-white/10 hover:bg-white/20 text-white'}`}
                               aria-label={isLiked ? 'Unlike' : 'Like'}
                               title={isLiked ? 'Unlike' : 'Like'}
@@ -1306,6 +1493,23 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                               <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
                               </svg>
+                              {engagementState.likesCount > 0 && (
+                                <span className="ml-1 text-xs font-medium">{engagementState.likesCount}</span>
+                              )}
+                            </button>
+                            {/* Bookmark button */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleBookmark(item.id) }}
+                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center ${engagementState.bookmarkedByMe ? 'bg-white text-blue-500 hover:bg-white/90' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                              aria-label={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
+                              title={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill={engagementState.bookmarkedByMe ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                                <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                              </svg>
+                              {engagementState.bookmarksCount > 0 && (
+                                <span className="ml-1 text-xs font-medium">{engagementState.bookmarksCount}</span>
+                              )}
                             </button>
                             {currentUid && item.createdBy?.uid === currentUid && (
                               <button
@@ -1384,8 +1588,9 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
               currentUid={currentUid}
               currentUser={currentUser}
               cards={cards}
-              likedCards={likedCards}
               toggleLike={toggleLike}
+              toggleBookmark={toggleBookmark}
+              engagement={engagement}
             />
           )}
         </div>

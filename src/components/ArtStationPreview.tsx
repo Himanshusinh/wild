@@ -39,6 +39,13 @@ export type PreviewState = { kind: 'image' | 'video' | 'audio'; url: string; ite
 
 type CardEntry = { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }
 
+type EngagementState = {
+  likesCount: number
+  bookmarksCount: number
+  likedByMe: boolean
+  bookmarkedByMe: boolean
+}
+
 type Props = {
   preview: PreviewState
   onClose: () => void
@@ -46,8 +53,10 @@ type Props = {
   currentUid: string | null
   currentUser: { uid?: string; username?: string; displayName?: string; photoURL?: string } | null
   cards: CardEntry[]
-  likedCards: Set<string>
-  toggleLike: (cardId: string) => void
+  likedCards?: Set<string>
+  toggleLike: (generationId: string) => void
+  toggleBookmark?: (generationId: string) => void
+  engagement?: Record<string, EngagementState>
 }
 
 export default function ArtStationPreview({
@@ -59,6 +68,8 @@ export default function ArtStationPreview({
   cards,
   likedCards,
   toggleLike,
+  toggleBookmark,
+  engagement,
 }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
@@ -195,6 +206,16 @@ export default function ArtStationPreview({
     return `${preview.item.id}-${matchingCard.media?.id || '0'}-${cards.indexOf(matchingCard)}`
   }, [preview, cards])
 
+  const engagementState: EngagementState | null = useMemo(() => {
+    if (!preview || !engagement) return null
+    return engagement[preview.item.id] || null
+  }, [preview, engagement])
+
+  const isLiked = engagementState?.likedByMe ?? (previewCardId ? likedCards?.has(previewCardId) ?? false : false)
+  const likesCount = engagementState?.likesCount ?? 0
+  const isBookmarked = engagementState?.bookmarkedByMe ?? false
+  const bookmarksCount = engagementState?.bookmarksCount ?? 0
+
   if (!preview) return null
 
   const handleClose = (e?: React.MouseEvent) => {
@@ -294,21 +315,36 @@ export default function ArtStationPreview({
             </div>
 
             <div className="relative group">
-              {(() => {
-                const isLiked = previewCardId ? likedCards.has(previewCardId) : false
-                return (
-                  <button
-                    onClick={() => { if (previewCardId) toggleLike(previewCardId) }}
-                    className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={isLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </button>
-                )
-              })()}
+              <button
+                onClick={() => { toggleLike(preview.item.id) }}
+                className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={isLiked ? 'red' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                {likesCount > 0 && (
+                  <span className="ml-1 text-xs font-medium">{likesCount}</span>
+                )}
+              </button>
               <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Like</div>
             </div>
+
+            {toggleBookmark && (
+              <div className="relative group">
+                <button
+                  onClick={() => { toggleBookmark(preview.item.id) }}
+                  className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke={isBookmarked ? 'currentColor' : 'currentColor'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                  {bookmarksCount > 0 && (
+                    <span className="ml-1 text-xs font-medium">{bookmarksCount}</span>
+                  )}
+                </button>
+                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Save</div>
+              </div>
+            )}
 
             {/* Delete button (owner only) - on same row as Like button */}
             {currentUid && preview.item.createdBy?.uid === currentUid ? (

@@ -709,29 +709,52 @@ const SidePannelFeatures = ({
 
 
 
-        {/* Bookmarks - Commented out for now */}
-        {/* <div>
-            <div
-                onClick={() => {
-                  try {
-                    if (onViewChange && typeof onViewChange === 'function') {
-                      onViewChange('bookmarks');
-                    }
-                  } catch (error) {
-                    console.error('Error in bookmarks click handler:', error);
+        {/* Bookmarks */}
+        <div>
+          <div
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseDown={(e) =>
+              handleClickWithNewTab(e, '/bookmarks', () => {
+                try {
+                  if (onViewChange && typeof onViewChange === 'function') {
+                    onViewChange('bookmarks');
                   }
-                }}
-                  className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item ${ (pathname === '/bookmarks' || pathname?.startsWith('/bookmarks')) ? 'bg-white/10' : '' }`}
-            >
-                <Image
-                    src="/icons/Bookmarkwhite.svg"
-                    alt="Bookmarks"
-                    width={30}
-                    height={30}
-                />
-                <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Bookmarks</span>
-            </div>
-        </div> */}
+                } catch (error) {
+                  console.error('Error in bookmarks click handler:', error);
+                }
+                router.push('/bookmarks');
+              })
+            }
+            onClick={(e) => {
+              if (!e.ctrlKey && !e.metaKey) {
+                closeMobileSidebar();
+                try {
+                  if (onViewChange && typeof onViewChange === 'function') {
+                    onViewChange('bookmarks');
+                  }
+                } catch (error) {
+                  console.error('Error in bookmarks click handler:', error);
+                }
+                router.push('/bookmarks');
+              }
+            }}
+            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${
+              pathname === '/bookmarks' || pathname?.startsWith('/bookmarks')
+                ? 'bg-white/20'
+                : ''
+            }`}
+          >
+            <Image
+              src={imageRoutes.icons.bookmarks}
+              alt="Bookmarks"
+              width={30}
+              height={30}
+              className="flex-none w-[24px] h-[24px]"
+              unoptimized
+            />
+            <span className={labelClasses}>Bookmarks</span>
+          </div>
+        </div>
 
         {/* Bottom: credits + profile */}
 
