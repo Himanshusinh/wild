@@ -19,7 +19,7 @@ export async function enhancePromptAPI(
       media_type: mediaType || 'image', // Default to image for backward compatibility
     }),
   });
-
+ 
   if (!res.ok) {
     let body: any;
     try { body = await res.json(); } catch { body = { error: res.statusText }; }

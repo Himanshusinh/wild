@@ -22,81 +22,51 @@ export function useMediaValues(
 
   const [values, setValues] = React.useState({ columns: 0, gap: 0 });
 
-
-
   React.useEffect(() => {
-
     if (medias === undefined) {
-
       setValues({ columns: columns[0], gap: gap[0] });
-
       return;
-
     }
-
-
 
     const mediaQueries = medias.map((media) => window.matchMedia(`(min-width: ${media}px)`));
 
-
-
     function onSizeChange(): void {
-
       let matches = 0;
 
-
-
       mediaQueries.forEach((mediaQuery) => {
-
         if (mediaQuery.matches) {
-
           matches += 1;
-
         }
-
       });
 
-
-
-      // Update Values
-
       const idx = Math.min(mediaQueries.length - 1, Math.max(0, matches));
+      const newColumns = columns[idx]!;
+      const newGap = gap[idx]!;
 
-      setValues({ columns: columns[idx]!, gap: gap[idx]! });
-
+      setValues((prev) => {
+        // Only update if values actually changed
+        if (prev.columns === newColumns && prev.gap === newGap) {
+          return prev;
+        }
+        return { columns: newColumns, gap: newGap };
+      });
     }
-
-
 
     // Initial Call
-
     onSizeChange();
 
-
-
     // Apply Listeners
-
     for (const mediaQuery of mediaQueries) {
-
       mediaQuery.addEventListener("change", onSizeChange);
-
     }
 
-
-
     return () => {
-
       for (const mediaQuery of mediaQueries) {
-
         mediaQuery.removeEventListener("change", onSizeChange);
-
       }
-
     };
-
-  }, [medias, columns, gap]);
-
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(medias), JSON.stringify(columns), JSON.stringify(gap)]);
 
   return values;
 
