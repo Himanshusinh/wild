@@ -3192,16 +3192,16 @@ const EditImageInterface: React.FC = () => {
 
           {/* Vectorize model & parameters */}
           {selectedFeature === 'vectorize' && (
-            <div className="px-3 md:px-4">
+            <div className="px-1 md:px-4">
               {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
               <div className="space-y-2">
                 {/* Super Mode Toggle */}
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm">Mode</label>
-                  <div className="relative bg-white/5 border border-white/20 rounded-lg p-1 flex">
+                  <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Mode</label>
+                  <div className="relative bg-white/5 border border-white/20 rounded-lg md:p-1 p-0.5 flex">
                     <button
                       onClick={() => setVectorizeSuperMode(false)}
-                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${!vectorizeSuperMode
+                      className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-0 md:text-xs text-[11px] font-medium rounded transition-colors ${!vectorizeSuperMode
                           ? 'bg-white text-black'
                           : 'text-white/70 hover:text-white'
                         }`}
@@ -3210,7 +3210,7 @@ const EditImageInterface: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setVectorizeSuperMode(true)}
-                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${vectorizeSuperMode
+                      className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-1 md:text-xs text-[11px] font-medium rounded transition-colors whitespace-nowrap ${vectorizeSuperMode
                           ? 'bg-white text-black'
                           : 'text-white/70 hover:text-white'
                         }`}
@@ -3229,13 +3229,13 @@ const EditImageInterface: React.FC = () => {
                   <div className="relative edit-dropdown">
                     <button
                       onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
-                      className={`h-[32px]  w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
+                      className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
                     >
                       <span className="truncate">{vectorizeModel === 'fal-ai/recraft/vectorize' ? 'Recraft Vectorize' : 'Image to SVG'}</span>
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'vectorizeModel' && (
-                      <div className={`absolute top-full mt-2 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      <div className={`absolute top-full md:mt-2 mt-1 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {[
                           { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
                           { label: 'Image to SVG', value: 'fal-ai/image2svg' },
@@ -3243,7 +3243,7 @@ const EditImageInterface: React.FC = () => {
                           <button
                             key={opt.value}
                             onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
-                            className={`w-full px-3 py-2 text-left text-[13px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            className={`w-full md:px-3 px-2.5 md:py-2 py-0.5 text-left md:text-[13px] text-[12px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                           >
                             <span className="truncate">{opt.label}</span>
                           </button>
@@ -3493,7 +3493,7 @@ const EditImageInterface: React.FC = () => {
                         <div className="relative edit-dropdown">
                           <button
                             onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
                           >
                             <span className="truncate">
                               {model ? getUpscaleModelLabel(model) : 'Select model'}
@@ -3501,7 +3501,7 @@ const EditImageInterface: React.FC = () => {
                             <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
                           </button>
                           {activeDropdown === 'model' && (
-                            <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                            <div className={`absolute top-full z-100 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30  md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                               {(selectedFeature === 'remove-bg'
                                 ? [
                                   { label: '851-labs/background-remover', value: '851-labs/background-remover' },
@@ -3520,7 +3520,7 @@ const EditImageInterface: React.FC = () => {
                                 <button
                                   key={opt.value}
                                   onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
-                                  className={`w-full px-3 py-2 text-left text-[13px] ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                                 >
                                   <span className="truncate">{opt.label}</span>
                                 </button>
@@ -3540,33 +3540,7 @@ const EditImageInterface: React.FC = () => {
                       <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
                     </div>
                   )}
-                  {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                        >
-                          <span className="truncate">{output || 'Select format'}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {activeDropdown === 'output' && (
-                          <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                            {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
-                              <button
-                                key={fmt}
-                                onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                              >
-                                <span className="uppercase">{fmt}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Remove-BG (851-labs) specialized controls */}
                 </div>
 
                 {/* Prompt for Fill (not shown for Erase) */}
@@ -3781,43 +3755,73 @@ const EditImageInterface: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-2">
                   {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
-                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                        >
-                          <span className="truncate">{backgroundType || 'Select background type'}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {activeDropdown === 'backgroundType' && (
-                          <div className={`absolute top-full z-30 mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-44 overflow-y-auto dropdown-scrollbar`}>
-                            {[
-                              { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
-                              { label: 'white', value: 'white', description: 'Solid white background' },
-                              { label: 'green', value: 'green', description: 'Solid green background' },
-                              { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
-                              { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
-                              { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
-                            ].map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                                className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="truncate font-medium">{opt.label}</span>
-                                </div>
-                                <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
-                                  {opt.description}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                    <>
+                      {/* Output format (left) */}
+                      <div className="mb-1 mt-1">
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                          >
+                            <span className="truncate">{output || 'Select format'}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'output' && (
+                            <div className={`absolute z-30 top-full md:mt-2 mt-1 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                              {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
+                                <button
+                                  key={fmt}
+                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                  className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <span className="uppercase">{fmt}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Background type (right) */}
+                      <div className="mb-1">
+                        <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Background Type</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
+                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                          >
+                            <span className="truncate">{backgroundType || 'Select background type'}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'backgroundType' && (
+                            <div className={`absolute top-full z-30 md:mt-2 mt-1 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-44 max-h-36 overflow-y-auto dropdown-scrollbar`}>
+                              {[
+                                { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
+                                { label: 'white', value: 'white', description: 'Solid white background' },
+                                { label: 'green', value: 'green', description: 'Solid green background' },
+                                { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
+                                { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
+                                { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
+                              ].map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
+                                  className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="truncate font-medium">{opt.label}</span>
+                                  </div>
+                                  <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
+                                    {opt.description}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   {/* Buttons moved to bottom footer */}
@@ -3825,7 +3829,7 @@ const EditImageInterface: React.FC = () => {
 
                 {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
+                    {/* <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
                     <input
                       type="number"
                       min="0"
@@ -3838,13 +3842,13 @@ const EditImageInterface: React.FC = () => {
                     />
                     <div className="mt-1 text-xs text-white/50">
                       Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
-                    </div>
-                    <div className="mt-2">
+                    </div> */}
+                    <div className="mt-1">
                       <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
                       <button
                         type="button"
                         onClick={() => setReverseBg(v => !v)}
-                        className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
+                        className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
                       >
                         {reverseBg ? 'Enabled' : 'Disabled'}
                       </button>
@@ -3868,7 +3872,7 @@ const EditImageInterface: React.FC = () => {
                             step={1}
                             value={Number(String(scaleFactor).replace('x', '')) || 4}
                             onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
-                            className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            className="w-full md:h-[30px] h-[28px] md:px-2 px-1.5 md:py-1 py-0   bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                           />
                         </div>
                         <div className="flex items-end">
@@ -3877,7 +3881,7 @@ const EditImageInterface: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setFaceEnhance(v => !v)}
-                              className={`h-[30px] w-full px-3  rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
                             >
                               {faceEnhance ? 'Enabled' : 'Disabled'}
                             </button>
@@ -3888,7 +3892,7 @@ const EditImageInterface: React.FC = () => {
                     {model === 'philz1337x/crystal-upscaler' && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale factor (1-6)</label>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
                           <input
                             type="number"
                             min={1}
@@ -3896,26 +3900,26 @@ const EditImageInterface: React.FC = () => {
                             step={1}
                             value={Number(String(scaleFactor).replace('x', '')) || 2}
                             onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
-                            className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Output format</label>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
                           <div className="relative edit-dropdown">
                             <button
                               onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
                             >
                               <span className="truncate uppercase">{(output || 'png').toString()}</span>
                               <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
                             </button>
                             {activeDropdown === 'output' && (
-                              <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                 {['png', 'jpg'].map((fmt) => (
                                   <button
                                     key={fmt}
                                     onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                    className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                                   >
                                     <span className="uppercase">{fmt}</span>
                                   </button>
@@ -3930,14 +3934,14 @@ const EditImageInterface: React.FC = () => {
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Model</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-2">Model</label>
                             <div className="relative edit-dropdown">
-                              <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                              <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between bg-transparent text-white/90`}>
                                 <span className="truncate">{topazModel}</span>
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
                               </button>
                               {activeDropdown === 'topazModel' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 w-56 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-56 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                                   {['Low Resolution V2', 'Standard V2', 'CGI', 'High Fidelity V2', 'Text Refine', 'Recovery', 'Redefine', 'Recovery V2'].map((opt) => (
                                     <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
                                   ))}
@@ -3946,7 +3950,7 @@ const EditImageInterface: React.FC = () => {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-2">Upscale factor</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-2">Upscale factor</label>
                             <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e) => setTopazUpscaleFactor(Number(e.target.value) || 2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                           </div>
                         </div>
@@ -3959,7 +3963,7 @@ const EditImageInterface: React.FC = () => {
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
                               </button>
                               {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 w-40 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-40 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                                   {(['jpeg', 'png'] as const).map((fmt) => (
                                     <button key={fmt} onClick={() => { setTopazOutputFormat(fmt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazOutputFormat === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}><span className="uppercase">{fmt}</span></button>
                                   ))}
@@ -3968,7 +3972,7 @@ const EditImageInterface: React.FC = () => {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Subject detection</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Subject detection</label>
                             <div className="relative edit-dropdown">
                               <button onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
                                 <span className="truncate">{topazSubjectDetection}</span>
