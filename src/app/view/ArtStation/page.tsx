@@ -616,6 +616,10 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!url) return undefined
     const trimmed = url.trim()
     if (!trimmed) return undefined
+    // Reject replicate URLs to prevent 404s - only use Zata URLs
+    if (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com')) {
+      return undefined
+    }
     if (/^https?:\/\//i.test(trimmed)) return trimmed
     if (trimmed.startsWith('/api/')) return trimmed
     // If it's a relative path (not starting with / or http), assume it's a Zata path and proxy it
@@ -625,10 +629,9 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
-    // Try multiple URL properties in order of preference
+    // Try multiple URL properties in order of preference (NO originalUrl to avoid 404s)
     const candidates = [
       m.url,
-      m.originalUrl,
       m.webpUrl,
       m.avifUrl,
       (m.firebaseUrl as string | undefined),
@@ -644,29 +647,35 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   }
 
   // Resolve image URL with fallback chain: avif → optimized → direct Zata/original
-  const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
+  // Resolve thumbnail URL with fallback: thumbnailUrl -> avifUrl -> url
+  const resolveThumbnailUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
     
-    const thumbAvif =
-      normalizeMediaUrl(
-        typeof m.thumbnailUrl === 'string' && m.thumbnailUrl.endsWith('.avif')
-          ? m.thumbnailUrl
-          : undefined
-      ) || normalizeMediaUrl(
-        typeof m.thumbUrl === 'string' && m.thumbUrl.endsWith('.avif')
-          ? m.thumbUrl
-          : undefined
-      )
+    const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl)
     const avifUrl = normalizeMediaUrl(m.avifUrl)
-    const optimizedUrl =
-      normalizeMediaUrl(m.optimizedUrl) ||
-      normalizeMediaUrl(m.optimized?.url) ||
-      normalizeMediaUrl(m.webpUrl)
+    const directUrl = normalizeMediaUrl(m.url)
     const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
-    const directUrl = normalizeMediaUrl(m.url) || storageUrl
-    const originalUrl = normalizeMediaUrl(m.originalUrl) || storageUrl
 
-    const ordered = [thumbAvif, avifUrl, optimizedUrl, directUrl, originalUrl].filter(
+    // Fallback chain: thumbnailUrl -> avifUrl -> url -> storagePath
+    const ordered = [thumbnailUrl, avifUrl, directUrl, storageUrl].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    ) as string[]
+
+    return {
+      url: ordered[0] || '',
+      fallbacks: ordered.slice(1)
+    }
+  }
+
+  // Resolve full image URL for popup: url -> storagePath (NO originalUrl to avoid 404s)
+  const resolveFullImageUrl = (m: any): { url: string; fallbacks: string[] } => {
+    if (!m) return { url: '', fallbacks: [] }
+    
+    const directUrl = normalizeMediaUrl(m.url)
+    const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
+
+    // Fallback chain: url -> storagePath (removed originalUrl to prevent 404 errors)
+    const ordered = [directUrl, storageUrl].filter(
       (u, idx, arr) => !!u && arr.indexOf(u) === idx
     ) as string[]
 
@@ -686,7 +695,8 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     className, 
     priority, 
     fetchPriority, 
-    onLoadingComplete 
+    onLoadingComplete,
+    useThumbnail = false
   }: {
     media: any;
     alt: string;
@@ -697,8 +707,11 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     priority: boolean;
     fetchPriority: 'high' | 'low' | 'auto';
     onLoadingComplete: (img: any) => void;
+    useThumbnail?: boolean;
   }) => {
-    const { url: primaryUrl, fallbacks } = resolveImageUrl(media);
+    const { url: primaryUrl, fallbacks } = useThumbnail 
+      ? resolveThumbnailUrl(media)
+      : resolveFullImageUrl(media);
     const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
     const allUrls = [primaryUrl, ...fallbacks].filter(
       (u, idx, arr) => !!u && arr.indexOf(u) === idx
@@ -727,50 +740,53 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     }, [currentUrl])
 
     if (!currentUrl) {
-      return (
-        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
-          No preview
-        </div>
-      )
+      // If we couldn't resolve a valid URL (e.g. only replicate URLs), don't render anything
+      return null
     }
 
     // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
     return (
-      <img
-        key={`${currentUrl}-${currentUrlIndex}`}
-        src={currentUrl}
-        alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        fetchPriority={fetchPriority}
-        className={className}
-        style={{
-          ...(fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : {}),
-          outline: 'none',
-          border: 'none',
-        }}
-        onError={handleError}
-        onLoad={(e) => {
-          try {
-            onLoadingComplete?.(e.currentTarget as HTMLImageElement);
-          } catch {}
-        }}
-      />
+      <div className="relative w-full" style={{ backgroundImage: blurDataURL ? `url(${blurDataURL})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: 'auto' }}>
+        <img
+          key={`${currentUrl}-${currentUrlIndex}`}
+          src={currentUrl}
+          alt={alt}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={fetchPriority}
+          className={className}
+          style={{
+            width: '100%',
+            height: 'auto',
+            position: 'relative',
+            zIndex: 1,
+            outline: 'none',
+            border: 'none',
+            display: 'block',
+          }}
+          onError={handleError}
+          onLoad={(e) => {
+            try {
+              onLoadingComplete?.(e.currentTarget as HTMLImageElement);
+            } catch {}
+          }}
+        />
+      </div>
     );
   }
 
 
 
+  // Stabilize cards array to prevent glitches
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
     const seenItem = new Set<string>()
     const seenMediaUrls = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[ArtStation] Building cards from filteredItems:', filteredItems.length)
-    }
-
+    // Use a stable reference - only recalculate if filteredItems actually changed
+    const itemsKey = filteredItems.map(i => i.id).join(',')
+    
     for (const it of filteredItems) {
       // Only skip if we've already processed this exact item ID
       if (seenItem.has(it.id)) {
@@ -799,9 +815,9 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         const primaryImage = it.images?.[0]
         const primaryAudio = (it as any).audios?.[0]
         const fallbackUrl = 
-          primaryVideo?.url || primaryVideo?.originalUrl || primaryVideo?.storagePath ||
-          primaryImage?.url || primaryImage?.originalUrl || primaryImage?.storagePath ||
-          primaryAudio?.url || primaryAudio?.originalUrl || primaryAudio?.storagePath
+          primaryVideo?.url || primaryVideo?.storagePath ||
+          primaryImage?.url || primaryImage?.storagePath ||
+          primaryAudio?.url || primaryAudio?.storagePath
         const fallbackKey = canonicalMediaKey(fallbackUrl)
         
         if (fallbackKey && seenMediaUrls.has(fallbackKey)) {
@@ -826,10 +842,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         const fallbackCandidate = candidate || (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
         seenItem.add(it.id)
         if (fallbackKey) seenMediaUrls.add(fallbackKey)
+        // Remove originalUrl to prevent 404s - only use Zata URLs
+        const { originalUrl, ...mediaWithoutOriginal } = fallbackCandidate || {}
         out.push({ 
           item: it, 
           media: { 
-            ...fallbackCandidate, 
+            ...mediaWithoutOriginal, 
             url: fallbackUrl,
             blurDataUrl: (fallbackCandidate as any)?.blurDataUrl,
           }, 
@@ -841,10 +859,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       // Add item to seen set and include in output
       seenItem.add(it.id)
       if (candidateKey) seenMediaUrls.add(candidateKey)
+      // Remove originalUrl to prevent 404s - only use Zata URLs
+      const { originalUrl, ...mediaWithoutOriginal } = candidate || {}
       out.push({ 
         item: it, 
         media: { 
-          ...candidate, 
+          ...mediaWithoutOriginal, 
           url: candidateUrl,
           blurDataUrl: (candidate as any)?.blurDataUrl,
         }, 
@@ -852,9 +872,6 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       })
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[ArtStation] Final cards count:', out.length, 'from', filteredItems.length, 'filtered items')
-    }
     return out
   }, [filteredItems])
 
@@ -1072,33 +1089,38 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           {/* Masonry grid */}
           <Masonry
             items={cards}
-            config={{
-              columns: [2, 3, 4, 5],
-              gap: [2, 2, 2, 2], // uniform 2px spacing
-              media: [640, 768, 1024, 1280],
-            }}
+            config={useMemo(() => ({
+              columns: [2, 3, 4, 5] as const,
+              gap: [2, 2, 2, 2] as const, // uniform 2px spacing
+              media: [640, 768, 1024, 1280] as const,
+            }), [])}
             className="[overflow-anchor:none]"
             placeholder={undefined}
-            render={(card, idx) => {
+            render={(card: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }, idx: number) => {
               const { item, media, kind } = card
-              // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
-              const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
-              const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
-              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3','1/2','2/1','1/3','3/1','1/4','4/1','1/5','5/1','1/6','6/1','1/7','7/1','1/8','8/1','1/9','9/1','1/10','10/1']
-              const ratioKey = (media && (media.storagePath || media.url)) || `${item.id}-${idx}`
-              const tileRatio = m ? `${m[1]}/${m[2]}` : (measuredRatios[ratioKey] || fallbackRatios[idx % fallbackRatios.length])
-
               const cardId = `${item.id}-${media.id}-${idx}`
               const isHovered = hoveredCard === cardId
               const isLiked = likedCards.has(cardId)
 
+              // Use stable keys to prevent re-renders
+              const ratioKey = `${item.id}-${media.id || media.url || idx}`
+              
+              // Calculate aspect ratio: prefer measured, then item aspect ratio
+              const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
+              const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
+              const measuredRatio = measuredRatios[ratioKey]
+              // REMOVED: fallbackRatios - do not force arbitrary shapes
+              const aspectRatio = measuredRatio || (m ? `${m[1]}/${m[2]}` : undefined)
+              
               return (
                 <div
                   key={cardId}
                   className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
                     setSelectedImageIndex(0)
                     setSelectedVideoIndex(0)
                     setSelectedAudioIndex(0)
@@ -1106,18 +1128,24 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                     const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
                     setPreview({ kind, url: normalizedUrl || media.url, item })
                   }}
-                  ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
+                  ref={(el) => { 
+                    if (el) {
+                      revealRefs.current[cardId] = el
+                      tileRefs.current[cardId] = el
+                    }
+                  }}
                   style={{
                     transitionDelay: `${(idx % 12) * 35}ms`,
+                    // REMOVED: aspectRatio style to allow natural height
                   }}
                   tabIndex={-1}
                 >
-                  <div className="masonry-item-inner relative w-full overflow-visible bg-transparent group" style={{ contain: 'paint' }}>
-                    <div
-                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100 flex items-center justify-center bg-gray-900/20 overflow-hidden mb-0 w-full`}
+                  <div className="relative w-full bg-transparent group" style={{ contain: 'layout style paint' }}>
+                    <div 
+                      className="relative w-full bg-gray-900/20 overflow-hidden flex items-center justify-center"
                     >
                       {kind !== 'audio' && !loadedTiles.has(cardId) && (
-                        <div className="absolute inset-0 bg-white/5" />
+                        <div className="absolute inset-0 bg-white/5 z-0" />
                       )}
                       {(() => {
                         const isPriority = idx < 4
@@ -1130,6 +1158,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             
                             return (
                               <video
+                                key={`video-${cardId}`}
                                 src={proxied}
                                 className="w-full h-auto object-contain"
                                 muted
@@ -1178,6 +1207,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                           <>
                             {/* Use a simple music logo image to avoid prompt alt text showing */}
                             <img
+                              key={`audio-${cardId}`}
                               src="/icons/musicgenerationwhite.svg"
                               alt=""
                               loading={isPriority ? 'eager' : 'lazy'}
@@ -1188,14 +1218,16 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                           </>
                         ) : (
                           <ImageWithFallback
+                            key={`image-${cardId}`}
                             media={media}
                             alt={item.prompt || ''}
                             fill={false}
                             sizes={sizes}
-                            blurDataURL={media.blurDataUrl || blur}
+                            blurDataURL={media.blurDataUrl}
                             className="w-full h-auto object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             priority={isPriority}
                             fetchPriority={isPriority ? 'high' : 'auto'}
+                            useThumbnail={false}
                             onLoadingComplete={(img) => {
                               try {
                                 const el = img as unknown as HTMLImageElement
@@ -1228,17 +1260,16 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                       )}
                     </div>
                     {/* Dark gradient overlay from bottom */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10" />
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[5]" />
                     
                     {/* Hover overlay: user profile + actions */}
-                    <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
+                    <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[6]">
                       <div className="px-2.5 py-2.5 md:px-3 md:py-3">
                         <div className="rounded-lg px-3 py-2.5 md:px-4 md:py-3 flex items-center justify-between gap-3 pointer-events-auto">
                           {/* User Section */}
                           <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
                             {(() => {
                               const cb = item.createdBy || ({} as any)
-                              console.log('cb', cb)
                               const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
                               if (photo) {
                                 const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
@@ -1291,7 +1322,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 pointer-events-none transition focus:outline-none" />
+                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 pointer-events-none transition focus:outline-none z-[4]" />
                   </div>
                 </div>
               )
@@ -1340,16 +1371,23 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           </div>
 
           {/* Preview Modal */}
-          <ArtStationPreview
-            preview={preview}
-            onClose={() => setPreview(null)}
-            onConfirmDelete={confirmDelete}
-            currentUid={currentUid}
-            currentUser={currentUser}
-            cards={cards}
-            likedCards={likedCards}
-            toggleLike={toggleLike}
-          />
+          {preview && (
+            <ArtStationPreview
+              preview={preview}
+              onClose={() => {
+                setPreview(null)
+                setSelectedImageIndex(0)
+                setSelectedVideoIndex(0)
+                setSelectedAudioIndex(0)
+              }}
+              onConfirmDelete={confirmDelete}
+              currentUid={currentUid}
+              currentUser={currentUser}
+              cards={cards}
+              likedCards={likedCards}
+              toggleLike={toggleLike}
+            />
+          )}
         </div>
       </div>
 
