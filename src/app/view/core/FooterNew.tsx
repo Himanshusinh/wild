@@ -191,11 +191,6 @@ const FooterNew: React.FC = () => {
                       </Link>
                     </li>
                     <li>
-                      <Link href={COMPANY_ROUTES.ABOUT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
-                        About
-                      </Link>
-                    </li>
-                    <li>
                       <Link href={COMPANY_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Support
                       </Link>
