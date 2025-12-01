@@ -243,7 +243,7 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
         {Array.isArray(userAudioFiles) && userAudioFiles.length > 0 ? (
           <div className="space-y-4 mb-8">
             <div className="flex items-center gap-3 ml-1">
-              <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-6 h-6 bg-[#1f1f23] rounded-full flex items-center justify-center flex-shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
                   <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />
                 </svg>

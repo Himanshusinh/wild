@@ -501,30 +501,32 @@ const EditImageInterface: React.FC = () => {
             'live-chat': directUrl,
           });
         } else if (imageParam && imageParam.trim() !== '') {
+          const normalizedImageParam = normalizeEditImageUrl(imageParam);
           setInputs({
-            'upscale': imageParam,
-            'remove-bg': imageParam,
-            'resize': imageParam,
-            'fill': imageParam,
-            'vectorize': imageParam,
-            'erase': imageParam,
-            'expand': imageParam,
-            'reimagine': imageParam,
-            'live-chat': imageParam,
+            'upscale': normalizedImageParam,
+            'remove-bg': normalizedImageParam,
+            'resize': normalizedImageParam,
+            'fill': normalizedImageParam,
+            'vectorize': normalizedImageParam,
+            'erase': normalizedImageParam,
+            'expand': normalizedImageParam,
+            'reimagine': normalizedImageParam,
+            'live-chat': normalizedImageParam,
           });
         }
       } else if (imageParam && imageParam.trim() !== '') {
         // Fallback: if only image provided, attach to current feature
+        const normalizedImageParam = normalizeEditImageUrl(imageParam);
         setInputs({
-          'upscale': imageParam,
-          'remove-bg': imageParam,
-          'resize': imageParam,
-          'fill': imageParam,
-          'vectorize': imageParam,
-          'erase': imageParam,
-          'expand': imageParam,
-          'reimagine': imageParam,
-          'live-chat': imageParam,
+          'upscale': normalizedImageParam,
+          'remove-bg': normalizedImageParam,
+          'resize': normalizedImageParam,
+          'fill': normalizedImageParam,
+          'vectorize': normalizedImageParam,
+          'erase': normalizedImageParam,
+          'expand': normalizedImageParam,
+          'reimagine': normalizedImageParam,
+          'live-chat': normalizedImageParam,
         });
       }
     } catch { }
@@ -4347,7 +4349,7 @@ const EditImageInterface: React.FC = () => {
                         <>
                           <div className="absolute inset-0">
                             <Image
-                              src={inputs[selectedFeature] as string}
+                              src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
                               alt="Original"
                               fill
                               unoptimized
@@ -4361,7 +4363,7 @@ const EditImageInterface: React.FC = () => {
                             }}
                           >
                             <Image
-                              src={outputs[selectedFeature] as string}
+                              src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
                               alt="Generated"
                               fill
                               unoptimized
@@ -4416,7 +4418,7 @@ const EditImageInterface: React.FC = () => {
                         >
                           <Image
                             ref={imageRef}
-                            src={outputs[selectedFeature] as string}
+                            src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
                             alt="Output"
                             fill
                             unoptimized
@@ -4500,9 +4502,10 @@ const EditImageInterface: React.FC = () => {
                     >
                       <Image
                         ref={imageRef}
-                        src={outputs[selectedFeature] as string}
+                        src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
                         alt="Output"
                         fill
+                        unoptimized
                         className="object-contain object-center"
                         style={{
                           transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
@@ -4572,9 +4575,10 @@ const EditImageInterface: React.FC = () => {
                   {inputs[selectedFeature] ? (
                     <div className="absolute inset-0">
                       <Image
-                        src={inputs[selectedFeature] as string}
+                        src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
                         alt="Input"
                         fill
+                        unoptimized
                         className="object-contain object-center"
                         onLoad={(e) => {
                           if (selectedFeature === 'expand') {
@@ -5153,7 +5157,7 @@ const EditImageInterface: React.FC = () => {
                           className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
                           title={`Generation ${origIdx + 1}`}
                         >
-                          <img src={url} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
+                          <img src={normalizeEditImageUrl(url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
                         </button>
                       );
                     })}
@@ -5176,7 +5180,7 @@ const EditImageInterface: React.FC = () => {
                             className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? 'border-white' : 'border-white/20 hover:border-white/40'}`}
                             title={`Input image`}
                           >
-                            <img src={inputUrl} alt={`Input`} className="w-full h-full object-cover" />
+                            <img src={normalizeEditImageUrl(inputUrl)} alt={`Input`} className="w-full h-full object-cover" />
                           </button>
                         );
                       })()
