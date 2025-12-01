@@ -292,7 +292,7 @@ const SidePannelFeatures = ({
       {/* Original sidebar - keeps original CSS styling */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-2 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-transform duration-300 ease-in-out text-white border-r border-white/10 ${isMobileSidebarOpen
+        className={`fixed top-0 bottom-0 left-0 flex flex-col md:gap-3 gap-1 md:py-6 py-0 md:px-3 px-3  backdrop-blur-md group transition-transform duration-300 ease-in-out text-white  ${isMobileSidebarOpen
           ? 'w-60 translate-x-0 z-[56]'
           : '-translate-x-full md:translate-x-0 z-[50]'
           } ${isSidebarHovered ? 'md:w-60' : 'md:w-[68px]'

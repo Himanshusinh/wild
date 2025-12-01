@@ -17,6 +17,30 @@ import { toast } from 'react-hot-toast';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
+// Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
+// This prevents passing `/_next/image?url=...` wrappers to the backend, which can't use them.
+const normalizeEditImageUrl = (raw: string | null | undefined): string => {
+  if (!raw) return '';
+  let url = raw;
+  try {
+    if (url.includes('/_next/image')) {
+      // Support both absolute and relative URLs
+      const base =
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : 'https://wildmindai.com';
+      const parsed = new URL(url, base);
+      const inner = parsed.searchParams.get('url');
+      if (inner) {
+        return decodeURIComponent(inner);
+      }
+    }
+  } catch {
+    // Fall through to returning the original URL
+  }
+  return url;
+};
+
 const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
   const searchParams = useSearchParams();
@@ -60,6 +84,7 @@ const EditImageInterface: React.FC = () => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
   const [showImageMenu, setShowImageMenu] = useState(false);
+  const [hasLeftScroll, setHasLeftScroll] = useState(false);
 
   // Zoom and pan state
   const [scale, setScale] = useState(1);
@@ -3000,6 +3025,14 @@ const EditImageInterface: React.FC = () => {
     }
   };
 
+  const handleFeatureTabsScroll = () => {
+    try {
+      const el = featureTabsRef.current;
+      if (!el) return;
+      setHasLeftScroll(el.scrollLeft > 4);
+    } catch { }
+  };
+
   return (
     <div className=" bg-[#07070B]">
       {/* Sticky header like ArtStation */}
@@ -3027,7 +3060,7 @@ const EditImageInterface: React.FC = () => {
           // Tab change handled internally by UploadModal
         }, [])}
         onAdd={(urls: string[]) => {
-          const first = urls[0];
+          const first = urls[0] ? normalizeEditImageUrl(urls[0]) : '';
           if (first) {
             // Apply selected image from modal to all features
             setInputs({
@@ -3077,8 +3110,9 @@ const EditImageInterface: React.FC = () => {
             <div
               className="overflow-x-auto md:overflow-visible"
               ref={featureTabsRef}
+              onScroll={handleFeatureTabsScroll}
             >
-              <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1 md:pl-0 pb-0">
+              <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1  md:pl-0 pb-0">
               {features.map((feature) => (
                 <button
                   key={feature.id}
@@ -3097,7 +3131,7 @@ const EditImageInterface: React.FC = () => {
                   }}
                   className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                 >
-                  <div className="flex items-center gap-0 justify-center ">
+                  <div className="flex items-center gap-0 justify-center  ">
                     <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
                       {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="md:w-6 md:h-6 w-5 h-5" />)}
                       {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="md:w-6 md:h-6 w-5 h-5" />)}
@@ -3120,10 +3154,41 @@ const EditImageInterface: React.FC = () => {
               ))}
               </div>
             </div>
+
+            {/* Mobile hint: fixed left arrow, only when scrolled left */}
+            {hasLeftScroll && (
+              <button
+                type="button"
+                className="md:hidden absolute top-1/2 -translate-y-5 left-0 pr-1 h-5 flex items-center border-l border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-r-full"
+                onClick={() => {
+                  try {
+                    const el = featureTabsRef.current;
+                    if (el) {
+                      el.scrollBy({ left: -120, behavior: 'smooth' });
+                    }
+                  } catch { }
+                }}
+                aria-label="Scroll feature tabs left"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+              </button>
+            )}
+
             {/* Mobile hint: fixed right arrow to indicate more tabs */}
             <button
               type="button"
-              className="md:hidden  absolute top-1/2 -translate-y-1/2  right-0 pl-1 h-8 flex items-center border-r border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-l-full"
+              className="md:hidden  absolute top-1/2 -translate-y-5  right-0 pl-1 h-5  flex items-center border-r border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-l-full"
               onClick={() => {
                 try {
                   const el = featureTabsRef.current;
@@ -3135,8 +3200,8 @@ const EditImageInterface: React.FC = () => {
               aria-label="Scroll feature tabs"
             >
               <svg
-                width="18"
-                height="18"
+                width="12"
+                height="12"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -3242,7 +3307,7 @@ const EditImageInterface: React.FC = () => {
                           : 'text-white/70 hover:text-white'
                         }`}
                     >
-                      Standard
+                      Line Vector
                     </button>
                     <button
                       onClick={() => setVectorizeSuperMode(true)}
@@ -3251,7 +3316,7 @@ const EditImageInterface: React.FC = () => {
                           : 'text-white/70 hover:text-white'
                         }`}
                     >
-                      Super best for production
+                      Art Vector
                     </button>
                   </div>
                   {vectorizeSuperMode && (
