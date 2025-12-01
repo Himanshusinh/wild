@@ -1062,7 +1062,10 @@ const Recentcreation: React.FC = () => {
               audioUrl={audioPreview.audioUrl}
               prompt={audioPreview.entry.prompt}
               model={audioPreview.entry.model}
-              lyrics={audioPreview.entry.lyrics || audioPreview.entry.prompt}
+              // HistoryEntry type doesn't carry lyrics yet; frontend only has prompt.
+              // Pass prompt as a fallback, and let CustomAudioPlayer decide whether to
+              // show a Lyrics box based on generationType.
+              lyrics={audioPreview.entry.prompt}
               generationType={audioPreview.entry.generationType}
               autoPlay={true}
             />

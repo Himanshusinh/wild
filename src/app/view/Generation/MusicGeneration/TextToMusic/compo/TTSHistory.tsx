@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
+import type { HistoryFilters } from '@/types/history';
 import { Music4, Trash2 } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import axiosInstance from '@/lib/axiosInstance';
@@ -94,7 +95,9 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
   React.useEffect(() => {
     const fetchTTSHistory = async () => {
       try {
-        const genFilter = { generationType: ['text-to-speech', 'text_to_speech', 'tts'] };
+        const genFilter: HistoryFilters = {
+          generationType: ['text-to-speech', 'text_to_speech', 'tts'] as unknown as HistoryFilters['generationType'],
+        };
         setPage(1);
         // Set filters first (for client-side filtering)
         (dispatch as any)(setFilters(genFilter));
@@ -133,7 +136,9 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
     throttleMs: 200,
     loadMore: async () => {
       const next = page + 1; setPage(next);
-      const genFilter = { generationType: ['text-to-speech', 'text_to_speech', 'tts'] };
+      const genFilter: HistoryFilters = {
+        generationType: ['text-to-speech', 'text_to_speech', 'tts'] as unknown as HistoryFilters['generationType'],
+      };
       await (dispatch as any)(loadMoreHistory({
         filters: genFilter,
         backendFilters: genFilter, // Ensure backend receives the filter

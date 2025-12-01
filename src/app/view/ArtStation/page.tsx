@@ -15,6 +15,9 @@ import { Masonry } from '@/components/masonry'
 type PublicItem = {
   id: string;
   prompt?: string;
+  // Optional rich text fields for audio/music generations
+  lyrics?: string;
+  fileName?: string;
   generationType?: string;
   model?: string;
   aspectRatio?: string;

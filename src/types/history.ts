@@ -102,10 +102,48 @@ export interface HistoryEntryFirestore {
 export interface HistoryFilters {
   model?: string;
   // Allow filtering by a single type or multiple types (e.g., ['text-to-speech','text_to_speech','tts'])
+  // Extended to support audio dialogue generations as first-class filters.
   generationType?: (
-    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
+    | 'text-to-image'
+    | 'logo'
+    | 'sticker-generation'
+    | 'text-to-video'
+    | 'text-to-music'
+    | 'text-to-speech'
+    | 'mockup-generation'
+    | 'product-generation'
+    | 'ad-generation'
+    | 'live-chat'
+    | 'text-to-character'
+    | 'text_to_image'
+    | 'image_to_video'
+    | 'video_to_video'
+    | 'text_to_speech'
+    | 'tts'
+    // NEW: dialogue/audio synonyms
+    | 'text-to-dialogue'
+    | 'text_to_dialogue'
+    | 'dialogue'
   ) | Array<
-    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
+    | 'text-to-image'
+    | 'logo'
+    | 'sticker-generation'
+    | 'text-to-video'
+    | 'text-to-music'
+    | 'text-to-speech'
+    | 'mockup-generation'
+    | 'product-generation'
+    | 'ad-generation'
+    | 'live-chat'
+    | 'text-to-character'
+    | 'text_to_image'
+    | 'image_to_video'
+    | 'video_to_video'
+    | 'text_to_speech'
+    | 'tts'
+    | 'text-to-dialogue'
+    | 'text_to_dialogue'
+    | 'dialogue'
   >;
   mode?: 'image' | 'video' | 'music' | 'all';
   dateRange?: {
