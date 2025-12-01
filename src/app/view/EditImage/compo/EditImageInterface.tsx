@@ -76,6 +76,7 @@ const EditImageInterface: React.FC = () => {
   // Fill mask drawing
   const fillCanvasRef = useRef<HTMLCanvasElement>(null);
   const fillContainerRef = useRef<HTMLDivElement>(null);
+  const featureTabsRef = useRef<HTMLDivElement>(null);
   const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [isMasking, setIsMasking] = useState(false);
   const [hasMask, setHasMask] = useState(false);
@@ -956,7 +957,8 @@ const EditImageInterface: React.FC = () => {
     // { id: 'expand', label: 'Expand', description: 'Expand image by stretching canvas boundaries' },
     { id: 'resize', label: 'Resize', description: 'Resize image to specific dimensions' },
     { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
-    { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
+    // Reimagine feature is temporarily hidden from the tab list but kept in state for type-safety
+    // { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
     { id: 'live-chat', label: 'Chat to Edit', description: 'Chat-driven edits & regenerations' },
   ] as const;
 
@@ -3036,7 +3038,8 @@ const EditImageInterface: React.FC = () => {
               'vectorize': first,
               'erase': first,
               'expand': first,
-              'reimagine': first,
+              // Keep reimagine present for type-safety but unused in UI
+              'reimagine': null,
               'live-chat': first,
             });
             // Clear all outputs when a new image is selected so the output area re-renders
@@ -3048,6 +3051,7 @@ const EditImageInterface: React.FC = () => {
               'vectorize': null,
               'erase': null,
               'expand': null,
+              // Keep reimagine present for type-safety but unused in UI
               'reimagine': null,
               'live-chat': null,
             });
@@ -3069,8 +3073,12 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Feature tabs (two rows on desktop, sliding row on mobile) */}
-          <div className="md:px-4 md:pt-3 w-auto overflow-x-auto md:overflow-visible  md:mx-0">
-            <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1 md:pl-0 pb-0">
+          <div className="relative md:px-4 md:pt-3 w-auto md:mx-0">
+            <div
+              className="overflow-x-auto md:overflow-visible"
+              ref={featureTabsRef}
+            >
+              <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1 md:pl-0 pb-0">
               {features.map((feature) => (
                 <button
                   key={feature.id}
@@ -3087,7 +3095,7 @@ const EditImageInterface: React.FC = () => {
                     }
                     setProcessing((p) => ({ ...p, [feature.id]: false }));
                   }}
-                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto md:w-auto flex-shrink-0 w-auto min-w-[78px] border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                 >
                   <div className="flex items-center gap-0 justify-center ">
                     <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
@@ -3099,7 +3107,7 @@ const EditImageInterface: React.FC = () => {
                       {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="md:w-5 md:h-5 w-4 h-4" />)}
                       {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="md:w-6 md:h-6 w-5 h-5" />)}
                       {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
-                      {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)}
+                      {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
                       {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
                     </div>
 
@@ -3110,9 +3118,37 @@ const EditImageInterface: React.FC = () => {
 
                 </button>
               ))}
+              </div>
             </div>
+            {/* Mobile hint: fixed right arrow to indicate more tabs */}
+            <button
+              type="button"
+              className="md:hidden  absolute top-1/2 -translate-y-1/2  right-0 pl-1 h-8 flex items-center border-r border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-l-full"
+              onClick={() => {
+                try {
+                  const el = featureTabsRef.current;
+                  if (el) {
+                    el.scrollBy({ left: 120, behavior: 'smooth' });
+                  }
+                } catch {}
+              }}
+              aria-label="Scroll feature tabs"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
           </div>
-          <div className="md:hidden flex justify-end text-white/80 text-[10px] "> Slide to see more...</div>
+
 
 
           {/* Feature Preview (GIF banner) - hidden for Live Chat */}
@@ -3504,8 +3540,8 @@ const EditImageInterface: React.FC = () => {
                             <div className={`absolute top-full z-100 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30  md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                               {(selectedFeature === 'remove-bg'
                                 ? [
-                                  { label: '851-labs/background-remover', value: '851-labs/background-remover' },
-                                  { label: 'lucataco/remove-bg', value: 'lucataco/remove-bg' },
+                                  { label: '851-labs', value: '851-labs/background-remover' },
+                                  { label: 'lucataco', value: 'lucataco/remove-bg' },
                                 ]
                                 : selectedFeature === 'resize'
                                   ? [
@@ -3795,19 +3831,19 @@ const EditImageInterface: React.FC = () => {
                             <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
                           </button>
                           {activeDropdown === 'backgroundType' && (
-                            <div className={`absolute top-full z-30 md:mt-2 mt-1 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-44 max-h-36 overflow-y-auto dropdown-scrollbar`}>
+                            <div className={`absolute top-full z-30 md:mt-2 mt-1 md:pb-0 pb-0 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-44 max-h-28 overflow-y-auto dropdown-scrollbar`}>
                               {[
-                                { label: 'rgba (Transparent)', value: 'rgba', description: 'Creates transparent background' },
-                                { label: 'white', value: 'white', description: 'Solid white background' },
-                                { label: 'green', value: 'green', description: 'Solid green background' },
-                                { label: 'blur', value: 'blur', description: 'Blurred version of original background' },
-                                { label: 'overlay', value: 'overlay', description: 'Semi-transparent colored overlay effect' },
-                                { label: 'map', value: 'map', description: 'Creates a black and white image where white areas are foreground, black areas are background' },
+                                { label: 'RGBA (Transparent)', value: 'rgba', description: '' },
+                                { label: 'White', value: 'white', description: '' },
+                                { label: 'Green', value: 'green', description: '' },
+                                { label: 'Blur', value: 'blur', description: '' },
+                                { label: 'Overlay', value: 'overlay', description: '' },
+                                { label: 'Depth-Map', value: 'map', description: '' },
                               ].map((opt) => (
                                 <button
                                   key={opt.value}
                                   onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                                  className={` w-full px-3 py-2 text-left text-[13px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  className={` w-full md:px-3 px-2.5 md:py-2 py-0.5  text-left md:text-[13px] text-[12px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                                 >
                                   <div className="flex items-center justify-between w-full">
                                     <span className="truncate font-medium">{opt.label}</span>
@@ -4928,7 +4964,7 @@ const EditImageInterface: React.FC = () => {
                           )}
 
                           {/* Reimagine: Floating Prompt Input - Clean Glassmorphism */}
-                          {selectedFeature === 'reimagine' && reimagineSelectionConfirmed && reimagineSelectionBounds && (
+                          {/* {selectedFeature === 'reimagine' && reimagineSelectionConfirmed && reimagineSelectionBounds && (
                             <div
                               className="absolute z-20 w-full max-w-2xl left-1/2 -translate-x-1/2"
                               style={{
@@ -4942,7 +4978,7 @@ const EditImageInterface: React.FC = () => {
                                   </svg>
                                 </div>
 
-                                {/* Model Selector - Compact */}
+                                Model Selector - Compact
                                 <select
                                   value={reimagineModel}
                                   onChange={(e) => setReimagineModel(e.target.value as 'auto' | 'nano-banana' | 'seedream-4k')}
@@ -5002,7 +5038,7 @@ const EditImageInterface: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                          )}
+                          )} */}
                         </div>
                       )}
                     </div>
