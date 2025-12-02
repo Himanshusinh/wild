@@ -13,6 +13,28 @@ export default function AuthBootstrap() {
     let mounted = true
     ;(async () => {
       try {
+        // Optimization: Check if we have any auth credentials (cookie or local storage token)
+        // If neither exists, we are definitely anonymous, so skip the API call to prevent 401s
+        const hasCookie = typeof document !== 'undefined' && (
+            document.cookie.includes('app_session=') || 
+            document.cookie.includes('auth_token=')
+        )
+        
+        let hasLocalStorageToken = false
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const userStr = localStorage.getItem('user')
+                const userObj = userStr ? JSON.parse(userStr) : null
+                hasLocalStorageToken = !!(localStorage.getItem('authToken') || (userObj && (userObj.token || userObj.idToken)))
+            }
+        } catch {}
+
+        if (!hasCookie && !hasLocalStorageToken) {
+             // No credentials at all - clear user state and return
+             dispatch(setUser(null))
+             return
+        }
+
         const me = await getMeCached()
         if (!mounted) return
         if (me) {
