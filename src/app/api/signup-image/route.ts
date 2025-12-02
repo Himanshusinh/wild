@@ -1,78 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSignupImages } from '@/lib/showcase-cache';
 
-// No caching - fetch fresh image on every request
+// No caching for the API response itself, so we get a random image each time
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; // No revalidation, always fetch fresh
-
-async function fetchFromBackend(): Promise<any> {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 
-                  process.env.API_BASE_URL || 
-                  '';
-  // No cache-busting needed - backend now uses a pool system for instant responses
-  const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored`;
-  
-  console.log('[signup-image] Fetching from backend:', apiUrl);
-  
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('[signup-image] Backend error:', response.status, errorText);
-      throw new Error(`Backend error ${response.status}: ${errorText.substring(0, 100)}`);
-    }
-
-    const data = await response.json();
-    console.log('[signup-image] ✅ Backend response received');
-    return data;
-  } catch (fetchError: any) {
-    console.error('[signup-image] ❌ Fetch error:', fetchError?.message);
-    throw fetchError;
-  }
-}
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
-  console.log('[signup-image] ========== GET REQUEST RECEIVED ==========');
-  
   try {
-    // Always fetch fresh image from backend (no caching)
-    console.log('[signup-image] Fetching fresh image from backend...');
+    // Get the cached pool of 1:1 high-quality images
+    const items = await getSignupImages();
     
-    const data = await fetchFromBackend();
-    
-    // Validate response
-    if (data?.responseStatus === 'success' && data?.data) {
-      console.log('[signup-image] ✅ Fresh image fetched successfully');
-      
-      return NextResponse.json(data, {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Cache': 'MISS',
-        },
-      });
+    if (!items || items.length === 0) {
+      throw new Error('No 1:1 signup images available');
     }
+
+    // Pick a random one
+    const randomItem = items[Math.floor(Math.random() * items.length)];
     
-    console.error('[signup-image] Invalid response structure:', data);
-    throw new Error('Invalid response from backend');
+    // Extract image URL
+    const imageUrl = randomItem.images?.[0]?.url || '';
+    
+    if (!imageUrl) {
+      throw new Error('Selected item has no image URL');
+    }
+
+    const data = {
+      imageUrl,
+      prompt: randomItem.prompt,
+      generationId: randomItem.id,
+      creator: randomItem.createdBy
+    };
+
+    return NextResponse.json({
+      responseStatus: 'success',
+      data
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
+
   } catch (error: any) {
-    // Return error with actual message
-    const errorMessage = error?.message || 'Failed to fetch random image';
-    console.error('[signup-image] ========== ERROR ==========');
-    console.error('[signup-image] Error:', errorMessage);
-    console.error('[signup-image] Stack:', error?.stack?.substring(0, 300));
-    
+    console.error('[signup-image] Error:', error?.message);
     return NextResponse.json(
       {
         responseStatus: 'error',
-        message: errorMessage,
+        message: error?.message || 'Failed to fetch signup image',
         data: null,
       },
       { status: 500 }

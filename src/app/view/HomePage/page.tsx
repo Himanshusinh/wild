@@ -35,7 +35,7 @@ const FooterNew = dynamic(() => import('../core/FooterNew'), {
 })
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
-import type { Creation } from './compo/CommunityCreations'
+
 
 import { ViewType, GenerationType } from '@/types/generation';
 
@@ -193,186 +193,15 @@ const HomePage: React.FC = () => {
   ];
 
 
-  // Removed static ITEMS fallback; homepage will use live Art Station feed only
-
-  const [artItems, setArtItems] = useState<Creation[]>([])
-
-  const didInitArtRef = React.useRef(false)
-  
-  // Memoize dimensions array to prevent recreation
-  const dims = useMemo(() => [
-    { w: 900, h: 1400 },
-    { w: 1200, h: 1150 },
-    { w: 1000, h: 1000 },
-    { w: 1200, h: 1810 },
-    { w: 1600, h: 1400 },
-    { w: 1100, h: 1800 },
-    { w: 1500, h: 1000 },
-    { w: 1400, h: 1200 },
-    { w: 1200, h: 1200 },
-  ], []);
-
-  // Memoize base URL processing
-  const baseUrl = useMemo(() => API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE, []);
-
-  // Optimized category mapping function
-  const getCategory = useCallback((generationType: string, firstAudio: any) => {
-    if (firstAudio) return 'Music';
-    const t = generationType.toLowerCase();
-    if (t.includes('music') || t.includes('audio')) return 'Music';
-    if (t === 'text-to-image') return 'Images';
-    if (t === 'text-to-video') return 'Videos';
-    if (t === 'logo' || t === 'logo-generation') return 'Logos';
-    if (t === 'sticker-generation' || t === 'sticker') return 'Stickers';
-    if (t === 'product-generation' || t === 'product') return 'Products';
-    return 'All';
-  }, []);
-
-  useEffect(() => {
-    if (didInitArtRef.current) return; // Prevent React StrictMode double-invoke in dev
-    didInitArtRef.current = true;
-    const fetchHomeArt = async () => {
-      try {
-        let nextCursor: string | undefined = undefined
-        const out: Creation[] = []
-        const hasApiBase = !!baseUrl
-
-        // Try live feed first when API_BASE is configured
-        if (hasApiBase) {
-          let page = 0
-          const maxPages = 3
-          while (page < maxPages && out.length < 48) {
-            try {
-              const url = new URL(`${baseUrl}/api/feed`)
-              url.searchParams.set('limit', '24')
-              // Home page: prefer images for aesthetic layout
-              url.searchParams.set('mode', 'image')
-              if (nextCursor) url.searchParams.set('cursor', nextCursor)
-              
-              const res = await fetch(url.toString(), { 
-                credentials: 'include',
-                cache: 'default',
-                headers: {
-                  'Accept': 'application/json',
-                }
-              })
-              
-              if (!res.ok) {
-                const errorText = await res.text().catch(() => 'Unknown error')
-                console.error(`[HomePage] Feed API error (page ${page}):`, res.status, errorText)
-                if (out.length > 0) break
-                break
-              }
-              
-              const data = await res.json()
-              const payload = data?.data || data
-              const items: any[] = payload?.items || []
-              nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
-
-              if (items.length === 0) break
-
-              items.forEach((it: any, idx: number) => {
-                const firstImage = (it.images && Array.isArray(it.images) && it.images[0])
-                const firstVideo = (it.videos && Array.isArray(it.videos) && it.videos[0])
-                const firstAudio = (it.audios && Array.isArray(it.audios) && it.audios[0])
-                const media = firstVideo || firstImage || firstAudio
-
-                // Prefer optimized thumbnail/AVIF from API, then full URL
-                const thumbSrc =
-                  (firstImage?.thumbnailUrl as string | undefined) ||
-                  (firstImage?.avifUrl as string | undefined) ||
-                  (media?.thumbnailUrl as string | undefined) ||
-                  (media?.avifUrl as string | undefined)
-
-                const fullSrc =
-                  (media?.url as string | undefined) ||
-                  (media?.firebaseUrl as string | undefined) ||
-                  (media?.originalUrl as string | undefined) ||
-                  (firstImage?.url as string | undefined)
-
-                const src = thumbSrc || fullSrc || ''
-                if (!src) return
-                const cat = getCategory(it.generationType || '', firstAudio)
-                const dim = dims[(out.length + idx) % dims.length]
-                const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
-                out.push({
-                  id: it.id || String(out.length + idx),
-                  src,
-                  // keep reference to original/primary URL for preview fallbacks
-                  fullSrc,
-                  prompt: it.prompt,
-                  categories: [cat],
-                  width: dim.w,
-                  height: dim.h,
-                  createdBy: creator,
-                })
-              })
-
-              page += 1
-              if (!nextCursor) break
-            } catch (pageError: any) {
-              console.error(`[HomePage] Error fetching page ${page}:`, pageError?.message || pageError)
-              if (out.length > 0) break
-              break
-            }
-          }
-        } else {
-          console.warn('[HomePage] NEXT_PUBLIC_API_BASE_URL is not set, falling back to static community creations')
-        }
-
-        // Fallback: if no live items (e.g., local dev or empty feed), use static demo images
-        if (out.length === 0) {
-          const staticImages = imageRoutes.communityCreations || {}
-          let idx = 0
-          for (const [key, url] of Object.entries(staticImages)) {
-            if (!url) continue
-            const dim = dims[idx % dims.length]
-            out.push({
-              id: `static-${key}`,
-              src: url,
-              prompt: 'Community creation',
-              categories: ['Images'],
-              width: dim.w,
-              height: dim.h,
-              createdBy: 'WildMind',
-            })
-            idx += 1
-          }
-        }
-
-        setArtItems(out)
-      } catch (e: any) {
-        console.error('[HomePage] Fatal error fetching art:', e?.message || e)
-        // fallback to static
-        setArtItems([])
-      }
-    }
-    fetchHomeArt()
-  }, [baseUrl, dims, getCategory])
-
   return (
     <div className="min-h-screen bg-[#07070B]">
-      {/* DEBUG: This is HomePage component */}
-      {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
-        🔍 DEBUG: HomePage Component is Rendering
-      </div> */}
-
-      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
-      <div className="flex md:pt-[40px] md:ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
+      <div className="flex md:pt-[40px] md:ml-[68px]">
         <div className="flex-1 min-w-0">
           <Header />
           <Recentcreation />
-          {/* <Second />
-          <main className="min-h-screen bg-[#07070B] text-white pt-10">
-            <div className="w-full md:pl-12 mt-10">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-0 ">Workflow</h2>
-              <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
-            </div>
-          </main> */}
-
           <main className="min-h-screen bg-[#07070B] text-white md:px-4 md:px-8 pt-4 ">
             <div className="w-full px-4 md:pl-4">
-              <CommunityCreations items={artItems} initialFilter="All" />
+              <CommunityCreations />
             </div>
           </main>
 

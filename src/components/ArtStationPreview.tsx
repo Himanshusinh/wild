@@ -9,6 +9,7 @@ import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
 export type PublicItem = {
   id: string;
+  aestheticScore?: number;
   prompt?: string;
   // Optional rich text fields for audio/music generations
   lyrics?: string;
@@ -24,6 +25,7 @@ export type PublicItem = {
   isDeleted?: boolean;
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
   images?: {
+    aestheticScore?: number;
     id: string;
     url: string;
     originalUrl?: string;
