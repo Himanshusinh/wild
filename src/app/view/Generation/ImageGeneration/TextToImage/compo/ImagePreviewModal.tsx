@@ -10,7 +10,7 @@ import { HistoryEntry } from '@/types/history';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
-import { toResourceProxy, toMediaProxy, toZataPath } from '@/lib/thumb';
+import { toResourceProxy, toMediaProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
 
 const RESOLUTION_K_MAP: Record<string, number> = {
@@ -1688,33 +1688,54 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   <button
                     onClick={() => {
                       try {
-                        const storagePath = (selectedImage as any)?.storagePath || (() => {
+                        const entryAny: any = selectedEntry as any;
+                        const inputImages: any[] = Array.isArray(entryAny?.inputImages) ? entryAny.inputImages : [];
+
+                        // Collect ALL user uploads (Your Upload images)
+                        const storagePaths: string[] = [];
+                        const directUrls: string[] = [];
+
+                        inputImages.forEach((img: any) => {
                           try {
-                            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-                            const original = selectedImage?.url || '';
-                            if (!original) return '';
-                            if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
+                            let sp = img?.storagePath || '';
+                            if (!sp) {
+                              const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
+                              const original = img?.url || img?.originalUrl || '';
+                              if (original && original.startsWith(ZATA_PREFIX)) {
+                                sp = original.substring(ZATA_PREFIX.length);
+                              }
+                            }
+                            if (sp) {
+                              storagePaths.push(sp);
+                              return;
+                            }
+                            const rawUrl = img?.url || img?.originalUrl || '';
+                            if (rawUrl && !isBlobOrDataUrl(rawUrl)) {
+                              const direct = toDirectUrl(rawUrl);
+                              if (direct) directUrls.push(direct);
+                            }
                           } catch { }
-                          return '';
-                        })();
-                        const fallbackHttp = selectedImage?.url && !isBlobOrDataUrl(selectedImage.url) ? selectedImage.url : (preview.image.url && !isBlobOrDataUrl(preview.image.url) ? preview.image.url : '');
-                        // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
-                        const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
+                        });
+
                         const qs = new URLSearchParams();
                         // Use userPrompt for remix if available, otherwise use cleanPrompt
                         const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
-                        qs.set('prompt', remixPrompt);
-                        // Always set sp if we have storagePath (InputBox prioritizes sp over image)
-                        if (storagePath) {
-                          qs.set('sp', storagePath);
-                        } else if (imgUrl) {
-                          // If no storagePath, set image URL directly
-                          qs.set('image', imgUrl);
+                        if (remixPrompt) qs.set('prompt', remixPrompt);
+
+                        // Attach all uploads:
+                        // - Prefer storage paths via repeated sp= params
+                        // - Fallback direct URLs via repeated image= params
+                        storagePaths.forEach((spVal) => {
+                          if (spVal) qs.append('sp', spVal);
+                        });
+                        if (!storagePaths.length) {
+                          directUrls.forEach((u) => {
+                            if (u) qs.append('image', u);
+                          });
                         }
+
                         // also pass model, frameSize and style for preselection
-                        console.log('preview.entry', selectedEntry);
                         if (selectedEntry?.model) {
-                          // Map backend model ids to UI dropdown ids where needed
                           const m = String(selectedEntry.model);
                           const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
                           qs.set('model', mapped);
@@ -1722,10 +1743,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                         if (selectedEntry?.frameSize) qs.set('frame', String(selectedEntry.frameSize));
                         const sty = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '') || '';
                         if (sty) qs.set('style', String(sty));
-                        // Client-side navigation to avoid full page reload
-                        router.push(`/text-to-image?${qs.toString()}`);
+
+                        // Client-side navigation to avoid full page reload (and don't scroll to top)
+                        router.push(`/text-to-image?${qs.toString()}`, { scroll: false });
                         onClose();
-                      } catch { }
+                      } catch (err) {
+                        console.error('[ImagePreviewModal] Regenerate navigation failed', err);
+                      }
                     }}
                     className="flex-1 px-3 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg transition-colors text-sm font-medium shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                   >

@@ -64,7 +64,7 @@ import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { toResourceProxy, toZataPath } from '@/lib/thumb';
+import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 // Replaced per-page IntersectionObserver with unified bottom scroll pagination
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
@@ -242,25 +242,45 @@ const InputBox = () => {
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
-      const img = current.searchParams.get('image');
-      const sp = current.searchParams.get('sp');
+      // Support multiple uploads: allow repeated ?sp= and ?image= params
+      const spAll = current.searchParams.getAll('sp');
+      const imgAll = current.searchParams.getAll('image');
+      const img = current.searchParams.get('image'); // legacy single param
+      const sp = current.searchParams.get('sp');     // legacy single param
       const prm = current.searchParams.get('prompt');
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
 
-      // Handle image upload - prioritize sp (storage path) over image URL
-      if (sp) {
-        const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-        const directUrl = `${zataBase}${decodedPath}`;
-        dispatch(setUploadedImages([directUrl] as any));
-      } else if (img) {
-        // Ensure the image URL is valid and not a blob/data URL
-        const imageUrl = img.trim();
-        if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
-          dispatch(setUploadedImages([imageUrl] as any));
+      // Handle image upload - prioritize sp (storage path) over image URL.
+      // Collect all URLs from sp/image params so multiple uploads are supported.
+      const collectedUrls: string[] = [];
+
+      const allSp = spAll.length ? spAll : (sp ? [sp] : []);
+      const allImg = imgAll.length ? imgAll : (img ? [img] : []);
+
+      allSp.forEach((spVal) => {
+        if (!spVal) return;
+        const decodedPath = decodeURIComponent(spVal).replace(/^\/+/, '');
+        const directUrl = toDirectUrl(decodedPath);
+        if (directUrl) {
+          collectedUrls.push(directUrl);
         }
+      });
+
+      if (!allSp.length) {
+        allImg.forEach((imgVal) => {
+          if (!imgVal) return;
+          const imageUrl = imgVal.trim();
+          if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+            collectedUrls.push(imageUrl);
+          }
+        });
+      }
+
+      if (collectedUrls.length > 0) {
+        // Cap to first 10 uploads to avoid overloading the UI
+        dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
       if (prm) dispatch(setPrompt(prm));
@@ -280,10 +300,13 @@ const InputBox = () => {
         try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
       }
       // Consume params once so a refresh doesn't keep the image selected
-      if (img || prm || sp || mdl || frm || sty) {
+      if (img || prm || sp || mdl || frm || sty || spAll.length || imgAll.length) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
         current.searchParams.delete('sp');
+        // Also delete any repeated params
+        imgAll.forEach(() => current.searchParams.delete('image'));
+        spAll.forEach(() => current.searchParams.delete('sp'));
         current.searchParams.delete('model');
         current.searchParams.delete('frame');
         current.searchParams.delete('style');
@@ -316,50 +339,68 @@ const InputBox = () => {
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
 
   // Helper function for frontend proxy resource URL
+  // NOTE: For regenerate/remix flows we prefer direct Zata URLs instead of localhost paths,
+  // so callers should usually pass storagePath via `sp` and only use this for in-app proxying.
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
     if (!urlOrPath) return '';
     return toResourceProxy(urlOrPath);
   };
 
-  // Handle recreate - navigate to text-to-image with entry parameters (same as ImagePreviewModal)
+  // Handle recreate (hover regenerate button) - navigate to text-to-image with entry parameters.
+  // Uses the same logic as the Regenerate button in ImagePreviewModal:
+  // - Prefer ALL "Your Upload" images (inputImages) as inputs
+  // - If there are no uploads, only send prompt/model/frame/style (no image)
   const handleRecreate = (e: React.MouseEvent, entry: HistoryEntry) => {
     try {
       e.stopPropagation();
       e.preventDefault();
 
-      // Get the first image from the entry
-      const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
-
-      // Extract storagePath from image
-      const storagePath = (entryImage as any)?.storagePath || (() => {
-        try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-          const original = entryImage?.url || '';
-          if (!original) return '';
-          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch { }
-        return '';
-      })();
-
-      // Get fallback HTTP URL (not blob/data URLs)
-      const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
-
-      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
-      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
-
       const qs = new URLSearchParams();
+
+      const entryAny: any = entry as any;
+      const inputImages: any[] = Array.isArray(entryAny?.inputImages) ? entryAny.inputImages : [];
+
+      // Collect ALL user uploads (Your Upload images)
+      const storagePaths: string[] = [];
+      const directUrls: string[] = [];
+
+      inputImages.forEach((img: any) => {
+        try {
+          let sp = img?.storagePath || '';
+          if (!sp) {
+            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
+            const original = img?.url || img?.originalUrl || '';
+            if (original && original.startsWith(ZATA_PREFIX)) {
+              sp = original.substring(ZATA_PREFIX.length);
+            }
+          }
+          if (sp) {
+            storagePaths.push(sp);
+            return;
+          }
+          const rawUrl = img?.url || img?.originalUrl || '';
+          if (rawUrl && !isBlobOrDataUrl(rawUrl)) {
+            const direct = toDirectUrl(rawUrl);
+            if (direct) directUrls.push(direct);
+          }
+        } catch { }
+      });
 
       // Use userPrompt for remix if available, otherwise use cleanPrompt
       const cleanPrompt = getCleanPrompt(entry.prompt || '');
       const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
       if (remixPrompt) qs.set('prompt', remixPrompt);
 
-      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
-      if (storagePath) {
-        qs.set('sp', storagePath);
-      } else if (imgUrl) {
-        // If no storagePath, set image URL directly
-        qs.set('image', imgUrl);
+      // Attach all uploads:
+      // - Prefer storage paths via repeated sp= params
+      // - Fallback direct URLs via repeated image= params
+      storagePaths.forEach((spVal) => {
+        if (spVal) qs.append('sp', spVal);
+      });
+      if (!storagePaths.length) {
+        directUrls.forEach((u) => {
+          if (u) qs.append('image', u);
+        });
       }
 
       // Also pass model, frameSize and style for preselection
@@ -374,8 +415,8 @@ const InputBox = () => {
       const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
       if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
 
-      // Client-side navigation to avoid full page reload
-      router.push(`/text-to-image?${qs.toString()}`);
+      // Client-side navigation to avoid full page reload (and don't scroll to top)
+      router.push(`/text-to-image?${qs.toString()}`, { scroll: false });
     } catch (error) {
       console.error('Error recreating image:', error);
     }
@@ -859,6 +900,14 @@ const InputBox = () => {
 
       const filtered = allEntries.filter((entry: any) => {
         const normalizedType = normalize(entry.generationType);
+        const normalizedModel = normalize(entry.model);
+
+        // Hide generations produced with the Seedream model from the Image Generation history grid.
+        // This includes both backend id 'bytedance/seedream-4' and any UI alias containing 'seedream'.
+        if (normalizedModel.includes('seedream')) {
+          return false;
+        }
+
         const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
         return normalizedType === 'text-to-image' ||
           normalizedType === 'image-upscale' ||
@@ -3344,7 +3393,7 @@ const InputBox = () => {
         .image-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
+          gap: 4px;
           grid-auto-rows: auto;
         }
         
@@ -3360,7 +3409,7 @@ const InputBox = () => {
           .image-grid {
             grid-template-columns: repeat(6, 1fr);
             grid-auto-rows: auto;
-            gap: 12px;
+            gap: 4px;
           }
         }
         
@@ -3379,8 +3428,8 @@ const InputBox = () => {
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-0  py-0 md:pl-4  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
-            <div className="flex items-center justify-between md:mb-2 mb-1">
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-4 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
+            <div className="flex items-center justify-between md:mb-2 mb-0">
               <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
             </div>
             
@@ -4195,8 +4244,8 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed md:bottom-6 bottom-0 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div className="rounded-lg md:rounded-b-lg rounded-b-none bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
+      <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-white/5 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch md:gap-0 gap-0">
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">

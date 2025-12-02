@@ -651,7 +651,7 @@ export default function ArtStationPreview({
                     }}
                     className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
                   >
-                    Remix
+                    Regenerate
                   </button>
                 </div>
               )
