@@ -454,22 +454,32 @@ export const loadMoreHistory = createAsyncThunk(
       
       const filtersForBackend = backendFilters || filters;
       
-      if (filtersForBackend?.generationType) {
+      // Only include generationType if explicitly provided in backendFilters
+      // When no search, don't send generationType array - rely on mode: 'image' only
+      if (filtersForBackend?.generationType && backendFilters) {
         // Backend validation now accepts audio types, so normalize and send them
-        if (backendFilters) {
-          const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+        const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+        // Only set if it's actually an array or string (not undefined)
+        if (normalized) {
           params.generationType = normalized;
-        } else {
-          const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-          if (mapped) params.generationType = mapped;
         }
       }
+      // Don't set generationType if not in backendFilters - let mode handle it
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
-      // Add search parameter if present
-      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
-        params.search = (filters as any).search.trim();
+      // Add search parameter if present (check both filtersForBackend and filters)
+      const searchQuery = (filtersForBackend as any)?.search || (filters as any)?.search;
+      if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+        params.search = searchQuery.trim();
       }
+      // Add sort order only if explicitly provided (when searching)
+      // Don't include sortOrder in default payload
+      if ((filtersForBackend as any)?.sortOrder) {
+        params.sortOrder = (filtersForBackend as any).sortOrder;
+      } else if ((filters as any)?.sortOrder) {
+        params.sortOrder = (filters as any).sortOrder;
+      }
+      // If sortOrder is not provided, don't set it (backend will use default)
       // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
       if (nextPageParams.cursor?.timestamp) {
         try {
@@ -483,9 +493,15 @@ export const loadMoreHistory = createAsyncThunk(
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
+  // Always set sortBy (use value from backendFilters if provided, otherwise default to createdAt)
+  if ((filtersForBackend as any)?.sortBy) {
+    params.sortBy = (filtersForBackend as any).sortBy;
+  } else if (!params.sortBy) {
+    params.sortBy = 'createdAt';
+  }
+  // Don't set default sortOrder - only include it if explicitly provided (when searching)
+  
   console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
-  // Always request createdAt sorting explicitly
-  params.sortBy = 'createdAt';
   
   const res = await client.get('/api/generations', { params });
   

@@ -92,7 +92,7 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
     const fetchDialogueHistory = async () => {
       try {
         const genFilter: HistoryFilters = {
-          generationType: ['text-to-dialogue', 'text_to_dialogue', 'dialogue'] as HistoryFilters['generationType'],
+            generationType: ['text-to-dialogue', 'text_to_dialogue', 'dialogue'] as HistoryFilters['generationType'],
         };
         setPage(1);
         // Set filters first (for client-side filtering)
