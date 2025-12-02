@@ -507,7 +507,14 @@ const SidePannelFeatures = ({
             className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
               }`}
           >
-            <Image src="/icons/gear-play.svg" alt="Video Edit" width={36} height={36} className="flex-none w-[24px] h-[24px]" unoptimized />
+            <Image
+              src="/icons/video-editing (1).svg"
+              alt="Video Edit"
+              width={30}
+              height={30}
+              className="flex-none w-[24px] h-[24px]"
+              unoptimized
+            />
             <span className={labelClasses}>Video Edit</span>
           </div>
         </div>

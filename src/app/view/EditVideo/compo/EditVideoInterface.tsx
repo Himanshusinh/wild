@@ -8,6 +8,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import VideoUploadModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoUploadModal';
+import VideoEditorPluginModal from '../VideoEditorPluginModal';
 import { loadMoreHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
@@ -73,6 +74,7 @@ const EditVideoInterface: React.FC = () => {
 
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
   const historyEntries = useAppSelector((s: any) => (s.history?.entries || []).filter((e: any) => e.generationType === 'text-to-video'));
   const historyLoading = useAppSelector((s: any) => s.history?.loading || false);
   const historyHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
@@ -414,9 +416,9 @@ const EditVideoInterface: React.FC = () => {
     }
   }, [showImageMenu, outputs, selectedFeature]);
 
-  const features: { id: 'upscale' | 'remove-bg'; label: string; description: string }[] = [
+  const features: { id: EditFeature; label: string; description: string }[] = [
     { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
-    { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your image' },
+    { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your Video' },
   ];
 
   // Feature preview assets and display labels
@@ -847,6 +849,10 @@ const EditVideoInterface: React.FC = () => {
           }
         }}
       />
+      <VideoEditorPluginModal
+        isOpen={isVideoEditorOpen}
+        onClose={() => setIsVideoEditorOpen(false)}
+      />
       <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-5 md:pt-14 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
         <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-8 md:mx-0 mx-2">
@@ -888,6 +894,21 @@ const EditVideoInterface: React.FC = () => {
 
                 </button>
               ))}
+              {/* Video Editor tab */}
+              <button
+                onClick={() => setIsVideoEditorOpen(true)}
+                className="text-left bg-white/5 items-center justify-center rounded-lg md:p-1 md:h-18 h-14 w-auto border border-white/10 hover:bg-white/10 transition"
+              >
+                <div className="flex items-center gap-0 justify-center">
+                  <div className="md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/video-editor.svg" alt="Video Editor" className="md:w-6 md:h-6 w-5 h-5" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-center pt-1">
+                  <span className="text-white text-[10px] md:text-sm text-center">Video Editor</span>
+                </div>
+              </button>
             </div>
           </div>
 

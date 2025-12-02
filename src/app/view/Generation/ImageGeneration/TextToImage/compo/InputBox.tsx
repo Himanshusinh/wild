@@ -4245,7 +4245,7 @@ const InputBox = () => {
         </div>
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-white/5 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
+        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch md:gap-0 gap-0">
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">

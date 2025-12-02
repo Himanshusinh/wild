@@ -4467,7 +4467,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`rounded-lg bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+          className={`rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
             }`}
           onClick={(e) => {
             // Close all dropdowns when clicking on the input box container

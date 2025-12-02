@@ -350,7 +350,7 @@ export default function ArtStationPreview({
             )}
 
             {/* Delete button (owner only) - on same row as Like button */}
-            {currentUid && preview.item.createdBy?.uid === currentUid ? (
+            {/* {currentUid && preview.item.createdBy?.uid === currentUid ? (
               <div className="relative group">
                 <button
                   title="Delete"
@@ -363,7 +363,7 @@ export default function ArtStationPreview({
               </div>
             ) : (
               <div className="w-10 h-10"></div>
-            )}
+            )} */}
           </div>
         </div>
 
@@ -651,7 +651,7 @@ export default function ArtStationPreview({
                     }}
                     className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
                   >
-                    Regenerate
+                    Remix
                   </button>
                 </div>
               )
