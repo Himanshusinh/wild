@@ -94,41 +94,41 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
     };
 
     return (
-        <div ref={sidebarRef} className="w-[72px] bg-[#0e1318] text-gray-400 flex flex-col h-full z-30 shrink-0 overflow-y-auto custom-scrollbar border-l border-gray-800 relative">
+        <div ref={sidebarRef} className="md:w-[72px] w-14 bg-[#0e1318] text-gray-400 flex flex-col h-full z-30 shrink-0 overflow-y-auto custom-scrollbar border-l border-gray-800 relative">
             <div className="flex flex-col py-2 gap-1">
 
                 {/* Edit (Image/Video) */}
                 {(isImage || isVideo) && (
-                    <button onClick={onEdit} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] group">
-                        <div className="relative mb-1.5">
+                    <button onClick={onEdit} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] group">
+                        <div className="relative md:mb-1.5 mb-1">
                             <SquarePen size={20} className="group-hover:text-violet-500 transition-colors" />
-                            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-violet-500 rounded-full border border-[#0e1318]"></div>
+                            <div className="absolute md:-top-0.5 -top-0.25 md:-right-0.5 -right-0.25 w-1.5 h-1.5 bg-violet-500 rounded-full border border-[#0e1318]"></div>
                         </div>
-                        <span className="text-[10px] font-medium">Edit</span>
+                        <span className="md:text-[10px] text-[9px] font-medium">Edit</span>
                     </button>
                 )}
 
                 {/* Color (Background/Tint) - Moved Up */}
                 {(isImage || isVideo || isColor) && (
                     <div className="relative w-full">
-                        <button onClick={(e) => togglePopup('color', e)} className={`flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'color' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
-                            <Palette size={20} className="mb-1.5" />
-                            <span className="text-[10px] font-medium">Color</span>
+                        <button onClick={(e) => togglePopup('color', e)} className={`flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'color' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
+                            <Palette size={20} className="md:mb-1.5 mb-1" />
+                            <span className="md:text-[10px] text-[9px] font-medium">Color</span>
                         </button>
-                        {activePopup === 'color' && (
-                            <div className="fixed right-[80px] bg-white p-3 rounded-lg shadow-xl border border-gray-200 w-64 z-[110] animate-in fade-in slide-in-from-right-2" style={{ top: popupTop }}>
+                        {activePopup === 'color'     && (
+                            <div className="fixed md:right-[80px] right-14 bg-white p-3 rounded-lg shadow-xl border border-gray-200 md:w-64 w-56 z-[110] animate-in fade-in slide-in-from-right-2" style={{ top: popupTop }}>
                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="text-xs font-bold text-gray-500">Color</label>
-                                    {selectedItem.backgroundColor && <button className="text-[10px] text-red-500 hover:bg-red-50 px-2 py-0.5 rounded" onClick={() => onUpdate({ backgroundColor: undefined })}><Trash2 size={12} /> Remove Tint</button>}
+                                    <label className="md:text-xs text-sm font-bold text-gray-500">Color</label>
+                                    {selectedItem.backgroundColor && <button className="md:text-[10px] text-[9px] text-red-500 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded" onClick={() => onUpdate({ backgroundColor: undefined })}><Trash2 size={12} /> Remove Tint</button>}
                                 </div>
-                                <div className="flex gap-2 mb-3 border-b border-gray-100 pb-3">
-                                    <label className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center cursor-pointer relative overflow-hidden">
+                                <div className="flex md:gap-2 gap-1 mb-3 md:border-b border-gray-100 pb-3">
+                                    <label className="md:w-10 w-8 md:h-10 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center cursor-pointer relative overflow-hidden">
                                         <Plus size={18} className="text-gray-500" />
                                         <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => onUpdate(isColor ? { src: e.target.value } : { backgroundColor: e.target.value })} value={isColor ? selectedItem.src : (selectedItem.backgroundColor || '#ffffff')} />
                                     </label>
-                                    <div className="flex-1 grid grid-cols-5 gap-2">
+                                    <div className="md:flex-1 flex-none grid md:grid-cols-5 grid-cols-4 gap-2">
                                         {PRESET_COLORS.filter(c => c !== 'transparent').map(c => (
-                                            <button key={c} className="w-full aspect-square rounded-full border shadow-sm" style={{ background: c }} onClick={() => onUpdate(isColor ? { src: c } : { backgroundColor: c })} />
+                                            <button key={c} className="md:w-full w-6 aspect-square rounded-full border shadow-sm" style={{ background: c }} onClick={() => onUpdate(isColor ? { src: c } : { backgroundColor: c })} />
                                         ))}
                                     </div>
                                 </div>
@@ -140,9 +140,9 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                 {/* Border - Moved Up */}
                 {(isImage || isVideo || isColor) && (
                     <div className="relative w-full">
-                        <button onClick={(e) => togglePopup('border', e)} className={`flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'border' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
-                            <Frame size={20} className="mb-1.5" />
-                            <span className="text-[10px] font-medium">Border</span>
+                        <button onClick={(e) => togglePopup('border', e)} className={`flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'border' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
+                            <Frame size={20} className="md:mb-1.5 mb-1" />
+                            <span className="md:text-[10px] text-[9px] font-medium">Border</span>
                         </button>
                         {activePopup === 'border' && (
                             <div className="fixed right-[80px] bg-white p-3 rounded-lg shadow-xl border border-gray-200 w-56 z-[110] animate-in fade-in slide-in-from-right-2" style={{ top: popupTop }}>
@@ -151,7 +151,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                                     {selectedItem.border && (<button onClick={() => onUpdate({ border: undefined })} className="text-[10px] text-red-500 hover:underline">Remove</button>)}
                                 </div>
                                 <div className="flex gap-2 mb-3">
-                                    <div className="flex-1 flex bg-gray-100 rounded-lg p-0.5">
+                                    <div className="md:flex-1 flex-none flex bg-gray-100 rounded-lg p-0.5">
                                         {(['solid', 'dashed', 'dotted'] as const).map(style => (
                                             <button key={style} className={`flex-1 h-6 flex items-center justify-center rounded text-[10px] transition-all ${selectedItem.border?.style === style ? 'bg-white shadow-sm text-violet-600 font-bold' : 'text-gray-500 hover:text-gray-700'}`} onClick={() => updateBorder({ style })}>
                                                 {style === 'solid' && <div className="w-3 h-px bg-current"></div>}
@@ -163,7 +163,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                                     <input type="color" value={selectedItem.border?.color || '#000000'} onChange={(e) => updateBorder({ color: e.target.value })} className="w-7 h-7 rounded overflow-hidden border-0 p-0 cursor-pointer" />
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="flex justify-between text-[10px] text-gray-500"><span>Weight</span><span>{selectedItem.border?.width || 0}px</span></div>
+                                    <div className="flex justify-between md:text-[10px] text-[9px] text-gray-500"><span>Weight</span><span>{selectedItem.border?.width || 0}px</span></div>
                                     <input type="range" min="0" max="20" value={selectedItem.border?.width || 0} onChange={(e) => updateBorder({ width: Number(e.target.value) })} className="w-full accent-violet-600 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                                 </div>
                             </div>
@@ -174,18 +174,18 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
 
                 {/* Animate */}
-                <button onClick={onAnimate} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                    <CirclePlay size={20} className="mb-1.5" />
-                    <span className="text-[10px] font-medium">Animate</span>
+                <button onClick={onAnimate} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                    <CirclePlay size={20} className="md:mb-1.5 mb-1" />
+                    <span className="md:text-[10px] text-[9px] font-medium">Animate</span>
                 </button>
 
 
 
                 {/* Crop (Image/Video) */}
                 {(isImage || isVideo) && (
-                    <button onClick={onCrop} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                        <Crop size={20} className="mb-1.5" />
-                        <span className="text-[10px] font-medium">Crop</span>
+                    <button onClick={onCrop} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                        <Crop size={20} className="md:mb-1.5 mb-1" />
+                        <span className="md:text-[10px] text-[9px] font-medium">Crop</span>
                     </button>
                 )}
 
@@ -193,37 +193,37 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                 {isText && (
                     <>
                         {/* Font */}
-                        <button onClick={onFont} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                            <Type size={20} className="mb-1.5" />
-                            <span className="text-[10px] font-medium">Font</span>
+                        <button onClick={onFont} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                            <Type size={20} className="md:mb-1.5 mb-1" />
+                            <span className="md:text-[10px] text-[9px] font-medium">Font</span>
                         </button>
 
                         {/* Font Size */}
                         <div className="flex flex-col items-center justify-center py-2 w-full shrink-0">
-                            <div className="flex items-center gap-1 bg-[#1f2021] rounded-lg p-1">
+                            <div className="flex items-center gap-1 md:bg-[#1f2021] bg-gray-100 rounded-lg p-1">
                                 <button className="p-1 hover:bg-gray-700 rounded text-gray-400" onClick={() => onUpdate({ fontSize: Math.max(8, (selectedItem.fontSize || 24) - 2) })}><Minus size={12} /></button>
-                                <span className="text-[10px] font-medium w-4 text-center">{selectedItem.fontSize || 24}</span>
+                                <span className="md:text-[10px] text-[9px] font-medium w-4 text-center">{selectedItem.fontSize || 24}</span>
                                 <button className="p-1 hover:bg-gray-700 rounded text-gray-400" onClick={() => onUpdate({ fontSize: Math.min(200, (selectedItem.fontSize || 24) + 2) })}><Plus size={12} /></button>
                             </div>
-                            <span className="text-[9px] font-medium mt-1 text-gray-500">Size</span>
+                            <span className="md:text-[9px] text-[8px] font-medium mt-1 text-gray-500">Size</span>
                         </div>
 
                         {/* Text Color */}
                         <div className="relative w-full">
-                            <button onClick={(e) => togglePopup('textColor', e)} className={`flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'textColor' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
-                                <div className="w-5 h-5 rounded border border-gray-500 flex items-center justify-center font-bold text-xs mb-1.5" style={{ background: selectedItem.color, color: selectedItem.color === '#ffffff' ? '#000' : '#fff' }}>A</div>
-                                <span className="text-[10px] font-medium">Color</span>
+                            <button onClick={(e) => togglePopup('textColor', e)} className={`flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'textColor' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
+                                <div className="md:w-5 w-4 md:h-5 h-4 rounded border border-gray-500 flex items-center justify-center font-bold text-xs md:mb-1.5 mb-1" style={{ background: selectedItem.color, color: selectedItem.color === '#ffffff' ? '#000' : '#fff' }}>A</div>
+                                <span className="md:text-[10px] text-[9px] font-medium">Color</span>
                             </button>
                             {activePopup === 'textColor' && (
-                                <div className="fixed right-[80px] bg-white p-3 rounded-lg shadow-xl border border-gray-200 w-64 z-[110] animate-in fade-in slide-in-from-right-2" style={{ top: popupTop }}>
+                                <div className="fixed md:right-[80px] right-14 bg-white p-3 rounded-lg shadow-xl border border-gray-200 md:w-64 w-56 z-[110] animate-in fade-in slide-in-from-right-2" style={{ top: popupTop }}>
                                     <div className="flex gap-2 mb-3 border-b border-gray-100 pb-3">
-                                        <label className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center cursor-pointer relative overflow-hidden">
+                                        <label className="md:w-10 w-8 md:h-10 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center cursor-pointer relative overflow-hidden">
                                             <Plus size={18} className="text-gray-500" />
                                             <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" value={selectedItem.color} onChange={(e) => onUpdate({ color: e.target.value })} />
                                         </label>
-                                        <div className="flex-1 grid grid-cols-5 gap-2">
+                                        <div className="md:flex-1 flex-none grid md:grid-cols-5 grid-cols-4 gap-2">
                                             {PRESET_COLORS.filter(c => c !== 'transparent').map(c => (
-                                                <button key={c} className="w-full aspect-square rounded-full border shadow-sm" style={{ background: c }} onClick={() => onUpdate({ color: c })} />
+                                                <button key={c} className="md:w-full w-6 aspect-square rounded-full border shadow-sm" style={{ background: c }} onClick={() => onUpdate({ color: c })} />
                                             ))}
                                         </div>
                                     </div>
@@ -232,79 +232,79 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                         </div>
 
                         {/* Formatting (Bold/Italic) */}
-                        <div className="flex flex-col items-center justify-center py-2 w-full shrink-0 gap-1">
+                        <div className="flex flex-col items-center justify-center md:py-2 py-1 w-full shrink-0 gap-1">
                             <div className="flex gap-1">
-                                <button className={`p-1.5 rounded hover:bg-[#1f2021] ${selectedItem.fontWeight === 'bold' ? 'bg-[#1f2021] text-white' : 'text-gray-500'}`} onClick={() => onUpdate({ fontWeight: selectedItem.fontWeight === 'bold' ? 'normal' : 'bold' })}><Bold size={16} /></button>
-                                <button className={`p-1.5 rounded hover:bg-[#1f2021] ${selectedItem.fontStyle === 'italic' ? 'bg-[#1f2021] text-white' : 'text-gray-500'}`} onClick={() => onUpdate({ fontStyle: selectedItem.fontStyle === 'italic' ? 'normal' : 'italic' })}><Italic size={16} /></button>
+                                <button className={`md:p-1.5 p-1 rounded hover:bg-[#1f2021] ${selectedItem.fontWeight === 'bold' ? 'bg-[#1f2021] text-white' : 'text-gray-500'}`} onClick={() => onUpdate({ fontWeight: selectedItem.fontWeight === 'bold' ? 'normal' : 'bold' })}><Bold size={16} /></button>
+                                <button className={`md:p-1.5 p-1 rounded hover:bg-[#1f2021] ${selectedItem.fontStyle === 'italic' ? 'bg-[#1f2021] text-white' : 'text-gray-500'}`} onClick={() => onUpdate({ fontStyle: selectedItem.fontStyle === 'italic' ? 'normal' : 'italic' })}><Italic size={16} /></button>
                             </div>
-                            <span className="text-[9px] font-medium text-gray-500">Style</span>
+                            <span className="md:text-[9px] text-[8px] font-medium text-gray-500">Style</span>
                         </div>
 
                         {/* Alignment */}
-                        <button className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]" onClick={() => {
+                        <button className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]" onClick={() => {
                             const nextAlign = selectedItem.textAlign === 'left' ? 'center' : selectedItem.textAlign === 'center' ? 'right' : 'left';
                             onUpdate({ textAlign: nextAlign });
                         }}>
-                            {selectedItem.textAlign === 'left' && <AlignLeft size={20} className="mb-1.5" />}
-                            {selectedItem.textAlign === 'center' && <AlignCenter size={20} className="mb-1.5" />}
-                            {selectedItem.textAlign === 'right' && <AlignRight size={20} className="mb-1.5" />}
-                            <span className="text-[10px] font-medium">Align</span>
+                            {selectedItem.textAlign === 'left' && <AlignLeft size={20} className="md:mb-1.5 mb-1" />}
+                            {selectedItem.textAlign === 'center' && <AlignCenter size={20} className="md:mb-1.5 mb-1" />}
+                            {selectedItem.textAlign === 'right' && <AlignRight size={20} className="md:mb-1.5 mb-1" />}
+                            <span className="md:text-[10px] text-[9px] font-medium">Align</span>
                         </button>
 
                         {/* Effects */}
-                        <button onClick={onTextEffects} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                            <Wand2 size={20} className="mb-1.5" />
-                            <span className="text-[10px] font-medium">Effects</span>
+                        <button onClick={onTextEffects} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                            <Wand2 size={20} className="md:mb-1.5 mb-1" />
+                            <span className="md:text-[10px] text-[9px] font-medium">Effects</span>
                         </button>
                     </>
                 )}
 
-                <div className="h-px w-10 bg-gray-800 mx-auto my-1"></div>
+                <div className="md:h-px h-0.5 w-10 bg-gray-800 mx-auto my-1"></div>
 
                 {/* Comment */}
-                <button onClick={() => alert('Comment feature coming soon!')} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                    <MessageSquare size={20} className="mb-1.5" />
-                    <span className="text-[10px] font-medium">Comment</span>
+                <button onClick={() => alert('Comment feature coming soon!')} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                    <MessageSquare size={20} className="md:mb-1.5 mb-1" />
+                    <span className="md:text-[10px] text-[9px] font-medium">Comment</span>
                 </button>
 
                 {/* Lock */}
-                <button onClick={onLock} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                    <Lock size={20} className={`mb-1.5 ${selectedItem.isLocked ? 'text-violet-500' : ''}`} />
-                    <span className="text-[10px] font-medium">Lock</span>
+                <button onClick={onLock} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                    <Lock size={20} className={`md:mb-1.5 mb-1 ${selectedItem.isLocked ? 'text-violet-500' : ''}`} />
+                    <span className="md:text-[10px] text-[9px] font-medium">Lock</span>
                 </button>
 
                 {/* Duplicate */}
-                <button onClick={onDuplicate} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
-                    <CopyPlus size={20} className="mb-1.5" />
-                    <span className="text-[10px] font-medium">Duplicate</span>
+                <button onClick={onDuplicate} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021]">
+                    <CopyPlus size={20} className="md:mb-1.5 mb-1" />
+                    <span className="md:text-[10px] text-[9px] font-medium">Duplicate</span>
                 </button>
 
                 {/* Delete */}
-                <button onClick={onDelete} className="flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-red-500 hover:bg-red-500/10 text-red-400">
-                    <Trash2 size={20} className="mb-1.5" />
-                    <span className="text-[10px] font-medium">Delete</span>
+                <button onClick={onDelete} className="flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-red-500 hover:bg-red-500/10 text-red-400">
+                    <Trash2 size={20} className="md:mb-1.5 mb-1" />
+                    <span className="md:text-[10px] text-[9px] font-medium">Delete</span>
                 </button>
 
                 {/* More */}
                 <div className="relative w-full">
-                    <button onClick={(e) => togglePopup('more', e)} className={`flex flex-col items-center justify-center py-3 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'more' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
-                        <MoreHorizontal size={20} className="mb-1.5" />
-                        <span className="text-[10px] font-medium">More</span>
+                    <button onClick={(e) => togglePopup('more', e)} className={`flex flex-col items-center justify-center md:py-3 py-2 w-full transition-all relative shrink-0 hover:text-gray-100 hover:bg-[#1f2021] ${activePopup === 'more' ? 'bg-[#1f2021] text-gray-100' : ''}`}>
+                        <MoreHorizontal size={20} className="md:mb-1.5 mb-1" />
+                        <span className="md:text-[10px] text-[9px] font-medium">More</span>
                     </button>
                     {activePopup === 'more' && (
-                        <div className="fixed right-[80px] bg-white rounded-lg shadow-xl border border-gray-200 w-56 py-1 z-[110] animate-in fade-in slide-in-from-right-2 text-gray-700" style={{ top: popupTop }}>
-                            <button onClick={() => { onCopy(); setActivePopup(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3">
+                        <div className="fixed md:right-[80px] right-14 bg-white rounded-lg shadow-xl border border-gray-200 md:w-56 w-48 py-1 z-[110] animate-in fade-in slide-in-from-right-2 text-gray-700" style={{ top: popupTop }}>
+                            <button onClick={() => { onCopy(); setActivePopup(null); }} className="w-full px-4 py-2 md:text-sm text-[12px] text-left hover:bg-gray-100 flex items-center gap-3">
                                 <CopyPlus size={16} /> Copy
                             </button>
-                            <button onClick={() => { onPaste(); setActivePopup(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3">
+                            <button onClick={() => { onPaste(); setActivePopup(null); }} className="w-full px-4 py-2 md:text-sm text-[12px] text-left hover:bg-gray-100 flex items-center gap-3">
                                 <CopyPlus size={16} className="rotate-180" /> Paste
                             </button>
                             <div className="h-px bg-gray-100 my-1"></div>
-                            <button onClick={() => { onSplit(); setActivePopup(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3">
+                            <button onClick={() => { onSplit(); setActivePopup(null); }} className="w-full px-4 py-2 md:text-sm text-[12px] text-left hover:bg-gray-100 flex items-center gap-3">
                                 <span className="rotate-90"><MoreHorizontal size={16} /></span> Split
                             </button>
                             <div className="h-px bg-gray-100 my-1"></div>
-                            <button onClick={() => { onDetach(); setActivePopup(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3">
+                            <button onClick={() => { onDetach(); setActivePopup(null); }} className="w-full px-4 py-2 md:text-sm text-[12px] text-left hover:bg-gray-100 flex items-center gap-3">
                                 {selectedItem.isBackground ? <Eraser size={16} /> : <Square size={16} />}
                                 {selectedItem.isBackground ? 'Detach from background' : 'Set as background'}
                             </button>
@@ -313,7 +313,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                 </div>
 
             </div>
-            <div className="flex-1 min-h-[20px]"></div>
+            <div className="md:flex-1 flex-none min-h-[20px]"></div>
         </div>
     );
 };

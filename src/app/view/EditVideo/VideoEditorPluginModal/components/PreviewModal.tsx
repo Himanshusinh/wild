@@ -195,7 +195,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                     }}
                 >
                     <div
-                        className="absolute top-0 left-0 h-full bg-violet-500 rounded-full"
+                        className="absolute top-0 left-0 h-full bg-[#2F6BFF] rounded-full"
                         style={{ width: `${(currentTime / totalDuration) * 100}%` }}
                     >
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform"></div>
@@ -253,7 +253,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                                             className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-white/10 hover:text-white flex items-center justify-between"
                                         >
                                             <span>{opt.name}</span>
-                                            {dimension.name === opt.name && <Check size={12} className="text-violet-500" />}
+                                            {dimension.name === opt.name && <Check size={12} className="text-[#2F6BFF]" />}
                                         </button>
                                     ))}
                                 </div>
@@ -295,7 +295,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
                         <button
                             onClick={handleFit}
-                            className={`p-1.5 rounded-md transition-colors ${isFit ? 'bg-violet-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                            className={`p-1.5 rounded-md transition-colors ${isFit ? 'bg-[#2F6BFF] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                             title="Fit to Screen"
                         >
                             <Maximize size={16} />

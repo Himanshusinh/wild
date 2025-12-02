@@ -299,7 +299,7 @@ const Timeline: React.FC<TimelineProps> = ({
                     <button
                         key={`trans-${current.id}-${next.id}`}
                         className={`absolute top-1/2 -translate-y-1/2 z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-sm border hover:scale-110 transition-all ${isActive
-                            ? 'bg-violet-100 border-violet-300 text-violet-600'
+                            ? 'bg-blue-100 border-blue-300 text-[#2F6BFF]'
                             : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 hover:opacity-100'
                             }`}
                         style={{ left: next.start * zoom - 12 }}
@@ -318,16 +318,16 @@ const Timeline: React.FC<TimelineProps> = ({
     };
 
     return (
-        <div className="h-full bg-white flex flex-col select-none relative z-30">
+        <div className="md:h-full h-auto md:overflow-y-auto overflow-y-scroll custom-scrollbar bg-white flex flex-col select-none relative z-30">
 
             {/* 1. Toolbar */}
-            <div className="h-14 px-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20 relative">
+            <div className="md:h-14 h-auto  px-4  border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20 relative">
 
                 {/* Left: Editing Tools */}
-                <div className="flex items-center gap-2 w-1/3">
+                <div className="flex items-center gap-2 md:w-1/3 w-full">
                     <button
                         onClick={onSplitClip}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-2 md:px-3 px-2 md:py-1.5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors"
                         disabled={!selectedItemId}
                         title="Split at playhead"
                     >
@@ -341,7 +341,7 @@ const Timeline: React.FC<TimelineProps> = ({
                                 const track = tracks.find(t => t.items.some(i => i.id === selectedItemId));
                                 if (track) onDeleteClip(track.id, selectedItemId);
                             }}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="flex items-center md:gap-2 gap-1 md:px-3 px-2 md:py-1.5 py-1 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete selected"
                         >
                             <Trash2 size={18} />
@@ -351,19 +351,19 @@ const Timeline: React.FC<TimelineProps> = ({
                 </div>
 
                 {/* Center: Playback Controls */}
-                <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-4">
-                    <span className="text-lg font-semibold text-gray-800 w-[50px] text-right tabular-nums tracking-tight">
+                <div className="absolute md:left-1/2 left-1/2 top-1/2 top-0 md:transform -translate-x-1/2 -translate-y-1/2 flex items-center md:gap-4 gap-2">
+                    <span className="text-lg font-semibold text-gray-800 md:w-[50px] w-auto text-right tabular-nums tracking-tight">
                         {formatTime(currentTime)}
                     </span>
 
                     <button
                         onClick={onPlayPause}
-                        className="w-12 h-12 flex items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all border border-gray-100 z-10"
+                        className="md:w-12 w-5 md:h-12 h-6 flex items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all border border-gray-100 z-10"
                     >
                         {isPlaying ? (
-                            <Pause size={20} className="text-gray-900 fill-gray-900" />
+                            <Pause size={20} className=" text-gray-900 fill-gray-900" />
                         ) : (
-                            <Play size={20} className="text-gray-900 fill-gray-900 ml-1" />
+                            <Play size={20} className=" text-gray-900 fill-gray-900 ml-1" />
                         )}
                     </button>
 
@@ -373,8 +373,8 @@ const Timeline: React.FC<TimelineProps> = ({
                 </div>
 
                 {/* Right: Zoom & Add */}
-                <div className="flex items-center gap-3 w-1/3 justify-end">
-                    <div className="flex items-center gap-2 mr-2 bg-gray-50 rounded-full px-3 py-1 border border-gray-100">
+                <div className="flex items-center md:gap-3 gap-2 md:w-1/3 w-full justify-end">
+                    <div className="flex items-center md:gap-2 gap-1 mr-2 bg-gray-50 rounded-full md:px-3 px-2 md:py-1 py-0.5 border border-gray-100">
                         <ZoomOut size={14} className="text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setZoom(Math.max(MIN_ZOOM, zoom - 10))} />
                         <input
                             type="range"
@@ -382,7 +382,7 @@ const Timeline: React.FC<TimelineProps> = ({
                             max={MAX_ZOOM}
                             value={zoom}
                             onChange={(e) => setZoom(Number(e.target.value))}
-                            className="w-20 accent-violet-600 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            className="md:w-20 w-16 accent-violet-600 md:h-1 h-0.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                         />
                         <ZoomIn size={14} className="text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setZoom(Math.min(MAX_ZOOM, zoom + 10))} />
                     </div>
@@ -390,13 +390,13 @@ const Timeline: React.FC<TimelineProps> = ({
                     <div className="relative">
                         <button
                             onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-                            className="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                            className="md:w-9 w-7 md:h-9 h-7 flex items-center justify-center bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
                             title="Add track"
                         >
-                            <Plus size={20} />
+                            <Plus size={18} />
                         </button>
                         {isAddMenuOpen && (
-                            <div className="absolute bottom-full right-0 mb-2 w-40 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 py-1">
+                            <div className="absolute md:bottom-full bottom-0 right-0 mb-2 md:w-40 w-32 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 py-1">
                                 <button onClick={() => { onAddTrackItem('video'); setIsAddMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2">
                                     <Video size={14} /> Video Track
                                 </button>
@@ -410,22 +410,22 @@ const Timeline: React.FC<TimelineProps> = ({
             </div>
 
             {/* 2. Timeline Area */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="md:flex-1 flex-none flex md:overflow-hidden overflow-y-auto custom-scrollbar">
 
                 {/* Track Headers */}
-                <div className="w-40 bg-white border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                    <div className="h-8 border-b border-gray-100 bg-gray-50"></div>
-                    <div className="flex-1 overflow-hidden">
+                <div className="md:w-40 max-w-[10rem] bg-white border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                    <div className="md:h-8 h-0 border-b border-gray-100 bg-gray-50 shrink-0"></div>
+                    <div className="md:flex-1 flex-none overflow-y-auto custom-scrollbar">
                         {tracks.map(track => (
                             <div
                                 key={track.id}
-                                className={`${getTrackHeightClass(track.type)} border-b border-gray-100 flex items-center px-3 gap-2 hover:bg-gray-50 group transition-colors`}
+                                className={`${getTrackHeightClass(track.type)} border-b border-gray-100 flex items-center md:px-3 px-2 gap-2 hover:bg-gray-50 group transition-colors`}
                             >
-                                <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-white group-hover:shadow-sm transition-all">
+                                <div className="md:w-6 w-5 md:h-6 h-5 rounded bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-white group-hover:shadow-sm transition-all">
                                     {getIconForTrack(track.type)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-gray-700 truncate">{track.name}</p>
+                                    <p className="md:text-[10px] text-[8px] font-bold text-gray-700 truncate">{track.name}</p>
                                 </div>
                             </div>
                         ))}
@@ -434,7 +434,7 @@ const Timeline: React.FC<TimelineProps> = ({
 
                 {/* Scrollable Tracks */}
                 <div
-                    className="flex-1 overflow-scroll custom-scrollbar relative bg-[#f4f4f5]"
+                    className="md:flex-1 flex-none md:overflow-scroll overflow-y-auto overflow-x-scroll custom-scrollbar relative bg-[#f4f4f5]"
                     ref={scrollContainerRef}
                     onWheel={handleWheel}
                     onMouseDown={(e) => {
@@ -449,29 +449,29 @@ const Timeline: React.FC<TimelineProps> = ({
                         {/* Ruler */}
                         <div
                             ref={rulerRef}
-                            className="h-8 bg-gray-50 border-b border-gray-200 sticky top-0 z-10 cursor-pointer relative"
+                            className="md:h-8 h-6 bg-gray-50 border-b border-gray-200 sticky top-0 z-10 cursor-pointer relative"
                             onMouseDown={handleRulerMouseDown}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {renderRulerMarks()}
                             <div
-                                className="absolute top-0 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-violet-600 transform -translate-x-1/2 z-20 transition-transform duration-75"
+                                className="absolute top-0 w-0 h-0 md:border-l-[6px] border-l-[4px] border-l-transparent md:border-r-[6px] border-r-[4px] border-r-transparent md:border-t-[8px] border-t-[6px] border-t-violet-600 transform -translate-x-1/2 z-20 transition-transform duration-75"
                                 style={{ left: currentTime * zoom }}
                             ></div>
                         </div>
 
                         {/* Tracks */}
-                        <div className="relative pt-2 pb-10">
+                        <div className="relative md:pt-2 pt-1 pb-10">
                             {/* Playhead Line */}
                             <div
-                                className="absolute top-0 bottom-0 w-px bg-violet-600 z-30 pointer-events-none"
+                                className="absolute top-0 bottom-0 md:w-px w-0.5 bg-[#2F6BFF] z-30 pointer-events-none"
                                 style={{ left: currentTime * zoom }}
                             ></div>
 
                             {tracks.map(track => (
                                 <div
                                     key={track.id}
-                                    className={`${getTrackHeightClass(track.type)} border-b border-gray-200/50 relative mb-0.5 group ${hoveredTrackId === track.id && dragState?.type === 'move' ? 'bg-violet-50/50' : ''}`}
+                                    className={`${getTrackHeightClass(track.type)} border-b border-gray-200/50 relative md:mb-0.5 mb-0.25 group ${hoveredTrackId === track.id && dragState?.type === 'move' ? 'bg-blue-50/50' : ''}`}
                                     onMouseEnter={() => setHoveredTrackId(track.id)}
                                     onDragOver={(e) => {
                                         e.preventDefault();
@@ -495,17 +495,17 @@ const Timeline: React.FC<TimelineProps> = ({
                                         }
                                     }}
                                 >
-                                    <div className="absolute inset-0 bg-white/50 group-hover:bg-white/80 transition-colors"></div>
+                                    <div className="absolute inset-0 md:bg-white/50 bg-gray-100 group-hover:bg-white/80 transition-colors"></div>
 
                                     {/* Items */}
                                     {track.items.map(item => (
                                         <div
                                             key={item.id}
                                             className={`absolute top-0.5 bottom-0.5 rounded-md overflow-hidden cursor-pointer border group/item touch-none shadow-sm ${selectedItemId === item.id
-                                                ? 'border-violet-600 ring-1 ring-violet-200 z-10'
+                                                ? 'md:border-[#2F6BFF] border-blue-300 ring-1 ring-blue-200 z-10'
                                                 : item.isLocked
-                                                    ? 'border-gray-300 bg-gray-100 opacity-80'
-                                                    : 'border-violet-300 bg-violet-100 hover:border-violet-400'
+                                                    ? 'md:border-gray-300 border-gray-200 bg-gray-100 opacity-80'
+                                                    : 'md:border-blue-300 border-blue-200 bg-blue-100 hover:border-blue-400'
                                                 }`}
                                             style={{
                                                 left: item.start * zoom,
@@ -519,38 +519,38 @@ const Timeline: React.FC<TimelineProps> = ({
                                             }}
                                         >
                                             {/* Clip Content */}
-                                            <div className="w-full h-full relative overflow-hidden">
+                                            <div className="md:w-full w-auto md:h-full h-full relative overflow-hidden">
                                                 {/* Background Indicator */}
                                                 {item.isBackground && (
-                                                    <div className="absolute top-1 right-8 z-30 bg-black/50 rounded p-0.5">
+                                                    <div className="absolute md:top-1 top-0.5 md:right-8 right-4 z-30 bg-black/50 rounded p-0.5">
                                                         <Image size={10} className="text-white" />
                                                     </div>
                                                 )}
 
                                                 {/* Animation Indicator */}
                                                 {item.animation && (
-                                                    <div className="absolute top-1 right-5 z-30 bg-violet-600/80 rounded p-0.5" title={`Animation: ${ANIMATIONS.find(a => a.id === item.animation?.type)?.name || item.animation.type}`}>
+                                                    <div className="absolute md:top-1 top-0.5 md:right-5 right-3 z-30 bg-[#2F6BFF]/80 rounded p-0.5" title={`Animation: ${ANIMATIONS.find(a => a.id === item.animation?.type)?.name || item.animation.type}`}>
                                                         <Film size={10} className="text-white" />
                                                     </div>
                                                 )}
 
                                                 {(item.type === 'video' || item.type === 'image') && track.type === 'video' ? (
-                                                    <div className="flex w-full h-full">
+                                                    <div className="flex md:w-full w-auto md:h-full h-full">
                                                         {Array.from({ length: Math.max(1, Math.ceil((item.duration * zoom) / 80)) }).map((_, i) => (
                                                             <img
                                                                 key={i}
                                                                 src={item.thumbnail || item.src}
-                                                                className="h-full w-[80px] max-w-none object-cover opacity-90"
+                                                                className="md:h-full h-full md:w-[80px] w-auto max-w-none object-cover opacity-90"
                                                                 draggable={false}
                                                             />
                                                         ))}
                                                     </div>
                                                 ) : item.type === 'color' ? (
-                                                    <div className="w-full h-full" style={{ background: item.src }}></div>
+                                                    <div className="md:w-full w-auto md:h-full h-full" style={{ background: item.src }}></div>
                                                 ) : (
-                                                    <div className={`w-full h-full flex items-center px-2 text-[9px] font-medium whitespace-nowrap overflow-hidden ${item.type === 'audio' ? 'bg-orange-100 text-orange-800' : 'bg-violet-50 text-violet-800'}`}>
+                                                    <div className={`md:w-full w-auto md:h-full h-full flex items-center px-2 md:text-[9px] text-[8px] font-medium whitespace-nowrap overflow-hidden ${item.type === 'audio' ? 'bg-orange-100 text-orange-800' : 'bg-blue-50 text-blue-800'}`}>
                                                         {track.type === 'overlay' && (
-                                                            <div className="w-4 h-4 rounded-sm bg-black/10 mr-1 shrink-0 overflow-hidden">
+                                                            <div className="md:w-4 w-3 md:h-4 h-3 rounded-sm bg-black/10 mr-1 shrink-0 overflow-hidden">
                                                                 {(item.type === 'image' || item.type === 'video') && <img src={item.thumbnail || item.src} className="w-full h-full object-cover" />}
                                                             </div>
                                                         )}
@@ -558,18 +558,18 @@ const Timeline: React.FC<TimelineProps> = ({
                                                     </div>
                                                 )}
 
-                                                <div className="absolute inset-0 bg-black/0 group-hover/item:bg-black/5 pointer-events-none transition-colors"></div>
+                                                <div className="absolute inset-0 md:bg-black/0 bg-gray-800/0 group-hover/item:bg-black/5 pointer-events-none transition-colors"></div>
 
                                                 {/* Lock Indicator */}
                                                 {item.isLocked && (
-                                                    <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/10 pointer-events-none">
-                                                        <Lock size={12} className="text-white drop-shadow-md" />
+                                                    <div className="absolute inset-0 flex items-center justify-center z-20 md:bg-black/10 bg-gray-800/10 pointer-events-none">
+                                                        <Lock size={12} className="md:text-white text-gray-800 drop-shadow-md" />
                                                     </div>
                                                 )}
 
                                                 {track.type === 'video' && (
                                                     <div className="absolute bottom-0.5 left-1 right-1 flex justify-between items-end pointer-events-none">
-                                                        <div className="text-[9px] font-bold text-white drop-shadow-md truncate max-w-[70%]">
+                                                        <div className="md:text-[9px] text-[8px] font-bold md:text-white text-gray-800 drop-shadow-md truncate max-w-[70%]">
                                                             {item.name}
                                                         </div>
                                                         <div className="text-[8px] font-medium text-white/90 drop-shadow-md bg-black/40 px-1 rounded">
@@ -588,11 +588,11 @@ const Timeline: React.FC<TimelineProps> = ({
                                                             {/* Incoming Transition (Left) */}
                                                             {item.transition && item.transition.type !== 'none' && (
                                                                 (item.transition.timing === 'postfix' || !item.transition.timing) ? (
-                                                                    <div className="absolute top-0 left-0 bottom-0 bg-violet-600/50 border-r border-violet-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: item.transition.duration * zoom }}>
+                                                                    <div className="absolute top-0 left-0 bottom-0 md:bg-[#2F6BFF]/50 bg-blue-50/50 border-r border-blue-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: item.transition.duration * zoom }}>
                                                                         <Zap size={10} className="text-white drop-shadow" fill="currentColor" />
                                                                     </div>
                                                                 ) : item.transition.timing === 'overlap' ? (
-                                                                    <div className="absolute top-0 left-0 bottom-0 bg-violet-600/50 border-r border-violet-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: (item.transition.duration / 2) * zoom }}>
+                                                                    <div className="absolute top-0 left-0 bottom-0 md:bg-[#2F6BFF]/50 bg-blue-50/50 border-r border-blue-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: (item.transition.duration / 2) * zoom }}>
                                                                         <div className="absolute right-0 translate-x-1/2">
                                                                             <Zap size={10} className="text-white drop-shadow" fill="currentColor" />
                                                                         </div>
@@ -603,11 +603,11 @@ const Timeline: React.FC<TimelineProps> = ({
                                                             {/* Outgoing Transition (Right) */}
                                                             {nextItem && nextItem.transition && nextItem.transition.type !== 'none' && (
                                                                 nextItem.transition.timing === 'prefix' ? (
-                                                                    <div className="absolute top-0 right-0 bottom-0 bg-violet-600/50 border-l border-violet-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: nextItem.transition.duration * zoom }}>
+                                                                    <div className="absolute top-0 right-0 bottom-0 md:bg-[#2F6BFF]/50 bg-blue-50/50 border-l border-blue-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: nextItem.transition.duration * zoom }}>
                                                                         <Zap size={10} className="text-white drop-shadow" fill="currentColor" />
                                                                     </div>
                                                                 ) : nextItem.transition.timing === 'overlap' ? (
-                                                                    <div className="absolute top-0 right-0 bottom-0 bg-violet-600/50 border-l border-violet-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: (nextItem.transition.duration / 2) * zoom }}>
+                                                                    <div className="absolute top-0 right-0 bottom-0 md:bg-[#2F6BFF]/50 bg-blue-50/50 border-l border-blue-400/50 z-20 pointer-events-none flex items-center justify-center" style={{ width: (nextItem.transition.duration / 2) * zoom }}>
                                                                         {/* Icon handled by incoming overlap part or just hidden here to avoid duplicate */}
                                                                     </div>
                                                                 ) : null
@@ -619,26 +619,26 @@ const Timeline: React.FC<TimelineProps> = ({
 
                                             {/* Menu Button */}
                                             <button
-                                                className={`absolute top-0.5 right-0.5 w-5 h-5 bg-white/90 hover:bg-white rounded text-gray-700 items-center justify-center shadow-sm z-50 transition-opacity ${selectedItemId === item.id ? 'flex' : 'hidden group-hover/item:flex'}`}
+                                                className={`absolute top-0.5 right-0.5 md:w-5 w-4 md:h-5 h-4 md:bg-white/90 bg-gray-100 hover:bg-white rounded text-gray-700 items-center justify-center shadow-sm z-50 transition-opacity ${selectedItemId === item.id ? 'flex' : 'hidden group-hover/item:flex'}`}
                                                 onClick={(e) => handleMenuClick(e, track.id, item.id)}
                                             >
-                                                <MoreHorizontal size={12} />
+                                                <MoreHorizontal size={12} className="md:text-12 text-10 text-gray-700" />
                                             </button>
 
                                             {/* Resize Handles */}
                                             {!item.isLocked && (
                                                 <>
                                                     <div
-                                                        className="absolute left-0 top-0 bottom-0 w-2 cursor-w-resize opacity-0 group-hover/item:opacity-100 bg-black/20 hover:bg-violet-500 flex items-center justify-center z-30"
+                                                        className="absolute left-0 top-0 bottom-0 md:w-2 w-1.5 cursor-w-resize opacity-0 group-hover/item:opacity-100 md:bg-black/20 bg-gray-800/20 hover:bg-[#2F6BFF] flex items-center justify-center z-30"
                                                         onMouseDown={(e) => handleResizeMouseDown(e, track.id, item, 'left')}
                                                     >
-                                                        <div className="w-px h-2 bg-white/50"></div>
+                                                        <div className="md:w-px w-0.5 md:h-2 h-1.5 bg-white/50"></div>
                                                     </div>
                                                     <div
-                                                        className="absolute right-0 top-0 bottom-0 w-2 cursor-e-resize opacity-0 group-hover/item:opacity-100 bg-black/20 hover:bg-violet-500 flex items-center justify-center z-30"
+                                                        className="absolute right-0 top-0 bottom-0 md:w-2 w-1.5 cursor-e-resize opacity-0 group-hover/item:opacity-100 md:bg-black/20 bg-gray-800/20 hover:bg-[#2F6BFF] flex items-center justify-center z-30"
                                                         onMouseDown={(e) => handleResizeMouseDown(e, track.id, item, 'right')}
                                                     >
-                                                        <div className="w-px h-2 bg-white/50"></div>
+                                                        <div className="md:w-px w-0.5 md:h-2 h-1.5 bg-white/50"></div>
                                                     </div>
                                                 </>
                                             )}
@@ -657,10 +657,10 @@ const Timeline: React.FC<TimelineProps> = ({
                 {activeClipMenu && (
                     <div
                         ref={menuRef}
-                        className="fixed z-[100] bg-white rounded-lg shadow-xl border border-gray-200 w-56 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+                        className="fixed z-[100] md:bg-white bg-gray-100 rounded-lg shadow-xl border border-gray-200 md:w-56 w-48 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
                         style={{
                             top: Math.min(window.innerHeight - 300, activeClipMenu.y),
-                            left: Math.min(window.innerWidth - 230, activeClipMenu.x)
+                            left: Math.min(window.innerWidth - 230, activeClipMenu.x),
                         }}
                     >
                         {(() => {
@@ -670,34 +670,34 @@ const Timeline: React.FC<TimelineProps> = ({
 
                             return (
                                 <>
-                                    <div className="flex items-center justify-between px-2 py-2 border-b border-gray-100 mb-1">
-                                        <button onClick={() => { onCopy(item); setActiveClipMenu(null); }} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 transition-colors" title="Copy">
+                                    <div className="flex items-center justify-between md:px-2 px-1 md:py-2 py-1 md:border-b border-gray-100 mb-1">
+                                        <button onClick={() => { onCopy(item); setActiveClipMenu(null); }} className="md:p-1.5 p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 transition-colors" title="Copy">
                                             <Copy size={16} />
                                         </button>
-                                        <button onClick={() => { onPaste(track.id); setActiveClipMenu(null); }} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 transition-colors" title="Paste">
+                                        <button onClick={() => { onPaste(track.id); setActiveClipMenu(null); }} className="md:p-1.5 p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 transition-colors" title="Paste">
                                             <Clipboard size={16} />
                                         </button>
-                                        <button onClick={() => { onDuplicate(track.id, item.id); setActiveClipMenu(null); }} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 transition-colors" title="Duplicate">
+                                        <button onClick={() => { onDuplicate(track.id, item.id); setActiveClipMenu(null); }} className="md:p-1.5 p-1 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 transition-colors" title="Duplicate">
                                             <CopyPlus size={16} />
                                         </button>
-                                        <button onClick={() => { onDeleteClip(track.id, item.id); setActiveClipMenu(null); }} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-600 transition-colors" title="Delete">
+                                        <button onClick={() => { onDeleteClip(track.id, item.id); setActiveClipMenu(null); }} className="md:p-1.5 p-1 hover:bg-red-50 rounded text-red-500 hover:text-red-600 transition-colors" title="Delete">
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
 
-                                    <button onClick={() => { onLock(track.id, item.id); setActiveClipMenu(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
+                                    <button onClick={() => { onLock(track.id, item.id); setActiveClipMenu(null); }} className="w-full md:px-4 px-3 md:py-2 py-1 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
                                         {item.isLocked ? <Unlock size={16} /> : <Lock size={16} />}
                                         {item.isLocked ? 'Unlock' : 'Lock'}
                                     </button>
-                                    <button onClick={() => { onDetach(track.id, item.id); setActiveClipMenu(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
+                                    <button onClick={() => { onDetach(track.id, item.id); setActiveClipMenu(null); }} className="w-full md:px-4 px-3 md:py-2 py-1 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
                                         {item.isBackground ? <ImageMinus size={16} /> : <Image size={16} />}
                                         {item.isBackground ? 'Detach image from background' : 'Set as background'}
                                     </button>
                                     <div className="h-px bg-gray-100 my-1"></div>
-                                    <button onClick={() => { onSelectTransition(track.id, item.id); setActiveClipMenu(null); }} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
+                                    <button onClick={() => { onSelectTransition(track.id, item.id); setActiveClipMenu(null); }} className="w-full md:px-4 px-3 md:py-2 py-1 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
                                         <Zap size={16} /> Add Transition
                                     </button>
-                                    <button onClick={() => alert('Comments feature coming soon!')} className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
+                                    <button onClick={() => alert('Comments feature coming soon!')} className="w-full md:px-4 px-3 md:py-2 py-1 text-sm text-left hover:bg-gray-100 flex items-center gap-3 text-gray-700">
                                         <MessageSquare size={16} /> Comment
                                     </button>
                                 </>
