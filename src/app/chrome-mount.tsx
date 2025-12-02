@@ -18,6 +18,7 @@ export default function ChromeMount() {
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
 
   // Check authentication status
   useEffect(() => {
@@ -186,8 +187,6 @@ export default function ChromeMount() {
                      isEditVideoRoute;
   
   // Check if video editor is open (via body data attribute)
-  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
-  
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const checkVideoEditor = () => {
