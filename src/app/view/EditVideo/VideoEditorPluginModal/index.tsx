@@ -1289,8 +1289,186 @@ const VideoEditorPluginModal: React.FC<VideoEditorPluginModalProps> = ({ isOpen,
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm" style={{ zIndex: 20000 }}>
-            <div className="bg-white w-[95vw] h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative" style={{ zIndex: 20001 }}>
+        <div className="fixed inset-0 bg-black overflow-hidden left-0" style={{ zIndex: 40 }}>
+            {/* Mobile Landscape Rotation Wrapper */}
+            <div className="md:hidden" style={{
+                transform: 'rotate(90deg)',
+                transformOrigin: 'center center',
+                width: '100vh',
+                height: '100vw',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                marginTop: '-50vw',
+                marginLeft: '-50vh',
+            }}>
+                <div className="w-full h-full flex flex-col overflow-hidden bg-black">
+                    <Header
+                projectName={projectName}
+                setProjectName={setProjectName}
+                onToggleProjectMenu={() => setIsProjectDrawerOpen(true)}
+                currentDimension={currentDimension}
+                onResize={handleDimensionChange}
+                scalePercent={scalePercent}
+                setScalePercent={setScalePercent}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={past.length > 0}
+                canRedo={future.length > 0}
+                onCreateNew={handleCreateNewProject}
+                onOpenProject={handleOpenProject}
+                onSaveProject={handleSaveProject}
+                onLoadProject={handleLoadProject}
+                onMakeCopy={handleMakeCopy}
+                onMoveToTrash={handleMoveToTrash}
+                onPreview={() => setIsPreviewOpen(true)}
+                onClose={onClose}
+                    />
+
+                    <div className="flex-1 flex overflow-hidden relative">
+                    <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
+
+                    {/* Resource Panel */}
+                    <ResourcePanel
+                        activeTab={activeTab}
+                        isOpen={isResourcePanelOpen && !isEditPanelOpen}
+                        onClose={() => setIsResourcePanelOpen(false)}
+                        onAddClip={handleAddClip}
+                        selectedItem={selectedItem}
+                        onAlign={(align) => selectedTrackId && selectedItemId && handleAlignClip(selectedTrackId, selectedItemId, align)}
+                        uploads={uploads}
+                        onUpload={handleUpload}
+                    />
+
+                    {/* Edit Panel (Includes Eraser View) */}
+                    <EditPanel
+                        isOpen={isEditPanelOpen}
+                        selectedItem={selectedItem}
+                        interactionMode={interactionMode}
+                        eraserSettings={eraserSettings}
+                        setEraserSettings={setEraserSettings}
+                        setInteractionMode={setInteractionMode}
+                        initialView={activeEditView}
+                        onClose={() => {
+                            // Clicking X on panel deselects item
+                            handleClipSelect('', null);
+                        }}
+                        onUpdate={(updatedItem, skipHistory) => selectedTrackId && handleUpdateClip(selectedTrackId, updatedItem, skipHistory)}
+                        onOpenEffectView={(view) => handleOpenEditPanel(view)}
+                        onAlign={(align) => selectedTrackId && selectedItemId && handleAlignClip(selectedTrackId, selectedItemId, align)}
+                    />
+
+                    {/* Transition Panel */}
+                    {transitionEditTarget && (
+                        <TransitionPanel
+                            transition={getCurrentTransition()}
+                            onUpdate={handleTransitionUpdate}
+                            onApplyToAll={handleApplyTransitionToAll}
+                            onHover={handleTransitionHover}
+                            onClose={() => {
+                                setTransitionEditTarget(null);
+                                setPreviewTransition(null);
+                            }}
+                        />
+                    )}
+
+                    <div className="flex-1 flex flex-col min-w-0 relative">
+                        <Canvas
+                            dimension={currentDimension}
+                            scalePercent={scalePercent}
+                            setScalePercent={setScalePercent}
+                            tracks={tracks}
+                            currentTime={currentTime}
+                            isPlaying={isPlaying}
+                            previewTransition={previewTransition}
+                            previewTargetId={transitionEditTarget?.itemId}
+                            selectedItemId={selectedItemId}
+
+                            // Interaction Props
+                            interactionMode={interactionMode}
+                            setInteractionMode={setInteractionMode}
+                            eraserSettings={eraserSettings}
+
+                            onSelectClip={handleClipSelect}
+                            onUpdateClip={handleUpdateClip}
+                            onDeleteClip={handleDeleteClip}
+                            onSplitClip={handleSplitClip}
+                            onOpenEditPanel={(view) => handleOpenEditPanel(view)}
+                            onOpenColorPanel={() => handleOpenEditPanel('color')}
+                            onCopy={handleCopyClip}
+                            onPaste={(trackId) => handlePasteClip(trackId, currentTime)}
+                            onDuplicate={handleDuplicateClip}
+                            onLock={handleLockClip}
+                            onDetach={handleDetachBackground}
+                            onAlign={handleAlignClip}
+                        />
+
+                        <div
+                            className="h-1 bg-gray-300 cursor-row-resize hover:bg-[#2F6BFF] transition-colors shrink-0 z-40 relative"
+                            onMouseDown={() => setIsDraggingTimeline(true)}
+                        >
+                            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-gray-400 rounded-full pointer-events-none"></div>
+                        </div>
+
+                        <div style={{ height: timelineHeight }} className="shrink-0 shadow-top relative z-30">
+                            <Timeline
+                                tracks={tracks}
+                                currentTime={currentTime}
+                                totalDuration={totalDuration}
+                                isPlaying={isPlaying}
+                                onPlayPause={() => setIsPlaying(!isPlaying)}
+                                onSeek={setCurrentTime}
+                                onUpdateClip={handleUpdateClip}
+                                onDeleteClip={handleDeleteClip}
+                                onSplitClip={handleSplitClip}
+                                onAddTrackItem={handleTimelineAdd}
+                                onSelectTransition={(trackId, itemId) => setTransitionEditTarget({ trackId, itemId })}
+                                selectedItemId={selectedItemId}
+                                onSelectClip={handleClipSelect}
+                                onCopy={handleCopyClip}
+                                onPaste={(trackId) => handlePasteClip(trackId, currentTime)}
+                                onDuplicate={handleDuplicateClip}
+                                onLock={handleLockClip}
+                                onDetach={handleDetachBackground}
+                                onMoveClip={handleMoveClip}
+                                onDropClip={handleDropClip}
+                                onClipDragEnd={handleClipDragEnd}
+                            />
+                        </div>
+                    </div>
+
+                    <RightSidebar
+                        selectedItem={selectedItem}
+                        onUpdate={(updates) => selectedTrackId && selectedItem && handleUpdateClip(selectedTrackId, { ...selectedItem, ...updates })}
+                        onEdit={() => handleOpenEditPanel('main')}
+                        onAnimate={() => handleOpenEditPanel('animate')}
+                        onEraser={() => setInteractionMode('erase')}
+                        onCrop={() => setInteractionMode('crop')}
+                        onLock={() => selectedTrackId && selectedItemId && handleLockClip(selectedTrackId, selectedItemId)}
+                        onDuplicate={() => selectedTrackId && selectedItemId && handleDuplicateClip(selectedTrackId, selectedItemId)}
+                        onDelete={() => selectedTrackId && selectedItemId && handleDeleteClip(selectedTrackId, selectedItemId)}
+                        onCopy={() => selectedItem && handleCopyClip(selectedItem)}
+                        onPaste={() => selectedTrackId && handlePasteClip(selectedTrackId, currentTime)}
+                        onSplit={handleSplitClip}
+                        onDetach={() => selectedTrackId && selectedItemId && handleDetachBackground(selectedTrackId, selectedItemId)}
+                        onFont={() => handleOpenEditPanel('font')}
+                        onTextEffects={() => handleOpenEditPanel('text-effects')}
+                    />
+                    </div>
+                    {/* Preview Modal */}
+                    <PreviewModal
+                isOpen={isPreviewOpen}
+                onClose={() => setIsPreviewOpen(false)}
+                tracks={tracks}
+                dimension={currentDimension}
+                totalDuration={totalDuration}
+                onDimensionChange={handleDimensionChange}
+                    />
+                </div>
+            </div>
+            
+            {/* Desktop Layout (No Rotation) */}
+            <div className="hidden md:flex md:flex-col md:w-full md:h-full">
                 <Header
                     projectName={projectName}
                     setProjectName={setProjectName}
@@ -1310,6 +1488,7 @@ const VideoEditorPluginModal: React.FC<VideoEditorPluginModalProps> = ({ isOpen,
                     onMakeCopy={handleMakeCopy}
                     onMoveToTrash={handleMoveToTrash}
                     onPreview={() => setIsPreviewOpen(true)}
+                    onClose={onClose}
                 />
 
                 <div className="flex-1 flex overflow-hidden relative">
@@ -1391,7 +1570,7 @@ const VideoEditorPluginModal: React.FC<VideoEditorPluginModalProps> = ({ isOpen,
                         />
 
                         <div
-                            className="h-1 bg-gray-300 cursor-row-resize hover:bg-violet-500 transition-colors shrink-0 z-40 relative"
+                            className="h-1 bg-gray-300 cursor-row-resize hover:bg-[#2F6BFF] transition-colors shrink-0 z-40 relative"
                             onMouseDown={() => setIsDraggingTimeline(true)}
                         >
                             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-gray-400 rounded-full pointer-events-none"></div>
@@ -1442,21 +1621,16 @@ const VideoEditorPluginModal: React.FC<VideoEditorPluginModalProps> = ({ isOpen,
                         onTextEffects={() => handleOpenEditPanel('text-effects')}
                     />
                 </div>
-
-                {/* Close Modal Button (Top Right) */}
-                <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 z-50">
-                    <X size={20} className="text-gray-600" />
-                </button>
+                {/* Preview Modal */}
+                <PreviewModal
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                    tracks={tracks}
+                    dimension={currentDimension}
+                    totalDuration={totalDuration}
+                    onDimensionChange={handleDimensionChange}
+                />
             </div>
-            {/* Preview Modal */}
-            <PreviewModal
-                isOpen={isPreviewOpen}
-                onClose={() => setIsPreviewOpen(false)}
-                tracks={tracks}
-                dimension={currentDimension}
-                totalDuration={totalDuration}
-                onDimensionChange={handleDimensionChange}
-            />
         </div>
     );
 };

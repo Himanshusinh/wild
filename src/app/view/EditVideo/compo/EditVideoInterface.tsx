@@ -75,6 +75,17 @@ const EditVideoInterface: React.FC = () => {
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
+
+  // Hide/show sidebar when video editor opens/closes
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isVideoEditorOpen) {
+        document.body.setAttribute('data-video-editor-open', 'true');
+      } else {
+        document.body.removeAttribute('data-video-editor-open');
+      }
+    }
+  }, [isVideoEditorOpen]);
   const historyEntries = useAppSelector((s: any) => (s.history?.entries || []).filter((e: any) => e.generationType === 'text-to-video'));
   const historyLoading = useAppSelector((s: any) => s.history?.loading || false);
   const historyHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
@@ -849,11 +860,13 @@ const EditVideoInterface: React.FC = () => {
           }
         }}
       />
-      <VideoEditorPluginModal
-        isOpen={isVideoEditorOpen}
-        onClose={() => setIsVideoEditorOpen(false)}
-      />
-      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-5 md:pt-14 flex-col md:flex-row">
+      {isVideoEditorOpen ? (
+        <VideoEditorPluginModal
+          isOpen={isVideoEditorOpen}
+          onClose={() => setIsVideoEditorOpen(false)}
+        />
+      ) : (
+        <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-5 md:pt-14 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
         <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-8 md:mx-0 mx-2">
           {/* Error Message */}
@@ -1550,6 +1563,7 @@ const EditVideoInterface: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };
