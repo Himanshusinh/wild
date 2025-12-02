@@ -187,8 +187,8 @@ export const loadHistory = createAsyncThunk(
           const normalized = canonicalAudioType(filtersForBackend.generationType as any);
           params.generationType = normalized;
         } else {
-          const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-          if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
+        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
+        if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
         }
       }
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
@@ -462,7 +462,7 @@ export const loadMoreHistory = createAsyncThunk(
         // Only set if it's actually an array or string (not undefined)
         if (normalized) {
           params.generationType = normalized;
-        }
+      }
       }
       // Don't set generationType if not in backendFilters - let mode handle it
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
@@ -497,7 +497,7 @@ export const loadMoreHistory = createAsyncThunk(
   if ((filtersForBackend as any)?.sortBy) {
     params.sortBy = (filtersForBackend as any).sortBy;
   } else if (!params.sortBy) {
-    params.sortBy = 'createdAt';
+  params.sortBy = 'createdAt';
   }
   // Don't set default sortOrder - only include it if explicitly provided (when searching)
   

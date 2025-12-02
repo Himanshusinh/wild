@@ -41,18 +41,6 @@ const ResourcePanel: React.FC<ResourcePanelProps> = ({ activeTab, isOpen, onClos
         return parseFloat(durationStr) || 0;
     };
 
-    const renderTools = () => (
-        <div className="p-4 space-y-6 pb-24 w-full h-full flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-violet-50 rounded-full flex items-center justify-center mb-4">
-                <MousePointer size={32} className="text-violet-500" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-800">Tools</h3>
-            <p className="text-sm text-gray-500 max-w-[200px]">
-                Advanced editing tools are coming soon! Stay tuned for updates.
-            </p>
-        </div>
-    );
-
     const renderText = () => (
         <div className="p-4 space-y-6 pb-24">
             <div className="grid grid-cols-6 gap-1.5">
@@ -334,7 +322,6 @@ const ResourcePanel: React.FC<ResourcePanelProps> = ({ activeTab, isOpen, onClos
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'tools': return renderTools();
             case 'text': return renderText();
             case 'uploads': return renderUploads();
             case 'audio': return renderAudio();

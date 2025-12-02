@@ -292,7 +292,7 @@ export default function ArtStationPage() {
           next.add(generationId)
         } else {
           next.delete(generationId)
-        }
+      }
         return next
       })
     }
@@ -728,9 +728,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
       if (!media || !media.url) return
 
-      setSelectedImageIndex(0)
-      setSelectedVideoIndex(0)
-      setSelectedAudioIndex(0)
+        setSelectedImageIndex(0)
+        setSelectedVideoIndex(0)
+        setSelectedAudioIndex(0)
 
       const maybeStorage: any = (media as any).storagePath
       const normalizedUrl =
@@ -739,8 +739,8 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         media.url
 
       setPreview({ kind, url: normalizedUrl || media.url, item })
-      setDeepLinkId(null)
-    }
+        setDeepLinkId(null)
+      }
 
     // 1) Try to find the item in the already-loaded feed
     const inFeed = items.find((i) => i.id === deepLinkId)
@@ -877,7 +877,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     if (showLikedOnly && likedIds.size > 0) {
       sanitized = sanitized.filter(item => likedIds.has(item.id))
     }
-
+    
     return sanitized;
   }, [items, activeCategory, searchQuery, showLikedOnly, likedIds]);
 
