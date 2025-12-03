@@ -172,13 +172,25 @@ export default function ChromeMount() {
     }
     return null; // Hide chrome when not authenticated
   }
+
+  // For Pricing: hide chrome if not authenticated, show if authenticated
+  if (isPricingRoute) {
+    if (isAuthenticated) {
+      return (
+        <>
+          <Nav />
+          {!isVideoEditorOpen && <SidePannelFeatures />}
+        </>
+      );
+    }
+    return null; // Hide chrome when not authenticated
+  }
   
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
                      isLandingRoute || 
                      isSignupRoute ||
                      isForgotPasswordRoute ||
-                     isPricingRoute ||
                      isWorkflowsRoute ||
                      isLegalRoute ||
                      isProductRoute ||

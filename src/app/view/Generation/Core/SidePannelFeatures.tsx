@@ -731,7 +731,8 @@ const SidePannelFeatures = ({
 
 
 
-        {/* Bookmarks */}
+        {/* Bookmarks - temporarily hidden */}
+        {/*
         <div>
           <div
             onMouseEnter={() => setIsSidebarHovered(true)}
@@ -777,6 +778,7 @@ const SidePannelFeatures = ({
             <span className={labelClasses}>Bookmarks</span>
           </div>
         </div>
+        */}
 
         {/* Bottom: credits + profile */}
 
