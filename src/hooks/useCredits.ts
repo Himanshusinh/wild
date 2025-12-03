@@ -106,9 +106,10 @@ export const useCredits = () => {
 
   const validateMusicCredits = async (
     model: string,
-    duration?: number
+    duration?: number,
+    inputs?: any[]
   ) => {
-    const requiredCredits = getMusicGenerationCreditCost(model, duration);
+    const requiredCredits = getMusicGenerationCreditCost(model, duration, inputs);
     
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);

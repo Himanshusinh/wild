@@ -154,6 +154,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'seedream-4.5',
+    creditModelName: 'Bytedance Seedream-4.5',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
     frontendValue: 'ideogram-ai/ideogram-v3',
     creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
     generationType: 'image',
@@ -685,26 +691,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'elevenlabs-tts',
-    creditModelName: 'ElevenLabs TTS v3',
+    creditModelName: 'Elevenlabs Eleven v3 TTS 1000 Characters', // Default to 1000 characters variant
     generationType: 'music',
     provider: 'fal'
   },
   {
     frontendValue: 'chatterbox-multilingual',
-    creditModelName: 'Chatterbox Multilingual TTS',
+    creditModelName: 'Chatter Box Multilingual 1000 Characters',
     generationType: 'music',
     provider: 'fal'
   },
   {
     frontendValue: 'maya-tts',
-    creditModelName: 'Maya TTS',
+    creditModelName: 'Maya TTS', // Not found in creditDistribution.ts, will use MODEL_CREDITS_MAPPING fallback
     generationType: 'music',
     provider: 'fal'
   },
   {
     frontendValue: 'elevenlabs-dialogue',
-    creditModelName: 'ElevenLabs Dialogue',
-    generationType: 'music',
+    creditModelName: 'Elevenlabs Eleven v3 TTD 1000 Characters', // Default to 1000 characters variant
+    generationType: 'text-to-dialogue',
     provider: 'fal'
   },
   {

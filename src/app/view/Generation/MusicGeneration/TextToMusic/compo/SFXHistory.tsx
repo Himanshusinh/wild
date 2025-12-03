@@ -167,18 +167,37 @@ const SFXHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
           </div>
         )}
 
-        {localPreview && !grouped[todayKey] && (
-          <DateRow dateKey={todayKey}>
-            <AudioTileGenerating preview={localPreview} />
-          </DateRow>
-        )}
-
         {historyEntries.length > 0 && (
           <div className="space-y-8">
             {sortedDates.map((date) => (
               <DateRow key={date} dateKey={date}>
-                {date === todayKey && localPreview && <AudioTileGenerating preview={localPreview} />}
+                {date === todayKey && localPreview && localPreview.status === 'generating' && (
+                  <AudioTileGenerating preview={localPreview} />
+                )}
                 {grouped[date].flatMap((entry: any) => {
+                  // Skip if this entry matches the localPreview (to avoid duplicates)
+                  if (localPreview && (entry.id === localPreview.id || (entry.status === 'generating' && localPreview.status === 'generating' && entry.prompt === localPreview.prompt))) {
+                    // If localPreview is completed, skip the generating entry from Redux
+                    if (localPreview.status === 'completed' || localPreview.status === 'failed') {
+                      return [];
+                    }
+                  }
+                  // Show generating entries even if they don't have media yet
+                  if (entry.status === 'generating') {
+                    return [(
+                      <div
+                        key={`${entry.id}-generating`}
+                        className="relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 ring-1 ring-white/10 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] opacity-60"
+                      >
+                        <StaticAudioTile status="generating" entry={entry} index={0} />
+                        {entry?.fileName && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
+                            {entry.fileName}
+                          </div>
+                        )}
+                      </div>
+                    )];
+                  }
                   const rawSources = [ ...(entry.audios||[]), ...(entry.images||[]), ...(entry.audio?[entry.audio]:[]) ].filter(Boolean);
                   const dedupMap = new Map<string, any>();
                   rawSources.forEach((a: any) => {
@@ -194,13 +213,18 @@ const SFXHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
                       <div
                         key={`${entry.id}-${audio.id || i}`}
                         onClick={() => onAudioSelect?.({ entry, audio })}
-                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02] opacity-60`}
+                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
                       >
                         <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
                         </div>
                         <StaticAudioTile status={entry.status} entry={entry} index={i} />
+                        {entry?.fileName && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
+                            {entry.fileName}
+                          </div>
+                        )}
                         {/* Delete button on hover */}
                         {entry.status !== 'generating' && entry.status !== 'failed' && (
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -278,15 +302,60 @@ const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }>
 
 const AudioTileGenerating = ({ preview }: { preview?: any }) => {
   const colorTheme = preview ? getColorTheme(preview, 0) : 'from-purple-900/30 via-purple-800/20 to-pink-900/30';
+  const fileName = preview?.fileName || preview?.name || '';
+  const status = preview?.status || 'generating';
   
+  // If preview is completed or failed, show it as a regular tile (not generating)
+  if (status === 'completed' || status === 'failed') {
+    const rawSources = [...(preview.audios || []), ...(preview.images || []), ...(preview.audio ? [preview.audio] : [])].filter(Boolean);
+    const dedupMap = new Map<string, any>();
+    rawSources.forEach((a: any) => {
+      const url = a?.url || a?.firebaseUrl || a?.originalUrl;
+      if (!url) return;
+      if (!dedupMap.has(url)) dedupMap.set(url, a);
+    });
+    const media = Array.from(dedupMap.values());
+    
+    if (media.length === 0) return null;
+    
+    return media.map((audio: any, i: number) => {
+      const audioColorTheme = getColorTheme(preview, i);
+      return (
+        <div
+          key={`${preview.id || 'preview'}-${audio.id || i}`}
+          onClick={() => {}}
+          className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${audioColorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
+        >
+          <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+          </div>
+          <StaticAudioTile status={status} entry={preview} index={i} />
+          {fileName && (
+            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
+              {fileName}
+            </div>
+          )}
+        </div>
+      );
+    });
+  }
+  
+  // Show generating state
   return (
-    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] transition-all duration-500 cursor-pointer group hover:-translate-y-1 hover:scale-[1.02] opacity-60`}>
+    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] transition-all duration-500 cursor-pointer group hover:-translate-y-1 hover:scale-[1.02] ${status === 'generating' ? 'opacity-60' : ''}`}>
       <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
       </div>
       <StaticAudioTile status="generating" entry={preview} />
-      <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
+      {fileName ? (
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
+          {fileName}
+        </div>
+      ) : (
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
+      )}
     </div>
   );
 };

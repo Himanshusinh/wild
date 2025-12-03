@@ -118,12 +118,39 @@ export const getRunwayVideoCreditCost = (model: string, duration?: number): numb
 /**
  * Get credit cost for music generation
  */
-export const getMusicCreditCost = (frontendModel: string, duration?: number): number => {
+export const getMusicCreditCost = (frontendModel: string, duration?: number, inputs?: any[]): number => {
   const mapping = getModelMapping(frontendModel);
-  // Accept both 'music' and 'sfx' generation types for audio-related models
-  if (!mapping || (mapping.generationType !== 'music' && mapping.generationType !== 'sfx')) {
+  // Accept 'music', 'sfx', and 'text-to-dialogue' generation types for audio-related models
+  if (!mapping || (mapping.generationType !== 'music' && mapping.generationType !== 'sfx' && mapping.generationType !== 'text-to-dialogue')) {
     console.warn(`Unknown or invalid music model: ${frontendModel}`);
     return 0;
+  }
+  
+  // Handle ElevenLabs Dialogue with character-based pricing (same as TTS)
+  if (frontendModel === 'elevenlabs-dialogue' && Array.isArray(inputs) && inputs.length > 0) {
+    // Calculate total character count across all inputs
+    const totalCharCount = inputs.reduce((sum, input) => {
+      const text = input?.text || '';
+      return sum + (typeof text === 'string' ? text.length : 0);
+    }, 0);
+    
+    // Use same pricing as TTS: 220 for <=1000, 420 for 1001-2000
+    if (totalCharCount <= 1000) {
+      return 220;
+    } else if (totalCharCount <= 2000) {
+      return 420;
+    } else {
+      // For >2000, use 2000 pricing (shouldn't happen with validation, but handle gracefully)
+      return 420;
+    }
+  }
+  
+  // Handle ElevenLabs SFX with per-second pricing (6 credits per second)
+  if (frontendModel === 'elevenlabs-sfx' && duration != null) {
+    // Round up to nearest second for pricing
+    const durationSeconds = Math.ceil(duration);
+    const creditsPerSecond = 6;
+    return durationSeconds * creditsPerSecond;
   }
 
   // First try to get cost from creditDistributionData using creditModelName
@@ -224,9 +251,10 @@ export const getVideoGenerationCreditCost = (
  */
 export const getMusicGenerationCreditCost = (
   frontendModel: string,
-  duration?: number
+  duration?: number,
+  inputs?: any[]
 ): number => {
-  return getMusicCreditCost(frontendModel, duration);
+  return getMusicCreditCost(frontendModel, duration, inputs);
 };
 
 /**

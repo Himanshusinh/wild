@@ -27,8 +27,21 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
 
   useEffect(() => {
     if (!localMusicPreview) return;
+    // Don't clear immediately - let the Redux entry take over first
+    // Only clear after a delay to ensure the Redux entry is visible
     if (localMusicPreview.status === 'completed' || localMusicPreview.status === 'failed') {
-      const t = setTimeout(() => setLocalMusicPreview(null), 1500);
+      const t = setTimeout(() => {
+        // Check if the entry exists in Redux before clearing local preview
+        const state = (window as any).__REDUX_STORE__?.getState?.();
+        const entries = state?.history?.entries || [];
+        const entryExists = entries.some((e: any) => 
+          e.id === localMusicPreview.id || 
+          (e.status === 'completed' && e.prompt === localMusicPreview.prompt && e.model === localMusicPreview.model)
+        );
+        if (entryExists) {
+          setLocalMusicPreview(null);
+        }
+      }, 3000); // Increased delay to ensure Redux entry is visible
       return () => clearTimeout(t);
     }
   }, [localMusicPreview]);
@@ -115,7 +128,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       model: modelName, // Keep frontend model name (chatterbox-multilingual or elevenlabs-tts)
       lyrics: normalizedText,
       generationType: 'text-to-speech' as 'text-to-speech',
-      images: [],
+      images: [{ id: 'loading', url: '', originalUrl: '', type: 'audio' }], // Placeholder for generating state - ensures tile renders
+      audios: [], // Will store audio data when completed
       status: "generating" as 'generating',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -130,10 +144,17 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       prompt: normalizedText.substring(0, 50) + '...'
     });
 
+    // Add to Redux with temporary ID
     dispatch(addHistoryEntry(loadingEntry));
     
-    // Refresh history immediately to show the generating entry
-    refreshMusicHistoryImmediate();
+    // Force immediate UI update to show loading animation
+    // Use requestAnimationFrame to ensure the entry is visible
+    requestAnimationFrame(() => {
+      // Entry is already in Redux, just ensure UI updates
+    });
+    
+    // Don't refresh history immediately - it might clear the loading entry
+    // The loading entry is already in Redux and will show in the UI
 
     let firebaseHistoryId: string | null = null;
 
@@ -157,7 +178,69 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         prompt: payload.prompt || normalizedText,
         generationType: 'text-to-speech' // Ensure generationType is explicitly set
       };
-      const result = await dispatch(falElevenTts(requestPayload)).unwrap();
+      
+      let result: any;
+      try {
+        result = await dispatch(falElevenTts(requestPayload)).unwrap();
+      } catch (apiError: any) {
+        // Immediately stop generation and handle error
+        setIsGenerating(false);
+        setLocalMusicPreview((prev: any) => prev ? ({
+          ...prev,
+          status: 'failed'
+        }) : prev);
+        
+        // Extract error message from API response
+        const errorMessage = apiError?.response?.data?.message || 
+                           apiError?.response?.data?.data?.message ||
+                           apiError?.message || 
+                           'Generation failed';
+        
+        // Update history entry to failed state
+        dispatch(updateHistoryEntry({
+          id: firebaseHistoryId || tempId,
+          updates: {
+            status: 'failed',
+            error: errorMessage
+          }
+        }));
+        
+        // Update Firebase if we have an ID
+        if (firebaseHistoryId) {
+          try {
+            await updateFirebaseHistory(firebaseHistoryId, {
+              status: 'failed',
+              error: errorMessage
+            });
+          } catch (firebaseError) {
+            console.error('❌ Firebase error update failed:', firebaseError);
+          }
+        }
+        
+        // Refund credits immediately
+        if (transactionId) {
+          try {
+            await confirmGenerationFailure(transactionId);
+          } catch (creditError) {
+            console.error('❌ Credit refund failed:', creditError);
+          }
+        }
+        
+        // Show error message
+        setErrorMessage(errorMessage);
+        try { 
+          const toast = (await import('react-hot-toast')).default; 
+          toast.error(errorMessage || 'Speech generation failed'); 
+        } catch {}
+        
+        // Refresh credits to update UI
+        try {
+          const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+          requestCreditsRefresh();
+        } catch {}
+        
+        return; // Exit early, don't continue processing
+      }
 
       console.log('[TextToSpeech] API Response received:', {
         status: result?.status,
@@ -167,7 +250,63 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         historyId: result?.historyId
       });
 
-      if (!result || result.status !== 'completed') {
+      // Check if result indicates an error
+      if (!result || (result.responseStatus === 'error' || result.status === 'error' || result.status === 'failed')) {
+        // Immediately stop generation
+        setIsGenerating(false);
+        setLocalMusicPreview((prev: any) => prev ? ({
+          ...prev,
+          status: 'failed'
+        }) : prev);
+        
+        const errorMessage = result?.message || result?.error || 'Generation failed';
+        
+        // Update history entry
+        dispatch(updateHistoryEntry({
+          id: firebaseHistoryId || tempId,
+          updates: {
+            status: 'failed',
+            error: errorMessage
+          }
+        }));
+        
+        // Update Firebase
+        if (firebaseHistoryId) {
+          try {
+            await updateFirebaseHistory(firebaseHistoryId, {
+              status: 'failed',
+              error: errorMessage
+            });
+          } catch (firebaseError) {
+            console.error('❌ Firebase error update failed:', firebaseError);
+          }
+        }
+        
+        // Refund credits
+        if (transactionId) {
+          try {
+            await confirmGenerationFailure(transactionId);
+          } catch (creditError) {
+            console.error('❌ Credit refund failed:', creditError);
+          }
+        }
+        
+        setErrorMessage(errorMessage);
+        try { 
+          const toast = (await import('react-hot-toast')).default; 
+          toast.error(errorMessage); 
+        } catch {}
+        
+        // Refresh credits
+        try {
+          const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+          requestCreditsRefresh();
+        } catch {}
+        
+        return; // Exit early
+      }
+
+      if (result.status !== 'completed') {
         throw new Error(result?.error || 'Generation failed');
       }
 
@@ -265,13 +404,17 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       }
 
       setResultUrl(audioUrl);
+      
+      // Update local preview to completed state so it shows the actual audio immediately
       setLocalMusicPreview((prev: any) => prev ? ({
         ...prev,
+        id: firebaseHistoryId || tempId, // Ensure ID matches Redux entry
         status: 'completed',
         audios: finalAudios,
         images: imagesArray,
-        model: modelName
-      }) : prev);
+        model: modelName,
+        fileName: fileName
+      }) : null);
 
       try { const toast = (await import('react-hot-toast')).default; toast.success('Speech generated successfully!'); } catch {}
 
@@ -279,51 +422,80 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         await confirmGenerationSuccess(transactionId);
       }
 
-      // Refresh history immediately to show the new entry
-      console.log('[TextToSpeech] Refreshing history to show new entry...');
+      // Clear local preview after a short delay to let Redux entry take over
+      // The Redux entry is already updated, so it should appear immediately
       setTimeout(() => {
-        refreshMusicHistoryImmediate();
+        setLocalMusicPreview(null);
       }, 500);
-      
-      // Also refresh after a longer delay to ensure backend sync
-      setTimeout(() => {
-        refreshMusicHistoryImmediate();
-      }, 2000);
+
+      // Don't refresh history immediately - the entry is already updated in Redux
+      // The backend will sync, but we don't want to replace the local state
+      console.log('[TextToSpeech] Generation completed, entry updated in Redux. Local preview will clear shortly.');
 
     } catch (error: any) {
       console.error('❌ TTS generation failed:', error);
       
+      // Immediately stop generation
+      setIsGenerating(false);
+      
+      // Extract error message from various possible locations
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.data?.message ||
+                          error?.message || 
+                          'Speech generation failed';
+      
+      // Update local preview to failed state immediately
+      setLocalMusicPreview((prev: any) => prev ? ({
+        ...prev,
+        status: 'failed'
+      }) : prev);
+
+      // Update history entry to failed state
+      dispatch(updateHistoryEntry({
+        id: firebaseHistoryId || tempId,
+        updates: {
+          status: 'failed',
+          error: errorMessage
+        }
+      }));
+      
+      // Update Firebase
       if (firebaseHistoryId) {
         try {
           await updateFirebaseHistory(firebaseHistoryId, {
             status: 'failed',
-            error: error.message
+            error: errorMessage
           });
         } catch (firebaseError) {
           console.error('❌ Firebase error update failed:', firebaseError);
         }
       }
 
-      setLocalMusicPreview((prev: any) => prev ? ({
-        ...prev,
-        status: 'failed'
-      }) : prev);
-
-      dispatch(updateHistoryEntry({
-        id: firebaseHistoryId || tempId,
-        updates: {
-          status: 'failed',
-          error: error.message
-        }
-      }));
-
-      setErrorMessage(error.message || 'Speech generation failed');
-      try { const toast = (await import('react-hot-toast')).default; toast.error('Speech generation failed'); } catch {}
+      // Set error message
+      setErrorMessage(errorMessage);
       
+      // Show error toast
+      try { 
+        const toast = (await import('react-hot-toast')).default; 
+        toast.error(errorMessage); 
+      } catch {}
+      
+      // Refund credits immediately
       if (transactionId) {
-        await confirmGenerationFailure(transactionId);
+        try {
+          await confirmGenerationFailure(transactionId);
+        } catch (creditError) {
+          console.error('❌ Credit refund failed:', creditError);
+        }
       }
+      
+      // Refresh credits to update UI
+      try {
+        const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+        requestCreditsRefresh();
+      } catch {}
     } finally {
+      // Ensure generation is stopped
       setIsGenerating(false);
     }
   };

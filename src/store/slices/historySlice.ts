@@ -704,12 +704,49 @@ const historySlice = createSlice({
         })));
 
         // If forceRefresh, replace entries completely (don't merge with existing)
-        // Apply a safe, synonym-aware filter when a generationType is requested
+        // Otherwise, merge entries by ID to preserve local updates
         if (forceRefresh) {
           console.log('[HistorySlice] forceRefresh=true - REPLACING all entries with fresh data');
           state.entries = action.payload.entries;
         } else {
-          state.entries = action.payload.entries;
+          // Merge mode: combine backend entries with existing entries, preferring existing if IDs match
+          // This preserves local updates (like status changes) while adding new entries from backend
+          const existingMap = new Map<string, any>(state.entries.map((e: any) => [String(e?.id || ''), e]));
+          const backendMap = new Map<string, any>(action.payload.entries.map((e: any) => [String(e?.id || ''), e]));
+          
+          // Merge: prefer existing entry if it exists and is more recent, otherwise use backend entry
+          const merged = new Map<string, any>();
+          
+          // First, add all backend entries
+          backendMap.forEach((backendEntry, id) => {
+            merged.set(id, backendEntry);
+          });
+          
+          // Then, add existing entries that aren't in backend (preserve local-only entries)
+          existingMap.forEach((existingEntry, id) => {
+            if (!merged.has(id)) {
+              merged.set(id, existingEntry);
+            } else {
+              // If both exist, prefer the one with more recent timestamp or better status
+              const backendEntry = merged.get(id);
+              const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
+              const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
+              
+              // Prefer existing if it's more recent or if backend entry is missing critical data
+              if (existingTimestamp > backendTimestamp || 
+                  (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
+                  (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))) {
+                merged.set(id, existingEntry);
+              }
+            }
+          });
+          
+          state.entries = Array.from(merged.values());
+          console.log('[HistorySlice] Merged entries:', {
+            existingCount: existingMap.size,
+            backendCount: backendMap.size,
+            mergedCount: merged.size
+          });
         }
         const usedTypeAny = (usedFilters as any)?.generationType as any;
         if (usedTypeAny) {

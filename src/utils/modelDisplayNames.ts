@@ -16,6 +16,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'gen4_image_turbo': 'Runway Gen4 Image Turbo',
   'minimax-image-01': 'MiniMax Image-01',
   'seedream-v4': 'Seedream v4 4k',
+  'seedream-4.5': 'Seedream 4.5',
   'ideogram-ai/ideogram-v3': 'Ideogram v3',
   'ideogram-ai/ideogram-v3-quality': 'Ideogram v3 Quality',
   'leonardoai/lucid-origin': 'Lucid Origin',
