@@ -2265,18 +2265,6 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
-    // Validate prompt for profanity before proceeding
-    try {
-      const { validatePrompt } = await import('@/utils/profanityFilter');
-      const profanityCheck = validatePrompt(prompt.trim());
-      if (!profanityCheck.isValid) {
-        toast.error(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.', { duration: 5000 });
-        return;
-      }
-    } catch (error) {
-      console.error('Error validating prompt:', error);
-      // Continue if validation fails (non-blocking)
-    }
 
     console.log('🚀 Starting video generation with:');
     console.log('🚀 - Selected model:', selectedModel);

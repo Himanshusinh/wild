@@ -199,7 +199,7 @@ const HomePage: React.FC = () => {
     <div className="min-h-screen bg-[#07070B]">
       <div className="flex md:pt-[40px] md:ml-[68px]">
         <div className="flex-1 min-w-0">
-          <Header />
+          {/* <Header /> */}
           <Recentcreation />
 
           <section className="w-full pl-12 pr-12 pt-12 pb-12  animate-in fade-in duration-1000 delay-200">

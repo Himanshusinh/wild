@@ -13,6 +13,7 @@ import { setCurrentView } from '@/store/slices/uiSlice';
 import toast from 'react-hot-toast';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { createPortal } from 'react-dom';
 
 interface SidePannelFeaturesProps {
   currentView?: ViewType;
@@ -20,6 +21,69 @@ interface SidePannelFeaturesProps {
   onGenerationTypeChange?: (type: GenerationType) => void;
   onWildmindSkitClick?: () => void;
 }
+
+// Memoized SidebarIcon to prevent re-renders of the mask when parent state changes (e.g. hover)
+const SidebarIcon = React.memo(({ icon, label, isActive }: { icon: string, label: string, isActive: boolean }) => (
+  isActive ? (
+    <div
+      className="flex-none w-[24px] h-[24px] bg-blue-400"
+      style={{
+        maskImage: `url(${icon})`,
+        maskSize: 'contain',
+        maskRepeat: 'no-repeat',
+        maskPosition: 'center',
+        WebkitMaskImage: `url(${icon})`,
+        WebkitMaskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center'
+      }}
+    />
+  ) : (
+    <Image
+      src={icon}
+      alt={label}
+      width={30}
+      height={30}
+      className="flex-none w-[24px] h-[24px]"
+      unoptimized
+    />
+  )
+));
+SidebarIcon.displayName = 'SidebarIcon';
+
+// SidebarItem component moved outside to prevent re-renders
+const SidebarItem = ({
+  icon,
+  label,
+  isActive,
+  onClick,
+  onMouseDown,
+  labelClasses,
+  setIsSidebarHovered,
+  className = ''
+}: {
+  icon: string,
+  label: string,
+  isActive: boolean,
+  onClick: (e: React.MouseEvent) => void,
+  onMouseDown?: (e: React.MouseEvent) => void,
+  labelClasses: string,
+  setIsSidebarHovered: (value: boolean) => void,
+  className?: string
+}) => (
+  <div
+    onMouseEnter={() => setIsSidebarHovered(true)}
+    onMouseDown={onMouseDown}
+    onClick={onClick}
+    className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer rounded-xl group/item ${isActive
+      ? 'bg-blue-500/20 border border-blue-500/40'
+      : 'text-white hover:bg-white/20'
+      } ${className}`}
+  >
+    <SidebarIcon icon={icon} label={label} isActive={isActive} />
+    <span className={`${labelClasses} ${isActive ? 'text-blue-400' : ''}`}>{label}</span>
+  </div>
+);
 
 const SidePannelFeatures = ({
   currentView = 'generation',
@@ -43,11 +107,52 @@ const SidePannelFeatures = ({
   const touchStartXRef = React.useRef<number | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const [avatarFailed, setAvatarFailed] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Credits (shared with top nav)
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits();
   const [showProfileDropdown, setShowProfileDropdown] = React.useState(false);
   const profileDropdownRef = React.useRef<HTMLDivElement>(null);
+  const profileButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, left: 0, bottom: 0 });
+
+  // Update dropdown position when sidebar state changes
+  React.useEffect(() => {
+    if (showProfileDropdown && profileButtonRef.current) {
+      const updatePosition = () => {
+        if (profileButtonRef.current) {
+          const rect = profileButtonRef.current.getBoundingClientRect();
+          const gap = 12; // Gap between sidebar and popup
+          
+          // Position to the right of the sidebar/button
+          const left = rect.right + gap;
+          
+          // Align bottom of popup with bottom of button
+          // We use 'bottom' CSS property, so we calculate distance from bottom of viewport
+          const bottom = window.innerHeight - rect.bottom;
+          
+          setDropdownPosition({ top: 0, left, bottom });
+        }
+      };
+      
+      // Small delay to ensure button position is calculated correctly
+      const timeoutId = setTimeout(updatePosition, 0);
+      
+      // Update on window resize and scroll
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+      };
+    }
+  }, [isSidebarHovered, isMobileSidebarOpen, showProfileDropdown]);
   const [isPublic, setIsPublic] = React.useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('isPublicGenerations');
@@ -453,41 +558,36 @@ const SidePannelFeatures = ({
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.home}
+            label="Home"
+            isActive={pathname === APP_ROUTES.HOME}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, APP_ROUTES.HOME, async () => {
-              try {
-                await ensureSessionReady(600)
-              } catch (error) {
-                // Silent fail
-              }
+              try { await ensureSessionReady(600) } catch (error) { }
               router.push(APP_ROUTES.HOME)
             })}
             onClick={(e) => {
-              // Handle normal left-click (button 0)
               if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
                 closeMobileSidebar();
                 (async () => {
-                  try {
-                    await ensureSessionReady(600)
-                  } catch (error) {
-                    // Silent fail
-                  }
+                  try { await ensureSessionReady(600) } catch (error) { }
                   router.push(APP_ROUTES.HOME)
                 })();
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/15 rounded-xl group/item`}
-          >
-            <Image src={imageRoutes.icons.home} alt="Home" width={30} height={30} className="flex-none shrink-0 w-[24px] h-[24px]" priority unoptimized />
-            <span className={labelClasses}>Home</span>
-          </div>
+          />
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.artStation}
+            label="Art Station"
+            isActive={pathname?.includes('/ArtStation') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/view/ArtStation', () => router.push('/view/ArtStation'))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
@@ -495,17 +595,16 @@ const SidePannelFeatures = ({
                 router.push('/view/ArtStation');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/ArtStation')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.artStation} alt="Art Station" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-            <span className={labelClasses}>Art Station</span>
-          </div>
+          />
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.canvas}
+            label="WildCanvas"
+            isActive={pathname?.includes('/canvas-projects') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/canvas-projects', () => router.push('/canvas-projects'))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
@@ -513,104 +612,87 @@ const SidePannelFeatures = ({
                 router.push('/canvas-projects');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/canvas-projects')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.canvas} alt="WildCanvas" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-            <span className={labelClasses}>WildCanvas</span>
-          </div>
+          />
         </div>
 
         <div className="relative">
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.imageGeneration}
+            label="Image Generation"
+            isActive={pathname?.includes('/text-to-image') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-image', handleImageGenerationClick)}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
                 handleImageGenerationClick();
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-image')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.imageGeneration} alt="Image Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
-            <span className={labelClasses}>Image Generation</span>
-          </div>
+          />
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.editImage}
+            label="Image Edit"
+            isActive={pathname?.includes('/edit-image') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/edit-image', () => handleGenerationTypeChange('edit-image'))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
                 handleGenerationTypeChange('edit-image');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/edit-image')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.editImage} alt="Image Edit " width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-            <span className={labelClasses}>Image Edit</span>
-          </div>
+          />
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.videoGeneration}
+            label="Video Generation"
+            isActive={pathname?.includes('/text-to-video') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-video', () => handleGenerationTypeChange('text-to-video'))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
                 handleGenerationTypeChange('text-to-video');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-video')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.videoGeneration} alt="Video Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
-            <span className={labelClasses}>Video Generation</span>
-          </div>
+          />
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon="/icons/video-editing (1).svg"
+            label="Video Edit"
+            isActive={isVideoEditActive || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/edit-video', () => handleGenerationTypeChange('edit-video'))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
                 handleGenerationTypeChange('edit-video');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${isVideoEditActive ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image
-              src="/icons/video-editing (1).svg"
-              alt="Video Edit"
-              width={30}
-              height={30}
-              className="flex-none w-[24px] h-[24px]"
-              unoptimized
-            />
-            <span className={labelClasses}>Video Edit</span>
-          </div>
+          />
         </div>
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.musicGeneration}
+            label="Audio Generation"
+            isActive={pathname?.includes('/text-to-music') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/text-to-music', () => handleGenerationTypeChange('text-to-music'))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
                 handleGenerationTypeChange('text-to-music');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/text-to-music')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src={imageRoutes.icons.musicGeneration} alt="Audio Generation" width={30} height={30} className="flex-none w-[24px] h-[24px]" priority unoptimized />
-            <span className={labelClasses}>Audio Generation</span>
-          </div>
+          />
         </div>
 
 
@@ -753,8 +835,12 @@ const SidePannelFeatures = ({
         </div>  */}
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon="/icons/shield-dollar.svg"
+            label="Pricing"
+            isActive={pathname?.includes('/pricing') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, NAV_ROUTES.PRICING, () => router.push(NAV_ROUTES.PRICING))}
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey) {
@@ -762,19 +848,18 @@ const SidePannelFeatures = ({
                 router.push(NAV_ROUTES.PRICING);
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname?.includes('/pricing')) ? 'bg-white/20' : ''
-              }`}
-          >
-            <Image src="/icons/shield-dollar.svg" alt="Pricing" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-            <span className={labelClasses}>Pricing</span>
-          </div>
+          />
         </div>
 
 
 
         <div>
-          <div
-            onMouseEnter={() => setIsSidebarHovered(true)}
+          <SidebarItem
+            icon={imageRoutes.icons.history}
+            label="History"
+            isActive={pathname === '/history' || pathname?.startsWith('/history') || false}
+            labelClasses={labelClasses}
+            setIsSidebarHovered={setIsSidebarHovered}
             onMouseDown={(e) => handleClickWithNewTab(e, '/history', () => {
               try {
                 if (onViewChange && typeof onViewChange === 'function') {
@@ -798,11 +883,7 @@ const SidePannelFeatures = ({
                 router.push('/history');
               }
             }}
-            className={`flex items-center gap-4 p-2 transition-colors duration-200 cursor-pointer text-white hover:bg-white/20 rounded-xl group/item ${(pathname === '/history' || pathname?.startsWith('/history')) ? 'bg-white/20' : ''}`}
-          >
-            <Image src={imageRoutes.icons.history} alt="History" width={30} height={30} className="flex-none w-[24px] h-[24px]" unoptimized />
-            <span className={labelClasses}>History</span>
-          </div>
+          />
         </div>
 
 
@@ -865,11 +946,13 @@ const SidePannelFeatures = ({
             ref={profileDropdownRef}
           >
             <button
+              ref={profileButtonRef}
               onClick={() => {
                 // Expand sidebar when profile is clicked (if not already expanded)
                 if (!isSidebarHovered && !isMobileSidebarOpen) {
                   setIsSidebarHovered(true);
                 }
+                // Position will be calculated by useEffect
                 setShowProfileDropdown((v) => !v);
               }}
               onMouseEnter={() => setIsSidebarHovered(true)}
@@ -908,13 +991,22 @@ const SidePannelFeatures = ({
                       {userData?.username || 'User'}
                     </span>
                     {/* Credits below username */}
-                    <button
+                    <div
                       onClick={(e) => {
                         e.stopPropagation();
                         refreshCredits();
                       }}
-                      className="flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity"
+                      className="flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity cursor-pointer"
                       title="Click to refresh credits"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          refreshCredits();
+                        }
+                      }}
                     >
                       <Image
                         src="/icons/coinswhite.svg"
@@ -927,7 +1019,7 @@ const SidePannelFeatures = ({
                       <span className="text-xs font-semibold text-white tabular-nums">
                         {creditsLoading ? '…' : (creditBalance ?? userData?.credits ?? 0)}
                       </span>
-                    </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -937,12 +1029,18 @@ const SidePannelFeatures = ({
               )}
             </button>
 
-            {showProfileDropdown && (
+            {showProfileDropdown && mounted && createPortal(
               <div
-                className={`absolute ${
-                  isSidebarHovered || isMobileSidebarOpen ? 'left-56' : 'left-full ml-2'
-                } bottom-[-37px] w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden z-[80] animate-in fade-in slide-in-from-bottom-2duration-300`}
+                className="fixed w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300"
                 onMouseLeave={() => setShowProfileDropdown(false)}
+                style={{ 
+                  zIndex: 999999,
+                  position: 'fixed',
+                  left: `${dropdownPosition.left}px`,
+                  bottom: `${dropdownPosition.bottom}px`,
+                  maxHeight: 'calc(100vh - 20px)',
+                  overflowY: 'auto'
+                }}
               >
                 <div className="p-4">
                   {/* Header */}
@@ -1052,7 +1150,8 @@ const SidePannelFeatures = ({
                     </button>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </div>

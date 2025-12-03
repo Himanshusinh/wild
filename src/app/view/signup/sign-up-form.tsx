@@ -872,16 +872,6 @@ export default function SignInForm() {
       return
     }
 
-    // Check for profanity
-    const { validateUsername } = await import('@/utils/profanityFilter')
-    const profanityCheck = validateUsername(username.trim())
-    if (!profanityCheck.isValid) {
-      const errorMsg = profanityCheck.error || "Username contains inappropriate language. Please choose a different username."
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
-      return
-    }
-
     setError("")
     setProcessing(true)
     setIsUsernameSubmitting(true)
