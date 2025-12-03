@@ -10,6 +10,9 @@ import { ensureSessionReady } from '@/lib/axiosInstance';
 import { useCredits } from '@/hooks/useCredits';
 import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
 import { setCurrentView } from '@/store/slices/uiSlice';
+import toast from 'react-hot-toast';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 interface SidePannelFeaturesProps {
   currentView?: ViewType;
@@ -43,6 +46,16 @@ const SidePannelFeatures = ({
 
   // Credits (shared with top nav)
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits();
+  const [showProfileDropdown, setShowProfileDropdown] = React.useState(false);
+  const profileDropdownRef = React.useRef<HTMLDivElement>(null);
+  const [isPublic, setIsPublic] = React.useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('isPublicGenerations');
+      return stored ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
 
   // Preload critical sidebar icons for faster loading
   React.useEffect(() => {
@@ -230,6 +243,70 @@ const SidePannelFeatures = ({
       document.body.style.overflow = '';
     };
   }, [isMobileSidebarOpen]);
+
+  // Sync public generations toggle from user data
+  React.useEffect(() => {
+    if (!userData) return;
+    try {
+      const stored = localStorage.getItem('isPublicGenerations');
+      const server = (userData as any)?.isPublic;
+      const planRaw = String((userData as any)?.plan || '').toUpperCase();
+      const isPlanCOrD =
+        (userData as any)?.canTogglePublicGenerations === true ||
+        /(^|\b)PLAN\s*C\b/.test(planRaw) ||
+        /(^|\b)PLAN\s*D\b/.test(planRaw) ||
+        planRaw === 'C' ||
+        planRaw === 'D';
+      let next = true;
+      if (isPlanCOrD) {
+        next = stored != null ? stored === 'true' : server !== undefined ? Boolean(server) : true;
+      } else {
+        try {
+          localStorage.setItem('isPublicGenerations', 'true');
+        } catch {}
+      }
+      setIsPublic(next);
+    } catch {}
+  }, [userData]);
+
+  // Close profile dropdown on outside click
+  React.useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (!profileDropdownRef.current) return;
+      if (!profileDropdownRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('user');
+      localStorage.removeItem('authToken');
+      try {
+        localStorage.removeItem('me_cache');
+      } catch {}
+      try {
+        sessionStorage.removeItem('me_cache');
+      } catch {}
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      try {
+        await signOut(auth);
+      } catch {}
+      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
+      try {
+        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`;
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`;
+        document.cookie = `app_session=; ${expired}; SameSite=Lax`;
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`;
+      } catch {}
+    } catch {}
+    if (typeof window !== 'undefined') {
+      window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS');
+    }
+  };
 
   const isBrandingActive = pathname?.includes('/logo') ||
     pathname?.includes('/sticker-generation') ||
@@ -780,7 +857,205 @@ const SidePannelFeatures = ({
         </div>
         */}
 
-        {/* Bottom: credits + profile */}
+        {/* Bottom: profile with credits */}
+        <div className="mt-auto pt-4 pb-4 border-t border-white/10">
+          {/* Profile trigger + dropdown - simplified animation */}
+          <div
+            className="relative"
+            ref={profileDropdownRef}
+          >
+            <button
+              onClick={() => {
+                // Expand sidebar when profile is clicked (if not already expanded)
+                if (!isSidebarHovered && !isMobileSidebarOpen) {
+                  setIsSidebarHovered(true);
+                }
+                setShowProfileDropdown((v) => !v);
+              }}
+              onMouseEnter={() => setIsSidebarHovered(true)}
+              className={`w-full flex items-start justify-between px-1 transition-colors duration-200 ease-out ${
+                isSidebarHovered || isMobileSidebarOpen
+                  ? 'rounded-2xl'
+                  : 'rounded-full bg-transparent border-0'
+              }`}
+            >
+              <div className="flex  gap-2">
+                {/* Profile image - always visible, fixed position and aligned with sidebar icons */}
+                {userData?.photoURL && !avatarFailed ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/20 flex items-center justify-center">
+                    <img
+                      src={userData.photoURL}
+                      alt="profile"
+                      referrerPolicy="no-referrer"
+                      onError={() => setAvatarFailed(true)}
+                      className="w-full h-full object-cover"
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 border border-white/20">
+                    <span className="text-white text-[11px] font-semibold">
+                      {(userData?.username || userData?.email || 'U')
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {/* Username and credits - fade in/out, no slide */}
+                {(isSidebarHovered || isMobileSidebarOpen) && (
+                  <div className="flex flex-col items-start whitespace-nowrap pl-2 transition-opacity duration-200 ease-out">
+                    <span className="text-xs font-medium text-white">
+                      {userData?.username || 'User'}
+                    </span>
+                    {/* Credits below username */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        refreshCredits();
+                      }}
+                      className="flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity"
+                      title="Click to refresh credits"
+                    >
+                      <Image
+                        src="/icons/coinswhite.svg"
+                        alt="Credits"
+                        width={14}
+                        height={14}
+                        className="w-3.5 h-3.5 flex-shrink-0"
+                        unoptimized
+                      />
+                      <span className="text-xs font-semibold text-white tabular-nums">
+                        {creditsLoading ? '…' : (creditBalance ?? userData?.credits ?? 0)}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Dropdown arrow - simple show/hide */}
+              {(isSidebarHovered || isMobileSidebarOpen) && (
+                <span className="text-xs text-white/60 whitespace-nowrap"> &#9654; </span>
+              )}
+            </button>
+
+            {showProfileDropdown && (
+              <div
+                className={`absolute ${
+                  isSidebarHovered || isMobileSidebarOpen ? 'left-56' : 'left-full ml-2'
+                } bottom-[-37px] w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden z-[80] animate-in fade-in slide-in-from-bottom-2duration-300`}
+                onMouseLeave={() => setShowProfileDropdown(false)}
+              >
+                <div className="p-4">
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                      {userData?.photoURL && !avatarFailed ? (
+                        <img
+                          src={userData.photoURL}
+                          alt="avatar"
+                          referrerPolicy="no-referrer"
+                          onError={() => setAvatarFailed(true)}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-semibold text-lg">
+                          {(userData?.username || userData?.email || 'U')
+                            .charAt(0)
+                            .toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold text-lg">
+                        {userData?.username || 'User'}
+                      </div>
+                      <div className="text-gray-300 text-sm">
+                        {userData?.email || 'user@example.com'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats + actions */}
+                  <div className="space-y-2">
+                    <div className="space-y-1 px-3 py-2 rounded-lg bg-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white text-sm">Status</span>
+                        <span className="text-green-400 text-sm">
+                          {userData?.metadata?.accountStatus || 'Active'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                      <span className="text-white text-sm">Active Plan</span>
+                      <span className="text-gray-300 text-sm">
+                        {userData?.plan || 'Launch Offer'}
+                      </span>
+                    </div>
+
+                    {/* Make generations public toggle */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                      <span className="text-white text-sm">Make generations public</span>
+                      <button
+                        type="button"
+                        aria-pressed={isPublic}
+                        onClick={async () => {
+                          const planRaw = String(userData?.plan || '').toUpperCase();
+                          const canToggle =
+                            /(^|\b)PLAN\s*C\b/.test(planRaw) ||
+                            /(^|\b)PLAN\s*D\b/.test(planRaw) ||
+                            planRaw === 'C' ||
+                            planRaw === 'D';
+                          if (!canToggle) {
+                            toast('Public generations are always enabled on your plan');
+                            setIsPublic(true);
+                            try {
+                              localStorage.setItem('isPublicGenerations', 'true');
+                            } catch {}
+                            return;
+                          }
+                          const next = !isPublic;
+                          setIsPublic(next);
+                          try {
+                            localStorage.setItem('isPublicGenerations', String(next));
+                          } catch {}
+                        }}
+                        className={`w-10 h-5 rounded-full transition-colors ${
+                          isPublic ? 'bg-blue-500' : 'bg-white/20'
+                        }`}
+                      >
+                        <span
+                          className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${
+                            isPublic ? 'translate-x-5' : 'translate-x-0'
+                          } relative top-0 left-0.5`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="border-t border-white/10 my-2" />
+
+                    {/* Account Settings */}
+                    <button
+                      onClick={() => {
+                        router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
+                        setShowProfileDropdown(false);
+                      }}
+                      className="w-full text-left py-2 px-3 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <span className="text-white text-sm">Account Settings</span>
+                    </button>
+
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left py-2 px-3 rounded-lg hover:bg-red-500/20 transition-colors"
+                    >
+                      <span className="text-red-400 text-sm">Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
 

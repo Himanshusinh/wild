@@ -2225,6 +2225,19 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
+    // Validate prompt for profanity before proceeding
+    try {
+      const { validatePrompt } = await import('@/utils/profanityFilter');
+      const profanityCheck = validatePrompt(prompt.trim());
+      if (!profanityCheck.isValid) {
+        toast.error(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.', { duration: 5000 });
+        return;
+      }
+    } catch (error) {
+      console.error('Error validating prompt:', error);
+      // Continue if validation fails (non-blocking)
+    }
+
     console.log('🚀 Starting video generation with:');
     console.log('🚀 - Selected model:', selectedModel);
     console.log('🚀 - Generation mode:', generationMode);
@@ -4126,7 +4139,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.error('❌ Failed to rollback credits:', creditError);
       }
 
-      try { const toast = (await import('react-hot-toast')).default; toast.error(error instanceof Error ? error.message : 'Video generation failed'); } catch { }
+      try { 
+        const toast = (await import('react-hot-toast')).default; 
+        const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Video generation failed');
+        toast.error(errorMessage, { duration: 5000 }); 
+      } catch { }
     } finally {
       setIsGenerating(false);
     }

@@ -54,7 +54,7 @@ export function InteractiveFeatureNodeGraph() {
 
     // Canvas Dimensions
     const CANVAS_WIDTH = 1000;
-    const CANVAS_HEIGHT = 600;
+    const CANVAS_HEIGHT = 500;
     const CENTER_X = CANVAS_WIDTH / 2;
     const CENTER_Y = CANVAS_HEIGHT / 2;
     const BOX_WIDTH = 280;
@@ -140,11 +140,11 @@ export function InteractiveFeatureNodeGraph() {
     const activeImage = features.find(f => f.id === activeFeature)?.image || 'https://images.unsplash.com/photo-1535295972055-1c762f4483e5?q=80&w=800&auto=format&fit=crop'; // Default vibrant
 
     return (
-        <div className="w-full py-32 flex flex-col items-center bg-[#020205] relative overflow-hidden select-none">
+        <div className="w-full py-12 flex flex-col items-center bg-[#020205] relative overflow-hidden rounded-2xl select-none">
             {/* Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-            <div className="text-center mb-16 relative z-10">
+            <div className="text-center  relative z-10">
                 <h2 className="text-5xl font-medium tracking-tight text-white mb-4">With all the professional <br /> tools you rely on.</h2>
                 <p className="text-slate-400">In one seamless workflow.</p>
             </div>

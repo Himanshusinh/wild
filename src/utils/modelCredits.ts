@@ -30,8 +30,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'z-image-turbo': 26,         // Z Image Turbo
   'leonardoai/lucid-origin': 173,
   'leonardoai/phoenix-1.0': 170,
-  // TODO: Update model identifier and credits with actual values
-  'new-turbo-model': 120, // Placeholder - update with actual credits from creditDistribution.ts
+  // Z-Image Turbo: Free (0 credits) for launch offer
+  'new-turbo-model': 0, // Free unlimited image generation
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]
   'flux-kontext-dev': 90,       // Similar to FLUX.1 [dev]

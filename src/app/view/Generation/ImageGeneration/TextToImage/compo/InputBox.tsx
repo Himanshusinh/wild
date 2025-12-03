@@ -1526,6 +1526,19 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    // Validate prompt for profanity before proceeding
+    try {
+      const { validatePrompt } = await import('@/utils/profanityFilter');
+      const profanityCheck = validatePrompt(prompt.trim());
+      if (!profanityCheck.isValid) {
+        toast.error(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.', { duration: 5000 });
+        return;
+      }
+    } catch (error) {
+      console.error('Error validating prompt:', error);
+      // Continue if validation fails (non-blocking)
+    }
+
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
     // This ensures the loader shows instantly when the button is clicked
     setIsGeneratingLocally(true);
@@ -2493,7 +2506,8 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream');
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream');
+          toast.error(errorMessage, { duration: 5000 });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
@@ -2580,7 +2594,8 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
+          toast.error(errorMessage, { duration: 5000 });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3-quality') {

@@ -112,7 +112,7 @@ const Nav = () => {
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
         </div>
 
-        <div className='flex items-center md:gap-3 gap-1 '>
+        <div className='hidden'>
           {/* <Image className='cursor-pointer border rounded-full p-2 border-white/15' src="/icons/searchwhite.svg" alt='logo' width={45} height={45} /> */}
           <button
             onClick={() => refreshCredits()}

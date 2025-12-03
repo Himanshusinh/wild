@@ -87,7 +87,12 @@ export const useCredits = () => {
     resolution?: string
   ) => {
     const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution);
-    
+
+    // Special case: z-image-turbo (new-turbo-model) is free and should not trigger "Unknown model"
+    if (model === 'new-turbo-model') {
+      return { requiredCredits: 0, validation: null as any };
+    }
+
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
     }
