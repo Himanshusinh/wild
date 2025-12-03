@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Image as ImageIcon, Film, Mic, GripHorizontal, Play } from 'lucide-react';
 
 interface NodePosition {
@@ -31,6 +31,7 @@ export function WorkflowVisualizer() {
     });
 
     const [dragState, setDragState] = useState<DragState>({ isDragging: false, nodeId: null, startX: 0, startY: 0, originalX: 0, originalY: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Nodes Metadata
     const nodesData = [
@@ -61,14 +62,31 @@ export function WorkflowVisualizer() {
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
-            if (!dragState.isDragging || dragState.nodeId === null) return;
+            if (!dragState.isDragging || dragState.nodeId === null || !containerRef.current) return;
+
             const dx = e.clientX - dragState.startX;
             const dy = e.clientY - dragState.startY;
+
+            let newX = dragState.originalX + dx;
+            let newY = dragState.originalY + dy;
+
+            // Constrain to container bounds
+            const containerWidth = containerRef.current.offsetWidth;
+            const containerHeight = containerRef.current.offsetHeight;
+
+            // Clamp X
+            if (newX < 0) newX = 0;
+            if (newX > containerWidth - NODE_WIDTH) newX = containerWidth - NODE_WIDTH;
+
+            // Clamp Y
+            if (newY < 0) newY = 0;
+            if (newY > containerHeight - NODE_HEIGHT) newY = containerHeight - NODE_HEIGHT;
+
             setNodePositions(prev => ({
                 ...prev,
                 [dragState.nodeId!]: {
-                    x: dragState.originalX + dx,
-                    y: dragState.originalY + dy
+                    x: newX,
+                    y: newY
                 }
             }));
         };
@@ -115,7 +133,7 @@ export function WorkflowVisualizer() {
             </div>
 
             {/* Node Graph Container */}
-            <div className="relative w-full max-w-5xl h-[550px] bg-[#050505] rounded-3xl border border-white/5 shadow-2xl overflow-hidden">
+            <div ref={containerRef} className="relative w-full max-w-5xl h-[550px] bg-[#050505] rounded-3xl border border-white/5 shadow-2xl overflow-hidden">
                 {/* Background Grid */}
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#333 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
