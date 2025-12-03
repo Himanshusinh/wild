@@ -127,6 +127,22 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
     (groups[key] ||= []).push(e);
     return groups;
   }, {} as Record<string, any[]>);
+  
+  // Sort entries within each date group: generating first (so they appear at top), then completed, then by timestamp (newest first)
+  Object.keys(grouped).forEach(dateKey => {
+    grouped[dateKey].sort((a: any, b: any) => {
+      // Generating entries first (so they appear at the top)
+      if (a.status === 'generating' && b.status !== 'generating') return -1;
+      if (b.status === 'generating' && a.status !== 'generating') return 1;
+      // Completed entries next
+      if (a.status === 'completed' && b.status !== 'completed') return -1;
+      if (b.status === 'completed' && a.status !== 'completed') return 1;
+      // Within same status, sort by timestamp (newest first)
+      const timeA = new Date(a.timestamp || a.createdAt || a.updatedAt).getTime();
+      const timeB = new Date(b.timestamp || b.createdAt || b.updatedAt).getTime();
+      return timeB - timeA;
+    });
+  });
   const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   const todayKey = new Date().toDateString();
 
@@ -182,19 +198,77 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
 
         {historyEntries.length > 0 && (
           <div className="space-y-8">
-            {sortedDates.map((date) => (
-              <DateRow key={date} dateKey={date}>
-                {date === todayKey && localPreview && localPreview.status === 'generating' && <AudioTileGenerating preview={localPreview} />}
-                {grouped[date].flatMap((entry: any) => {
+            {sortedDates.map((date) => {
+              // Check if there's a completed Redux entry that matches the localPreview
+              // If so, we should clear localPreview and show only the Redux entry
+              const hasMatchingCompletedReduxEntry = localPreview && localPreview.status === 'completed' && grouped[date].some((entry: any) => {
+                if (entry.status !== 'completed') return false;
+                const idMatches = entry.id === localPreview.id;
+                const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
+                const timeMatches = Math.abs(new Date(entry.createdAt || entry.timestamp).getTime() - new Date(localPreview.createdAt || localPreview.timestamp).getTime()) < 5000;
+                return idMatches || (promptMatches && timeMatches && entry.generationType === localPreview.generationType);
+              });
+              
+              // Only show localPreview if it's generating, or if it's completed but there's no matching Redux entry yet
+              const shouldShowLocalPreview = date === todayKey && localPreview && 
+                (localPreview.status === 'generating' || (localPreview.status === 'completed' && !hasMatchingCompletedReduxEntry));
+              
+              return (
+                <DateRow key={date} dateKey={date}>
+                  {/* Show localPreview only if generating, or completed but no matching Redux entry yet */}
+                  {shouldShowLocalPreview && (
+                    <AudioTileGenerating preview={localPreview} />
+                  )}
+                  {grouped[date].flatMap((entry: any) => {
                   // Skip if this entry matches the localPreview (to avoid duplicates)
-                  if (localPreview && (entry.id === localPreview.id || (entry.status === 'generating' && localPreview.status === 'generating' && entry.prompt === localPreview.prompt))) {
-                    // If localPreview is completed, skip the generating entry from Redux
-                    if (localPreview.status === 'completed' || localPreview.status === 'failed') {
-                      return [];
+                  if (localPreview) {
+                    const idMatches = entry.id === localPreview.id;
+                    // Also match by prompt, model, and timestamp to handle ID changes after Firebase sync
+                    const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
+                    const timeMatches = Math.abs(new Date(entry.createdAt || entry.timestamp).getTime() - new Date(localPreview.createdAt || localPreview.timestamp).getTime()) < 5000; // Within 5 seconds
+                    const typeMatches = entry.generationType === localPreview.generationType;
+                    const isSameGeneration = idMatches || (promptMatches && timeMatches && typeMatches);
+                    
+                    // If localPreview exists and matches this entry, skip the Redux entry to avoid duplicates
+                    if (isSameGeneration) {
+                      return []; // Skip this Redux entry, localPreview will be shown instead
                     }
                   }
-                  // Show generating entries even if they don't have media yet
+                  
+                  // Also check for duplicate entries with same ID but different status
+                  // If there's a completed entry and a generating entry with same ID, show only the completed one
                   if (entry.status === 'generating') {
+                    const hasCompletedVersion = grouped[date].some((otherEntry: any) => {
+                      return otherEntry.id === entry.id && otherEntry.status === 'completed';
+                    });
+                    if (hasCompletedVersion) {
+                      return []; // Skip generating entry if completed version exists
+                    }
+                  }
+                  // Check if this generating entry has a matching completed entry in the same date group
+                  // If so, skip the generating entry (it's been replaced)
+                  if (entry.status === 'generating') {
+                    // First check if there's a completed entry with the same ID (direct match - most common case)
+                    const hasMatchingCompletedById = grouped[date].some((otherEntry: any) => {
+                      return otherEntry.id === entry.id && otherEntry.status === 'completed';
+                    });
+                    
+                    // Also check for matching by prompt, model, and timestamp (for cases where ID changed)
+                    const hasMatchingCompleted = grouped[date].some((otherEntry: any) => {
+                      if (otherEntry.id === entry.id || otherEntry.status !== 'completed') return false;
+                      const promptMatch = otherEntry.prompt === entry.prompt && otherEntry.model === entry.model;
+                      const timeMatch = Math.abs(
+                        new Date(otherEntry.createdAt || otherEntry.timestamp).getTime() - 
+                        new Date(entry.createdAt || entry.timestamp).getTime()
+                      ) < 5000; // Within 5 seconds
+                      return promptMatch && timeMatch && otherEntry.generationType === entry.generationType;
+                    });
+                    
+                    // Skip generating entry if there's a matching completed entry (by ID or by content)
+                    if (hasMatchingCompletedById || hasMatchingCompleted) {
+                      return [];
+                    }
+                    
                     return [(
                       <div
                         key={`${entry.id}-generating`}
@@ -221,13 +295,18 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
                       <div
                         key={`${entry.id}-${audio.id || i}`}
                         onClick={() => onAudioSelect?.({ entry, audio })}
-                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02] opacity-60`}
+                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
                       >
                         <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]`" />
                         </div>
                         <StaticAudioTile status={entry.status} entry={entry} index={i} />
+                        {entry?.fileName && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
+                            {entry.fileName}
+                          </div>
+                        )}
                         {/* Delete button on hover */}
                         {entry.status !== 'generating' && entry.status !== 'failed' && (
                           <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -244,9 +323,10 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
                       </div>
                     );
                   });
-                })}
-              </DateRow>
-            ))}
+                  })}
+                </DateRow>
+              );
+            })}
             {hasMore && loading && (
               <div className="flex items-center justify-center py-8">
                 <div className="flex flex-col items-center gap-3">
@@ -302,10 +382,8 @@ const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }>
         <Music4 className="w-10 h-10 text-white drop-shadow-md relative z-10" />
       </div>
       {fileName && (
-        <div className="absolute bottom-2 left-2 right-2 z-20">
-          <div className="bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md ring-1 ring-white/10 truncate text-center">
-            {fileName}
-          </div>
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
+          {fileName}
         </div>
       )}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
@@ -354,7 +432,7 @@ const AudioTileGenerating = ({ preview }: { preview?: any }) => {
     <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_20px_35px_-20px_rgba(15,23,42,0.9)] transition-all duration-300 cursor-pointer group opacity-60`}>
       <StaticAudioTile status="generating" entry={preview} />
       {fileName ? (
-        <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md ring-1 ring-white/10 truncate text-center">
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
           {fileName}
         </div>
       ) : (

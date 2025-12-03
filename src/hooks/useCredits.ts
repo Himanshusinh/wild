@@ -112,9 +112,10 @@ export const useCredits = () => {
   const validateMusicCredits = async (
     model: string,
     duration?: number,
-    inputs?: any[]
+    inputs?: any[],
+    text?: string // Added for Maya TTS per-second pricing based on text length
   ) => {
-    const requiredCredits = getMusicGenerationCreditCost(model, duration, inputs);
+    const requiredCredits = getMusicGenerationCreditCost(model, duration, inputs, text);
     
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);

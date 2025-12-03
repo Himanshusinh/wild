@@ -215,12 +215,15 @@ export const falElevenTts = createAsyncThunk(
       const api = getApiClient();
       const modelLower = payload?.model?.toLowerCase() || '';
       const hasInputsArray = Array.isArray(payload?.inputs) && payload.inputs.length > 0;
+      const generationType = payload?.generationType?.toLowerCase() || '';
       // Route to appropriate endpoint based on model
       let endpoint = '/api/fal/eleven/tts'; // Default to ElevenLabs TTS
       if (modelLower.includes('minimax-music-2') || modelLower.includes('music-2')) {
         endpoint = '/api/minimax/music'; // MiniMax Music 2 endpoint (official API)
       } else if (modelLower.includes('dialogue') || hasInputsArray) {
         endpoint = '/api/fal/eleven/dialogue'; // Use dedicated dialogue endpoint
+      } else if (modelLower.includes('sfx') || modelLower.includes('sound-effect') || generationType === 'sfx') {
+        endpoint = '/api/fal/eleven/sfx'; // Use dedicated SFX endpoint for per-second pricing
       } else if (modelLower.includes('chatterbox')) {
         endpoint = '/api/fal/chatterbox/multilingual';
       } else if (modelLower.includes('maya')) {
